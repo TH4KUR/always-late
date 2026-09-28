@@ -80,6 +80,24 @@ not as a resource-tier finding (English having more selective features than
 Kannada here is very plausibly a sample-size/token-count artifact, not a
 resource-tier effect, and should not be cited as such).
 
+**Quantization-survival demo (reduced-scale, stretch item) -- blocked, root
+cause diagnosed.** Three consecutive attempts were killed (`SIGKILL`, exit
+137) at the same point (right after the 5.2GB bf16 model finished loading,
+before any of the demo's own compute began), even after reducing the
+token budget 3000->800 and bit-widths 5->2. Confirmed via
+`journalctl --user`: `"A process of this unit has been killed by the OOM
+killer"` -- this is genuine system-wide memory exhaustion (swap was fully
+consumed each time; `ps aux --sort=-%mem` showed Firefox running 10+
+content processes, Spotify, VS Code, and two other Claude Code sessions all
+concurrently resident), not a bug in this project's code, nor a sandbox/
+cgroup limit (checked: no `memory.max` limit anywhere in the cgroup
+hierarchy). The W0 sanity check above succeeded because it ran before
+memory pressure from other apps had built up as far. Paused further
+CPU attempts here rather than keep retrying blindly; needs either (a) more
+system RAM headroom (closing other apps) or (b) the GPU driver fix, which
+would move the 5.2GB of weights into the RTX 4060's 8GB VRAM instead of
+system RAM, resolving this independently of what else is running.
+
 ## Not yet attempted (explicitly deferred)
 
 - W0 items 1-2 (Duan (2026) pipeline dry-run on their own corpus; Llama-3.2-1B
