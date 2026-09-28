@@ -1,24 +1,26 @@
-# Core (already present in most HF/ML environments; pinned to avoid version churn)
-torch>=2.1
-numpy>=1.26
-scipy>=1.11
-transformers>=4.44   # tested locally against 5.17.0
-accelerate>=0.33
-datasets>=2.20
-huggingface_hub>=0.24
-safetensors>=0.4
-
-# Utilities
-tqdm>=4.66
-pandas>=2.2
-matplotlib>=3.8
+# Exact versions actually tested end-to-end (W0 sanity check + quantization
+# survival demo both ran successfully against these). Pin exactly, not with
+# floors: version churn in this ecosystem (esp. transformers/huggingface_hub
+# major-version bumps) is a real, previously-hit risk here -- see
+# reports/progress_log.md.
+torch==2.13.0
+numpy==2.5.2
+scipy==1.18.0
+transformers==5.17.0
+accelerate==1.14.0
+datasets==5.0.1
+huggingface_hub==1.28.0
+safetensors==0.8.0
+tqdm==4.70.0
+pandas==3.0.5
+matplotlib==3.11.1
 
 # NOTE on SAE loading: we deliberately do NOT depend on `sae_lens` or
 # EleutherAI's `sae`/`sparsify` package. Both pull in extra heavy/volatile
 # dependencies (sae_lens historically pulls in transformer_lens) and their
-# APIs have churned across versions (see reports/progress_log.md). Instead,
-# src/sae_models.py implements minimal, dependency-free loaders for the two
-# SAE architectures this project actually uses:
+# APIs have churned across versions. Instead, src/sae_models.py implements
+# minimal, dependency-free loaders for the two SAE architectures this
+# project actually uses:
 #   - JumpReLU  (Gemma Scope, per Lieberum et al. 2024 / google/gemma-scope-*)
 #   - TopK      (EleutherAI sae-pythia-*, seonglae Llama SAEs)
 # using only huggingface_hub (to download raw weight files) + torch.
