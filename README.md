@@ -5,7 +5,8 @@ Language-Specific Feature Survival Under Quantization and Pruning in Multilingua
 ANLP (Monsoon 2026), Team AlwaysLate.
 
 Full research design: [`anlp_revised.txt`](anlp_revised.txt) (locked proposal, Sections 1-8).
-Current status and honest progress log: [`reports/progress_log.md`](reports/progress_log.md).
+Team plan / task split / timeline: [`PLAN.md`](PLAN.md).
+Progress at a glance: [`PROGRESS.md`](PROGRESS.md) (full technical log: [`reports/progress_log.md`](reports/progress_log.md)).
 
 ## What this is
 
