@@ -1,0 +1,90 @@
+Course Project Details
+Advanced NLP
+Monsoon 2026
+
+1
+
+General instructions
+
+Please read and follow these instructions throughout the project’s duration.
+1. The project must be done in teams of 3-4.
+2. You are highly encouraged to consult TAs during office hours to get inputs on project ideas.
+3. You are highly encouraged to consult your team’s TA mentor for project related questions and guidance.
+4. You are allowed to use AI and other internet resources for implementation and code. You are not allowed to
+use AI to generate reports wherever relevant.
+5. The project schedule and deadlines must be strictly followed. No extensions will be provided.
+6. All submissions should follow the ACL Style Guide. LATEX files for this can be found here.
+7. For each of the submissions, every team member must make the submission.
+
+2
+
+Project Proposal
+Deadline 2.1 (Interim Proposal). 14th August 2026
+
+Deadline 2.2 (Final Proposal). 28th August 2026
+
+The interim submission should be a document outlining the project idea in about a page or two. This should
+be treated similarly to a project abstract in that it should be a pitch of the project without being too short or
+overcomplicated. It is natural that you would have a deeper idea of the project than what you submit, but the
+submission should have enough information to give a fresh reader a sufficient idea of your project.
+The filename for the interim proposal submission should be <TeamNameWithNoSpaces>-Interim.pdf
+This proposal will be used to approve, revise, or reject your project idea. If the proposal is not accepted, you
+will have a few days to revise and resubmit the final project proposal, which as the name suggests, will be the
+project you will work on through the semester. You will also be assigned TA mentors who you’re expected to
+consult throughout the course to obtain clarity on how to proceed with or rework the project.
+The final proposal should be a more in-depth description containing the project idea, motivation, background,
+related work, proposed methodology, dataset, and evaluation plan in 3-4 pages (excluding references). You may
+also include a tentative timeline. You must include sections indicating the motivation behind the problem you’ve
+selected, and the contributions you’ll be making. For clarity, the motivation is the shortcomings of existing work
+that suggest the direction you choose, and the contribution is an elaboration on how your project addreses those
+shortcomings (these will count for the page limit). You will be graded solely on the basis of the write-up.
+The filename for the final proposal submission should be <TeamNameWithNoSpaces>-Proposal.pdf
+
+3
+
+Mid Submission
+1
+
+Deadline 3.1 (Mid Submission). 30th September 2026
+
+This will be a document of 7-8 pages (excluding references) with an optional page for appendices. It should
+cover a formal, refined statement of the problem, the progress you’ve made, and a concrete timeline of your plans
+for the rest of the project. There should also be a comprehensive literature review, which should reflect the viability
+and motivation for the project.
+If you’ve used HuggingFace or WandB to train and upload models, include links to the relevant projects in the
+README of the repository.
+Additionally, the remote repository being used for your project should either be made public, or should grant
+your TA mentors access to it. You will be graded on the basis of the write-up, code and a viva. Having slides for
+the viva is optional.
+The filename for the mid submission should be <TeamNameWithNoSpaces>-Mid.zip
+
+4
+
+Final Submission
+Deadline 4.1 (Final Submission). 31st October 2026
+
+This will be a document of 8 pages at most (excluding references) with an optional two pages of appendices.
+This should be a complete write-up for your project structured like a research paper. All claims should be backed
+up with either prior results or empirical results and sufficient analysis. Try to make all research claims as watertight
+as possible. You may also include challenges, limitations and potential future work, which will not be considered
+in the page count, as long as it is in a separate section just before the references. Make sure that this section
+only contains this, and not any result from your project since any such result will be treated as future work or a
+limitation.
+If you’ve used HuggingFace or WandB to train and upload models, include links to the relevant projects in the
+README of the repository.
+You will be graded on the basis of all aspects of the submission: the write-up, the code (as a ZIP archive in the
+submission) and the final viva which will require a presentation (preferably as a PDF in the submission).
+The filename for the final submission should be <TeamNameWithNoSpaces>-Final.zip
+
+5
+
+Resources
+
+If you need inspiration for selecting your projects, check out the projects from Stanford’s CS224N course (Winter
+2026, Spring 2024).
+Also check out SemEval tasks from recent years here.
+Video presentations of previous ANLP projects are available here.
+
+2
+
+

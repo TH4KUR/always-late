@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Data & model weights (large, not committed)
+data/*
+!data/.gitkeep
+*.safetensors
+*.bin
+*.npz
+*.pt
+*.ckpt
+hf_cache/
+.cache/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+*.swp
+
+# Results that are large/binary (keep small CSV/JSON/MD logs, ignore raw arrays)
+reports/*.npy
+reports/raw/
