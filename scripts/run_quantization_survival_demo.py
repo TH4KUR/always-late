@@ -23,23 +23,41 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 import numpy as np
+import pandas as pd
 import torch
-from datasets import load_dataset
+from huggingface_hub import hf_hub_download
 
 from src.pipeline import ModelConfig, ResidualCapture, load_model_and_tokenizer, load_sae
 from src.rtn_quant import quantized_model
 from src.survival import active_feature_mask, classify_survival, pearson_corr_per_feature
 
-BIT_WIDTHS = [8, 7, 6, 5, 4]
-TARGET_TOKENS = 3000
+import os
+
+# Reduced further after two OOM kills on this machine (system-wide memory
+# contention from other running apps, not this script -- see
+# reports/progress_log.md). Override via env vars once more headroom/a GPU
+# is available, to scale back up towards the full INT8-INT4 x 3000-token
+# sweep without editing this file.
+BIT_WIDTHS = [int(b) for b in os.environ.get("QSD_BITWIDTHS", "8,4").split(",")]
+TARGET_TOKENS = int(os.environ.get("QSD_TARGET_TOKENS", "800"))
 CHUNK_LEN = 256  # matches the proposal's chunked protocol (L=256)
 
 
 def load_wikitext_chunks(tokenizer, target_tokens: int, chunk_len: int) -> list[str]:
-    ds = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")
+    # Download only the (tiny, 0.7MB) test-split parquet directly, rather
+    # than `datasets.load_dataset(...)`, which materializes train+validation
+    # splits too on first cache build and OOM-killed an earlier run on this
+    # machine's ~8GB available RAM (with a 5.2GB model already resident).
+    path = hf_hub_download(
+        repo_id="Salesforce/wikitext",
+        repo_type="dataset",
+        filename="wikitext-2-raw-v1/test-00000-of-00001.parquet",
+        cache_dir="data/hf_cache",
+    )
+    df = pd.read_parquet(path)
     chunks, buf, n_tokens = [], [], 0
-    for row in ds:
-        text = row["text"].strip()
+    for text in df["text"]:
+        text = text.strip()
         if len(text) < 20:  # skip blank lines / section headers
             continue
         buf.append(text)
