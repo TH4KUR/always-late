@@ -46,9 +46,39 @@ quantization (not bitsandbytes/GPTQ, to match the pinned linear-INT
 protocol exactly), Pearson survival + firing-rate + selectivity-score
 statistics, and the W0 sanity-check script.
 
-**W0 sanity check (Section 8, W0 item 3) -- results:**
+**W0 sanity check (Section 8, W0 item 3) -- results.** First attempt was
+killed mid-load (see below); root cause was fp32 on CPU needing ~10.4GB for
+Gemma-2-2B's weights alone against ~8.1GB free RAM. Fixed by loading in
+bf16 even on CPU (halves the footprint); re-ran successfully end-to-end:
 
-<!-- FILLED IN AFTER scripts/run_w0_sanity_check.py completes -->
+```
+device: cpu, dtype: bfloat16
+model load: 2.7s   sae load: 0.7s   encode: 588.0s (40+40 sentences, CPU-only)
+tokens: 3233 Kannada / 1066 English  (40 sentences each -- Kannada tokenizes
+                                       to ~3x more tokens than English at
+                                       equal sentence count, a first-hand
+                                       confirmation of the tokenizer-fertility
+                                       disparity cited in Srivastava, 2026 /
+                                       Lundin et al., 2026)
+of 16,384 total layer-12 features:
+  1,035 Kannada-selective (fire >=5x more on Kannada than English)
+  1,918 English-selective (fire >=5x more on English than Kannada)
+verdict: PASS -- nonzero language-selective feature population confirmed
+```
+
+Full machine-readable output: `reports/w0_sanity_check_result.json`.
+
+**Caveat (important, do not overclaim in the write-up):** this is the
+bounded precondition check described in Section 8 ("verify a nonzero
+population... exists"), not the pre-registered selectivity score S(f) from
+Section 4.1, which requires the full 27-language panel, equal token
+budgets, and 100-draw bootstrap stability. Sample here is small (40
+sentences/language, unequal token counts) and the >=5x firing-rate-ratio
+rule is a coarse stand-in threshold, not the pre-registered one. Read this
+result as "the precondition holds, safe to proceed to the full panel" --
+not as a resource-tier finding (English having more selective features than
+Kannada here is very plausibly a sample-size/token-count artifact, not a
+resource-tier effect, and should not be cited as such).
 
 ## Not yet attempted (explicitly deferred)
 

@@ -40,7 +40,9 @@ def main():
     log = {"stage": "W0_sanity_check", "started_at": time.strftime("%Y-%m-%d %H:%M:%S")}
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.bfloat16 if device == "cuda" else torch.float32
+    # bf16 even on CPU: fp32 would need ~10.4GB just for Gemma-2-2B's weights,
+    # which OOM-killed an earlier run on this 15GB-RAM machine (~8GB free).
+    dtype = torch.bfloat16
     cfg = ModelConfig(device=device, dtype=dtype)
     log["device"] = device
     log["dtype"] = str(dtype)
