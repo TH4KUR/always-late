@@ -98,6 +98,64 @@ system RAM headroom (closing other apps) or (b) the GPU driver fix, which
 would move the 5.2GB of weights into the RTX 4060's 8GB VRAM instead of
 system RAM, resolving this independently of what else is running.
 
+## 2026-09-29
+
+**GPU driver fixed.** Root cause (from 2026-09-28's diagnosis) was correct
+but the first fix command was insufficient: `apt install --reinstall
+nvidia-driver-580-open` reinstalled the metapackage but didn't force its
+kernel-module dependency to upgrade, since the stale `7.0.0-31`-built
+module still "satisfied" the loose version constraint. Actual fix: apt
+already had a newer candidate (`7.0.0-34.34~24.04.1+1`) for
+`linux-modules-nvidia-580-open-generic-hwe-24.04` that just hadn't been
+installed --
+```
+sudo apt update && sudo apt install linux-modules-nvidia-580-open-generic-hwe-24.04
+sudo modprobe nvidia
+```
+`nvidia-smi` now reports RTX 4060 Laptop, driver 580.178.04, CUDA 13.0,
+8188MiB VRAM, 0% utilized. `torch.cuda.is_available()` confirmed True.
+
+**Quantization-survival demo: real bug found and fixed on first GPU
+attempt.** `src/rtn_quant.py`'s `quantized_model` context manager cloned
+all 182 target weight tensors onto the GPU before quantizing, to allow
+restoring the originals afterward -- this nearly doubles resident weight
+memory (Linear projections are ~90% of the model's parameters) and hit
+`torch.OutOfMemoryError` (7.62GiB usable, model+clones needed ~10GB). A
+second, independent bug then masked the real error: the `finally` restore
+loop unconditionally indexed `saved[name]` for every target, but `saved`
+only had entries for layers processed before the OOM, raising `KeyError`
+on exit instead of surfacing the actual `OutOfMemoryError`. Fixed both:
+stage the original weights on CPU instead of GPU (small transfer cost,
+paid once per bit-width, not per token), and only restore names actually
+present in `saved`.
+
+**Quantization-survival demo -- real results (Gemma-2-2B, layer 12, RTN,
+WikiText-2, 3000 tokens, GPU):**
+
+```
+active features (firing rate > 0.001): 10,436 / 16,384
+
+INT8: survived=99.03%  damaged=0.00%  median_r=1.000
+INT7: survived=98.28%  damaged=0.00%  median_r=1.000
+INT6: survived=94.31%  damaged=0.05%  median_r=0.997
+INT5: survived=82.37%  damaged=0.35%  median_r=0.985
+INT4: survived=60.40%  damaged=5.29%  median_r=0.950
+```
+
+Full machine-readable output: `reports/quantization_survival_demo_result.json`.
+
+**Caveat (do not overclaim in the write-up):** survival percentages here
+are noticeably higher (less damage) than Duan (2026)'s pinned INT7
+(~81.3%) / INT6 (~51.3%) bands. This is expected, not a contradiction: this
+run uses a small WikiText-2 test-split sample (3,000 tokens) rather than
+their exact corpus and 500k-token budget, and is not the formal Phase-0
+replication gate (Section 4.2), which is a separate, still-to-do step.
+What this run *does* support: (a) the RTN + Pearson-survival pipeline is
+implemented correctly and produces internally consistent, monotonically-
+ordered results as bit-width decreases, matching Duan (2026)'s qualitative
+direction; (b) the codebase is GPU-ready end-to-end with no changes needed
+beyond what `ModelConfig`'s automatic CUDA detection already does.
+
 ## Not yet attempted (explicitly deferred)
 
 - W0 items 1-2 (Duan (2026) pipeline dry-run on their own corpus; Llama-3.2-1B

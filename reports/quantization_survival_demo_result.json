@@ -1,0 +1,52 @@
+{
+  "stage": "quantization_survival_demo",
+  "started_at": "2026-09-29 11:34:42",
+  "device": "cuda",
+  "n_chunks": 8,
+  "baseline_encode_seconds": 1.6,
+  "n_tokens": 2048,
+  "n_active_features_baseline": 10436,
+  "results_by_bitwidth": {
+    "INT8": {
+      "n_quantized_linear_modules": 182,
+      "seconds": 3.0,
+      "n_active_features": 10436,
+      "survived_pct": 99.03,
+      "damaged_pct": 0.0,
+      "median_pearson_r": 0.9999093413352966
+    },
+    "INT7": {
+      "n_quantized_linear_modules": 182,
+      "seconds": 2.7,
+      "n_active_features": 10436,
+      "survived_pct": 98.28,
+      "damaged_pct": 0.0,
+      "median_pearson_r": 0.9996523857116699
+    },
+    "INT6": {
+      "n_quantized_linear_modules": 182,
+      "seconds": 2.6,
+      "n_active_features": 10436,
+      "survived_pct": 94.31,
+      "damaged_pct": 0.05,
+      "median_pearson_r": 0.9972648024559021
+    },
+    "INT5": {
+      "n_quantized_linear_modules": 182,
+      "seconds": 2.4,
+      "n_active_features": 10436,
+      "survived_pct": 82.37,
+      "damaged_pct": 0.35,
+      "median_pearson_r": 0.9848640561103821
+    },
+    "INT4": {
+      "n_quantized_linear_modules": 182,
+      "seconds": 2.2,
+      "n_active_features": 10436,
+      "survived_pct": 60.4,
+      "damaged_pct": 5.29,
+      "median_pearson_r": 0.9504916667938232
+    }
+  },
+  "finished_at": "2026-09-29 11:35:08"
+}

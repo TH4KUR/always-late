@@ -46,6 +46,13 @@ def quantized_model(model: torch.nn.Module, bits: int):
     """Context manager: quantize target Linear weights in-place for `bits`,
     restoring the original FP weights on exit.
 
+    Original weights are staged on CPU (not cloned on-device): cloning all
+    target tensors on GPU would nearly double resident weight memory (the
+    quantized Linear projections are ~90% of a transformer's parameters),
+    which OOM'd on an 8GB card holding the ~5.2GB bf16 model. The CPU<->GPU
+    transfer cost is small next to a forward pass and paid once per entry/exit,
+    not per token.
+
     Usage:
         with quantized_model(model, bits=7):
             out = model(**inputs)
@@ -58,9 +65,10 @@ def quantized_model(model: torch.nn.Module, bits: int):
     ]
     try:
         for name, module in targets:
-            saved[name] = module.weight.data.clone()
+            saved[name] = module.weight.data.clone().cpu()
             module.weight.data.copy_(rtn_fake_quantize(module.weight.data, bits))
         yield [name for name, _ in targets]
     finally:
         for name, module in targets:
-            module.weight.data.copy_(saved[name])
+            if name in saved:
+                module.weight.data.copy_(saved[name].to(module.weight.device))
