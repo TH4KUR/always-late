@@ -1,0 +1,47 @@
+{
+  "stage": "multilang_sanity_check",
+  "started_at": "2026-09-29 11:37:39",
+  "device": "cuda",
+  "languages": {
+    "eng_Latn": "high",
+    "hin_Deva": "mid",
+    "kan_Knda": "low",
+    "tel_Telu": "low"
+  },
+  "encode_seconds": 12.9,
+  "n_tokens_per_language": {
+    "eng_Latn": 2467,
+    "hin_Deva": 4520,
+    "kan_Knda": 7363,
+    "tel_Telu": 6532
+  },
+  "pairwise_selective_feature_counts": {
+    "eng_Latn_vs_hin_Deva": {
+      "eng_Latn_selective": 867,
+      "hin_Deva_selective": 688
+    },
+    "eng_Latn_vs_kan_Knda": {
+      "eng_Latn_selective": 1983,
+      "kan_Knda_selective": 745
+    },
+    "eng_Latn_vs_tel_Telu": {
+      "eng_Latn_selective": 1682,
+      "tel_Telu_selective": 820
+    },
+    "hin_Deva_vs_kan_Knda": {
+      "hin_Deva_selective": 693,
+      "kan_Knda_selective": 197
+    },
+    "hin_Deva_vs_tel_Telu": {
+      "hin_Deva_selective": 506,
+      "tel_Telu_selective": 234
+    },
+    "kan_Knda_vs_tel_Telu": {
+      "kan_Knda_selective": 145,
+      "tel_Telu_selective": 255
+    }
+  },
+  "n_features_total": 16384,
+  "verdict": "PASS: every language pair shows a nonzero selective-feature population",
+  "finished_at": "2026-09-29 11:38:01"
+}

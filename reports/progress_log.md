@@ -156,6 +156,26 @@ ordered results as bit-width decreases, matching Duan (2026)'s qualitative
 direction; (b) the codebase is GPU-ready end-to-end with no changes needed
 beyond what `ModelConfig`'s automatic CUDA detection already does.
 
+**Extended precondition check across 4 languages (GPU, cheap now).** Widened
+the W0 language-selectivity check from the single Kannada/English pair to
+one language per resource tier (eng=high anchor, hin=mid, kan/tel=low),
+80 FLORES dev sentences each, all 6 pairwise comparisons:
+
+```
+eng vs hin: eng-selective=867   hin-selective=688
+eng vs kan: eng-selective=1983  kan-selective=745
+eng vs tel: eng-selective=1682  tel-selective=820
+hin vs kan: hin-selective=693   kan-selective=197
+hin vs tel: hin-selective=506   tel-selective=234
+kan vs tel: kan-selective=145   tel-selective=255
+```
+
+verdict: PASS -- every pair shows a nonzero selective population in both
+directions. Full output: `reports/multilang_sanity_check_result.json`.
+Same caveat as the original W0 check applies: this is still the coarse
+>=5x-ratio precondition test, not the pre-registered bootstrap-stable S(f)
+score, and counts should not be read as resource-tier effect sizes.
+
 ## Not yet attempted (explicitly deferred)
 
 - W0 items 1-2 (Duan (2026) pipeline dry-run on their own corpus; Llama-3.2-1B
