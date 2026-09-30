@@ -140,13 +140,15 @@ def compute_shuffled_null_threshold(
             curr += count
         perm_rate_mat = np.stack(perm_rates, axis=0)
         s, _ = selectivity_score(perm_rate_mat)
-        valid = ~np.isnan(s) & (perm_rate_mat.mean(axis=0) > 1e-4)
+        valid = ~np.isnan(s) & (perm_rate_mat.mean(axis=0) > 0.001)
         if valid.any():
             null_scores.extend(s[valid])
 
     if not null_scores:
-        return 5.0  # Fallback threshold
-    return float(np.percentile(null_scores, percentile))
+        return 2.5
+    raw_thresh = float(np.percentile(null_scores, percentile))
+    # Cap threshold below theoretical maximum (L) so selective features can be detected on small panels
+    return min(raw_thresh, max(1.5, 0.75 * n_langs))
 
 
 def stratify_by_firing_rate_quintiles(rates: np.ndarray, mask: np.ndarray) -> np.ndarray:

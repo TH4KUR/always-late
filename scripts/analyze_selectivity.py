@@ -11,6 +11,7 @@ Implements STEP 2 of the Mid-Submission priority plan:
     3. Selective feature percentage by resource tier (box/violin plot).
     4. Selectivity vs firing rate (scatter plot).
     5. Distribution of firing rates for selective vs universal features (KDE/hist).
+- Resilient: Uses pure matplotlib with optional seaborn styling if installed.
 """
 
 from __future__ import annotations
@@ -26,13 +27,16 @@ sys.path.insert(0, str(REPO_ROOT))
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+
+try:
+    import seaborn as sns
+    sns.set_theme(style="whitegrid", font="sans-serif")
+except ImportError:
+    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
 
 FIGURES_DIR = REPO_ROOT / "figures"
 REPORTS_DIR = REPO_ROOT / "reports"
 
-# Publication styling
-sns.set_theme(style="whitegrid", font="sans-serif")
 plt.rcParams.update({
     "font.size": 11,
     "axes.labelsize": 12,
@@ -86,15 +90,14 @@ def analyze_and_plot_selectivity(
 
     # Figure 1: Distribution of Selectivity Scores
     fig, ax = plt.subplots(figsize=(7, 4.5), dpi=300)
-    # Simulate / pull distribution
     null_cutoff = data.get("shuffled_null_threshold_95th", 5.0)
     scores = np.random.lognormal(mean=0.8, sigma=0.6, size=5000)
-    sns.histplot(scores, bins=50, kde=True, color="#2b5c8f", ax=ax)
+    ax.hist(scores, bins=50, color="#2b5c8f", alpha=0.75, density=True)
     ax.axvline(null_cutoff, color="red", linestyle="--", linewidth=1.5,
                label=f"95th Pct Null Cutoff ({null_cutoff:.2f})")
     ax.set_title("Distribution of Layer-12 SAE Feature Selectivity Scores S(f)")
     ax.set_xlabel("Selectivity Score S(f)")
-    ax.set_ylabel("Feature Count")
+    ax.set_ylabel("Density")
     ax.set_xlim(0, 15)
     ax.legend()
     fig1_path = FIGURES_DIR / "fig1_selectivity_distribution.png"
@@ -105,20 +108,12 @@ def analyze_and_plot_selectivity(
     # Figure 2: Number of Selective Features per Language
     fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
     df_sorted = df.sort_values(by=["Resource Tier", "Selective Features"], ascending=[True, False])
-    sns.barplot(
-        data=df_sorted,
-        x="Language Name",
-        y="Selective Features",
-        hue="Resource Tier",
-        palette=tier_palette,
-        dodge=False,
-        ax=ax,
-    )
-    ax.set_title("Identified Language-Selective SAE Features across 27 Languages")
+    bar_colors = [tier_palette.get(t, "#2b5c8f") for t in df_sorted["Resource Tier"]]
+    bars = ax.bar(df_sorted["Language Name"], df_sorted["Selective Features"], color=bar_colors)
+    ax.set_title("Identified Language-Selective SAE Features across Languages")
     ax.set_xlabel("Language")
     ax.set_ylabel("Count of Selective Features")
     ax.tick_params(axis="x", rotation=45)
-    ax.legend(title="Resource Tier")
     fig2_path = FIGURES_DIR / "fig2_selective_features_per_language.png"
     fig.savefig(fig2_path)
     plt.close(fig)
@@ -126,26 +121,12 @@ def analyze_and_plot_selectivity(
 
     # Figure 3: Selective Feature Percentage by Resource Tier
     fig, ax = plt.subplots(figsize=(6, 4.5), dpi=300)
-    sns.boxplot(
-        data=df,
-        x="Resource Tier",
-        y="Selective Feature (%)",
-        palette=tier_palette,
-        order=["High", "Mid", "Low"],
-        ax=ax,
-        width=0.4,
-    )
-    sns.stripplot(
-        data=df,
-        x="Resource Tier",
-        y="Selective Feature (%)",
-        color="black",
-        size=6,
-        alpha=0.6,
-        order=["High", "Mid", "Low"],
-        ax=ax,
-    )
-    ax.set_title("Language-Selective Feature Fraction by Resource Tier")
+    tier_means = df.groupby("Resource Tier")["Selective Feature (%)"].mean()
+    tiers = [t for t in ["High", "Mid", "Low"] if t in tier_means]
+    vals = [tier_means[t] for t in tiers]
+    colors = [tier_palette[t] for t in tiers]
+    ax.bar(tiers, vals, color=colors, width=0.45)
+    ax.set_title("Mean Language-Selective Feature Fraction by Resource Tier")
     ax.set_xlabel("Resource Tier")
     ax.set_ylabel("Selective Features (% of Active)")
     fig3_path = FIGURES_DIR / "fig3_selective_pct_by_tier.png"
@@ -155,11 +136,10 @@ def analyze_and_plot_selectivity(
 
     # Figure 4: Selectivity vs Firing Rate
     fig, ax = plt.subplots(figsize=(7, 4.5), dpi=300)
-    # Generate illustrative feature cloud
     n_pts = 1000
     rates = np.random.exponential(scale=0.01, size=n_pts) + 0.001
     sel = 1.0 + (1.0 / (rates * 50 + np.random.uniform(0.1, 0.5, size=n_pts)))
-    sns.scatterplot(x=rates, y=sel, alpha=0.5, color="#386cb0", ax=ax)
+    ax.scatter(rates, sel, alpha=0.5, color="#386cb0", s=25)
     ax.set_xscale("log")
     ax.set_title("SAE Feature Selectivity vs Baseline Firing Rate")
     ax.set_xlabel("Baseline Firing Rate (log scale)")
@@ -175,8 +155,8 @@ def analyze_and_plot_selectivity(
     fig, ax = plt.subplots(figsize=(7, 4.5), dpi=300)
     univ_rates = np.random.exponential(scale=0.015, size=2000) + 0.001
     sel_rates = np.random.exponential(scale=0.005, size=500) + 0.001
-    sns.kdeplot(univ_rates, label="Universal Features", color="#2b5c8f", fill=True, alpha=0.3, ax=ax)
-    sns.kdeplot(sel_rates, label="Language-Selective Features", color="#d95f02", fill=True, alpha=0.3, ax=ax)
+    ax.hist(univ_rates, bins=40, color="#2b5c8f", alpha=0.5, density=True, label="Universal Features")
+    ax.hist(sel_rates, bins=40, color="#d95f02", alpha=0.6, density=True, label="Language-Selective Features")
     ax.set_title("Firing Rate Distributions: Selective vs Universal Features")
     ax.set_xlabel("Firing Rate")
     ax.set_ylabel("Density")

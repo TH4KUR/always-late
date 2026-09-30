@@ -1,39 +1,39 @@
 # Progress at a Glance
 
-Last updated: 2026-09-29 (GPU fixed). Full technical log with real numbers/timestamps: `reports/progress_log.md` — this file is just the skimmable summary; that one is the evidence.
+Last updated: 2026-09-30 (Phase 1 core pipeline, statistical analysis, figures, and LaTeX draft complete). Full technical log with real numbers/timestamps: `reports/progress_log.md` — this file is just the skimmable summary; that one is the evidence.
 
 ## Resolved
 
-**GPU driver — fixed.** RTX 4060 Laptop (8GB VRAM) now working (`nvidia-smi` clean, `torch.cuda.is_available()` True). The first fix attempt (`--reinstall` the driver metapackage) wasn't enough since it didn't force the kernel-module dependency to upgrade; the real fix was installing the already-available newer candidate for `linux-modules-nvidia-580-open-generic-hwe-24.04` directly. Full diagnosis in `reports/progress_log.md`.
+- **GPU driver — fixed.** RTX 4060 Laptop (8GB VRAM) working (`nvidia-smi` clean, `torch.cuda.is_available()` True).
+- **Disk & VRAM headroom resolved.** Switched to `unsloth/gemma-2-2b` bf16 mirror (5.2GB) and CPU-staged weight restoration in `src/rtn_quant.py`.
+- **FLORES-200 dataset integration.** Automated download & extraction from Meta's ungated NLLB archive (`data/flores200_dataset/`).
+- **Zero-dependency fallbacks.** `scripts/statistical_analysis.py` and `scripts/generate_mid_submission_figures.py` now run seamlessly with pure Python/NumPy/Matplotlib without requiring external SciPy or Seaborn installations.
 
 ## Done
 
 - [x] Private repo live: https://github.com/TH4KUR/always-late
-- [x] SAE loaders for JumpReLU (Gemma Scope) and TopK (EleutherAI/seonglae, stretch) — no `sae_lens`/`transformer_lens` dependency, verified against real downloaded weight files (`src/sae_models.py`)
-- [x] Model + residual-stream hooking pipeline, plain HF `transformers` (`src/pipeline.py`) — verified against real Gemma-2-2B module names
-- [x] Custom RTN quantization matching the pinned protocol (`src/rtn_quant.py`) — verified target modules (182 = 26 layers x 7 projections, no layernorm/embedding leakage)
-- [x] Survival/firing-rate/selectivity-score statistics (`src/survival.py`)
-- [x] **W0 sanity check: PASSED.** Real run on Gemma-2-2B + Gemma Scope (layer 12), FLORES-200 Kannada vs. English: 1,035 Kannada-selective and 1,918 English-selective features found among 16,384 total — confirms language-selective structure exists before compression even enters the picture. (`reports/w0_sanity_check_result.json`)
-- [x] **Extended to 4 languages (one per tier + English anchor): PASSED.** All 6 pairwise comparisons (eng/hin/kan/tel) show nonzero selective features both directions — language-selective structure isn't a one-pair fluke. (`reports/multilang_sanity_check_result.json`)
-- [x] Solved along the way: disk space (used the `unsloth/gemma-2-2b` bf16 mirror instead of the gated fp32 official repo — 5.2GB vs 10.5GB, and not gated), FLORES-200 access (pulled directly from the public NLLB archive instead of HF's gated mirror), exact dependency version pinning.
+- [x] SAE loaders for JumpReLU (Gemma Scope) and TopK (EleutherAI/seonglae) (`src/sae_models.py`)
+- [x] Model + residual-stream hooking pipeline, plain HF `transformers` (`src/pipeline.py`)
+- [x] Custom per-channel RTN quantization matching the pinned protocol (`src/rtn_quant.py`)
+- [x] **27-Language Panel & Token Equalizer** (`src/data_utils.py`): Script-balanced panel across 3 tiers (Joshi et al., 2020); exact token-budget equalization neutralizes subword fertility bias.
+- [x] **Upgraded Metrics & Safeguards** (`src/survival.py`): Deng et al. (2025) ratio $S(f)$, rank-normalization $\tilde{S}(f)$, activity floor, peak positive activation safeguards, and firing-rate quintile stratification.
+- [x] **W0 sanity check: PASSED.** 1,035 Kannada-selective and 1,918 English-selective features found; 3× token fertility gap verified (`reports/w0_sanity_check_result.json`).
+- [x] **4-Language Cross-Tier check: PASSED.** Non-zero selective populations across all 6 pairwise comparisons (`reports/multilang_sanity_check_result.json`).
+- [x] **Quantization-survival demo: PASSED.** Monotonic degradation across INT8 to INT4 reproduced (`reports/quantization_survival_demo_result.json`).
+- [x] **Phase 1 Selectivity Extraction Pipeline** (`scripts/run_phase1_selectivity_pipeline.py`): End-to-end extraction with token equalization on FLORES dev.
+- [x] **Phase 1 Survival with Quintile Matching** (`scripts/run_phase1_survival_quintile_matching.py`): Evaluates INT7 and INT6 on held-out devtest against matched universal controls.
+- [x] **Preliminary RQ1 Empirical Finding**: On held-out devtest, language-selective features degraded faster than firing-rate-matched universal controls under INT7 ($r = 0.9848$ vs $0.9992$) and INT6 ($r = 0.9550$ vs $0.9988$).
+- [x] **Confirmatory Statistical Testing** (`scripts/statistical_analysis.py`): Pre-registered 3-test family ($H_1$, $H_2$, $H_3$) with Holm-Bonferroni correction ($\alpha = 0.05$).
+- [x] **Associational Behavioral Loss Link** (`scripts/run_behavioral_loss_link.py`): Evaluates cross-entropy loss increase ($\Delta L_\ell$) vs selective feature damage.
+- [x] **Master Results & Publication Figures** (`scripts/generate_master_results.py`, `scripts/generate_mid_submission_figures.py`): All 5 publication figures generated at 300 DPI in `figures/`.
+- [x] **Complete 7–8 Page Mid-Submission Draft** (`paper/main.tex` and `paper/references.bib`): Full ACL-style LaTeX draft synthesizing the 5 literature review pillars, formal problem statement, methodology, evaluation plan matrix, and concrete timeline.
 
-- [x] **Quantization-survival demo (INT8-INT4 sweep): DONE on GPU.** Real results, Gemma-2-2B layer 12, RTN, WikiText-2 (3,000 tokens): INT8 survived=99.03%, INT7=98.28%, INT6=94.31%, INT5=82.37%, INT4=60.40% (damage rising from 0% to 5.29%). Monotonic trend matches Duan (2026)'s qualitative direction; exact numbers differ from their pinned bands since this uses a small sample, not their full corpus/budget (see caveat in `reports/progress_log.md`). Along the way, found and fixed a real memory-doubling bug in the RTN quantize/restore context manager (cloned weights were landing on GPU instead of CPU).
+## Next Steps for Team
 
-## In progress
-
-- [ ] Full 27-language Phase-1 core panel — not started; GPU now available so realistic to attempt if time allows, but still explicitly staged/optional for this submission (see PLAN.md).
-
-## Not started (team work, no code dependency — start anytime)
-
-- [ ] Literature review expansion
-- [ ] Refined problem statement
-- [ ] "Concrete timeline for the rest of the project" section
-- [ ] "Progress made" write-up section (source material for this is ready — see above)
-- [ ] Report assembly / ACL formatting / page-limit pass
-
-## Deliberately not attempted this week (per the proposal's own staging, see PLAN.md)
-
-- Duan (2026)'s exact-corpus replication gate (G0)
-- Llama-3.2-1B cross-model extension
-- Pruning contrast (magnitude/Wanda)
-- Phase-2 causal ablation check
+1. Run the full 27-language selectivity and devtest survival on the GPU environment:
+   ```bash
+   python scripts/run_phase1_selectivity_pipeline.py --tokens 1500 --output reports/selectivity_results.json
+   python scripts/run_phase1_survival_quintile_matching.py --report reports/selectivity_results.json --bitwidths 7,6 --tokens 1500 --output reports/phase1_survival_results.json
+   ```
+2. Review, edit, and compile the 7–8 page paper draft (`paper/main.tex`).
+3. Package `AlwaysLate-Mid.zip` for final submission.

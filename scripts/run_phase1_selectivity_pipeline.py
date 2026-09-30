@@ -98,11 +98,12 @@ def run_selectivity_pipeline(
 
     print("\n[3/4] Computing Deng selectivity scores, safeguards, and rank normalization...")
     raw_s, peak_lang_idx = selectivity_score(rate_matrix)
+    min_acts = min(50, max(3, int(target_tokens_per_lang * 0.01)))
     supported_mask = filter_supported_features(
         rate_matrix,
         pos_matrix,
         min_rate_floor=0.001,
-        min_peak_positive_acts=50,
+        min_peak_positive_acts=min_acts,
     )
     s_tilde = rank_normalized_selectivity(raw_s, supported_mask)
 

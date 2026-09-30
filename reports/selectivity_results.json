@@ -1,0 +1,54 @@
+{
+  "stage": "Phase1_Selectivity_Extraction",
+  "started_at": "2026-09-30 10:35:31",
+  "finished_at": "2026-09-30 11:24:12",
+  "device": "cpu",
+  "n_languages": 4,
+  "target_tokens_per_lang": 300,
+  "total_encode_seconds": 1545.4,
+  "total_sae_features": 16384,
+  "supported_features_count": 112,
+  "shuffled_null_threshold_95th": 4.0,
+  "total_selective_features": 1,
+  "selective_features_by_tier": {
+    "high": 1,
+    "mid": 0,
+    "low": 0
+  },
+  "languages": {
+    "eng_Latn": {
+      "name": "English",
+      "tier": "high",
+      "script": "Latin",
+      "tokens": 384,
+      "n_selective_features": 1,
+      "top5_selective_feature_ids": [
+        12624
+      ]
+    },
+    "hin_Deva": {
+      "name": "Hindi",
+      "tier": "mid",
+      "script": "Devanagari",
+      "tokens": 384,
+      "n_selective_features": 0,
+      "top5_selective_feature_ids": []
+    },
+    "kan_Knda": {
+      "name": "Kannada",
+      "tier": "low",
+      "script": "Dravidian",
+      "tokens": 384,
+      "n_selective_features": 0,
+      "top5_selective_feature_ids": []
+    },
+    "tel_Telu": {
+      "name": "Telugu",
+      "tier": "low",
+      "script": "Dravidian",
+      "tokens": 384,
+      "n_selective_features": 0,
+      "top5_selective_feature_ids": []
+    }
+  }
+}

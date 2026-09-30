@@ -8,6 +8,7 @@ Implements STEP 8 of the Mid-Submission priority plan:
     Figure 4: Resource-Tier Survival Comparison (High vs Mid vs Low)
     Figure 5: Selective Feature Damage vs Language-Level Cross-Entropy Loss Degradation (Delta L)
 - All figures saved at 300 DPI in `figures/`.
+- Resilient: Uses pure matplotlib with optional seaborn styling if installed.
 """
 
 from __future__ import annotations
@@ -16,14 +17,17 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
-import seaborn as sns
+
+try:
+    import seaborn as sns
+    sns.set_theme(style="whitegrid", font="sans-serif")
+except ImportError:
+    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIGURES_DIR = REPO_ROOT / "figures"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-# Publication styling
-sns.set_theme(style="whitegrid", font="sans-serif")
 plt.rcParams.update({
     "font.size": 11,
     "axes.labelsize": 12,
@@ -92,24 +96,24 @@ def generate_figure2_selectivity():
     rng = np.random.default_rng(42)
     scores = rng.lognormal(mean=0.9, sigma=0.55, size=8000)
     cutoff = 5.2
-    sns.histplot(scores, bins=60, kde=True, color="#2b5c8f", ax=ax1)
+    ax1.hist(scores, bins=60, color="#2b5c8f", alpha=0.75, density=True, edgecolor="none")
     ax1.axvline(cutoff, color="red", linestyle="--", linewidth=1.8, label=f"95th Pct Null Cutoff ({cutoff:.1f})")
     ax1.set_title("(A) Selectivity Score Distribution S(f)")
     ax1.set_xlabel("Deng Selectivity S(f)")
-    ax1.set_ylabel("Feature Count")
+    ax1.set_ylabel("Density")
     ax1.set_xlim(0, 16)
     ax1.legend()
 
     # 2B: Language counts across tiers
     tiers = ["High", "Mid", "Low"]
     counts = [1840, 1420, 1150]
-    palette = ["#2b5c8f", "#d95f02", "#7570b3"]
-    sns.barplot(x=tiers, y=counts, palette=palette, ax=ax2, width=0.45)
+    colors = ["#2b5c8f", "#d95f02", "#7570b3"]
+    bars = ax2.bar(tiers, counts, color=colors, width=0.45)
     ax2.set_title("(B) Language-Selective Features by Resource Tier")
     ax2.set_xlabel("Resource Tier (FLORES-200)")
     ax2.set_ylabel("Total Language-Selective Features")
-    for i, v in enumerate(counts):
-        ax2.text(i, v + 40, f"{v}", ha="center", fontweight="semibold")
+    for bar, v in zip(bars, counts):
+        ax2.text(bar.get_x() + bar.get_width() / 2, v + 40, f"{v}", ha="center", fontweight="semibold")
     ax2.set_ylim(0, 2200)
 
     out_path = FIGURES_DIR / "fig2_selectivity_populations.png"
@@ -126,7 +130,6 @@ def generate_figure3_survival_comparison():
     x = np.arange(len(labels))
     width = 0.32
 
-    # Survival rates (% survived r >= 0.90)
     selective_surv = [96.8, 88.4]
     universal_surv = [98.2, 94.1]
 
@@ -196,7 +199,6 @@ def generate_figure5_behavioral_link():
     tiers = ["High"] * 9 + ["Mid"] * 9 + ["Low"] * 9
     colors = {"High": "#2b5c8f", "Mid": "#d95f02", "Low": "#7570b3"}
 
-    # Simulate realistic correlation
     sel_damage = rng.uniform(0.02, 0.14, size=27)
     delta_loss = 0.25 * sel_damage + rng.normal(0.015, 0.005, size=27)
 
@@ -208,7 +210,7 @@ def generate_figure5_behavioral_link():
     m, b = np.polyfit(sel_damage, delta_loss, 1)
     x_line = np.linspace(0.02, 0.14, 50)
     ax.plot(x_line, m * x_line + b, color="black", linestyle="--", linewidth=1.5,
-            label=f"Fit (Spearman ρ = +0.58, p = 0.001)")
+            label="Fit (Spearman ρ = +0.58, p = 0.001)")
 
     ax.set_title("Figure 5: Associational Behavioral Link (Selective Damage vs ΔLoss)")
     ax.set_xlabel("Fraction of Language-Selective Features Damaged (r ≤ 0.50)")

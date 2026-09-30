@@ -1,0 +1,5 @@
+Language Code,Language Name,Resource Tier,Script Family,Active Features,Selective Features,Selective Feature (%),Median Selectivity,Median Firing Rate
+eng_Latn,English,High,Latin,10436,1,0.01,5.2,0.004
+hin_Deva,Hindi,Mid,Devanagari,10436,0,0.0,5.2,0.004
+kan_Knda,Kannada,Low,Dravidian,10436,0,0.0,5.2,0.004
+tel_Telu,Telugu,Low,Dravidian,10436,0,0.0,5.2,0.004

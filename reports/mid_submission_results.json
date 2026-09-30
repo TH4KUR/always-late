@@ -2,7 +2,7 @@
   "project_title": "Does Compression Forget Language? Language-Specific Feature Survival Under Quantization and Pruning in Multilingual LLMs",
   "institution": "IIIT Hyderabad",
   "submission_stage": "Mid-Submission 1",
-  "generated_at": "2026-09-30 10:28:37",
+  "generated_at": "2026-09-30 12:40:20",
   "hardware_and_environment": {
     "primary_model": "Gemma-2-2B (unsloth/gemma-2-2b bf16 mirror)",
     "sae_suite": "Gemma Scope (google/gemma-scope-2b-pt-res)",
@@ -149,6 +149,116 @@
         }
       },
       "finished_at": "2026-09-29 11:35:08"
+    },
+    "phase1_selectivity": {
+      "stage": "Phase1_Selectivity_Extraction",
+      "started_at": "2026-09-30 10:35:31",
+      "finished_at": "2026-09-30 11:24:12",
+      "device": "cpu",
+      "n_languages": 4,
+      "target_tokens_per_lang": 300,
+      "total_encode_seconds": 1545.4,
+      "total_sae_features": 16384,
+      "supported_features_count": 112,
+      "shuffled_null_threshold_95th": 4.0,
+      "total_selective_features": 1,
+      "selective_features_by_tier": {
+        "high": 1,
+        "mid": 0,
+        "low": 0
+      },
+      "languages": {
+        "eng_Latn": {
+          "name": "English",
+          "tier": "high",
+          "script": "Latin",
+          "tokens": 384,
+          "n_selective_features": 1,
+          "top5_selective_feature_ids": [
+            12624
+          ]
+        },
+        "hin_Deva": {
+          "name": "Hindi",
+          "tier": "mid",
+          "script": "Devanagari",
+          "tokens": 384,
+          "n_selective_features": 0,
+          "top5_selective_feature_ids": []
+        },
+        "kan_Knda": {
+          "name": "Kannada",
+          "tier": "low",
+          "script": "Dravidian",
+          "tokens": 384,
+          "n_selective_features": 0,
+          "top5_selective_feature_ids": []
+        },
+        "tel_Telu": {
+          "name": "Telugu",
+          "tier": "low",
+          "script": "Dravidian",
+          "tokens": 384,
+          "n_selective_features": 0,
+          "top5_selective_feature_ids": []
+        }
+      }
+    },
+    "phase1_survival_quintile_matching": {
+      "stage": "Phase1_Survival_Quintile_Matching",
+      "started_at": "2026-09-30 11:25:01",
+      "finished_at": "2026-09-30 12:40:10",
+      "device": "cpu",
+      "n_languages": 4,
+      "held_out_split": "devtest",
+      "results_by_bitwidth": {
+        "INT7": {
+          "elapsed_seconds": 1488.0,
+          "selective_features": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.9848
+          },
+          "quintile_matched_universal": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.9992
+          },
+          "by_resource_tier": {
+            "high": {
+              "count": 1,
+              "survived_pct": 100.0,
+              "damaged_pct": 0.0,
+              "median_pearson_r": 0.9848
+            }
+          }
+        },
+        "INT6": {
+          "elapsed_seconds": 1323.2,
+          "selective_features": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.955
+          },
+          "quintile_matched_universal": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.9988
+          },
+          "by_resource_tier": {
+            "high": {
+              "count": 1,
+              "survived_pct": 100.0,
+              "damaged_pct": 0.0,
+              "median_pearson_r": 0.955
+            }
+          }
+        }
+      }
     }
   },
   "confirmatory_hypothesis_framework": {
