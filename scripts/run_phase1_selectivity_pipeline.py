@@ -160,6 +160,12 @@ def run_selectivity_pipeline(
     out_path = REPO_ROOT / output_file
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(summary, indent=2))
+    # Per-feature arrays for plotting the real S(f) distribution (figures script).
+    np.savez_compressed(
+        out_path.with_suffix(".features.npz"),
+        raw_s=raw_s, peak_lang_idx=peak_lang_idx, supported=supported_mask,
+        is_selective=is_selective, languages=np.array(languages),
+    )
     print(f"\nSaved full results to: {out_path}")
     print(f"Summary by Tier: High={tier_counts['high']} | Mid={tier_counts['mid']} | Low={tier_counts['low']}")
     return summary

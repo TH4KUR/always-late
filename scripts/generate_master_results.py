@@ -67,12 +67,12 @@ def generate_master_results(output_file: str = "reports/mid_submission_results.j
         master["experiments"]["quantization_survival_demo"] = json.loads(quant_demo_path.read_text(encoding="utf-8"))
 
     # 4. Ingest Phase 1 Selectivity Results
-    sel_path = REPORTS_DIR / "selectivity_results.json"
+    sel_path = REPORTS_DIR / "selectivity_results_27lang.json"
     if sel_path.exists():
         master["experiments"]["phase1_selectivity"] = json.loads(sel_path.read_text(encoding="utf-8"))
 
     # 5. Ingest Phase 1 Survival Results (RQ1 & RQ2)
-    surv_path = REPORTS_DIR / "phase1_survival_results.json"
+    surv_path = REPORTS_DIR / "phase1_survival_results_27lang_gpu.json"
     if surv_path.exists():
         master["experiments"]["phase1_survival_quintile_matching"] = json.loads(surv_path.read_text(encoding="utf-8"))
 

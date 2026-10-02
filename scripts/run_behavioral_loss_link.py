@@ -89,10 +89,11 @@ def run_behavioral_link(
 
     # Load survival report if available to extract selective/overall damage
     surv_path = REPO_ROOT / survival_report_path
-    surv_data = json.loads(surv_path.read_text(encoding="utf-8")) if surv_path.exists() else {}
+    surv_data = json.loads(surv_path.read_text(encoding="utf-8"))
+    surv_by_bw = surv_data["results_by_bitwidth"]
 
-    # Sample representative panel if full run or default to available
-    test_langs = list(PANEL_27.keys())
+    # Same 27 languages as the survival report (PANEL_27 also holds a cmn_Hans alias).
+    test_langs = list(surv_by_bw[f"INT{bitwidths[0]}"]["by_language"].keys())
 
     print(f"\n[2/4] Measuring FP16 Baseline Loss and Token Fertility across {len(test_langs)} languages...")
     fp16_losses = {}
@@ -104,7 +105,7 @@ def run_behavioral_link(
         chunks = build_equalized_token_chunks(sentences, tokenizer, target_tokens=tokens_per_lang)
         eval_chunks[code] = chunks
         fp16_loss = compute_cross_entropy_loss(model, tokenizer, chunks, device)
-        fertility = compute_token_fertility(tokenizer, sentences[:50])
+        fertility = compute_token_fertility(tokenizer, sentences)
         fp16_losses[code] = fp16_loss
         fertility_map[code] = fertility
         print(f"  {code:10s} | FP16 Loss: {fp16_loss:.4f} | Fertility: {fertility:.2f}")
@@ -135,9 +136,12 @@ def run_behavioral_link(
         for b in bitwidths:
             bw_key = f"INT{b}"
             rec[f"{bw_key}_delta_loss"] = round(delta_loss_by_bw[bw_key][code], 4)
-            # Simulated / linked feature damage if available
-            rec[f"{bw_key}_selective_damage"] = round(float(np.random.uniform(0.01, 0.15)), 4)
-            rec[f"{bw_key}_overall_damage"] = round(float(np.random.uniform(0.005, 0.08)), 4)
+            # Measured feature damage from the Phase-1 survival report (same devtest split).
+            lang_surv = surv_by_bw[bw_key]["by_language"][code]
+            rec[f"{bw_key}_selective_damage"] = lang_surv["selective_damaged_frac"]
+            rec[f"{bw_key}_overall_damage"] = lang_surv["overall_damaged_frac"]
+            rec[f"{bw_key}_selective_median_r"] = lang_surv["selective_median_r"]
+            rec[f"{bw_key}_overall_median_r"] = lang_surv["overall_median_r"]
         records.append(rec)
 
     df_behavior = pd.DataFrame(records)
@@ -149,17 +153,26 @@ def run_behavioral_link(
     correlations = {}
     for b in bitwidths:
         bw_key = f"INT{b}"
-        rho_sel, p_sel = stats.spearmanr(df_behavior[f"{bw_key}_selective_damage"], df_behavior[f"{bw_key}_delta_loss"])
-        rho_all, p_all = stats.spearmanr(df_behavior[f"{bw_key}_overall_damage"], df_behavior[f"{bw_key}_delta_loss"])
-        rho_fert, p_fert = stats.spearmanr(df_behavior["token_fertility"], df_behavior[f"{bw_key}_delta_loss"])
-
-        correlations[bw_key] = {
-            "spearman_selective_damage_vs_delta_loss": {"rho": round(float(rho_sel), 4), "p_val": round(float(p_sel), 4)},
-            "spearman_overall_damage_vs_delta_loss": {"rho": round(float(rho_all), 4), "p_val": round(float(p_all), 4)},
-            "spearman_fertility_vs_delta_loss": {"rho": round(float(rho_fert), 4), "p_val": round(float(p_fert), 4)},
+        dl = df_behavior[f"{bw_key}_delta_loss"]
+        # Damaged fractions (r <= 0.5) are near-zero at INT7/INT6, so continuous
+        # drift (1 - median Pearson r) is the informative predictor.
+        predictors = {
+            "selective_damage": df_behavior[f"{bw_key}_selective_damage"],
+            "overall_damage": df_behavior[f"{bw_key}_overall_damage"],
+            "selective_drift": 1 - df_behavior[f"{bw_key}_selective_median_r"],
+            "overall_drift": 1 - df_behavior[f"{bw_key}_overall_median_r"],
+            "fertility": df_behavior["token_fertility"],
         }
-        print(f"{bw_key} Spearman: Selective Damage vs Delta Loss: rho={rho_sel:.3f} (p={p_sel:.4f})")
-        print(f"{bw_key} Spearman: Overall Damage vs Delta Loss:   rho={rho_all:.3f} (p={p_all:.4f})")
+        correlations[bw_key] = {}
+        for name, x in predictors.items():
+            rho, p = stats.spearmanr(x, dl, nan_policy="omit")
+            rho = float(rho) if np.isfinite(rho) else None
+            p = float(p) if np.isfinite(p) else None
+            correlations[bw_key][f"spearman_{name}_vs_delta_loss"] = {
+                "rho": round(rho, 4) if rho is not None else None,
+                "p_val": round(p, 4) if p is not None else None,
+            }
+            print(f"{bw_key} Spearman: {name:17s} vs Delta Loss: rho={rho} (p={p})")
 
     out_file = REPO_ROOT / output_path
     final_output = {
@@ -177,10 +190,12 @@ def run_behavioral_link(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Associational Behavioral Loss Link")
+    parser.add_argument("--report", type=str, default="reports/phase1_survival_results_27lang_gpu.json")
     parser.add_argument("--tokens", type=int, default=1000)
     parser.add_argument("--bitwidths", type=str, default="7,6")
     parser.add_argument("--output", type=str, default="reports/behavioral_loss_link_results.json")
     args = parser.parse_args()
 
     bits = [int(b.strip()) for b in args.bitwidths.split(",") if b.strip()]
-    run_behavioral_link(tokens_per_lang=args.tokens, bitwidths=bits, output_path=args.output)
+    run_behavioral_link(survival_report_path=args.report, tokens_per_lang=args.tokens, bitwidths=bits,
+                        output_path=args.output)

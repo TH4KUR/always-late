@@ -35,6 +35,15 @@ from src.survival import (
 )
 
 
+def _as_views(acts_by_lang: dict[str, np.ndarray], pooled: np.ndarray) -> dict[str, np.ndarray]:
+    """Re-points each per-language array at its row slice of `pooled`."""
+    views, start = {}, 0
+    for lang_code, feats in acts_by_lang.items():
+        views[lang_code] = pooled[start:start + feats.shape[0]]
+        start += feats.shape[0]
+    return views
+
+
 def run_survival_pipeline(
     selectivity_report_path: str = "reports/selectivity_results.json",
     bitwidths: list[int] | None = None,
@@ -78,8 +87,11 @@ def run_survival_pipeline(
         devtest_fp_acts[lang_code] = feats
         print(f"  - {lang_code}: {feats.shape[0]} tokens encoded (FP16)")
 
-    # Pool overall firing rates to identify active features and compute quintiles
+    # Pool overall firing rates to identify active features and compute quintiles.
+    # Per-language arrays become views into the pooled array so activations are
+    # held once in memory (large token budgets otherwise exhaust host RAM).
     all_fp_tokens = np.concatenate(list(devtest_fp_acts.values()), axis=0)
+    devtest_fp_acts = _as_views(devtest_fp_acts, all_fp_tokens)
     baseline_rates = firing_rate(all_fp_tokens)
     is_active = baseline_rates > 0.001
     quintiles = stratify_by_firing_rate_quintiles(baseline_rates, is_active)
@@ -109,6 +121,7 @@ def run_survival_pipeline(
         t0 = time.time()
         print(f"\n--- Quantizing to INT{b} ---")
         devtest_quant_acts = {}
+        quant_pooled = None  # release previous bit-width's activations before encoding
         with quantized_model(model, bits=b):
             for lang_code in languages:
                 sentences = load_sentences(lang_code, split="devtest")
@@ -117,6 +130,8 @@ def run_survival_pipeline(
                 )
                 feats = encode_texts(chunks, model, tokenizer, sae, capture, device).numpy()
                 devtest_quant_acts[lang_code] = feats
+        quant_pooled = np.concatenate(list(devtest_quant_acts.values()), axis=0)
+        devtest_quant_acts = _as_views(devtest_quant_acts, quant_pooled)
 
         # Compute per-feature Pearson correlation on its designated peak language
         sel_corrs = []
@@ -143,9 +158,33 @@ def run_survival_pipeline(
                 matched_f = rng.choice(q_candidates)
                 # For universal features, evaluate on pooled language tokens
                 fp_vec = all_fp_tokens[:, matched_f:matched_f+1]
-                quant_pooled = np.concatenate(list(devtest_quant_acts.values()), axis=0)[:, matched_f:matched_f+1]
-                r_univ = float(pearson_corr_per_feature(fp_vec, quant_pooled)[0])
+                quant_vec = quant_pooled[:, matched_f:matched_f+1]
+                r_univ = float(pearson_corr_per_feature(fp_vec, quant_vec)[0])
                 matched_univ_corrs.append(r_univ)
+
+        # Per-language damage metrics (consumed by scripts/run_behavioral_loss_link.py):
+        # selective = that language's tracked selective features; overall = all
+        # pooled-active features, correlated on that language's tokens only.
+        active_ids = np.flatnonzero(is_active)
+        by_language = {}
+        for lang_code in languages:
+            r_all = pearson_corr_per_feature(
+                devtest_fp_acts[lang_code][:, active_ids], devtest_quant_acts[lang_code][:, active_ids]
+            )
+            r_all = r_all[~np.isnan(r_all)]
+            lang_sel = [r for fid, r in zip(sorted(selective_feature_ids), sel_corrs)
+                        if feature_to_peak_lang[fid] == lang_code]
+            lang_sel = np.array([r for r in lang_sel if not np.isnan(r)])
+            by_language[lang_code] = {
+                "n_selective": int(len(lang_sel)),
+                "selective_damaged_frac": round(float((lang_sel <= 0.5).mean()), 4) if len(lang_sel) else None,
+                "selective_survived_frac": round(float((lang_sel >= 0.9).mean()), 4) if len(lang_sel) else None,
+                "selective_median_r": round(float(np.median(lang_sel)), 4) if len(lang_sel) else None,
+                "n_active_defined": int(len(r_all)),
+                "overall_damaged_frac": round(float((r_all <= 0.5).mean()), 4),
+                "overall_survived_frac": round(float((r_all >= 0.9).mean()), 4),
+                "overall_median_r": round(float(np.median(r_all)), 4),
+            }
 
         sel_arr = np.array(sel_corrs)
         univ_arr = np.array(matched_univ_corrs) if matched_univ_corrs else np.array([])
@@ -182,6 +221,10 @@ def run_survival_pipeline(
                 "median_pearson_r": round(float(np.nanmedian(univ_arr)), 4) if len(univ_arr) else None,
             },
             "by_resource_tier": tier_survival,
+            "by_language": by_language,
+            "selective_feature_pearson_r": {
+                str(fid): round(float(r), 6) for fid, r in zip(sorted(selective_feature_ids), sel_corrs)
+            },
         }
 
         print(f"INT{b} Results:")

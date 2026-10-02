@@ -187,3 +187,83 @@ score, and counts should not be read as resource-tier effect sizes.
   timeline in the mid-submission write-up, not attempted here.
 - Reduced-scale Phase-0 replication gate (G0) numeric attempt -- attempted
   only if time remains after the W0 sanity check (see log entries above).
+
+## 2026-10-02 (evening) -- Phase-1 re-run at 20,000 tokens/language (RTX PRO 6000 96GB)
+
+Goal: tighter statistics than the 1,500-token run (writeoff.md 0.6). Everything
+below was produced by code in this repo; wandb project `always-late`.
+
+### Commands actually run
+```
+python scripts/run_phase1_selectivity_pipeline.py --tokens 20000 --languages <27 codes, cmn_Hans> \
+    --output reports/selectivity_results_27lang.json            # 80 s
+python scripts/run_phase1_survival_gpu.py --tracked all --bitwidths 8,7,6,5,4   # ~15 s/bit-width
+python scripts/statistical_analysis.py --report reports/phase1_survival_results_27lang_gpu.json
+python scripts/run_behavioral_loss_link.py --tokens 1000 --bitwidths 7,6
+python scripts/generate_mid_submission_figures.py; python scripts/generate_master_results.py
+python scripts/log_to_wandb.py --tokens 20000
+```
+wandb runs: survival-gpu-20000tok-all (hhojw7cs), phase1-27lang-20000tok summary (t6yidkw0).
+
+### Bugs / honesty fixes found along the way
+- `run_behavioral_loss_link.py` previously used `np.random.uniform` for the
+  feature-damage columns, and `generate_mid_submission_figures.py` used
+  hardcoded/random numbers for Figs 2-5. The earlier paper claim of a positive
+  behavioral correlation (Spearman +0.58, p=0.001) came from that synthetic data
+  and is NOT supported. Both scripts now read measured results.
+- Table 1 / appendix fertility values were not measured; replaced with measured
+  FLORES-dev token ratios vs English (`reports/fertility_vs_english_flores_dev.json`).
+- Null permutation uses n_permutations=20 on the first 6 languages only (not 50,
+  not all languages). Null cutoff = 3.000 in both runs (1,500 and 20,000 tok).
+  NOT the cap (cap = max(1.5, 0.75*6) = 4.5 since the null uses 6 languages), so the
+  exact repeat is unexplained -- possibly a discrete-value artifact of 500-token
+  null samples; not investigated. Also: the null is built from 6 languages (S
+  bounded by 6) but its cutoff is applied to the 27-language S(f) (bounded by 27),
+  a mismatch to resolve or disclose.
+- First 27-language launch without `--languages` ran 28 codes (PANEL_27 contains
+  the cmn_Hans alias); killed and re-run with the explicit 27-code list.
+
+### Results
+Selectivity (FLORES dev, 20,000 tok/lang, 27 langs): 2,342 selective features
+(High 839 / Mid 444 / Low 1,059); supported features 11,670; cutoff 3.000.
+Previous 1,500-token run: 1,996 (685/397/914).
+
+Survival (FLORES devtest, r>=0.9 survived, r<=0.5 damaged). Tracked set = ALL
+selective features (n=2,342; earlier design tracked top-5 per language, n=135);
+matched universal controls n=2,266 (quintile-matched, seed 42):
+
+| bits | selective surv% | universal surv% | sel damaged% | sel median r |
+|---|---|---|---|---|
+| INT8 | 99.96 | 99.91 | 0.00 | 0.9937 |
+| INT7 | 99.87 | 99.96 | 0.00 | 0.9888 |
+| INT6 | 97.01 | 97.35 | 0.00 | 0.9759 |
+| INT5 | 75.28 | 70.61 | 0.04 | 0.9426 |
+| INT4 | 30.27 | 35.30 | 5.17 | 0.8354 |
+
+Tier survival (selective): INT7 high 100.00 / mid 100.00 / low 99.72;
+INT6 high 99.05 / mid 99.32 / low 94.43; INT5 81.53 / 88.06 / 64.97; INT4 35.04 / 40.09 / 22.38.
+
+Confirmatory tests (Fisher exact, Holm): H1 INT7 p=0.625, INT6 p=0.534 (fail to
+reject); tier gap INT7 p=0.260 (fail), INT6 p=1.1e-8 (reject). Caveat: features
+are treated as independent units; tokens/features within a language are correlated,
+so these p-values are likely optimistic.
+
+Behavioral link (measured; 27 langs, 1000 tok/lang): Spearman selective-feature
+drift (1 - median r) vs delta-loss: INT7 rho=0.495 (p=0.0087), INT6 rho=0.484
+(p=0.0105); uncorrected, exploratory. Overall-feature drift: rho 0.03/0.07 (ns).
+Selective "damaged fraction" is degenerate (~0 at INT7/INT6).
+
+### Validation of the GPU path
+`run_phase1_survival_gpu.py` (batched, bf16 activations on GPU) vs the batch-1 CPU
+encoder on eng/khm/yor, 150 selective features each, INT6/INT5, 6,000 tokens:
+survival% within 2.0 pp, median r within 0.003. ~0.5% of raw activations differ
+>1e-2 (bf16 batch-shape noise at JumpReLU thresholds). The full CPU pipeline run
+at 20k tokens was killed unfinished (>25 min, no INT7 result), so there is no
+full-scale CPU/GPU comparison.
+
+### Open issues
+- Only 19/27 languages have >=50 selective features (min Russian 16); the
+  pre-registered trigger "<20 languages" appears to fire (RQ2 -> exploratory).
+- Paper interpretive text (RQ2 "null", monotonic median-r by tier, behavioral
+  paragraph) predates these numbers and is NOT yet consistent with them.
+- Gate G0 (Duan replication) was not run.

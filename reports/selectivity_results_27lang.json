@@ -1,74 +1,74 @@
 {
   "stage": "Phase1_Selectivity_Extraction",
-  "started_at": "2026-10-02 18:56:16",
-  "finished_at": "2026-10-02 18:57:34",
+  "started_at": "2026-10-02 16:41:10",
+  "finished_at": "2026-10-02 16:42:33",
   "device": "cuda",
   "n_languages": 27,
-  "target_tokens_per_lang": 1500,
-  "total_encode_seconds": 66.5,
+  "target_tokens_per_lang": 20000,
+  "total_encode_seconds": 79.5,
   "total_sae_features": 16384,
-  "supported_features_count": 7306,
+  "supported_features_count": 11670,
   "shuffled_null_threshold_95th": 3.0,
-  "total_selective_features": 1996,
+  "total_selective_features": 2342,
   "selective_features_by_tier": {
-    "high": 685,
-    "mid": 397,
-    "low": 914
+    "high": 839,
+    "mid": 444,
+    "low": 1059
   },
   "languages": {
     "eng_Latn": {
       "name": "English",
       "tier": "high",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 229,
+      "tokens": 20094,
+      "n_selective_features": 369,
       "top5_selective_feature_ids": [
-        15224,
         5511,
-        14668,
+        5000,
         10076,
-        14700
+        7085,
+        2818
       ]
     },
     "deu_Latn": {
       "name": "German",
       "tier": "high",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 65,
+      "tokens": 20096,
+      "n_selective_features": 62,
       "top5_selective_feature_ids": [
         4621,
         10933,
         6053,
-        8542,
-        9511
+        15552,
+        4360
       ]
     },
     "spa_Latn": {
       "name": "Spanish",
       "tier": "high",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 49,
+      "tokens": 20096,
+      "n_selective_features": 54,
       "top5_selective_feature_ids": [
         7660,
-        13208,
         13397,
+        13208,
         8583,
-        2173
+        679
       ]
     },
     "fra_Latn": {
       "name": "French",
       "tier": "high",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 65,
+      "tokens": 20094,
+      "n_selective_features": 56,
       "top5_selective_feature_ids": [
         10325,
         2932,
-        14373,
-        12220,
+        15625,
+        14394,
         8119
       ]
     },
@@ -76,69 +76,69 @@
       "name": "Portuguese",
       "tier": "high",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 49,
+      "tokens": 20096,
+      "n_selective_features": 26,
       "top5_selective_feature_ids": [
         7943,
-        14014,
         15693,
-        7013,
-        660
+        14014,
+        6512,
+        7013
       ]
     },
     "rus_Cyrl": {
       "name": "Russian",
       "tier": "high",
       "script": "Cyrillic",
-      "tokens": 1536,
-      "n_selective_features": 26,
+      "tokens": 20095,
+      "n_selective_features": 16,
       "top5_selective_feature_ids": [
         8547,
-        10603,
+        2767,
         13237,
-        8250,
-        12189
+        10425,
+        11854
       ]
     },
     "cmn_Hans": {
       "name": "Mandarin (Simplified)",
       "tier": "high",
       "script": "CJK",
-      "tokens": 1536,
-      "n_selective_features": 83,
+      "tokens": 20096,
+      "n_selective_features": 111,
       "top5_selective_feature_ids": [
-        15708,
         15350,
-        14923,
-        12768,
-        16091
+        3638,
+        15708,
+        16091,
+        4437
       ]
     },
     "jpn_Jpan": {
       "name": "Japanese",
       "tier": "high",
       "script": "CJK",
-      "tokens": 1536,
-      "n_selective_features": 87,
+      "tokens": 20096,
+      "n_selective_features": 88,
       "top5_selective_feature_ids": [
         12081,
-        4951,
-        6725,
         15217,
-        9785
+        14053,
+        6725,
+        12255
       ]
     },
     "kor_Hang": {
       "name": "Korean",
       "tier": "high",
       "script": "Hangul",
-      "tokens": 1536,
-      "n_selective_features": 32,
+      "tokens": 20087,
+      "n_selective_features": 57,
       "top5_selective_feature_ids": [
         5965,
-        7860,
-        3543,
+        1792,
         4404,
+        4641,
         5536
       ]
     },
@@ -146,181 +146,181 @@
       "name": "Hindi",
       "tier": "mid",
       "script": "Devanagari",
-      "tokens": 1536,
-      "n_selective_features": 34,
+      "tokens": 20096,
+      "n_selective_features": 38,
       "top5_selective_feature_ids": [
-        14350,
-        5563,
         1368,
         14171,
-        7611
+        5563,
+        4029,
+        14350
       ]
     },
     "ben_Beng": {
       "name": "Bengali",
       "tier": "mid",
       "script": "Bengali",
-      "tokens": 1536,
-      "n_selective_features": 34,
+      "tokens": 20096,
+      "n_selective_features": 43,
       "top5_selective_feature_ids": [
         1693,
-        13013,
-        10691,
         16129,
-        12055
+        12055,
+        13013,
+        12380
       ]
     },
     "tam_Taml": {
       "name": "Tamil",
       "tier": "mid",
       "script": "Dravidian",
-      "tokens": 1536,
-      "n_selective_features": 59,
+      "tokens": 20091,
+      "n_selective_features": 70,
       "top5_selective_feature_ids": [
         11028,
-        3084,
+        1917,
+        16029,
         10537,
-        10974,
-        4194
+        9038
       ]
     },
     "tur_Latn": {
       "name": "Turkish",
       "tier": "mid",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 67,
+      "tokens": 20096,
+      "n_selective_features": 37,
       "top5_selective_feature_ids": [
         5630,
-        2115,
-        11140,
-        9641,
-        7322
+        3343,
+        4572,
+        1756,
+        15151
       ]
     },
     "vie_Latn": {
       "name": "Vietnamese",
       "tier": "mid",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 43,
+      "tokens": 20096,
+      "n_selective_features": 56,
       "top5_selective_feature_ids": [
         12002,
         9063,
-        6926,
-        590,
-        3565
+        8972,
+        1904,
+        4813
       ]
     },
     "ind_Latn": {
       "name": "Indonesian",
       "tier": "mid",
       "script": "Latin",
-      "tokens": 1535,
-      "n_selective_features": 33,
+      "tokens": 20079,
+      "n_selective_features": 41,
       "top5_selective_feature_ids": [
         11437,
-        1814,
-        13123,
-        8655,
-        11190
+        4709,
+        9247,
+        706,
+        6545
       ]
     },
     "tha_Thai": {
       "name": "Thai",
       "tier": "mid",
       "script": "Thai",
-      "tokens": 1536,
-      "n_selective_features": 67,
+      "tokens": 20096,
+      "n_selective_features": 112,
       "top5_selective_feature_ids": [
-        11621,
-        6276,
-        7271,
         9408,
-        10195
+        11621,
+        10195,
+        7271,
+        9866
       ]
     },
     "pol_Latn": {
       "name": "Polish",
       "tier": "mid",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 41,
+      "tokens": 20096,
+      "n_selective_features": 23,
       "top5_selective_feature_ids": [
         10247,
         10000,
         12965,
         3707,
-        12617
+        14527
       ]
     },
     "ukr_Cyrl": {
       "name": "Ukrainian",
       "tier": "mid",
       "script": "Cyrillic",
-      "tokens": 1536,
-      "n_selective_features": 19,
+      "tokens": 20096,
+      "n_selective_features": 24,
       "top5_selective_feature_ids": [
         10176,
+        9643,
+        12617,
         6520,
-        3443,
-        13564,
-        6812
+        12058
       ]
     },
     "kan_Knda": {
       "name": "Kannada",
       "tier": "low",
       "script": "Dravidian",
-      "tokens": 1536,
-      "n_selective_features": 48,
+      "tokens": 20096,
+      "n_selective_features": 54,
       "top5_selective_feature_ids": [
-        54,
         11478,
-        5933,
-        15326,
-        12400
+        54,
+        16222,
+        2312,
+        384
       ]
     },
     "tel_Telu": {
       "name": "Telugu",
       "tier": "low",
       "script": "Dravidian",
-      "tokens": 1536,
-      "n_selective_features": 49,
+      "tokens": 20093,
+      "n_selective_features": 62,
       "top5_selective_feature_ids": [
+        12971,
+        11460,
         5157,
-        8810,
         3813,
-        10218,
-        5512
+        14744
       ]
     },
     "yor_Latn": {
       "name": "Yoruba",
       "tier": "low",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 216,
+      "tokens": 20096,
+      "n_selective_features": 237,
       "top5_selective_feature_ids": [
         9715,
         9677,
         11176,
-        10232,
-        4657
+        1836,
+        13911
       ]
     },
     "sun_Latn": {
       "name": "Sundanese",
       "tier": "low",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 66,
+      "tokens": 20096,
+      "n_selective_features": 71,
       "top5_selective_feature_ids": [
         16241,
-        1457,
         12672,
         7508,
+        1457,
         2743
       ]
     },
@@ -328,70 +328,70 @@
       "name": "Amharic",
       "tier": "low",
       "script": "Ethiopic",
-      "tokens": 1536,
-      "n_selective_features": 65,
+      "tokens": 20096,
+      "n_selective_features": 71,
       "top5_selective_feature_ids": [
         15834,
-        4233,
-        12671,
-        8741,
-        7400
+        13864,
+        5705,
+        7400,
+        8741
       ]
     },
     "ibo_Latn": {
       "name": "Igbo",
       "tier": "low",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 90,
+      "tokens": 20096,
+      "n_selective_features": 106,
       "top5_selective_feature_ids": [
         2578,
         12095,
-        3557,
-        16138,
-        7474
+        2476,
+        4150,
+        16138
       ]
     },
     "hau_Latn": {
       "name": "Hausa",
       "tier": "low",
       "script": "Latin",
-      "tokens": 1536,
-      "n_selective_features": 47,
+      "tokens": 20096,
+      "n_selective_features": 69,
       "top5_selective_feature_ids": [
         1971,
-        5968,
-        15952,
-        3786,
-        9111
+        6347,
+        9111,
+        13076,
+        4959
       ]
     },
     "khm_Khmr": {
       "name": "Khmer",
       "tier": "low",
       "script": "Khmer",
-      "tokens": 1536,
-      "n_selective_features": 153,
+      "tokens": 20096,
+      "n_selective_features": 194,
       "top5_selective_feature_ids": [
         7439,
         12028,
         5054,
         13120,
-        603
+        9244
       ]
     },
     "lao_Laoo": {
       "name": "Lao",
       "tier": "low",
       "script": "Lao",
-      "tokens": 1536,
-      "n_selective_features": 180,
+      "tokens": 20096,
+      "n_selective_features": 195,
       "top5_selective_feature_ids": [
         9601,
         2595,
+        10712,
         13309,
-        523,
-        10712
+        10067
       ]
     }
   }

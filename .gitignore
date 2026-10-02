@@ -29,3 +29,5 @@ reports/raw/
 *.tar.gz
 *.zip
 
+wandb/
+reports/_gpu_equiv_check.json
