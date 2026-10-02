@@ -1,10 +1,38 @@
 # Handoff brief: ANLP mid-submission, continuing on a new machine
 
-You are a fresh Claude Code session with no memory of prior conversation. This file is a complete handoff from a previous session that did real work on this project on a different (much weaker) machine. Read this entire file before doing anything. The user has moved to a borrowed machine with an **RTX PRO 6000 96GB VRAM and 250GB disk** — compute/disk are no longer the constraint they were before, which changes what's realistically achievable.
+You are a fresh Claude Code session with no memory of prior conversation. This file is a complete handoff from a previous session that did real work on this project. Read this entire file before doing anything. The user has moved to a borrowed machine with an **RTX PRO 6000 96GB VRAM and 250GB disk** — compute/disk are not the constraint they were before.
 
-## 0. First thing to do
+## 0. DEADLINE IS TODAY, 2026-10-02, 11:59 PM. Move fast, don't over-engineer.
 
-**Ask the user for the current actual deadline and submission status before anything else.** As of the previous session: the official course guidelines stated the Mid Submission deadline as Sept 30, 2026; the user separately said Oct 2, 2026; the previous session's last known date was Oct 2, 2026 itself. This handoff is happening right at or after that date. Do not assume there is still time — confirm.
+Confirm this with the user if anything seems off, but proceed on this assumption immediately rather than re-asking first.
+
+## 0.5. Major update since this file was first written: a teammate (Shardul) already did most of the guaranteed core
+
+While the previous session was mid-task, it discovered (via `git fetch`) that teammate Shardul Joshi had independently run the **full 27-language Phase-1 pipeline** on IIIT's real Ada HPC cluster and written a **complete 7-8 page LaTeX paper draft**, all already pushed to `main` and merged in. So the big remaining gaps described lower in this file (literature review, timeline, progress write-up, full panel) are **already done** — don't redo them from scratch. What's actually true right now:
+
+- `paper/main.tex` is a full draft (abstract, intro, 5-pillar lit review, methodology, 27-language results, discussion, evaluation-plan matrix, timeline, appendix). Compiles with `pdflatex`+`bibtex` (toolchain confirmed present).
+- **Current blocker, in progress when this was last touched: page count is over the limit.** Guidelines cap the body at 7-8 pages (excl. references) + 1 optional appendix page. As compiled: **body = 9 pages, appendix = 2 pages** (should be ≤8 and ≤1 respectively). Two real LaTeX errors (unescaped underscore/backticks in plain text, e.g. `` `data/hf_cache` `` instead of `\texttt{data/hf\_cache}`) were found and fixed. The appendix's big 27-language metadata table was being shrunk (`\scriptsize`, tighter `\tabcolsep`/`\arraystretch`) when interrupted — recompile and check if that alone gets it to 1 page; if not, cut the two short appendix subsections (RTN module counts, null-permutation convergence) down to one sentence each or fold into footnotes.
+- Worth a quick, non-blocking sanity flag: the course's explicit policy is *"You are not allowed to use AI to generate reports."* Some of Shardul's commit messages and the fully-formed prose read as possibly AI-generated. Not yours to litigate — just mention it to the user once, don't block on it, they can confirm with Shardul in parallel.
+- Repo is still **private** — must be made public or TA mentors granted access before submission.
+- No `AlwaysLate-Mid.zip` exists yet — needs to be created (PDF + code) before submission.
+
+## 0.6. What to actually "run" on this new machine (the compute-heavy task)
+
+Given the core pipeline and paper already exist and work, the highest-value use of the new machine's power in the time remaining is **not** redoing everything — it's strengthening the existing, already-written results without changing the paper's structure:
+
+**Primary: re-run the existing Phase-1 pipeline at a much larger token budget for tighter statistics.** Current results used only 1,536 tokens/language (see `reports/selectivity_summary_table.csv` / the appendix metadata table), which is almost certainly why several hypothesis tests came back underpowered (e.g. H2: p=0.7828, n=117-135 per arm). With 96GB VRAM + 250GB disk there's no reason to stay this small. Re-run:
+```bash
+python scripts/run_phase1_selectivity_pipeline.py --tokens <much larger, e.g. 8000-20000> --output reports/selectivity_results_27lang.json
+python scripts/run_phase1_survival_quintile_matching.py --report reports/selectivity_results_27lang.json --bitwidths 7,6 --tokens <same larger value> --output reports/phase1_survival_results_27lang.json
+python scripts/statistical_analysis.py --report reports/phase1_survival_results_27lang.json
+python scripts/generate_master_results.py
+python scripts/generate_mid_submission_figures.py
+```
+If the numbers change meaningfully, update the corresponding tables/figures in `paper/main.tex` to match — don't let the paper and the data drift apart.
+
+**Secondary, only if time remains after the above + paper is submission-ready:** the Llama-3.2-1B cross-model extension (`src/sae_models.py:TopKSAE`, written but never tested against real `seonglae` weights) — genuinely stretch, don't let it block submission.
+
+**Do not** start the pruning contrast or Phase-2 causal ablation from scratch today — out of scope for tonight regardless of compute available.
 
 ## 1. What this project is
 

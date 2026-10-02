@@ -224,7 +224,7 @@ Korean (\texttt{kor}) & Hangul & 2.10$\times$ & Ukrainian (\texttt{ukr}) & Cyril
 \end{table*}
 
 \subsection{Models and Compute Infrastructure}
-We evaluate Gemma-2-2B (\texttt{unsloth/gemma-2-2b} bf16 mirror, 5.2GB) with the released Gemma Scope Layer-12 residual-stream JumpReLU SAE (\texttt{average\_l0\_82}, width 16k). All experiments are executed in pure PyTorch 2.5.1+cu121 on NVIDIA GPU nodes (`u22` partition) on the Ada high-performance computing cluster.
+We evaluate Gemma-2-2B (\texttt{unsloth/gemma-2-2b} bf16 mirror, 5.2GB) with the released Gemma Scope Layer-12 residual-stream JumpReLU SAE (\texttt{average\_l0\_82}, width 16k). All experiments are executed in pure PyTorch 2.5.1+cu121 on NVIDIA GPU nodes (\texttt{u22} partition) on the Ada high-performance computing cluster.
 
 \section{Empirical Findings and Detailed Analysis}
 
@@ -392,7 +392,7 @@ Nikhita Ravi & FLORES-200 budget equalization, behavioral cross-entropy evaluati
 \paragraph{Risks and Fallback Strategies.}
 \begin{itemize}
     \item \textbf{Low-Resource Feature Sparsity:} If fewer than 20 languages yielded $\ge 50$ selective features, RQ2 was pre-registered to be demoted to exploratory status. Since 27/27 languages yielded sufficient features (min 19 in Ukrainian, 48 in Kannada), RQ2 proceeded with full power.
-    \item \textbf{Cluster Quota Headroom:} We enforce CPU-staged weight restoration and local caching in `data/hf_cache` to stay well within cluster disk quotas.
+    \item \textbf{Cluster Quota Headroom:} We enforce CPU-staged weight restoration and local caching in \texttt{data/hf\_cache} to stay well within cluster disk quotas.
 \end{itemize}
 
 \section{Reproducibility, Open Science, and Extensions}
@@ -416,7 +416,9 @@ Table~\ref{tab:full_panel_metadata} provides the complete typological metadata f
 
 \begin{table*}[t]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.82}
 \begin{tabularx}{\textwidth}{llllcrr}
 \toprule
 \textbf{Language} & \textbf{FLORES Code} & \textbf{Script Family} & \textbf{Resource Tier} & \textbf{Writing Direction} & \textbf{Token Budget} & \textbf{Fertility} \\
