@@ -102,22 +102,22 @@ Table~\ref{tab:lit_comparison} highlights the unexplored research gap. Prior qua
 
 \begin{table*}[t]
 \centering
-\small
-\setlength{\tabcolsep}{8pt}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
 \toprule
-\textbf{Study} & \textbf{SAE Audit} & \textbf{Compression} & \textbf{Multilingual} & \textbf{Script-Balanced} & \textbf{Selectivity Tagging} & \textbf{Fertility Equalized} \\
+\textbf{Study} & \textbf{SAE Audit} & \textbf{Compression} & \textbf{Multilingual} & \textbf{Script-Bal.} & \textbf{Selectivity} & \textbf{Fertility Eq.} \\
 \midrule
-Duan (2026) & \checkmark & RTN Quant & $\times$ (Eng) & $\times$ & $\times$ (Monolithic) & $\times$ \\
-Borobia et al. (2026) & \checkmark & Pruning & $\times$ (Eng) & $\times$ & $\times$ (Monolithic) & $\times$ \\
+Duan (2026) & \checkmark & RTN Quant & $\times$ (Eng) & $\times$ & $\times$ (Mono) & $\times$ \\
+Borobia et al. (2026) & \checkmark & Pruning & $\times$ (Eng) & $\times$ & $\times$ (Mono) & $\times$ \\
 Marchisio et al. (2024) & $\times$ & PTQ & \checkmark (23 langs) & \checkmark & $\times$ (Black-box) & $\times$ \\
 Marie \& Fujita (2025) & $\times$ & PTQ & \checkmark (55 langs) & \checkmark & $\times$ (Black-box) & $\times$ \\
-Chimoto et al. (2026) & $\times$ & PTQ & \checkmark (Multilingual) & \checkmark & $\times$ (Calibration) & $\times$ \\
+Chimoto et al. (2026) & $\times$ & PTQ & \checkmark (Multi) & \checkmark & $\times$ (Calib) & $\times$ \\
 Soualhi (2026) & $\times$ & 4-bit NF4 & \checkmark (8 langs) & \checkmark & $\times$ (Black-box) & $\times$ \\
 Deng et al. (2025) & \checkmark & $\times$ (Dense) & \checkmark (10 langs) & \checkmark & \checkmark (Selective) & $\times$ \\
 Sin et al. (2025) & \checkmark & $\times$ (Dense) & \checkmark (10 langs) & \checkmark & Disparities & $\times$ \\
 \midrule
-\textbf{Ours (Always Late)} & \checkmark & \textbf{RTN Quant} & \checkmark \textbf{(27 langs)} & \checkmark \textbf{(9 scripts)} & \checkmark \textbf{(Deng Metric)} & \checkmark \textbf{(Token Budget)} \\
+\textbf{Ours (Always Late)} & \checkmark & \textbf{RTN Quant} & \checkmark \textbf{(27 langs)} & \checkmark \textbf{(9 scripts)} & \checkmark \textbf{(Deng)} & \checkmark \textbf{(Budget)} \\
 \bottomrule
 \end{tabular*}
 \caption{\textbf{Comprehensive Literature Comparison.} Synthesis of prior compression and mechanistic audits across six orthogonal methodological dimensions, highlighting the unexplored research niche addressed by our work.}
@@ -264,7 +264,7 @@ Notably, low-resource languages developed the \emph{largest} absolute number of 
 \begin{table*}[t]
 \centering
 \small
-\setlength{\tabcolsep}{10pt}
+\setlength{\tabcolsep}{5pt}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
 \textbf{Hypothesis Contrast} & \textbf{Selective Survival} & \textbf{Universal Survival} & \textbf{$p$-value (Fisher Exact)} & \textbf{Statistical Decision} \\
