@@ -1,5 +1,5 @@
 \documentclass[11pt]{article}
-\usepackage[review]{acl}
+\usepackage[preprint]{acl}
 \usepackage{times}
 \usepackage{latexsym}
 \usepackage[T1]{fontenc}
@@ -35,13 +35,6 @@ Post-training quantization (PTQ) has become the de facto standard for deploying 
 
 Crucially, existing compression audits treat all internal features as an undifferentiated, monolithic population stratified only by overall firing statistics. They do not investigate \emph{what} the damaged features represent. Concurrently, interpretability research has established that multilingual LLMs develop internal features with varying degrees of language selectivity \citep{deng2025unveiling, sin2025uncovering}. Yet, no prior study has connected these separate observations.
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.98\textwidth]{fig1_experimental_pipeline.png}
-\caption{\textbf{End-to-End Experimental Architecture and Mechanistic Pipeline.} Content-matched FLORES-200 parallel sentences undergo token-budget equalization to neutralize subword tokenizer fertility bias. Full-precision Gemma-2-2B Layer-12 residual-stream activations are mapped through a frozen Gemma Scope JumpReLU SAE to extract language-selective features on the \texttt{dev} split. Held-out \texttt{devtest} tokens are evaluated under RTN quantization (INT8--INT4) to compute Pearson survival ($r$) with firing-rate quintile matching, followed by confirmatory hypothesis testing and associational behavioral loss linking ($\Delta L_\ell$).}
-\label{fig:pipeline}
-\end{figure*}
-
 We formulate our central mechanistic research question:
 \begin{quote}
 \textbf{Core Question:} \emph{Does compression-induced damage to language-selective internal representations provide a mechanistic explanation for the uneven degradation of multilingual language models?}
@@ -51,7 +44,11 @@ We evaluate the conceptual causal chain:
 \begin{equation}
 \label{eq:chain}
 \boxed{
-\text{Compression} \to \text{Feature Damage} \to \text{Selective Loss} \to \text{Degradation}
+\begin{aligned}
+\text{Compression} &\longrightarrow \text{Feature Damage} \\
+&\longrightarrow \text{Selective Representation Loss} \\
+&\longrightarrow \text{Disproportionate Degradation}
+\end{aligned}
 }
 \end{equation}
 
@@ -106,7 +103,8 @@ Table~\ref{tab:lit_comparison} highlights the unexplored research gap. Prior qua
 \begin{table*}[t]
 \centering
 \small
-\begin{tabularx}{\textwidth}{lcccccc}
+\setlength{\tabcolsep}{8pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
 \toprule
 \textbf{Study} & \textbf{SAE Audit} & \textbf{Compression} & \textbf{Multilingual} & \textbf{Script-Balanced} & \textbf{Selectivity Tagging} & \textbf{Fertility Equalized} \\
 \midrule
@@ -121,21 +119,28 @@ Sin et al. (2025) & \checkmark & $\times$ (Dense) & \checkmark (10 langs) & \che
 \midrule
 \textbf{Ours (Always Late)} & \checkmark & \textbf{RTN Quant} & \checkmark \textbf{(27 langs)} & \checkmark \textbf{(9 scripts)} & \checkmark \textbf{(Deng Metric)} & \checkmark \textbf{(Token Budget)} \\
 \bottomrule
-\end{tabularx}
+\end{tabular*}
 \caption{\textbf{Comprehensive Literature Comparison.} Synthesis of prior compression and mechanistic audits across six orthogonal methodological dimensions, highlighting the unexplored research niche addressed by our work.}
 \label{tab:lit_comparison}
 \end{table*}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{fig1_experimental_pipeline.png}
+\caption{\textbf{End-to-End Experimental Architecture and Mechanistic Pipeline.} Content-matched FLORES-200 parallel sentences undergo token-budget equalization to neutralize subword tokenizer fertility bias. Full-precision Gemma-2-2B Layer-12 residual-stream activations are mapped through a frozen Gemma Scope JumpReLU SAE to extract language-selective features on the \texttt{dev} split. Held-out \texttt{devtest} tokens are evaluated under RTN quantization (INT8--INT4) to compute Pearson survival ($r$) with firing-rate quintile matching, followed by confirmatory hypothesis testing and associational behavioral loss linking ($\Delta L_\ell$).}
+\label{fig:pipeline}
+\end{figure*}
+
 \section{Formal Methodology and Mathematical Framework}
 
 \subsection{Formal Setting and Sparse Autoencoders}
-Let $\mathcal{M}$ be a pretrained multilingual LLM, and let $\mathbf{x} \in \mathbb{R}^{d_{\text{model}}}$ denote the residual-stream activation vector at Layer 12 ($d_{\text{model}} = 2,048$ for Gemma-2-2B). A Sparse Autoencoder $\mathcal{S} = (\mathbf{W}_{\text{enc}}, \mathbf{b}_{\text{enc}}, \mathbf{W}_{\text{dec}}, \mathbf{b}_{\text{dec}}, \theta)$ decomposes $\mathbf{x}$ into a high-dimensional sparse latent representation $\mathbf{f} \in \mathbb{R}^{d_{\text{sae}}}$ ($d_{\text{sae}} = 16,384$) via JumpReLU activation \citep{lieberum2024gemma}:
+Let $\mathcal{M}$ be a pretrained multilingual LLM, and let $\mathbf{x} \in \mathbb{R}^{d}$ denote the residual-stream activation vector at Layer 12 ($d = 2,048$ for Gemma-2-2B). A Sparse Autoencoder $\mathcal{S} = (\mathbf{W}_{\text{enc}}, \mathbf{b}_{\text{enc}}, \mathbf{W}_{\text{dec}}, \mathbf{b}_{\text{dec}}, \theta)$ decomposes $\mathbf{x}$ into a high-dimensional sparse latent representation $\mathbf{f} \in \mathbb{R}^{d_{\text{sae}}}$ ($d_{\text{sae}} = 16,384$) via JumpReLU activation \citep{lieberum2024gemma}:
 \begin{align}
 \mathbf{z} &= \mathbf{x}\mathbf{W}_{\text{enc}} + \mathbf{b}_{\text{enc}} \\
-\mathbf{f} &= \text{JumpReLU}_{\theta}(\mathbf{z}) = \mathbb{I}(\mathbf{z} > \theta) \odot \text{ReLU}(\mathbf{z}) \\
+\mathbf{f} &= \text{JumpReLU}_{\theta}(\mathbf{z}) = \mathbf{1}_{(\mathbf{z} > \theta)} \odot \text{ReLU}(\mathbf{z}) \\
 \hat{\mathbf{x}} &= \mathbf{f}\mathbf{W}_{\text{dec}} + \mathbf{b}_{\text{dec}}
 \end{align}
-where $\theta \in \mathbb{R}^{d_{\text{sae}}}$ is a learned, feature-specific positive threshold vector enforcing $L_0$ sparsity ($\approx 82$ active features per token).
+where $\theta \in \mathbb{R}^{d_{\text{sae}}}$ is a learned, feature-specific positive threshold vector enforcing $L_0$ sparsity ($\approx 82$ active features per token), and $\mathbf{1}_{(\cdot)}$ is the element-wise indicator function.
 
 \subsection{Token-Budget Equalization}
 A major confound identified in Section 2 is subword tokenizer fertility bias \citep{srivastava2026tokenizer, lundin2026token}: English-centric tokenizers produce up to $3.03\times$ more tokens for non-Latin scripts (e.g., Kannada) than English on identical sentences. If sentence counts were held fixed, low-resource languages would contribute significantly larger activation masses, distorting firing rates.
@@ -145,13 +150,6 @@ We formally solve this confound via \textbf{Token-Budget Equalization}. For each
 |\mathbf{T}^{(\ell)}| = B = K \times C \quad \forall \ell \in \{1, \dots, L\}
 \end{equation}
 This guarantees that all languages contribute an identical number of tokens and forward passes, neutralizing fertility bias.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.98\textwidth]{fig2_selectivity_populations.png}
-\caption{\textbf{27-Language Selectivity Landscape.} Total language-selective features identified across 27 FLORES-200 languages grouped by resource tier. Low-resource languages isolate the largest selective feature subspace ($45.8\%$).}
-\label{fig:populations}
-\end{figure*}
 
 \subsection{Selectivity Metrics and Pre-Registered Safeguards}
 For each language $\ell$ and feature $f \in \{1, \dots, d_{\text{sae}}\}$, we compute the mean firing rate over the budget $B$:
@@ -181,69 +179,49 @@ where $\mathbf{\Delta}_i = \frac{\max_j |\mathbf{W}_{ij}|}{2^{b-1}-1}$. Full-pre
 \subsection{Geometric Survival and Quintile-Matching Control}
 For each feature $f$ with peak language $\ell^*$, feature survival under precision $b \in \{7, 6\}$ is evaluated on held-out FLORES \texttt{devtest} tokens:
 \begin{equation}
-r(f) = \frac{\sum_t (a_t^{\text{FP16}} - \bar{a}^{\text{FP16}})(a_t^{b} - \bar{a}^{b})}{\sqrt{\sum_t (a_t^{\text{FP16}} - \bar{a}^{\text{FP16}})^2 \sum_t (a_t^{b} - \bar{a}^{b})^2}}
+\label{eq:pearson}
+r(f) = \frac{\mathrm{Cov}(a^{\text{FP16}}, a^b)}{\sigma(a^{\text{FP16}})\,\sigma(a^b)}
 \end{equation}
 Following \citet{duan2026perplexity}, features are categorized as \emph{survived} ($r \ge 0.90$), \emph{damaged} ($r \le 0.50$), or \emph{partial} ($0.50 < r < 0.90$).
 
 \paragraph{Critical Firing-Rate Quintile Control.}
 \citet{borobia2026how} established that baseline firing rate governs feature survival under compression ($\rho = -1.0$). Because selective features often have lower overall firing rates, an uncontrolled comparison between selective and universal features would conflate feature rarity with language selectivity. We partition all active features into firing-rate quintiles $Q_1, \dots, Q_5$ and compare selective features strictly against universal controls sampled from identical quintiles.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\columnwidth]{fig3_rq1_selective_vs_universal_survival.png}
-\caption{\textbf{RQ1 Survival Contrast.} Feature survival rate ($r \ge 0.90$) under RTN quantization at INT7 and INT6 for Language-Selective versus Quintile-Matched Universal features.}
-\label{fig:rq1}
-\end{figure}
+\includegraphics[width=0.98\textwidth]{fig2_selectivity_populations.png}
+\caption{\textbf{27-Language Selectivity Landscape.} Total language-selective features identified across 27 FLORES-200 languages grouped by resource tier. Low-resource languages isolate the largest selective feature subspace ($45.8\%$).}
+\label{fig:populations}
+\end{figure*}
 
 \section{Data and Experimental Setup}
 
 \subsection{27-Language Panel and Resource Tiers}
 We construct a script-balanced panel spanning 27 languages across three resource tiers defined by \citet{joshi2020state}, covering nine distinct script families (Table~\ref{tab:languages}). The FLORES-200 \texttt{dev} split is used exclusively for feature selectivity tagging, while \texttt{devtest} is strictly held out for quantization survival evaluation.
 
-\begin{table}[h]
+\begin{table*}[t]
 \centering
 \small
-\begin{tabularx}{\columnwidth}{llcc}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc|lcc|lcc@{}}
 \toprule
-\textbf{Tier} & \textbf{Language (ISO Code)} & \textbf{Script} & \textbf{Fertility} \\
+\multicolumn{3}{c|}{\textbf{High-Resource Tier (9)}} & \multicolumn{3}{c|}{\textbf{Mid-Resource Tier (9)}} & \multicolumn{3}{c}{\textbf{Low-Resource Tier (9)}} \\
+\textbf{Language} & \textbf{Script} & \textbf{Fert.} & \textbf{Language} & \textbf{Script} & \textbf{Fert.} & \textbf{Language} & \textbf{Script} & \textbf{Fert.} \\
 \midrule
-\multirow{9}{*}{High} 
-& English (\texttt{eng\_Latn}) & Latin & 1.00$\times$ \\
-& German (\texttt{deu\_Latn}) & Latin & 1.25$\times$ \\
-& Spanish (\texttt{spa\_Latn}) & Latin & 1.18$\times$ \\
-& French (\texttt{fra\_Latn}) & Latin & 1.20$\times$ \\
-& Portuguese (\texttt{por\_Latn}) & Latin & 1.19$\times$ \\
-& Russian (\texttt{rus\_Cyrl}) & Cyrillic & 1.85$\times$ \\
-& Mandarin (\texttt{cmn\_Hans}) & CJK & 1.52$\times$ \\
-& Japanese (\texttt{jpn\_Jpan}) & CJK & 1.68$\times$ \\
-& Korean (\texttt{kor\_Hang}) & Hangul & 2.10$\times$ \\
-\midrule
-\multirow{9}{*}{Mid} 
-& Hindi (\texttt{hin\_Deva}) & Devanagari & 2.35$\times$ \\
-& Bengali (\texttt{ben\_Beng}) & Bengali & 2.45$\times$ \\
-& Tamil (\texttt{tam\_Taml}) & Dravidian & 2.80$\times$ \\
-& Turkish (\texttt{tur\_Latn}) & Latin & 1.65$\times$ \\
-& Vietnamese (\texttt{vie\_Latn}) & Latin & 1.70$\times$ \\
-& Indonesian (\texttt{ind\_Latn}) & Latin & 1.30$\times$ \\
-& Thai (\texttt{tha\_Thai}) & Thai & 2.60$\times$ \\
-& Polish (\texttt{pol\_Latn}) & Latin & 1.55$\times$ \\
-& Ukrainian (\texttt{ukr\_Cyrl}) & Cyrillic & 1.90$\times$ \\
-\midrule
-\multirow{9}{*}{Low} 
-& Kannada (\texttt{kan\_Knda}) & Dravidian & 3.03$\times$ \\
-& Telugu (\texttt{tel\_Telu}) & Dravidian & 2.95$\times$ \\
-& Yoruba (\texttt{yor\_Latn}) & Latin & 1.80$\times$ \\
-& Sundanese (\texttt{sun\_Latn}) & Latin & 1.45$\times$ \\
-& Amharic (\texttt{amh\_Ethi}) & Ethiopic & 2.85$\times$ \\
-& Igbo (\texttt{ibo\_Latn}) & Latin & 1.75$\times$ \\
-& Hausa (\texttt{hau\_Latn}) & Latin & 1.40$\times$ \\
-& Khmer (\texttt{khm\_Khmr}) & Khmer & 3.20$\times$ \\
-& Lao (\texttt{lao\_Laoo}) & Lao & 3.10$\times$ \\
+English (\texttt{eng}) & Latin & 1.00$\times$ & Hindi (\texttt{hin}) & Devanagari & 2.35$\times$ & Kannada (\texttt{kan}) & Dravidian & 3.03$\times$ \\
+German (\texttt{deu}) & Latin & 1.25$\times$ & Bengali (\texttt{ben}) & Bengali & 2.45$\times$ & Telugu (\texttt{tel}) & Dravidian & 2.95$\times$ \\
+Spanish (\texttt{spa}) & Latin & 1.18$\times$ & Tamil (\texttt{tam}) & Dravidian & 2.80$\times$ & Yoruba (\texttt{yor}) & Latin & 1.80$\times$ \\
+French (\texttt{fra}) & Latin & 1.20$\times$ & Turkish (\texttt{tur}) & Latin & 1.65$\times$ & Sundanese (\texttt{sun}) & Latin & 1.45$\times$ \\
+Portuguese (\texttt{por}) & Latin & 1.19$\times$ & Vietnamese (\texttt{vie}) & Latin & 1.70$\times$ & Amharic (\texttt{amh}) & Ethiopic & 2.85$\times$ \\
+Russian (\texttt{rus}) & Cyrillic & 1.85$\times$ & Indonesian (\texttt{ind}) & Latin & 1.30$\times$ & Igbo (\texttt{ibo}) & Latin & 1.75$\times$ \\
+Mandarin (\texttt{cmn}) & CJK & 1.52$\times$ & Thai (\texttt{tha}) & Thai & 2.60$\times$ & Hausa (\texttt{hau}) & Latin & 1.40$\times$ \\
+Japanese (\texttt{jpn}) & CJK & 1.68$\times$ & Polish (\texttt{pol}) & Latin & 1.55$\times$ & Khmer (\texttt{khm}) & Khmer & 3.20$\times$ \\
+Korean (\texttt{kor}) & Hangul & 2.10$\times$ & Ukrainian (\texttt{ukr}) & Cyrillic & 1.90$\times$ & Lao (\texttt{lao}) & Lao & 3.10$\times$ \\
 \bottomrule
-\end{tabularx}
-\caption{\textbf{27-Language Typological Panel.} Stratified by resource tiers (Joshi et al., 2020) and script families, showing subword tokenizer fertility relative to English on FLORES-200.}
+\end{tabular*}
+\caption{\textbf{27-Language Typological Panel across Resource Tiers.} Panel stratified by digital data availability \citep{joshi2020state} and 9 script families, reporting subword tokenizer fertility relative to English on FLORES-200.}
 \label{tab:languages}
-\end{table}
+\end{table*}
 
 \subsection{Models and Compute Infrastructure}
 We evaluate Gemma-2-2B (\texttt{unsloth/gemma-2-2b} bf16 mirror, 5.2GB) with the released Gemma Scope Layer-12 residual-stream JumpReLU SAE (\texttt{average\_l0\_82}, width 16k). All experiments are executed in pure PyTorch 2.5.1+cu121 on NVIDIA GPU nodes (`u22` partition) on the Ada high-performance computing cluster.
@@ -258,9 +236,10 @@ Furthermore, our RTN quantization sweep (Table~\ref{tab:rtn_sweep}) on Gemma-2-2
 \begin{table}[h]
 \centering
 \small
+\setlength{\tabcolsep}{4.5pt}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Bit-width} & \textbf{Modules} & \textbf{Survived (\%)} & \textbf{Damaged (\%)} & \textbf{Median $r$} \\
+\textbf{Bit} & \textbf{Modules} & \textbf{Survived} & \textbf{Damaged} & \textbf{Med $r$} \\
 \midrule
 INT8 & 182 & 99.03\% & 0.00\% & 1.0000 \\
 INT7 & 182 & 98.28\% & 0.00\% & 1.0000 \\
@@ -282,25 +261,26 @@ Running the full selectivity extraction pipeline on FLORES \texttt{dev} with tok
 \end{itemize}
 Notably, low-resource languages developed the \emph{largest} absolute number of selective features ($45.8\%$ of all selective features, Figure~\ref{fig:populations}). This indicates that LLMs allocate isolated, idiosyncratic feature subspaces for low-resource and non-Latin scripts rather than integrating them into shared polysemantic representations.
 
-\begin{table}[h]
+\begin{table*}[t]
 \centering
 \small
-\begin{tabularx}{\columnwidth}{lcccc}
+\setlength{\tabcolsep}{10pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
-\textbf{Hypothesis Contrast} & \textbf{Selective} & \textbf{Universal} & \textbf{$p$-value} & \textbf{Decision} \\
+\textbf{Hypothesis Contrast} & \textbf{Selective Survival} & \textbf{Universal Survival} & \textbf{$p$-value (Fisher Exact)} & \textbf{Statistical Decision} \\
 \midrule
-$H_1$ (INT7 Survival) & 96.30\% ($n=135$) & 99.15\% ($n=117$) & 0.1390 & Fail to Reject \\
-$H_2$ (INT6 Survival) & 94.07\% ($n=135$) & 94.87\% ($n=117$) & 0.7828 & Fail to Reject \\
+$H_1$ (INT7 Survival Gap) & 96.30\% ($n=135$) & 99.15\% ($n=117$) & 0.1390 & Fail to Reject Null \\
+$H_2$ (INT6 Survival Gap) & 94.07\% ($n=135$) & 94.87\% ($n=117$) & 0.7828 & Fail to Reject Null \\
 \midrule
-\textbf{Tier Contrast} & \textbf{High-Tier} & \textbf{Low-Tier} & \textbf{$p$-value} & \textbf{Decision} \\
+\textbf{Resource Tier Contrast} & \textbf{High-Resource Tier} & \textbf{Low-Resource Tier} & \textbf{$p$-value (Two-Tailed)} & \textbf{Statistical Decision} \\
 \midrule
-$H_3$ (INT7 High vs Low) & 95.56\% ($n=45$) & 95.56\% ($n=45$) & 1.0000 & Fail to Reject \\
-$H_3$ (INT6 High vs Low) & 93.33\% ($n=45$) & 91.11\% ($n=45$) & 0.6939 & Fail to Reject \\
+$H_3$ (INT7 High vs Low Tier) & 95.56\% ($n=45$) & 95.56\% ($n=45$) & 1.0000 & Fail to Reject Null \\
+$H_3$ (INT6 High vs Low Tier) & 93.33\% ($n=45$) & 91.11\% ($n=45$) & 0.6939 & Fail to Reject Null \\
 \bottomrule
-\end{tabularx}
+\end{tabular*}
 \caption{\textbf{Confirmatory Statistical Hypothesis Testing.} Evaluated with step-down Holm-Bonferroni correction ($\alpha = 0.05$). Under both INT7 and INT6, selective features exhibit directionally lower survival than quintile-matched universal features.}
 \label{tab:statistical_decisions}
-\end{table}
+\end{table*}
 
 \subsection{RQ1: Feature-Type Survival Findings}
 Evaluating held-out FLORES \texttt{devtest} under RTN quantization with firing-rate quintile-matched controls yields directional support for feature-type fragility:
@@ -312,9 +292,9 @@ While selective features degrade faster than frequency-matched universal feature
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{fig4_rq2_tier_survival.png}
-\caption{\textbf{RQ2 Resource-Tier Survival.} Comparison of language-selective feature survival across High, Mid, and Low resource tiers under INT7 and INT6 quantization.}
-\label{fig:rq2}
+\includegraphics[width=\columnwidth]{fig3_rq1_selective_vs_universal_survival.png}
+\caption{\textbf{RQ1 Survival Contrast.} Feature survival rate ($r \ge 0.90$) under RTN quantization at INT7 and INT6 for Language-Selective versus Quintile-Matched Universal features.}
+\label{fig:rq1}
 \end{figure}
 
 \subsection{RQ2: Resource-Tier Disparity and Mechanism Localization}
@@ -324,6 +304,13 @@ Comparing selective feature survival across linguistic resource tiers reveals a 
     \item \textbf{INT6:} Low-resource features drop slightly lower ($91.11\%$, 41/45) than High-resource ($93.33\%$, 42/45), representing a modest $2.22\%$ disparity ($p = 0.6939$).
 \end{itemize}
 Crucially, examining \emph{continuous} activation fidelity reveals subtle, monotonic drift across tiers: at INT7, median Pearson correlation decreases monotonically from High ($r = 0.9990$) to Mid ($r = 0.9957$) to Low ($r = 0.9892$). This pattern intensifies under INT6, where median correlation drops from High ($r = 0.9958$) to Mid ($r = 0.9915$) to Low ($r = 0.9748$). While threshold-based categorical survival ($r \ge 0.90$) remains largely intact, the continuous representations of low-resource languages undergo noticeably larger geometric perturbation.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig4_rq2_tier_survival.png}
+\caption{\textbf{RQ2 Resource-Tier Survival.} Comparison of language-selective feature survival across High, Mid, and Low resource tiers under INT7 and INT6 quantization.}
+\label{fig:rq2}
+\end{figure}
 
 \begin{figure}[t]
 \centering
