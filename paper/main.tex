@@ -8,7 +8,7 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{booktabs}
 \usepackage{graphicx}
-\graphicspath{{../figures/}{figures/}{./}}
+\graphicspath{{.}{figures/}{../figures/}}
 \usepackage{tabularx}
 \usepackage{multirow}
 \usepackage{hyperref}
@@ -37,7 +37,7 @@ Crucially, existing compression audits treat all internal features as an undiffe
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{fig1_experimental_pipeline.png}
+\includegraphics[width=0.98\textwidth]{fig1_experimental_pipeline.png}
 \caption{\textbf{End-to-End Experimental Architecture and Mechanistic Pipeline.} Content-matched FLORES-200 parallel sentences undergo token-budget equalization to neutralize subword tokenizer fertility bias. Full-precision Gemma-2-2B Layer-12 residual-stream activations are mapped through a frozen Gemma Scope JumpReLU SAE to extract language-selective features on the \texttt{dev} split. Held-out \texttt{devtest} tokens are evaluated under RTN quantization (INT8--INT4) to compute Pearson survival ($r$) with firing-rate quintile matching, followed by confirmatory hypothesis testing and associational behavioral loss linking ($\Delta L_\ell$).}
 \label{fig:pipeline}
 \end{figure*}
@@ -146,12 +146,12 @@ We formally solve this confound via \textbf{Token-Budget Equalization}. For each
 \end{equation}
 This guarantees that all languages contribute an identical number of tokens and forward passes, neutralizing fertility bias.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\columnwidth]{fig2_selectivity_populations.png}
+\includegraphics[width=0.98\textwidth]{fig2_selectivity_populations.png}
 \caption{\textbf{27-Language Selectivity Landscape.} Total language-selective features identified across 27 FLORES-200 languages grouped by resource tier. Low-resource languages isolate the largest selective feature subspace ($45.8\%$).}
 \label{fig:populations}
-\end{figure}
+\end{figure*}
 
 \subsection{Selectivity Metrics and Pre-Registered Safeguards}
 For each language $\ell$ and feature $f \in \{1, \dots, d_{\text{sae}}\}$, we compute the mean firing rate over the budget $B$:
