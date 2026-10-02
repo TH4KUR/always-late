@@ -40,7 +40,7 @@ PANEL_27: dict[str, LanguageInfo] = {
     "fra_Latn": LanguageInfo("fra_Latn", "French", "high", "Latin"),
     "por_Latn": LanguageInfo("por_Latn", "Portuguese", "high", "Latin"),
     "rus_Cyrl": LanguageInfo("rus_Cyrl", "Russian", "high", "Cyrillic"),
-    "cmn_Hans": LanguageInfo("cmn_Hans", "Mandarin (Simplified)", "high", "CJK"),
+    "zho_Hans": LanguageInfo("zho_Hans", "Mandarin (Simplified)", "high", "CJK"),
     "jpn_Jpan": LanguageInfo("jpn_Jpan", "Japanese", "high", "CJK"),
     "kor_Hang": LanguageInfo("kor_Hang", "Korean", "high", "Hangul"),
     # Mid-resource (9)
@@ -64,6 +64,9 @@ PANEL_27: dict[str, LanguageInfo] = {
     "khm_Khmr": LanguageInfo("khm_Khmr", "Khmer", "low", "Khmer"),
     "lao_Laoo": LanguageInfo("lao_Laoo", "Lao", "low", "Lao"),
 }
+
+# Alias cmn_Hans -> zho_Hans for backwards compatibility
+PANEL_27["cmn_Hans"] = PANEL_27["zho_Hans"]
 
 
 def ensure_flores_dataset(data_dir: Path = DATA_DIR) -> Path:
@@ -90,6 +93,8 @@ def ensure_flores_dataset(data_dir: Path = DATA_DIR) -> Path:
 def load_sentences(lang_code: str, split: Literal["dev", "devtest"] = "dev") -> list[str]:
     """Loads all sentences for a given language code and split."""
     dataset_dir = ensure_flores_dataset()
+    if lang_code == "cmn_Hans":
+        lang_code = "zho_Hans"
     file_path = dataset_dir / split / f"{lang_code}.{split}"
     if not file_path.exists():
         raise FileNotFoundError(f"FLORES file not found: {file_path}")
