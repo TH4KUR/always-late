@@ -2,7 +2,7 @@
   "project_title": "Does Compression Forget Language? Language-Specific Feature Survival Under Quantization and Pruning in Multilingual LLMs",
   "institution": "IIIT Hyderabad",
   "submission_stage": "Mid-Submission 1",
-  "generated_at": "2026-09-30 12:40:20",
+  "generated_at": "2026-10-02 19:11:46",
   "hardware_and_environment": {
     "primary_model": "Gemma-2-2B (unsloth/gemma-2-2b bf16 mirror)",
     "sae_suite": "Gemma Scope (google/gemma-scope-2b-pt-res)",

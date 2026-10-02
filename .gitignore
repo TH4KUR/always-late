@@ -26,3 +26,6 @@ hf_cache/
 # Results that are large/binary (keep small CSV/JSON/MD logs, ignore raw arrays)
 reports/*.npy
 reports/raw/
+*.tar.gz
+*.zip
+
