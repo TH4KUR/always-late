@@ -1,0 +1,398 @@
+{
+  "stage": "Phase1_Selectivity_Extraction",
+  "started_at": "2026-10-02 18:56:16",
+  "finished_at": "2026-10-02 18:57:34",
+  "device": "cuda",
+  "n_languages": 27,
+  "target_tokens_per_lang": 1500,
+  "total_encode_seconds": 66.5,
+  "total_sae_features": 16384,
+  "supported_features_count": 7306,
+  "shuffled_null_threshold_95th": 3.0,
+  "total_selective_features": 1996,
+  "selective_features_by_tier": {
+    "high": 685,
+    "mid": 397,
+    "low": 914
+  },
+  "languages": {
+    "eng_Latn": {
+      "name": "English",
+      "tier": "high",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 229,
+      "top5_selective_feature_ids": [
+        15224,
+        5511,
+        14668,
+        10076,
+        14700
+      ]
+    },
+    "deu_Latn": {
+      "name": "German",
+      "tier": "high",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 65,
+      "top5_selective_feature_ids": [
+        4621,
+        10933,
+        6053,
+        8542,
+        9511
+      ]
+    },
+    "spa_Latn": {
+      "name": "Spanish",
+      "tier": "high",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 49,
+      "top5_selective_feature_ids": [
+        7660,
+        13208,
+        13397,
+        8583,
+        2173
+      ]
+    },
+    "fra_Latn": {
+      "name": "French",
+      "tier": "high",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 65,
+      "top5_selective_feature_ids": [
+        10325,
+        2932,
+        14373,
+        12220,
+        8119
+      ]
+    },
+    "por_Latn": {
+      "name": "Portuguese",
+      "tier": "high",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 49,
+      "top5_selective_feature_ids": [
+        7943,
+        14014,
+        15693,
+        7013,
+        660
+      ]
+    },
+    "rus_Cyrl": {
+      "name": "Russian",
+      "tier": "high",
+      "script": "Cyrillic",
+      "tokens": 1536,
+      "n_selective_features": 26,
+      "top5_selective_feature_ids": [
+        8547,
+        10603,
+        13237,
+        8250,
+        12189
+      ]
+    },
+    "cmn_Hans": {
+      "name": "Mandarin (Simplified)",
+      "tier": "high",
+      "script": "CJK",
+      "tokens": 1536,
+      "n_selective_features": 83,
+      "top5_selective_feature_ids": [
+        15708,
+        15350,
+        14923,
+        12768,
+        16091
+      ]
+    },
+    "jpn_Jpan": {
+      "name": "Japanese",
+      "tier": "high",
+      "script": "CJK",
+      "tokens": 1536,
+      "n_selective_features": 87,
+      "top5_selective_feature_ids": [
+        12081,
+        4951,
+        6725,
+        15217,
+        9785
+      ]
+    },
+    "kor_Hang": {
+      "name": "Korean",
+      "tier": "high",
+      "script": "Hangul",
+      "tokens": 1536,
+      "n_selective_features": 32,
+      "top5_selective_feature_ids": [
+        5965,
+        7860,
+        3543,
+        4404,
+        5536
+      ]
+    },
+    "hin_Deva": {
+      "name": "Hindi",
+      "tier": "mid",
+      "script": "Devanagari",
+      "tokens": 1536,
+      "n_selective_features": 34,
+      "top5_selective_feature_ids": [
+        14350,
+        5563,
+        1368,
+        14171,
+        7611
+      ]
+    },
+    "ben_Beng": {
+      "name": "Bengali",
+      "tier": "mid",
+      "script": "Bengali",
+      "tokens": 1536,
+      "n_selective_features": 34,
+      "top5_selective_feature_ids": [
+        1693,
+        13013,
+        10691,
+        16129,
+        12055
+      ]
+    },
+    "tam_Taml": {
+      "name": "Tamil",
+      "tier": "mid",
+      "script": "Dravidian",
+      "tokens": 1536,
+      "n_selective_features": 59,
+      "top5_selective_feature_ids": [
+        11028,
+        3084,
+        10537,
+        10974,
+        4194
+      ]
+    },
+    "tur_Latn": {
+      "name": "Turkish",
+      "tier": "mid",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 67,
+      "top5_selective_feature_ids": [
+        5630,
+        2115,
+        11140,
+        9641,
+        7322
+      ]
+    },
+    "vie_Latn": {
+      "name": "Vietnamese",
+      "tier": "mid",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 43,
+      "top5_selective_feature_ids": [
+        12002,
+        9063,
+        6926,
+        590,
+        3565
+      ]
+    },
+    "ind_Latn": {
+      "name": "Indonesian",
+      "tier": "mid",
+      "script": "Latin",
+      "tokens": 1535,
+      "n_selective_features": 33,
+      "top5_selective_feature_ids": [
+        11437,
+        1814,
+        13123,
+        8655,
+        11190
+      ]
+    },
+    "tha_Thai": {
+      "name": "Thai",
+      "tier": "mid",
+      "script": "Thai",
+      "tokens": 1536,
+      "n_selective_features": 67,
+      "top5_selective_feature_ids": [
+        11621,
+        6276,
+        7271,
+        9408,
+        10195
+      ]
+    },
+    "pol_Latn": {
+      "name": "Polish",
+      "tier": "mid",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 41,
+      "top5_selective_feature_ids": [
+        10247,
+        10000,
+        12965,
+        3707,
+        12617
+      ]
+    },
+    "ukr_Cyrl": {
+      "name": "Ukrainian",
+      "tier": "mid",
+      "script": "Cyrillic",
+      "tokens": 1536,
+      "n_selective_features": 19,
+      "top5_selective_feature_ids": [
+        10176,
+        6520,
+        3443,
+        13564,
+        6812
+      ]
+    },
+    "kan_Knda": {
+      "name": "Kannada",
+      "tier": "low",
+      "script": "Dravidian",
+      "tokens": 1536,
+      "n_selective_features": 48,
+      "top5_selective_feature_ids": [
+        54,
+        11478,
+        5933,
+        15326,
+        12400
+      ]
+    },
+    "tel_Telu": {
+      "name": "Telugu",
+      "tier": "low",
+      "script": "Dravidian",
+      "tokens": 1536,
+      "n_selective_features": 49,
+      "top5_selective_feature_ids": [
+        5157,
+        8810,
+        3813,
+        10218,
+        5512
+      ]
+    },
+    "yor_Latn": {
+      "name": "Yoruba",
+      "tier": "low",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 216,
+      "top5_selective_feature_ids": [
+        9715,
+        9677,
+        11176,
+        10232,
+        4657
+      ]
+    },
+    "sun_Latn": {
+      "name": "Sundanese",
+      "tier": "low",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 66,
+      "top5_selective_feature_ids": [
+        16241,
+        1457,
+        12672,
+        7508,
+        2743
+      ]
+    },
+    "amh_Ethi": {
+      "name": "Amharic",
+      "tier": "low",
+      "script": "Ethiopic",
+      "tokens": 1536,
+      "n_selective_features": 65,
+      "top5_selective_feature_ids": [
+        15834,
+        4233,
+        12671,
+        8741,
+        7400
+      ]
+    },
+    "ibo_Latn": {
+      "name": "Igbo",
+      "tier": "low",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 90,
+      "top5_selective_feature_ids": [
+        2578,
+        12095,
+        3557,
+        16138,
+        7474
+      ]
+    },
+    "hau_Latn": {
+      "name": "Hausa",
+      "tier": "low",
+      "script": "Latin",
+      "tokens": 1536,
+      "n_selective_features": 47,
+      "top5_selective_feature_ids": [
+        1971,
+        5968,
+        15952,
+        3786,
+        9111
+      ]
+    },
+    "khm_Khmr": {
+      "name": "Khmer",
+      "tier": "low",
+      "script": "Khmer",
+      "tokens": 1536,
+      "n_selective_features": 153,
+      "top5_selective_feature_ids": [
+        7439,
+        12028,
+        5054,
+        13120,
+        603
+      ]
+    },
+    "lao_Laoo": {
+      "name": "Lao",
+      "tier": "low",
+      "script": "Lao",
+      "tokens": 1536,
+      "n_selective_features": 180,
+      "top5_selective_feature_ids": [
+        9601,
+        2595,
+        13309,
+        523,
+        10712
+      ]
+    }
+  }
+}

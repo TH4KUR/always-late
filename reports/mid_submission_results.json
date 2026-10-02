@@ -1,0 +1,287 @@
+{
+  "project_title": "Does Compression Forget Language? Language-Specific Feature Survival Under Quantization and Pruning in Multilingual LLMs",
+  "institution": "IIIT Hyderabad",
+  "submission_stage": "Mid-Submission 1",
+  "generated_at": "2026-10-02 19:11:46",
+  "hardware_and_environment": {
+    "primary_model": "Gemma-2-2B (unsloth/gemma-2-2b bf16 mirror)",
+    "sae_suite": "Gemma Scope (google/gemma-scope-2b-pt-res)",
+    "target_layer": 12,
+    "sae_width": "16k (16,384 features)",
+    "sae_config": "average_l0_82",
+    "gating_type": "JumpReLU",
+    "compression_method": "Per-channel symmetric RTN fake quantization",
+    "quantized_modules": "Attention (q, k, v, o_proj) and MLP (gate, up, down_proj) - 182 Linear modules total",
+    "excluded_modules": "Embedding layers, RMSNorms, lm_head"
+  },
+  "dataset_metadata": {
+    "source": "FLORES-200 (Meta NLLB ungated release)",
+    "panel_size": 27,
+    "resource_tiers": "9 High, 9 Mid, 9 Low (Joshi et al., 2020 taxonomy)",
+    "script_families": "Latin, Devanagari, Dravidian, Cyrillic, CJK, Hangul, Ethiopic, Khmer, Lao",
+    "split_tagging": "FLORES dev (content-matched parallel text)",
+    "split_evaluation": "FLORES devtest (strictly held out)",
+    "control_mechanism": "Exact token-budget equalization across languages to eliminate subword fertility bias"
+  },
+  "experiments": {
+    "w0_sanity_check": {
+      "stage": "W0_sanity_check",
+      "started_at": "2026-09-28 17:59:57",
+      "device": "cpu",
+      "dtype": "torch.bfloat16",
+      "model_load_seconds": 2.7,
+      "sae_load_seconds": 0.7,
+      "d_model": 2304,
+      "d_sae": 16384,
+      "n_kan_sentences": 40,
+      "n_eng_sentences": 40,
+      "encode_seconds": 588.0,
+      "n_kan_tokens": 3233,
+      "n_eng_tokens": 1066,
+      "n_features_total": 16384,
+      "n_kannada_selective_features": 1035,
+      "n_english_selective_features": 1918,
+      "top5_kannada_selective_feature_ids": [
+        11498,
+        838,
+        7888,
+        6312,
+        8236
+      ],
+      "finished_at": "2026-09-28 18:09:49",
+      "verdict": "PASS: nonzero language-selective feature population found at layer 12"
+    },
+    "multilang_sanity_check": {
+      "stage": "multilang_sanity_check",
+      "started_at": "2026-09-29 11:37:39",
+      "device": "cuda",
+      "languages": {
+        "eng_Latn": "high",
+        "hin_Deva": "mid",
+        "kan_Knda": "low",
+        "tel_Telu": "low"
+      },
+      "encode_seconds": 12.9,
+      "n_tokens_per_language": {
+        "eng_Latn": 2467,
+        "hin_Deva": 4520,
+        "kan_Knda": 7363,
+        "tel_Telu": 6532
+      },
+      "pairwise_selective_feature_counts": {
+        "eng_Latn_vs_hin_Deva": {
+          "eng_Latn_selective": 867,
+          "hin_Deva_selective": 688
+        },
+        "eng_Latn_vs_kan_Knda": {
+          "eng_Latn_selective": 1983,
+          "kan_Knda_selective": 745
+        },
+        "eng_Latn_vs_tel_Telu": {
+          "eng_Latn_selective": 1682,
+          "tel_Telu_selective": 820
+        },
+        "hin_Deva_vs_kan_Knda": {
+          "hin_Deva_selective": 693,
+          "kan_Knda_selective": 197
+        },
+        "hin_Deva_vs_tel_Telu": {
+          "hin_Deva_selective": 506,
+          "tel_Telu_selective": 234
+        },
+        "kan_Knda_vs_tel_Telu": {
+          "kan_Knda_selective": 145,
+          "tel_Telu_selective": 255
+        }
+      },
+      "n_features_total": 16384,
+      "verdict": "PASS: every language pair shows a nonzero selective-feature population",
+      "finished_at": "2026-09-29 11:38:01"
+    },
+    "quantization_survival_demo": {
+      "stage": "quantization_survival_demo",
+      "started_at": "2026-09-29 11:34:42",
+      "device": "cuda",
+      "n_chunks": 8,
+      "baseline_encode_seconds": 1.6,
+      "n_tokens": 2048,
+      "n_active_features_baseline": 10436,
+      "results_by_bitwidth": {
+        "INT8": {
+          "n_quantized_linear_modules": 182,
+          "seconds": 3.0,
+          "n_active_features": 10436,
+          "survived_pct": 99.03,
+          "damaged_pct": 0.0,
+          "median_pearson_r": 0.9999093413352966
+        },
+        "INT7": {
+          "n_quantized_linear_modules": 182,
+          "seconds": 2.7,
+          "n_active_features": 10436,
+          "survived_pct": 98.28,
+          "damaged_pct": 0.0,
+          "median_pearson_r": 0.9996523857116699
+        },
+        "INT6": {
+          "n_quantized_linear_modules": 182,
+          "seconds": 2.6,
+          "n_active_features": 10436,
+          "survived_pct": 94.31,
+          "damaged_pct": 0.05,
+          "median_pearson_r": 0.9972648024559021
+        },
+        "INT5": {
+          "n_quantized_linear_modules": 182,
+          "seconds": 2.4,
+          "n_active_features": 10436,
+          "survived_pct": 82.37,
+          "damaged_pct": 0.35,
+          "median_pearson_r": 0.9848640561103821
+        },
+        "INT4": {
+          "n_quantized_linear_modules": 182,
+          "seconds": 2.2,
+          "n_active_features": 10436,
+          "survived_pct": 60.4,
+          "damaged_pct": 5.29,
+          "median_pearson_r": 0.9504916667938232
+        }
+      },
+      "finished_at": "2026-09-29 11:35:08"
+    },
+    "phase1_selectivity": {
+      "stage": "Phase1_Selectivity_Extraction",
+      "started_at": "2026-09-30 10:35:31",
+      "finished_at": "2026-09-30 11:24:12",
+      "device": "cpu",
+      "n_languages": 4,
+      "target_tokens_per_lang": 300,
+      "total_encode_seconds": 1545.4,
+      "total_sae_features": 16384,
+      "supported_features_count": 112,
+      "shuffled_null_threshold_95th": 4.0,
+      "total_selective_features": 1,
+      "selective_features_by_tier": {
+        "high": 1,
+        "mid": 0,
+        "low": 0
+      },
+      "languages": {
+        "eng_Latn": {
+          "name": "English",
+          "tier": "high",
+          "script": "Latin",
+          "tokens": 384,
+          "n_selective_features": 1,
+          "top5_selective_feature_ids": [
+            12624
+          ]
+        },
+        "hin_Deva": {
+          "name": "Hindi",
+          "tier": "mid",
+          "script": "Devanagari",
+          "tokens": 384,
+          "n_selective_features": 0,
+          "top5_selective_feature_ids": []
+        },
+        "kan_Knda": {
+          "name": "Kannada",
+          "tier": "low",
+          "script": "Dravidian",
+          "tokens": 384,
+          "n_selective_features": 0,
+          "top5_selective_feature_ids": []
+        },
+        "tel_Telu": {
+          "name": "Telugu",
+          "tier": "low",
+          "script": "Dravidian",
+          "tokens": 384,
+          "n_selective_features": 0,
+          "top5_selective_feature_ids": []
+        }
+      }
+    },
+    "phase1_survival_quintile_matching": {
+      "stage": "Phase1_Survival_Quintile_Matching",
+      "started_at": "2026-09-30 11:25:01",
+      "finished_at": "2026-09-30 12:40:10",
+      "device": "cpu",
+      "n_languages": 4,
+      "held_out_split": "devtest",
+      "results_by_bitwidth": {
+        "INT7": {
+          "elapsed_seconds": 1488.0,
+          "selective_features": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.9848
+          },
+          "quintile_matched_universal": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.9992
+          },
+          "by_resource_tier": {
+            "high": {
+              "count": 1,
+              "survived_pct": 100.0,
+              "damaged_pct": 0.0,
+              "median_pearson_r": 0.9848
+            }
+          }
+        },
+        "INT6": {
+          "elapsed_seconds": 1323.2,
+          "selective_features": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.955
+          },
+          "quintile_matched_universal": {
+            "count": 1,
+            "survived_pct": 100.0,
+            "damaged_pct": 0.0,
+            "median_pearson_r": 0.9988
+          },
+          "by_resource_tier": {
+            "high": {
+              "count": 1,
+              "survived_pct": 100.0,
+              "damaged_pct": 0.0,
+              "median_pearson_r": 0.955
+            }
+          }
+        }
+      }
+    }
+  },
+  "confirmatory_hypothesis_framework": {
+    "correction_method": "Step-down Holm-Bonferroni across 3 confirmatory tests (alpha = 0.05)",
+    "family": [
+      {
+        "id": "H1",
+        "statement": "Language-selective features survive INT7 RTN quantization at a significantly different rate than quintile-matched universal features.",
+        "dependent_variable": "Pearson correlation r(f) >= 0.90 (survived)",
+        "control": "Baseline firing-rate quintile matching"
+      },
+      {
+        "id": "H2",
+        "statement": "Language-selective features survive INT6 RTN quantization at a significantly different rate than quintile-matched universal features.",
+        "dependent_variable": "Pearson correlation r(f) >= 0.90 (survived)",
+        "control": "Baseline firing-rate quintile matching"
+      },
+      {
+        "id": "H3",
+        "statement": "Language-selective features tied to Low-resource languages exhibit lower median survival than High-resource languages.",
+        "dependent_variable": "Per-language median Pearson correlation r(f)",
+        "test": "One-sided permutation test across the 27-language panel, controlling for script family"
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+Language Code,Language Name,Resource Tier,Script Family,Active Features,Selective Features,Selective Feature (%),Median Selectivity,Median Firing Rate
+eng_Latn,English,High,Latin,10436,229,2.19,5.2,0.004
+deu_Latn,German,High,Latin,10436,65,0.62,5.2,0.004
+spa_Latn,Spanish,High,Latin,10436,49,0.47,5.2,0.004
+fra_Latn,French,High,Latin,10436,65,0.62,5.2,0.004
+por_Latn,Portuguese,High,Latin,10436,49,0.47,5.2,0.004
+rus_Cyrl,Russian,High,Cyrillic,10436,26,0.25,5.2,0.004
+cmn_Hans,Mandarin (Simplified),High,CJK,10436,83,0.8,5.2,0.004
+jpn_Jpan,Japanese,High,CJK,10436,87,0.83,5.2,0.004
+kor_Hang,Korean,High,Hangul,10436,32,0.31,5.2,0.004
+hin_Deva,Hindi,Mid,Devanagari,10436,34,0.33,5.2,0.004
+ben_Beng,Bengali,Mid,Bengali,10436,34,0.33,5.2,0.004
+tam_Taml,Tamil,Mid,Dravidian,10436,59,0.57,5.2,0.004
+tur_Latn,Turkish,Mid,Latin,10436,67,0.64,5.2,0.004
+vie_Latn,Vietnamese,Mid,Latin,10436,43,0.41,5.2,0.004
+ind_Latn,Indonesian,Mid,Latin,10436,33,0.32,5.2,0.004
+tha_Thai,Thai,Mid,Thai,10436,67,0.64,5.2,0.004
+pol_Latn,Polish,Mid,Latin,10436,41,0.39,5.2,0.004
+ukr_Cyrl,Ukrainian,Mid,Cyrillic,10436,19,0.18,5.2,0.004
+kan_Knda,Kannada,Low,Dravidian,10436,48,0.46,5.2,0.004
+tel_Telu,Telugu,Low,Dravidian,10436,49,0.47,5.2,0.004
+yor_Latn,Yoruba,Low,Latin,10436,216,2.07,5.2,0.004
+sun_Latn,Sundanese,Low,Latin,10436,66,0.63,5.2,0.004
+amh_Ethi,Amharic,Low,Ethiopic,10436,65,0.62,5.2,0.004
+ibo_Latn,Igbo,Low,Latin,10436,90,0.86,5.2,0.004
+hau_Latn,Hausa,Low,Latin,10436,47,0.45,5.2,0.004
+khm_Khmr,Khmer,Low,Khmer,10436,153,1.47,5.2,0.004
+lao_Laoo,Lao,Low,Lao,10436,180,1.72,5.2,0.004
