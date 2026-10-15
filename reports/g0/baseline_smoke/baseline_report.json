@@ -1,0 +1,68 @@
+{
+  "comparison": {
+    "rows": [
+      {
+        "condition": "FP16 baseline",
+        "perplexity_rep": 414.07274322636493,
+        "perplexity_pub": 458.53480267202224,
+        "ppl_delta_pct_rep": 0.0,
+        "ppl_delta_pct_pub": 0.0,
+        "survived_rep": 100.0,
+        "survived_pub": 100.0,
+        "d_survived_pp": 0.0,
+        "median_corr_rep": 1.0,
+        "median_corr_pub": 1.0,
+        "d_median_corr": 0.0,
+        "n_active_rep": 6702.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9381298992161254
+      },
+      {
+        "condition": "RTN INT8",
+        "perplexity_rep": 422.6203925446741,
+        "perplexity_pub": 470.5648830080225,
+        "ppl_delta_pct_rep": 2.064286881504862,
+        "ppl_delta_pct_pub": 2.623591549844706,
+        "survived_rep": 96.15040286481647,
+        "survived_pub": 99.09014557670773,
+        "d_survived_pp": -2.939742711891256,
+        "median_corr_rep": 0.9712712503131091,
+        "median_corr_pub": 0.9706584637033512,
+        "d_median_corr": 0.0006127866097579426,
+        "n_active_rep": 6702.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9381298992161254
+      },
+      {
+        "condition": "RTN INT6",
+        "perplexity_rep": 427.5592814057298,
+        "perplexity_pub": 476.8236411108342,
+        "ppl_delta_pct_rep": 3.257045627848054,
+        "ppl_delta_pct_pub": 3.9885387831495756,
+        "survived_rep": 49.82094897045658,
+        "survived_pub": 51.30179171332587,
+        "d_survived_pp": -1.4808427428692923,
+        "median_corr_rep": 0.8993514722567671,
+        "median_corr_pub": 0.9026694090394689,
+        "d_median_corr": -0.003317936782701758,
+        "n_active_rep": 6702.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9381298992161254
+      }
+    ],
+    "bands": {
+      "int7_survival_within_5pp": null,
+      "int6_survival_within_10pp": true,
+      "active_features_within_10pct": true,
+      "ppl_signs_int7_improves_int6_worsens": null
+    },
+    "q1_pass": null
+  },
+  "per_feature_int6": {
+    "n_common_active": 6271,
+    "n_active_rep": 6702,
+    "n_active_pub": 7144,
+    "spearman_corr": 0.9264677496909866,
+    "spearman_firing_rate": 0.9175498262371911
+  }
+}

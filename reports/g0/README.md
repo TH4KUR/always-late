@@ -1,0 +1,11 @@
+# reports/g0: artifacts of the Duan (2026) baseline / diagnostics work
+
+| File / dir | What | Provenance |
+|---|---|---|
+| `r0_smoke/` | summary CSV, run metadata and weight-perturbation JSONs of the first Ada smoke run (v3 runner, `3a_test`, 20k tokens, job 23355) | produced on Ada 2026-10-16; **diagnostic runner**, not the baseline |
+| `baseline_smoke/` (if present) | faithful runner, `3a_test`, job 23419: the neutrality check against `r0_smoke/` | produced on Ada 2026-10-16 |
+| `bench_fit_result_2x2080ti_20261015.json` | fit/speed benchmark on 2 x RTX 2080 Ti (plain-HF stand-in on the ungated mirror) | `scripts/g0/bench_fit.py` |
+| `ada_env_freeze_20261015.txt` | `pip freeze` of the Ada environment (torch 2.14.1+cu126, transformer-lens 3.9.0, sae-lens 6.54.5, transformers 5.19.0) | Ada |
+| `duan03_modifications_v3.diff`, `duan06_modifications_v3.diff` | unified diffs of the **diagnostic** (v3) runners against Duan's originals | `scripts/g0/make_duan_runners_v3.py` |
+
+Not stored here: model weights, `.pt` tokens/snapshots, wandb run folders (see `.gitignore`). Runs are tracked in wandb project `anlp-project` (entity `karma-skz-`). The baseline run will add `baseline_full/` (their output CSVs, `baseline_report.md/.json`, `gpu_mem.log`).

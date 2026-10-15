@@ -1,0 +1,109 @@
+--- /home/karma/Documents/ANLP/project/duan-sae-feature-survival/scripts/06_gemma_sliding_window_ppl_check.py	2026-10-15 22:37:03.821324710 +0530
++++ /tmp/claude-1000/duan06_runner_v3.py	2026-10-16 01:34:46.668628634 +0530
+@@ -1,3 +1,4 @@
++# DERIVED FILE (v3) from Duan (2026) scripts/06_gemma_sliding_window_ppl_check.py: [FIX] parse error/Colab paths, [ARM] env-controlled mode/bits/attention.
+ # Auto-exported from 06_gemma_sliding_window_ppl_check.ipynb
+ # Some notebooks are intended for interactive/XXXX-13 use.
+ 
+@@ -40,7 +41,7 @@
+ 
+ # Use "smoke_test" first if you want a quick check.
+ # Use "full" for the actual reported sliding-window run.
+-RUN_MODE = "full"  # "smoke_test" or "full"
++RUN_MODE = os.environ.get("G0_RUN_MODE06", "smoke_test")  # [ARM] shipped value: full
+ 
+ if RUN_MODE == "smoke_test":
+     MAX_EVAL_TOKENS = 50_000
+@@ -53,12 +54,12 @@
+ STRIDE = 512
+ 
+ # Conditions to evaluate. None = FP16 baseline.
+-BITS_TO_TEST = [None, 8, 7, 6]
++BITS_TO_TEST = [None if b == "none" else int(b) for b in os.environ.get("G0_BITS06", "none,8,7,6").split(",")]  # [ARM]
+ 
+ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+ DTYPE = torch.bfloat16 if DEVICE == "cuda" else torch.float32
+ 
+-OUT_DIR = Path("/content/gemma_sliding_ppl_outputs")
++OUT_DIR = Path(os.environ.get("G0_OUT06", "gemma_sliding_ppl_outputs"))  # [FIX] was /content (Colab)
+ OUT_DIR.mkdir(parents=True, exist_ok=True)
+ 
+ print("RUN_MODE:", RUN_MODE)
+@@ -223,10 +224,12 @@
+ def load_fresh_gemma():
+     model = AutoModelForCausalLM.from_pretrained(
+         MODEL_NAME,
+-        torch_dtype=DTYPE,
++        dtype=DTYPE,  # [FIX] torch_dtype is deprecated in the installed transformers
+         device_map="auto",
+         low_cpu_mem_usage=True,
++        **({"attn_implementation": os.environ["G0_ATTN"]} if os.environ.get("G0_ATTN") else {}),  # [ARM] eager vs default attention
+     )
++    print('attention implementation in use:', getattr(model.config, '_attn_implementation', '?'))  # [META]
+     model.eval()
+     model.config.use_cache = False
+     return model
+@@ -282,18 +285,26 @@
+ # Run sliding-window evaluation
+ # =========================
+ 
++import sys, time
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # [META] wandb helper next to this runner
++from g0_wandb import G0Logger
++_WB = G0Logger.start(project=os.environ.get('WANDB_PROJECT', 'anlp-project'), entity=os.environ.get('WANDB_ENTITY') or None,
++                     name=os.environ.get('G0_WANDB_NAME', f'duan06-{RUN_MODE}-attn-' + os.environ.get('G0_ATTN', 'default')),
++                     config=dict(run_mode=RUN_MODE, window=WINDOW_SIZE, stride=STRIDE, bits=[str(b) for b in BITS_TO_TEST],
++                                 attn=os.environ.get('G0_ATTN', 'default')), out_dir=OUT_DIR, tags=['g0', 'duan06'])
+ rows = []
+ 
+ for bits in BITS_TO_TEST:
+     row = run_one_condition(bits, input_ids_all)
+     rows.append(row)
++    _WB.log_condition(row)  # [META] wandb
+ 
+ sliding_df = pd.DataFrame(rows)
+ 
+ fp16_ppl = sliding_df.loc[sliding_df["condition"] == "FP16 baseline", "perplexity"].iloc[0]
+ sliding_df["ppl_delta_pct"] = (sliding_df["perplexity"] / fp16_ppl - 1) * 100
+ 
+-display(sliding_df)
++print(sliding_df)
+ 
+ out_path = OUT_DIR / f"gemma_sliding_window_ppl_w{WINDOW_SIZE}_s{STRIDE}_{RUN_MODE}.csv"
+ sliding_df.to_csv(out_path, index=False)
+@@ -353,31 +364,14 @@
+     })
+ 
+     compare_df = old_small.merge(new_small, on="condition", how="inner")
+-    display(compare_df)
++    print(compare_df)
+ 
+     compare_path = OUT_DIR / f"gemma_chunked_vs_sliding_ppl_w{WINDOW_SIZE}_s{STRIDE}_{RUN_MODE}.csv"
+     compare_df.to_csv(compare_path, index=False)
+ 
+     print("Saved:", compare_path)
+ 
+-# %% Cell 12
+-# =========================
+-# Package outputs for download
+-# =========================
+-
+-import shutil
+-
+-zip_path = shutil.make_archive(
+-    base_name="/content/gemma_sliding_ppl_outputs",
+-    format="zip",
+-    root_dir="/content",
+-    base_dir="gemma_sliding_ppl_outputs"
+-)
+-
+-print("Created:", zip_path)
+ 
+-try:
+-    from google.XXXX-13 import files
+-    files.download(zip_path)
+-except Exception as e:
+-    print("Download skipped/not in XXXX-13:", repr(e))
++# [META] wandb: final table and artifact
++_WB.log_table(sliding_df)
++_WB.finish(OUT_DIR)

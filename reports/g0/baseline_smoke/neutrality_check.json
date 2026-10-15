@@ -1,0 +1,27 @@
+{
+ "what": "neutrality check: faithful runner (their code only) vs v3 runner default arm (R0), both 3a_test, 20k tokens, WikiText-2 test, 2 x RTX 2080 Ti",
+ "jobs": {
+  "faithful": "23419 (gnode062)",
+  "v3_R0": "23355 (gnode046)"
+ },
+ "summary_columns_max_abs_difference": 0.0,
+ "per_feature_corr_max_abs_difference": {
+  "FP16_baseline": 0.0,
+  "RTN_INT8": 0.0,
+  "RTN_INT6": 0.0
+ },
+ "per_feature_rows_each": 16384,
+ "active_flags_identical": true,
+ "conclusion": "bit-identical: the v3 instrumentation does not change their computation, and the pipeline is deterministic across jobs/nodes of this GPU class",
+ "faithful_run_peak_gpu_mib_per_card": {
+  "0": 8207,
+  "1": 7995
+ },
+ "faithful_wall_clock": "20 min 32 s incl. model download",
+ "per_feature_agreement_vs_published_int6_20k_vs_500k_tokens": {
+  "n_common_active": 6271,
+  "spearman_corr": 0.9265,
+  "spearman_firing_rate": 0.9175
+ },
+ "wandb": "https://wandb.ai/karma-skz-/anlp-project/runs/8f6f4d3a"
+}

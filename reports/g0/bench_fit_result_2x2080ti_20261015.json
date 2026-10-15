@@ -1,0 +1,47 @@
+{
+ "torch": "2.14.1+cu126",
+ "cuda_build": "12.6",
+ "n_gpu": 2,
+ "gpu0": {
+  "name": "NVIDIA GeForce RTX 2080 Ti",
+  "cc": [
+   7,
+   5
+  ],
+  "total_gib": 10.57
+ },
+ "gpu1": {
+  "name": "NVIDIA GeForce RTX 2080 Ti",
+  "cc": [
+   7,
+   5
+  ],
+  "total_gib": 10.57
+ },
+ "is_bf16_supported": true,
+ "matmul_ms_256x2304x9216": {
+  "float32": 0.997,
+  "float16": 0.355,
+  "bfloat16": 1.901
+ },
+ "load_two_models_s": 517.4,
+ "attn_impl": "sdpa",
+ "sae_lens": "6.54.5",
+ "sae_cfg": {
+  "d_in": 2304,
+  "d_sae": 16384,
+  "hook_name": "blocks.12.hook_resid_post"
+ },
+ "sae_dtype": "torch.float32",
+ "wikitext_train_tokens": 2433794,
+ "seqs_of_256_in_500k": 1953,
+ "streaming_step_s(2 fwd + 2 SAE + cpu f64)": 0.41,
+ "single_fwd_s_256tok": 0.213,
+ "max_mem_gib": {
+  "cuda:0": 5.44,
+  "cuda:1": 5.15
+ },
+ "identical_logits_across_gpus": true,
+ "max_abs_logit_diff_across_gpus": 0.0,
+ "projection_G0_core_hours(23.4k fwd ~ 7.8k streaming steps + 7.8k ppl fwds)": 1.35
+}
