@@ -7,7 +7,7 @@
 **GitHub Repository**: [https://github.com/TH4KUR/always-late](https://github.com/TH4KUR/always-late)
 
 > **Status (2026-10-16). Read before using any number from this repository.**
-> A code-and-results review (`issues.md`) found that the earlier headline claims in this README and in `paper/main.tex` are **not supported by the team's own data**, and that our replication of Duan et al. (2026) was an independent re-implementation that was never validated against their code. We are now running **their code** on Ada to establish a baseline before any new claim is made.
+> A code-and-results review (`issues.md`) found that the earlier headline claims in this README and in `paper/main.tex` are **not supported by the team's own data**, and that our replication of Duan et al. (2026) was an independent re-implementation that was never validated against their code. We are now running **their code** (vendored in `third_party/duan2026/`, edits limited to a short explicit whitelist) on Ada to establish a baseline before any new claim is made.
 > - What is going on and what to do next: **[`HANDOFF.md`](HANDOFF.md)** (for a new agent or teammate), [`PLAN.md`](PLAN.md), [`PROGRESS.md`](PROGRESS.md).
 > - Evidence: [`issues.md`](issues.md), [`reports/duan_codebase_audit.md`](reports/duan_codebase_audit.md), [`reports/progress_log.md`](reports/progress_log.md).
 > - `paper/main.tex` still contains superseded text (see `issues.md` A1-A6). It must be rewritten by the team.
@@ -33,19 +33,19 @@ These are measured numbers from `reports/`, stated without the earlier over-inte
 - **RQ1 (selective vs firing-rate-matched universal features):** at the pre-registered widths both arms are at ceiling and indistinguishable (INT7 99.87% vs 99.96%, p = 0.63; INT6 97.01% vs 97.35%, p = 0.53). The sign flips at INT5 (selective more robust, p = 4e-4) and INT4 (less, p = 3e-4). There is no consistent feature-type effect. Matching on firing rate alone does not control the main driver of survival (activation magnitude; Duan's own data: Spearman 0.78 vs -0.085 for rate).
 - **RQ2 (resource tier):** a small, consistent low-resource penalty exists (INT6 survival High 99.05% / Mid 99.3% / Low 94.4%; language-level exact permutation tests p ~ 0.0003-0.003 at INT6-INT4). This **contradicts** the earlier "null, so the gap is upstream in tokenization" conclusion. It is confounded with script, tokenization and content coverage.
 - **Behavioral link:** exploratory Spearman rho ~ 0.49 (n = 27, uncorrected); about 0.35 after controlling for tier; INT7 loss changes are at noise level.
-- **Instrument validity (the open problem):** our pipeline gives INT7/INT6 survival of 98%/94% where Duan reports 81%/51%. Their released data show a degraded regime (no BOS token; baseline WikiText-2 perplexity 458; non-monotone perplexity vs bits). Early signal from running **their unmodified code** on Ada at 20k tokens: INT6 survival 49.8% (published 51.3%), baseline perplexity 414 (458), i.e. their regime reproduces on our hardware. The full baseline is the next step.
+- **Instrument validity (the open problem):** our pipeline gives INT7/INT6 survival of 98%/94% where Duan reports 81%/51%. Their released data show a degraded regime (no BOS token; baseline WikiText-2 perplexity 458; non-monotone perplexity vs bits). Early signal from running **their code** (with only device-placement edits) on Ada at 20k tokens: INT6 survival 49.8% (published 51.3%), baseline perplexity 414 (458), i.e. their regime reproduces on our hardware. The full baseline is the next step.
 
 ## 3. The baseline replication of Duan (2026)
 
-We run Duan et al.'s own Phase-3 script on Ada through a *faithful runner* that applies only unavoidable edits (runnable export, second-card placement, their own mode switch); a test proves their computation code is AST-identical. Instructions, results location and pass criteria are in **[`HANDOFF.md`](HANDOFF.md)**. Quick start (needs the Ada environment described there):
+We run **Duan et al.'s own Phase-3 script**. `third_party/duan2026/` is their repository downloaded fresh and pruned to what this study needs; the working copy of the one script we run differs from their file by a short explicit whitelist (delete their unrunnable tail cells, switch off their pruning flag, and four device references so the second bf16 model sits on a second 11 GB card) and nothing else. The tests rebuild the working copy from their pristine file plus that whitelist and require byte equality over the whole file, and carry a committed mutation suite. Details and the exact edit table: `third_party/duan2026/UPSTREAM.md`; instructions, runbook and pass criteria: **[`HANDOFF.md`](HANDOFF.md)**. Quick start (needs the Ada environment described there):
 
 ```bash
-python3 -m unittest discover -s scripts/g0/tests -v          # 41 tests, must say OK
-python3 scripts/g0/make_faithful_runner.py ../duan-sae-feature-survival/scripts/03_gemma_phase3_streaming_sweep.py /tmp/faithful_3b_full.py --mode 3b_full
-# deploy to Ada and: sbatch -J base-full scripts/g0/run_baseline.sbatch full 3b_full     (~5.5 h; compares with their published table automatically)
+python3 -m unittest discover -s scripts/g0/tests -v     # must say OK (includes the vendoring + mutation tests)
+python3 scripts/g0/verify_vendor.py --verify            # pristine files match upstream; working copy == pristine + whitelist
+# deploy and run on Ada (see HANDOFF.md section 3):  sbatch -J base-full run_baseline.sbatch full full     (~4.1 h compute)
 ```
 
-Results are logged to the wandb project `anlp-project` after each run (from their output files, never from inside their code).
+Results are compared with their published table (`scripts/g0/baseline_report.py`, pre-committed bands) and uploaded to the wandb project `anlp-project` after the run, from their own output files, never from inside their code.
 
 ---
 
@@ -74,9 +74,10 @@ always-late/
 │   ├── duan_codebase_audit.md
 │   ├── g0/                  # Duan baseline/diagnostic artifacts, benchmark, env freeze, runner diffs
 │   └── *.json *.csv         # Phase-1 reports (20k-token run; see PROGRESS.md for which are current)
+├── third_party/duan2026/    # THEIR code (pruned, pristine copies + the one working copy we run); see UPSTREAM.md
 ├── src/                     # our own pipeline (HF transformers; independent re-implementation)
 ├── scripts/
-│   ├── g0/                  # Duan baseline replication + diagnostics + wandb + tests (see HANDOFF.md)
+│   ├── g0/                  # baseline launcher, edit whitelist + verifier, comparison report, diagnostics, wandb, tests (see HANDOFF.md)
 │   └── run_phase1_*.py ...  # our Phase-1 scripts
 ├── requirements.txt         # our own pinned stack (not the Ada env used for Duan's code)
 └── writeoff.md              # earlier handoff brief (superseded by HANDOFF.md)
