@@ -1,16 +1,15 @@
 """Regression test for scripts/g0/make_duan_runners_v3.py: it must still generate compilable runners (every anchor
-matches Duan's originals) and the runners must carry the wandb hooks. Skipped if Duan's repo copy is absent.
+matches Duan's originals) and the runners must carry the wandb hooks. Uses the vendored pristine originals.
 Set G0_GENERATOR to test another generator file."""
 import os, py_compile, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 GEN = Path(os.environ.get("G0_GENERATOR", HERE.parent / "make_duan_runners_v3.py"))
-DUAN = HERE.parents[3] / "duan-sae-feature-survival" / "scripts"          # sibling of the repo, outside git
+DUAN = HERE.parents[2] / "third_party" / "duan2026" / "pristine" / "scripts"   # vendored byte-identical originals
 O3, O6 = DUAN / "03_gemma_phase3_streaming_sweep.py", DUAN / "06_gemma_sliding_window_ppl_check.py"
 
 
-@unittest.skipUnless(O3.exists() and O6.exists(), "Duan's repo copy not found next to the repo")
 class GeneratedRunners(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

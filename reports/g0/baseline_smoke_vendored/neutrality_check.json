@@ -1,0 +1,42 @@
+{
+ "what": "smoke of the VENDORED script third_party/duan2026/scripts/03_gemma_phase3_streaming_sweep.py (their file + 5 whitelisted edits, run under IPython) in their 3a_test mode (temporary copy differing by the single RUN_MODE line), 20k tokens, 2 x RTX 2080 Ti",
+ "job": "23463 (gnode057), exit 0, 14 min 27 s incl. model download",
+ "vendored_script_sha256_prefix_of_smoke_copy": "29b337670b1355a8",
+ "bit_identity": {
+  "vs_generator_based_smoke_job_23419": {
+   "summary_max_abs_diff": 0.0,
+   "per_feature_corr_max_abs_diff": 0.0
+  },
+  "vs_v3_runner_R0_job_23355": {
+   "summary_max_abs_diff": 0.0,
+   "per_feature_corr_max_abs_diff": 0.0
+  },
+  "per_feature_rows_each": 16384,
+  "conditions": [
+   "FP16_baseline",
+   "RTN_INT8",
+   "RTN_INT6"
+  ],
+  "active_flags_identical": true
+ },
+ "results": {
+  "baseline_ppl": 414.073,
+  "int8": {
+   "ppl_delta_pct": 2.06,
+   "survived_pct": 96.15,
+   "median_r": 0.971271
+  },
+  "int6": {
+   "ppl_delta_pct": 3.26,
+   "survived_pct": 49.821,
+   "median_r": 0.899351
+  },
+  "n_active": 6702
+ },
+ "peak_gpu_mib_per_card": {
+  "0": 8205,
+  "1": 7993
+ },
+ "display_under_ipython": "worked without any edit to their file",
+ "wandb": "https://wandb.ai/karma-skz-/anlp-project/runs/f722c81a"
+}

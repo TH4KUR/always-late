@@ -1,0 +1,455 @@
+--- pristine/scripts/03_gemma_phase3_streaming_sweep.py
++++ scripts/03_gemma_phase3_streaming_sweep.py
+@@ -76,6 +76,7 @@
+ torch.set_grad_enabled(False)
+ 
+ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
++WORK_DEVICE = "cuda:1" if torch.cuda.device_count() > 1 else DEVICE  # [G0-EDIT 2] second bf16 model on a second card when one exists (11 GB cards); identical to the shipped behaviour on one large GPU
+ print("Device:", DEVICE)
+ if torch.cuda.is_available():
+     print("GPU:", torch.cuda.get_device_name(0))
+@@ -115,7 +116,7 @@
+     BITS_TO_TEST = [8, 7, 6, 5, 4]
+     BATCH_SIZE = 1
+     INCLUDE_INT4 = True
+-    RUN_PRUNING = True
++    RUN_PRUNING = False  # [G0-EDIT 1] their own flag: their pruning stage is not needed for this study
+ else:
+     raise ValueError("RUN_MODE must be '3a_test' or '3b_full'.")
+ 
+@@ -146,7 +147,7 @@
+             model = HookedTransformer.from_pretrained_no_processing(
+                 name,
+                 device=device,
+-                dtype=torch.bfloat16 if device == "cuda" else torch.float32,
++                dtype=torch.bfloat16 if str(device).startswith("cuda") else torch.float32,  # [G0-EDIT 3] was: device == "cuda" (would silently give float32 for "cuda:1")
+             )
+ 
+             model.eval()
+@@ -164,7 +165,7 @@
+ 
+ 
+ model_ref, MODEL_NAME_USED = load_gemma_tl_model(MODEL_CANDIDATES)
+-model_work, _ = load_gemma_tl_model([MODEL_NAME_USED])
++model_work, _ = load_gemma_tl_model([MODEL_NAME_USED], device=WORK_DEVICE)  # [G0-EDIT 4]
+ 
+ print("Reference and work models loaded.")
+ 
+@@ -287,7 +288,7 @@
+ 
+ def restore_model_work():
+     model_work.load_state_dict(original_state_cpu, strict=True)
+-    model_work.to(DEVICE)
++    model_work.to(WORK_DEVICE)  # [G0-EDIT 5]
+     model_work.eval()
+     torch.cuda.empty_cache()
+     gc.collect()
+@@ -852,408 +853,3 @@
+ for f in sorted(glob.glob("phase3_gemma_outputs_3b_full_500k_L12/*summary*.csv")):
+     print(f, os.path.getsize(f) / 1e6, "MB")
+ 
+-# %% Cell 22
+-import torch
+-
+-def target_tl_weight(name):
+-    """
+-    Target the main transformer matrix weights.
+-    This matches the Phase 2/3 RTN setup.
+-    """
+-    target_names = ["W_Q", "W_K", "W_V", "W_O", "W_in", "W_out"]
+-    return any(t in name for t in target_names)
+-
+-
+-@torch.no_grad()
+-def quantize_rtn_per_channel_tl(model, bits=8):
+-    """
+-    Simulated per-output-channel RTN quantization.
+-
+-    For weight shape (..., d_out), reduce over all dimensions except last,
+-    giving one scale per output channel.
+-    """
+-    qmax = (2 ** (bits - 1)) - 1
+-    qmin = -(2 ** (bits - 1))
+-
+-    n_tensors = 0
+-    n_params = 0
+-
+-    for name, param in model.named_parameters():
+-        if not target_tl_weight(name):
+-            continue
+-
+-        w = param.data
+-
+-        if w.ndim == 1:
+-            scale = w.abs().max() / qmax
+-        else:
+-            scale = w.abs().amax(
+-                dim=tuple(range(w.ndim - 1)),
+-                keepdim=True
+-            ) / qmax
+-
+-        scale = torch.where(scale == 0, torch.ones_like(scale), scale)
+-
+-        q = torch.round(w / scale).clamp(qmin, qmax)
+-        param.data = (q * scale).to(w.dtype)
+-
+-        n_tensors += 1
+-        n_params += w.numel()
+-
+-    print(f"Quantized INT{bits}: tensors={n_tensors}, params={n_params:,}")
+-    return {
+-        "bits": bits,
+-        "n_tensors": n_tensors,
+-        "n_params": n_params,
+-    }
+-
+-# %% Cell 23
+-DIAG_TOKENS = 50_000
+-
+-seq_len = tokens_2d.shape[1]
+-n_diag_seqs = DIAG_TOKENS // seq_len
+-tokens_diag = tokens_2d[:n_diag_seqs].contiguous()
+-
+-print("Original tokens:", tokens_2d.numel())
+-print("Diagnostic tokens:", tokens_diag.numel())
+-print("tokens_diag shape:", tokens_diag.shape)
+-
+-# %% Cell 24
+-corrected_ppl_df = corrected_ppl_sweep(
+-    model_ref=model_ref,
+-    model_work=model_work,
+-    tokens_2d=tokens_diag,
+-    bits_list=[8, 7, 6],
+-    batch_size=1
+-)
+-
+-display(corrected_ppl_df)
+-
+-corrected_ppl_df.to_csv(
+-    OUTPUT_DIR / "int7_investigation_corrected_ppl_sweep_50k.csv",
+-    index=False
+-)
+-
+-# %% Cell 25
+-def make_random_token_subsets(tokens_2d, n_seqs_per_subset=300, seeds=[0, 1, 2, 3, 4]):
+-    subsets = []
+-
+-    n = tokens_2d.shape[0]
+-
+-    for seed in seeds:
+-        g = torch.Generator(device="cpu")
+-        g.manual_seed(seed)
+-
+-        idx = torch.randperm(n, generator=g)[:min(n_seqs_per_subset, n)]
+-        subset = tokens_2d[idx].contiguous()
+-
+-        subsets.append((seed, subset))
+-
+-    return subsets
+-
+-
+-def ppl_for_bits_on_subset(model_ref, model_work, subset, bits=None, batch_size=1):
+-    if bits is None:
+-        loss, ppl, n_tokens = compute_ppl_shifted_manual(
+-            model_ref,
+-            subset,
+-            batch_size=batch_size,
+-            desc="subset FP16"
+-        )
+-        return loss, ppl, n_tokens
+-
+-    restore_work_from_ref(model_work, model_ref)
+-    quantize_rtn_per_channel_tl(model_work, bits=bits)
+-
+-    loss, ppl, n_tokens = compute_ppl_shifted_manual(
+-        model_work,
+-        subset,
+-        batch_size=batch_size,
+-        desc=f"subset INT{bits}"
+-    )
+-
+-    restore_work_from_ref(model_work, model_ref)
+-    return loss, ppl, n_tokens
+-
+-
+-subsets = make_random_token_subsets(
+-    tokens_2d,
+-    n_seqs_per_subset=300,
+-    seeds=[0, 1, 2, 3, 4]
+-)
+-
+-rows = []
+-
+-for seed, subset in subsets:
+-    print(f"\n==============================")
+-    print(f"Seed {seed}, subset shape {tuple(subset.shape)}")
+-    print(f"==============================")
+-
+-    fp16_loss, fp16_ppl, n_tokens = ppl_for_bits_on_subset(
+-        model_ref, model_work, subset, bits=None, batch_size=1
+-    )
+-
+-    int8_loss, int8_ppl, _ = ppl_for_bits_on_subset(
+-        model_ref, model_work, subset, bits=8, batch_size=1
+-    )
+-
+-    int7_loss, int7_ppl, _ = ppl_for_bits_on_subset(
+-        model_ref, model_work, subset, bits=7, batch_size=1
+-    )
+-
+-    int6_loss, int6_ppl, _ = ppl_for_bits_on_subset(
+-        model_ref, model_work, subset, bits=6, batch_size=1
+-    )
+-
+-    rows.append({
+-        "seed": seed,
+-        "subset_pred_tokens": n_tokens,
+-
+-        "fp16_loss": fp16_loss,
+-        "int8_loss": int8_loss,
+-        "int7_loss": int7_loss,
+-        "int6_loss": int6_loss,
+-
+-        "fp16_ppl": fp16_ppl,
+-        "int8_ppl": int8_ppl,
+-        "int7_ppl": int7_ppl,
+-        "int6_ppl": int6_ppl,
+-
+-        "int8_delta_pct": (int8_ppl / fp16_ppl - 1) * 100,
+-        "int7_delta_pct": (int7_ppl / fp16_ppl - 1) * 100,
+-        "int6_delta_pct": (int6_ppl / fp16_ppl - 1) * 100,
+-    })
+-
+-subset_repro_df = pd.DataFrame(rows)
+-display(subset_repro_df)
+-
+-print("\nSummary:")
+-print(subset_repro_df[["int8_delta_pct", "int7_delta_pct", "int6_delta_pct"]].describe().to_string())
+-
+-subset_repro_df.to_csv(OUTPUT_DIR / "int7_subset_reproducibility.csv", index=False)
+-print("Saved:", OUTPUT_DIR / "int7_subset_reproducibility.csv")
+-
+-# %% Cell 26
+-def target_tl_weight(name):
+-    target_names = ["W_Q", "W_K", "W_V", "W_O", "W_in", "W_out"]
+-    return any(t in name for t in target_names)
+-
+-
+-@torch.no_grad()
+-def quantization_weight_diagnostics(model_ref, bits_list=[8, 7, 6, 5, 4], max_tensors=None):
+-    rows = []
+-
+-    for bits in bits_list:
+-        qmax = (2 ** (bits - 1)) - 1
+-        qmin = -(2 ** (bits - 1))
+-
+-        print(f"\n=== INT{bits}: expected qmin={qmin}, qmax={qmax} ===")
+-
+-        n_seen = 0
+-
+-        for name, param in model_ref.named_parameters():
+-            if not target_tl_weight(name):
+-                continue
+-
+-            w = param.detach()
+-
+-            if w.ndim == 1:
+-                scale = w.abs().max() / qmax
+-            else:
+-                scale = w.abs().amax(
+-                    dim=tuple(range(w.ndim - 1)),
+-                    keepdim=True
+-                ) / qmax
+-
+-            scale = torch.where(scale == 0, torch.ones_like(scale), scale)
+-
+-            q = torch.round(w / scale).clamp(qmin, qmax)
+-            wq = (q * scale).to(w.dtype)
+-
+-            mse = (w.float() - wq.float()).pow(2).mean().item()
+-            mae = (w.float() - wq.float()).abs().mean().item()
+-            rel_mae = mae / (w.float().abs().mean().item() + 1e-12)
+-
+-            cos = torch.nn.functional.cosine_similarity(
+-                w.float().flatten(),
+-                wq.float().flatten(),
+-                dim=0
+-            ).item()
+-
+-            rows.append({
+-                "bits": bits,
+-                "name": name,
+-                "shape": str(tuple(w.shape)),
+-                "qmin_expected": qmin,
+-                "qmax_expected": qmax,
+-                "q_min_seen": float(q.min().item()),
+-                "q_max_seen": float(q.max().item()),
+-                "mse": mse,
+-                "mae": mae,
+-                "rel_mae": rel_mae,
+-                "cosine": cos,
+-                "scale_shape": str(tuple(scale.shape)),
+-            })
+-
+-            n_seen += 1
+-            if max_tensors is not None and n_seen >= max_tensors:
+-                break
+-
+-    df = pd.DataFrame(rows)
+-
+-    summary = df.groupby("bits").agg(
+-        mean_mse=("mse", "mean"),
+-        mean_mae=("mae", "mean"),
+-        mean_rel_mae=("rel_mae", "mean"),
+-        mean_cosine=("cosine", "mean"),
+-        min_q_seen=("q_min_seen", "min"),
+-        max_q_seen=("q_max_seen", "max"),
+-    ).reset_index()
+-
+-    return df, summary
+-
+-
+-qdiag_df, qdiag_summary = quantization_weight_diagnostics(
+-    model_ref,
+-    bits_list=[8, 7, 6, 5, 4]
+-)
+-
+-display(qdiag_summary)
+-display(qdiag_df.head(20))
+-
+-qdiag_df.to_csv(OUTPUT_DIR / "int7_quantization_weight_diagnostics_by_tensor.csv", index=False)
+-qdiag_summary.to_csv(OUTPUT_DIR / "int7_quantization_weight_diagnostics_summary.csv", index=False)
+-
+-print("Saved diagnostics.")
+-
+-# %% Cell 27
+-# =========================
+-# 50k diagnostic token subset
+-# =========================
+-
+-DIAG_TOKENS = 50_000
+-
+-seq_len = tokens_2d.shape[1]
+-n_diag_seqs = DIAG_TOKENS // seq_len
+-tokens_diag = tokens_2d[:n_diag_seqs].contiguous()
+-
+-print("Original tokens:", tokens_2d.numel())
+-print("Diagnostic tokens:", tokens_diag.numel())
+-print("tokens_diag shape:", tokens_diag.shape)
+-
+-# %% Cell 28
+-import torch
+-import torch.nn.functional as F
+-import pandas as pd
+-from tqdm.auto import tqdm
+-
+-@torch.no_grad()
+-def logits_drift_check_50k(
+-    model_ref,
+-    model_work,
+-    tokens_diag,
+-    bits_list=[8, 7, 6],
+-    n_batches=50,
+-    batch_size=1,
+-):
+-    rows = []
+-
+-    for bits in bits_list:
+-        print(f"\n=== Logit drift INT{bits} on 50k diagnostic subset ===")
+-
+-        restore_work_from_ref(model_work, model_ref)
+-        quantize_rtn_per_channel_tl(model_work, bits=bits)
+-
+-        for bi, i in enumerate(
+-            tqdm(
+-                range(0, tokens_diag.shape[0], batch_size),
+-                desc=f"INT{bits} logits"
+-            )
+-        ):
+-            if bi >= n_batches:
+-                break
+-
+-            batch = tokens_diag[i:i + batch_size]
+-
+-            logits_ref = model_ref(batch, return_type="logits").float()
+-            logits_q = model_work(batch, return_type="logits").float()
+-
+-            # Compare next-token prediction logits only
+-            a = logits_ref[:, :-1, :].reshape(-1, logits_ref.size(-1))
+-            b = logits_q[:, :-1, :].reshape(-1, logits_q.size(-1))
+-
+-            mse = (a - b).pow(2).mean().item()
+-            mae = (a - b).abs().mean().item()
+-            cos = torch.nn.functional.cosine_similarity(
+-                a.flatten(),
+-                b.flatten(),
+-                dim=0
+-            ).item()
+-
+-            labels = batch[:, 1:]
+-
+-            loss_ref = F.cross_entropy(
+-                logits_ref[:, :-1, :].reshape(-1, logits_ref.size(-1)),
+-                labels.reshape(-1),
+-                reduction="mean"
+-            ).item()
+-
+-            loss_q = F.cross_entropy(
+-                logits_q[:, :-1, :].reshape(-1, logits_q.size(-1)),
+-                labels.reshape(-1),
+-                reduction="mean"
+-            ).item()
+-
+-            rows.append({
+-                "bits": bits,
+-                "batch_idx": bi,
+-                "logit_mse": mse,
+-                "logit_mae": mae,
+-                "logit_cosine": cos,
+-                "loss_ref": loss_ref,
+-                "loss_q": loss_q,
+-                "loss_delta": loss_q - loss_ref,
+-            })
+-
+-            del logits_ref, logits_q, a, b, labels
+-            torch.cuda.empty_cache()
+-
+-        restore_work_from_ref(model_work, model_ref)
+-
+-    return pd.DataFrame(rows)
+-
+-
+-logit_drift_df = logits_drift_check_50k(
+-    model_ref=model_ref,
+-    model_work=model_work,
+-    tokens_diag=tokens_diag,
+-    bits_list=[8, 7, 6],
+-    n_batches=50,
+-    batch_size=1,
+-)
+-
+-summary = logit_drift_df.groupby("bits").agg({
+-    "logit_mse": ["mean", "std"],
+-    "logit_mae": ["mean", "std"],
+-    "logit_cosine": ["mean", "std"],
+-    "loss_delta": ["mean", "std"],
+-}).reset_index()
+-
+-display(summary)
+-
+-logit_drift_df.to_csv(
+-    OUTPUT_DIR / "int7_logit_drift_check_50k.csv",
+-    index=False
+-)
+-
+-summary.to_csv(
+-    OUTPUT_DIR / "int7_logit_drift_check_50k_summary.csv",
+-    index=False
+-)
+-
+-print("Saved:")
+-print(OUTPUT_DIR / "int7_logit_drift_check_50k.csv")
+-print(OUTPUT_DIR / "int7_logit_drift_check_50k_summary.csv")
+-
+-# %% Cell 29
+-
