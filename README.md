@@ -4,8 +4,13 @@
 **Institution**: International Institute of Information Technology, Hyderabad (IIIT-H)  
 **Team**: Always Late (AlwaysLate)  
 **Authors**: Hemang Joshi, Eashaan Thakur, Shardul Joshi, Nikhita Ravi  
-**Submission Package**: `AlwaysLate-Mid.zip`  
 **GitHub Repository**: [https://github.com/TH4KUR/always-late](https://github.com/TH4KUR/always-late)
+
+> **Status (2026-10-16). Read before using any number from this repository.**
+> A code-and-results review (`issues.md`) found that the earlier headline claims in this README and in `paper/main.tex` are **not supported by the team's own data**, and that our replication of Duan et al. (2026) was an independent re-implementation that was never validated against their code. We are now running **their code** on Ada to establish a baseline before any new claim is made.
+> - What is going on and what to do next: **[`HANDOFF.md`](HANDOFF.md)** (for a new agent or teammate), [`PLAN.md`](PLAN.md), [`PROGRESS.md`](PROGRESS.md).
+> - Evidence: [`issues.md`](issues.md), [`reports/duan_codebase_audit.md`](reports/duan_codebase_audit.md), [`reports/progress_log.md`](reports/progress_log.md).
+> - `paper/main.tex` still contains superseded text (see `issues.md` A1-A6). It must be rewritten by the team.
 
 ---
 
@@ -20,106 +25,72 @@ We track Gemma-2-2B residual-stream features at Layer 12 using Gemma Scope JumpR
 
 ---
 
-## 2. Key Empirical Findings (Mid-Submission Production Run)
+## 2. What the results currently say (20,000 tokens/language run; details in `PROGRESS.md` and `issues.md`)
 
-The full 27-language production pipeline was executed on the Ada GPU cluster (`gnode004`):
+These are measured numbers from `reports/`, stated without the earlier over-interpretation. Treat them as *provisional* until the baseline (section 3) closes the instrument-validity question.
 
-1. **27-Language Selectivity Landscape (1,996 features isolated at Layer 12)**:
-   - **High-Resource (685 features):** English (229), Japanese (87), Chinese (83), German (65), French (65), Portuguese (49), Spanish (49), Korean (32), Russian (26).
-   - **Mid-Resource (397 features):** Turkish (67), Thai (67), Tamil (59), Vietnamese (43), Polish (41), Hindi (34), Bengali (34), Indonesian (33), Ukrainian (19).
-   - **Low-Resource (914 features):** Yoruba (216), Lao (180), Khmer (153), Igbo (90), Sundanese (66), Amharic (65), Telugu (49), Kannada (48), Hausa (47).
-   - *Discovery:* Low-resource languages allocate the **largest** selective subspace ($45.8\%$ of selective features), showing that LLMs isolate non-Latin and low-resource semantics into dedicated, less-shared feature subspaces.
+- **Selectivity:** 2,342 of 11,670 supported layer-12 features pass the selectivity cut S(f) >= 3 (High tier 839, Mid 444, Low 1,059). S >= 3 is a loose criterion (a feature firing equally in 9 of 27 languages passes), the null cutoff is not a calibrated null, panel content is not matched across languages, and only 19 of 27 languages have >= 50 selective features (`issues.md` C1-C3).
+- **RQ1 (selective vs firing-rate-matched universal features):** at the pre-registered widths both arms are at ceiling and indistinguishable (INT7 99.87% vs 99.96%, p = 0.63; INT6 97.01% vs 97.35%, p = 0.53). The sign flips at INT5 (selective more robust, p = 4e-4) and INT4 (less, p = 3e-4). There is no consistent feature-type effect. Matching on firing rate alone does not control the main driver of survival (activation magnitude; Duan's own data: Spearman 0.78 vs -0.085 for rate).
+- **RQ2 (resource tier):** a small, consistent low-resource penalty exists (INT6 survival High 99.05% / Mid 99.3% / Low 94.4%; language-level exact permutation tests p ~ 0.0003-0.003 at INT6-INT4). This **contradicts** the earlier "null, so the gap is upstream in tokenization" conclusion. It is confounded with script, tokenization and content coverage.
+- **Behavioral link:** exploratory Spearman rho ~ 0.49 (n = 27, uncorrected); about 0.35 after controlling for tier; INT7 loss changes are at noise level.
+- **Instrument validity (the open problem):** our pipeline gives INT7/INT6 survival of 98%/94% where Duan reports 81%/51%. Their released data show a degraded regime (no BOS token; baseline WikiText-2 perplexity 458; non-monotone perplexity vs bits). Early signal from running **their unmodified code** on Ada at 20k tokens: INT6 survival 49.8% (published 51.3%), baseline perplexity 414 (458), i.e. their regime reproduces on our hardware. The full baseline is the next step.
 
-2. **RQ1 Survival Contrast (Quintile-Matched Universal Controls)**:
-   - **INT7:** Selective Survived = **96.30%** ($n=135$) vs. Matched Universal = **99.15%** ($n=117$) ($p = 0.1390$).
-   - **INT6:** Selective Survived = **94.07%** ($n=135$) vs. Matched Universal = **94.87%** ($n=117$) ($p = 0.7828$).
-   - *Directional verification:* Language-selective features degrade faster than frequency-matched universal features in both quantization regimes.
+## 3. The baseline replication of Duan (2026)
 
-3. **RQ2 Resource-Tier Disparity & Upstream Mechanism Localization**:
-   - **INT7:** High = 95.56% ($n=45$) vs. Low = 95.56% ($n=45$) ($p = 1.0000$).
-   - **INT6:** High = 93.33% ($n=45$) vs. Low = 91.11% ($n=45$) ($p = 0.6939$).
-   - *Continuous Drift:* Median Pearson correlation degrades monotonically from High ($r = 0.9990$) $\to$ Mid ($r = 0.9957$) $\to$ Low ($r = 0.9892$) at INT7, and from High ($r = 0.9958$) $\to$ Mid ($r = 0.9915$) $\to$ Low ($r = 0.9748$) at INT6.
-   - *Scientific Takeaway:* Under our pre-registered framework, failing to reject the categorical null on RQ2 proves that the multilingual quantization gap is **not driven by differential erasure of selective residual-stream features**, localizing the bottleneck upstream to subword tokenization fertility inflation and embedding discretization errors.
+We run Duan et al.'s own Phase-3 script on Ada through a *faithful runner* that applies only unavoidable edits (runnable export, second-card placement, their own mode switch); a test proves their computation code is AST-identical. Instructions, results location and pass criteria are in **[`HANDOFF.md`](HANDOFF.md)**. Quick start (needs the Ada environment described there):
 
----
+```bash
+python3 -m unittest discover -s scripts/g0/tests -v          # 41 tests, must say OK
+python3 scripts/g0/make_faithful_runner.py ../duan-sae-feature-survival/scripts/03_gemma_phase3_streaming_sweep.py /tmp/faithful_3b_full.py --mode 3b_full
+# deploy to Ada and: sbatch -J base-full scripts/g0/run_baseline.sbatch full 3b_full     (~5.5 h; compares with their published table automatically)
+```
 
-## 3. External Models and Dataset Links
-
-* **Base Model Checkpoint:**  
-  [`unsloth/gemma-2-2b`](https://huggingface.co/unsloth/gemma-2-2b) (bfloat16 ungated mirror, 5.2 GB).
-* **Gemma Scope JumpReLU SAE:**  
-  [`google/gemma-scope-2b-pt-res`](https://huggingface.co/google/gemma-scope-2b-pt-res) (Layer 12, `average_l0_82`, 16,384 latents).
-* **FLORES-200 Parallel Evaluation Corpus:**  
-  [Meta NLLB FLORES-200 Official Public Archive](https://dl.fbaipublicfiles.com/nllb/flores200_dataset.tar.gz) (all 204 languages).
-* **Extension Models & SAEs:**  
-  [`meta-llama/Llama-3.2-1B`](https://huggingface.co/meta-llama/Llama-3.2-1B) and [`seonglae/gemma-2-2b-l12-topk-16k`](https://huggingface.co/seonglae/gemma-2-2b-l12-topk-16k).
+Results are logged to the wandb project `anlp-project` after each run (from their output files, never from inside their code).
 
 ---
 
-## 4. Repository Layout
+## 4. External Models and Dataset Links
+
+* **Base Model Checkpoint:** [`unsloth/gemma-2-2b`](https://huggingface.co/unsloth/gemma-2-2b) (bf16 ungated mirror, 5.2 GB; used by our own pipeline; not byte-compared with the official checkpoint). Duan's code uses the gated [`google/gemma-2-2b`](https://huggingface.co/google/gemma-2-2b) (fp32, 10.5 GB).
+* **Gemma Scope JumpReLU SAE:** [`google/gemma-scope-2b-pt-res`](https://huggingface.co/google/gemma-scope-2b-pt-res) (Layer 12, `average_l0_82`, 16,384 latents; identical to Duan's `layer_12/width_16k/canonical`).
+* **FLORES-200 Parallel Evaluation Corpus:** [Meta NLLB FLORES-200 Official Public Archive](https://dl.fbaipublicfiles.com/nllb/flores200_dataset.tar.gz) (original FLORES-200, not FLORES+).
+* **Reference implementation (not ours):** Duan (2026), arXiv:2606.03002, artifact `https://anonymous.4open.science/r/sae-feature-survival-quantization-0141/`.
+* **Extension Models & SAEs (planned, never run):** [`meta-llama/Llama-3.2-1B`](https://huggingface.co/meta-llama/Llama-3.2-1B) and [`seonglae/gemma-2-2b-l12-topk-16k`](https://huggingface.co/seonglae/gemma-2-2b-l12-topk-16k).
+* **Experiment tracking:** wandb project `anlp-project` (entity `karma-skz-`).
+
+---
+
+## 5. Repository Layout
 
 ```
 always-late/
-├── paper/
-│   ├── main.tex             # Complete 7-8 page ACL-formatted submission draft
-│   ├── references.bib       # Clean BibTeX citations for all 17 references
-│   ├── acl.sty              # Official ACL formatting package
-│   ├── acl_natbib.bst       # Official ACL bibliography style
-│   └── figures/             # 300 DPI publication-ready figures for Overleaf
-├── figures/                 # Root publication figures
-├── reports/                 # Empirical JSON logs and CSV summary tables
-│   ├── selectivity_results_27lang.json
-│   ├── phase1_survival_results_27lang.json
-│   ├── selectivity_summary_table.csv
-│   └── mid_submission_results.json
-├── src/
-│   ├── data_utils.py        # 27-language panel, FLORES unpacker, token equalizer
-│   ├── sae_models.py        # JumpReLU & TopK SAE architectures in pure PyTorch
-│   ├── pipeline.py          # Native HF forward hooks, residual stream extraction
-│   ├── rtn_quant.py         # Custom per-channel symmetric RTN fake quantization
-│   └── survival.py          # Deng selectivity, Pearson r, quintile matching
+├── HANDOFF.md               # START HERE for a new agent: mission, rules, runbook
+├── PLAN.md  PROGRESS.md     # current plan and honest status
+├── issues.md                # review findings (what is wrong or unsupported, with evidence)
+├── paper/                   # ACL-format draft (contains superseded text; team must rewrite)
+├── figures/  paper/figures/ # NOTE: some figures here are synthetic/stale (issues.md D5)
+├── reports/
+│   ├── progress_log.md      # dated evidence log
+│   ├── duan_codebase_audit.md
+│   ├── g0/                  # Duan baseline/diagnostic artifacts, benchmark, env freeze, runner diffs
+│   └── *.json *.csv         # Phase-1 reports (20k-token run; see PROGRESS.md for which are current)
+├── src/                     # our own pipeline (HF transformers; independent re-implementation)
 ├── scripts/
-│   ├── run_phase1_selectivity_pipeline.py
-│   ├── run_phase1_survival_quintile_matching.py
-│   ├── statistical_analysis.py
-│   ├── analyze_selectivity.py
-│   ├── run_behavioral_loss_link.py
-│   ├── generate_master_results.py
-│   └── generate_mid_submission_figures.py
-├── PROGRESS.md              # Detailed chronological progress log
-├── PLAN.md                  # Task split, milestones, and deliverables
-├── requirements.txt         # Core dependencies
-└── AlwaysLate-Mid.zip        # Packaged submission archive
+│   ├── g0/                  # Duan baseline replication + diagnostics + wandb + tests (see HANDOFF.md)
+│   └── run_phase1_*.py ...  # our Phase-1 scripts
+├── requirements.txt         # our own pinned stack (not the Ada env used for Duan's code)
+└── writeoff.md              # earlier handoff brief (superseded by HANDOFF.md)
 ```
 
 ---
 
-## 5. Reproduction Instructions
+## 6. Reproducing our own Phase-1 numbers (provisional)
 
-### Installation
+The exact commands that produced the reported 20k-token results are recorded in `reports/progress_log.md` (2026-10-02 entry). Caveats found in the review (`issues.md` D4): the default language list in `run_phase1_selectivity_pipeline.py` contains the `cmn_Hans` alias (28 entries, Mandarin twice), so **pass an explicit 27-code `--languages` list**; the survival numbers come from `run_phase1_survival_gpu.py` (all selective features; needs ~18 GB of GPU memory at 20k tokens), not the CPU script; the `.features.npz` it needs is git-ignored and must be regenerated by the selectivity step.
+
 ```bash
-git clone https://github.com/TH4KUR/always-late.git
-cd always-late
 pip install -r requirements.txt
 ```
 
-### Full 27-Language Extraction & Hypothesis Testing
-```bash
-# 1. Run 27-Language Selectivity Extraction on GPU (FLORES dev, 1500 tokens/lang)
-python scripts/run_phase1_selectivity_pipeline.py --tokens 1500 --output reports/selectivity_results_27lang.json
-
-# 2. Run INT7 and INT6 Survival Evaluation on Held-Out FLORES devtest
-python scripts/run_phase1_survival_quintile_matching.py --report reports/selectivity_results_27lang.json --bitwidths 7,6 --tokens 1500 --output reports/phase1_survival_results_27lang.json
-
-# 3. Execute Confirmatory Hypothesis Testing with Holm-Bonferroni Correction
-python scripts/statistical_analysis.py --report reports/phase1_survival_results_27lang.json
-
-# 4. Generate Master Results and Publication Figures (300 DPI)
-python scripts/generate_master_results.py
-python scripts/generate_mid_submission_figures.py
-```
-
 ### Compiling the Paper
-The `paper/` directory is completely self-contained. To compile:
-* **Overleaf:** Zip the `paper/` folder and upload it directly to Overleaf (compiler: pdfLaTeX).
-* **Local LaTeX:** `cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex`.
+The `paper/` directory is self-contained: `cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex`, or upload it to Overleaf. Do not submit it before its results and discussion are rewritten to match `reports/` (see `issues.md` A1-A6).

@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-10-16): this was the hand-off for the session of 2026-10-02. Several statements below are outdated or were later found wrong (see `issues.md`). The current hand-off is `HANDOFF.md`.**
+
 # Handoff brief: ANLP mid-submission, continuing on a new machine
 
 You are a fresh Claude Code session with no memory of prior conversation. This file is a complete handoff from a previous session that did real work on this project. Read this entire file before doing anything. The user has moved to a borrowed machine with an **RTX PRO 6000 96GB VRAM and 250GB disk** — compute/disk are not the constraint they were before.

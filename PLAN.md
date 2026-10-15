@@ -1,4 +1,49 @@
-# Team Plan — Mid Submission
+# Team Plan
+
+## Current plan (updated 2026-10-16): replicate Duan's code as the baseline, then diagnose
+
+Context: our "replication" of Duan (2026) was an independent re-implementation never validated against their code (`issues.md` B1). Their released data show a degraded regime (no BOS, baseline perplexity 458.5). Final submission: **Oct 31, 2026**. **For a new agent: start with `HANDOFF.md`.** Evidence, verified Ada facts and the closure protocol: `reports/duan_codebase_audit.md` (section 4 venue, 6 runs, 7 closure protocol). Their code is at `../duan-sae-feature-survival/` (outside this repo, read-only).
+
+**Principle:** no new claim goes into the paper until the Duan question is closed, and the baseline is a **replication of their code, not a modification of it**.
+
+### Layer 1: BASELINE (faithful replication; the next thing to do)
+- Runner: `scripts/g0/make_faithful_runner.py`. Only three kinds of edit, all unavoidable: **[FIX]** runnable export, **[PLACE]** second bf16 model on a second 11 GB card (+ the dtype-test fix it requires), **[MODE]** their own `3a_test`/`3b_full` switch. `scripts/g0/tests/test_faithful.py` proves every computation function is AST-identical to their cells 1-21.
+- Launcher: `scripts/g0/run_baseline.sbatch <arm> <3a_test|3b_full>`; it runs their code, then compares with their published table (`scripts/g0/baseline_report.py`, pre-committed bands) and uploads to wandb post hoc.
+- Configuration: their shipped `3b_full` (500k tokens, INT8/7/6/5/4, matched-perplexity pruning). ~5.5 h.
+- **Q1 passes** iff INT7 survival is within 5 pp of 81.26%, INT6 within 10 pp of 51.30%, active features within 10% of 7,144, perplexity signs hold (INT7 improves, INT6 worsens). If it fails: do not touch their code; rerun once, record versions, report.
+
+### Layer 2: DIAGNOSTICS (modified code, always labelled as such; only after Layer 1 and the user's OK)
+v3 runner (`make_duan_runners_v3.py`: BOS arms, INT0 control, ladder 0/16/12/8/7/6, snapshots, resume, wandb heartbeats), R1-R3 BOS arms, R4 their script 06, R5 our pipeline on their exact tokens, gates and dispositions in audit section 7. These explain *why* the pipelines differ; they are not part of the replication.
+
+### Venue (verified on Ada 2026-10-15/16)
+- **Ada `u22`, 2 x RTX 2080 Ti per job** (`--constraint=2080ti --gres=gpu:2`); `model_ref`+SAE on `cuda:0`, `model_work` on `cuda:1`.
+- **No GPU larger than 11 GB is reachable** from our accounts (3090/3080 Ti partitions closed to `nlp`/`research`).
+- Gotchas that already cost us jobs: `/share1` is **not mounted on compute nodes** (and has a 3,000-file quota); `/home2` has ~19 GB free and is shared with other jobs (keep the model off it: each job fetches the 10.5 GB model to node-local `/scratch`, ~18 min, deleted afterwards); never set `HF_HUB_DISABLE_XET=1`.
+- Not usable: this laptop (6 GB GPU, ~100 KB/s HF downloads), gnode001-042 (GTX 1080 Ti).
+- Limits: QOS `medium` caps us at 4 GPUs per user, shared with the semeval job; use `-A nlp` for parallel arms (untested).
+- **Logging: wandb** (project `anlp-project`, entity `karma-skz-`; key already in `~/.netrc` on Ada). Baseline results are uploaded after the run from their output files; the v3 runner also logs heartbeats during the run. `G0_WANDB=0` disables.
+- **Measured cost (TransformerLens, 2 x 2080 Ti):** peak GPU 8.2 of 11 GiB per card, host RSS 21.8 GB, perplexity pass 3.3 it/s, streaming pass 1.08 it/s: **40 min per condition at 500k tokens**.
+
+### Status
+| # | Step | Status |
+|---|---|---|
+| 0 | Download Duan's repo; audit; verify released tables offline | **done** (their INT6 per-feature data reproduces their headline row exactly) |
+| 1 | Probe Ada; build their stack; benchmark; independent re-verification by a second reviewer | **done** |
+| 2 | `hf auth login` on Ada; wandb logging (test-first, live-tested) | **done** |
+| 3 | v3-runner smoke R0 (job 23355): TL works on both cards, 8.2 GiB peak. Early signal at 20k tokens: INT6 survived 49.8% (published 51.3%), baseline ppl 414 (458) | **done** |
+| 4 | Faithful runner + 41 tests (AST identity of their computation code, mutation-checked) | **done** |
+| 5 | Faithful smoke on Ada (`3a_test`, job 23419) and neutrality check against R0 | **done: exit 0, bit-identical to R0** (max abs difference 0.0 over all summary columns and 3 x 16,384 per-feature correlations); `reports/g0/baseline_smoke/` |
+| 6 | **Baseline: faithful `3b_full` on Ada (~5.5 h)** | **next; needs the user's go-ahead** |
+| 7 | Apply Q1; record in `reports/progress_log.md`; archive `reports/g0/baseline_full/` | after 6 |
+| 8 | Layer 2 diagnostics R1-R3, R4, R5 and the closure protocol (audit section 7) | after 7, with the user's OK (~15 GPU-hours for R1-R3) |
+| 9 | Re-derive the confirmatory family at discriminating bit-widths (INT6-INT4), language-level permutation test with a script covariate and TOST, content-matched sentence sets, activation-magnitude matching, BOS excluded (`issues.md` section 7) | after 8 |
+| 10 | Rewrite abstract/discussion/README results to match `reports/` (`issues.md` A1-A6); remove synthetic figures. **Prose must be written by the team (course policy).** | after 9 |
+
+**Honest limits:** thresholds in the closure protocol are judgement calls; the faithful runner has no resume (adding it would modify their loop), so a failed baseline job is rerun whole; Ada's stack (transformers 5.19 / torch 2.14) differs from our paper's (5.17 / 2.13); the protocol is terminal for this question but cannot stop a reviewer asking a different one later.
+
+---
+
+## Historical plan (mid submission, superseded by the section above)
 
 Deadline: **Oct 2, 2026** (3 days out as of this writing). Full guidelines: `project_guidelines.txt`. Full research design: `anlp_revised.txt`.
 
