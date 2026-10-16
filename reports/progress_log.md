@@ -466,3 +466,10 @@ The Phase-1 FLORES stage was not re-run under the audit; INT5/INT4 in the BOS re
 - **Section 7.4 checklist** status in audit 6.7: F1, F2, F3 (L0), F4 (scaling in TL) done; explained variance, a batch-layout null and the HF-stack scaling test not run.
 - **Deployed the schema-aware logger and launchers to Ada** (`g0_wandb.py`, `run_g0.sbatch`, `run_baseline.sbatch`, `baseline_report.py`; sha256 equal to the repo's, module imports on Ada's Python, no job of mine was running). R1 rebuilt under the fixed schema (7 values equal; the combined no-BOS `gate1_*` values recorded in its summary and notes), old run `339751bd` deleted after the guarded dry run; `wandb_rebuild.py verify`: 15 runs, 0 offenders. A-011 and D-008 are complete.
 - Nothing is queued or running on Ada. Remaining decisions are the team's: BOS vs no BOS as the study regime (D-001, now with three supporting sources and the L0 check), D-003, D-006, optional R3 / script 06.
+
+## 2026-10-17 (~05:00 IST, scheduled check) -- nothing running; V-7 and V-8 closed
+
+- Ada: no jobs of mine; repo clean and in sync. No runs, fetches or wandb actions were due.
+- **V-8 (installed transformer-lens 3.9.0):** `HookedTransformer.forward` calls `to_tokens(..., prepend_bos=...)` (default True) only for str / list input and uses a tensor input unchanged (lines 408-417), so Duan's token-tensor calls add no BOS; the library docstring (lines 125-130) says position 0 is a resting state for attention heads (supports, does not prove, the attention-sink hypothesis for A-014).
+- **V-7 (Sin Jing Xuan et al., PDF text):** same SAE (`layer_12/width_16k/average_l0_82`), data are machine-translated feature-selected 7-token fragments, BOS never mentioned (A-019): motivation only, not evidence about natural-text selectivity.
+- Open verification items: V-4 (Borobia, extension only), V-5 (Joshi et al. class of each of the 27 languages vs the paper's table), V-6 remainder (FLORES split sizes and parallelism on the archive), V-10 (was the OSF registration frozen: only the user knows).
