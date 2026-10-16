@@ -14,7 +14,7 @@ Context: our "replication" of Duan (2026) was an independent re-implementation n
 - **Q1 passes** iff INT7 survival is within 5 pp of 81.26%, INT6 within 10 pp of 51.30%, active features within 10% of 7,144, perplexity signs hold (INT7 improves, INT6 worsens). If it fails: do not touch their code; rerun once, record versions, report.
 
 ### Layer 2: DIAGNOSTICS (modified code, always labelled as such; only after Layer 1 and the user's OK)
-v3 runner (`make_duan_runners_v3.py`: BOS arms, INT0 control, ladder 0/16/12/8/7/6, snapshots, resume, wandb heartbeats), R1-R3 BOS arms, R4 their script 06, R5 our pipeline on their exact tokens, gates and dispositions in audit section 7. These explain *why* the pipelines differ; they are not part of the replication.
+v3 runner (`make_duan_runners_v3.py`: BOS arms, INT0 control, ladder 0/16/12/8/7/6, snapshots, resume, wandb heartbeats), R1-R3 BOS arms, R4 their script 06, R5 our pipeline on their exact tokens, gates and dispositions in audit section 7. These explain *why* the pipelines differ; they are not part of the replication. **Audit in progress (user request 2026-10-16: "audit why our implementation was so off compared to theirs")**: `reports/audit_our_vs_duan.md` lists 12 differences between the pipelines and fixes the reading rules before the results exist; R2 (their code + BOS, job 23643) and R5 (our pipeline on their tokens, one factor flipped per cell; smoke 23648 -> R5a 23649, R5b 23652) are queued/running; HANDOFF section 11 says what to do on the next prompt.
 
 ### Venue (verified on Ada 2026-10-15/16)
 - **Ada `u22`, 2 x RTX 2080 Ti per job** (`--constraint=2080ti --gres=gpu:2`); `model_ref`+SAE on `cuda:0`, `model_work` on `cuda:1`.
@@ -36,7 +36,9 @@ v3 runner (`make_duan_runners_v3.py`: BOS arms, INT0 control, ladder 0/16/12/8/7
 | 5 | Smoke of the vendored file on Ada (their `3a_test` mode, job 23463) | **done: exit 0, bit-identical to the two earlier smokes** (max abs diff 0.0 over all summary columns and 3 x 16,384 per-feature correlations); `reports/g0/baseline_smoke_vendored/` |
 | 6 | **Baseline: their `3b_full` (pruning off) on Ada**, job 23472, gnode057, 4 h 08 min, exit 0 | **done** |
 | 7 | Apply Q1; record in `reports/progress_log.md`; archive `reports/g0/baseline_full/` | **done: Q1 PASSED**: all five rungs within 0.15 pp survival / 0.0008 median r of their published table; per-feature Spearman 0.9996; baseline ppl 458.4 vs 458.5; INT7 perplexity -5.61% vs -5.65% (HANDOFF section 9) |
-| 8 | Layer 2 diagnostics R1-R3, R4, R5 and the closure protocol (audit section 7) | after 7, with the user's OK (~15 GPU-hours for R1-R3) |
+| 8a | **Audit of the disagreement**: `reports/audit_our_vs_duan.md`; R5 code (`r5_run.py`, `r5_lib.py`, `run_r5.sbatch`, 31 CPU tests + mutation checks), `r5_compare.py` (10 tests) | **done** (found so far, statically: HF `sdpa` skips Gemma-2 attention soft-capping, our `src/` uses sdpa; a TL-RMSNorm claim in `issues.md` was wrong and is corrected) |
+| 8b | **R2** (job 23643) and **R5** (smoke 23648, R5a 23649, R5b 23652) on Ada | **running / queued** (2026-10-16); results are read on the next prompt (HANDOFF section 11) |
+| 8c | R1/R3 (superseded by the R5 BOS cells), R4 (their script 06), the closure protocol (audit section 7) | optional, after 8b |
 | 9 | Re-derive the confirmatory family at discriminating bit-widths (INT6-INT4), language-level permutation test with a script covariate and TOST, content-matched sentence sets, activation-magnitude matching, BOS excluded (`issues.md` section 7) | after 8 |
 | 10 | Rewrite abstract/discussion/README results to match `reports/` (`issues.md` A1-A6); remove synthetic figures. **Prose must be written by the team (course policy).** | after 9 |
 

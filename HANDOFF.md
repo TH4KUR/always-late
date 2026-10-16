@@ -35,7 +35,10 @@ The team's own pipeline (HF transformers, `src/`) gives INT7/INT6 survival of 98
 | Earlier generator-based "faithful runner" | **removed**: it rewrote their file by string substitution and its test compared only 13 function bodies, not top-level statements |
 | Smoke of the vendored file on Ada (job 23463, their `3a_test` mode) | **done, passed; bit-identical to the two earlier smokes** (section 8) |
 | **Baseline: their `3b_full` config (500k tokens, INT8..INT4), pruning off** | **DONE, Q1 PASSED** (job 23472; section 10). Results in `reports/g0/baseline_full/`. Do not rerun. |
-| Diagnostics R1-R3 (BOS arms), R4 (their script 06), R5 (our pipeline on their tokens) | not run; R5 script not written |
+| **Audit of the disagreement** (`reports/audit_our_vs_duan.md`: 12 listed differences, pre-committed reading rules) | **written; experiments running** (section 11) |
+| R2 (their code + BOS prepended and masked; ladder INT0/16/12/8/7/6), Slurm 23643 | **running** (submitted 2026-10-16 12:04 IST, ~4.8 h) |
+| R5 (our HF pipeline on their tokens, one factor flipped per cell): `r5_run.py`, `r5_lib.py`, `run_r5.sbatch`; 31 CPU tests (+ mutation checks) pass locally and in the Ada env | smoke 23648 -> R5a 23649, R5b 23652 (`afterok`) queued (section 11) |
+| R1/R3 (BOS arms of the v3 generator), R4 (their script 06) | not run; R3 is superseded by `T_keep`/`O_keep` |
 
 ## 3. Runbook for the baseline
 
@@ -69,7 +72,7 @@ Commands from the repo root. Ada: `ssh karma@ada-gw1` (key auth works from the u
 
 ## 5. After the baseline: diagnostics (modified code, clearly labelled)
 
-Only after the baseline exists and the user agrees. Design and closure rules: `reports/duan_codebase_audit.md` sections 6-7. Tooling: `scripts/g0/make_duan_runners_v3.py` (reads the vendored *pristine* scripts; BOS arms, INT0 restore-only control, ladder, snapshots for block-bootstrap CIs, resume, wandb heartbeats) and `scripts/g0/run_g0.sbatch`. R1 no BOS, R2 BOS prepended with position 0 masked, R3 BOS prepended and kept (our pipeline's regime), each ~4.8 h; R4 = their script 06 (does not parse as shipped; the generator fixes it); R5 = our pipeline on their exact tokens (script not written). The closure protocol maps every outcome to a terminal disposition so Duan is never re-verified afterwards.
+Only after the baseline exists and the user agrees. Design and closure rules: `reports/duan_codebase_audit.md` sections 6-7. Tooling: `scripts/g0/make_duan_runners_v3.py` (reads the vendored *pristine* scripts; BOS arms, INT0 restore-only control, ladder, snapshots for block-bootstrap CIs, resume, wandb heartbeats) and `scripts/g0/run_g0.sbatch`. R1 no BOS, R2 BOS prepended with position 0 masked, R3 BOS prepended and kept (our pipeline's regime), each ~4.8 h; R4 = their script 06 (does not parse as shipped; the generator fixes it); R5 = our pipeline on their exact tokens (`scripts/g0/r5_run.py`, section 11; its design and the list of differences it isolates are in `reports/audit_our_vs_duan.md`). The closure protocol maps every outcome to a terminal disposition so Duan is never re-verified afterwards.
 
 ## 6. Do-not list
 
@@ -89,6 +92,8 @@ Only after the baseline exists and the user agrees. Design and closure rules: `r
 | `scripts/g0/verify_vendor.py` | the edit whitelist + verification/build CLI |
 | `scripts/g0/run_baseline.sbatch`, `baseline_report.py` | baseline launcher and the comparison with their published table (post-hoc wandb) |
 | `scripts/g0/make_duan_runners_v3.py`, `run_g0.sbatch`, `unit_test_runner.py` | diagnostic runner (modified; not a replication) |
+| `scripts/g0/r5_run.py`, `r5_lib.py`, `run_r5.sbatch`, `tests_torch/` | R5: OUR pipeline on THEIR tokens with factor toggles (attention impl, SAE dtype, quantizer grouping, BOS regime); torch tests (`/tmp/claude-1000/torchvenv/bin/python -m unittest discover -s scripts/g0/tests_torch -v`, 31 tests, CPU) |
+| `reports/audit_our_vs_duan.md` | why our pipeline disagrees with theirs: difference table, experiments, pre-committed reading rules, results (section 6 there, filled in after the jobs finish) |
 | `scripts/g0/g0_wandb.py`, `selftest_wandb.py`, `bench_fit.py` | wandb helper and its live self-test; Ada fit/speed benchmark |
 | `scripts/g0/tests/` | stdlib tests (vendoring + mutation suite, comparison, logger, generator) |
 | `reports/g0/` | smoke results, benchmark JSON, env freeze, diffs of diagnostic runners |
@@ -127,5 +132,28 @@ Largest survival gap over all five rungs **0.15 pp**; largest median-r gap **0.0
 
 ## 10. Open questions for the user
 
-1. Run the diagnostics (Layer 2: BOS arms R1-R3 ~15 GPU-hours, their script 06, our pipeline on their tokens) to explain why our pipeline gives 98%/94% where theirs gives 81%/51%? Check Ada's outbound network first. Parallel arms need `-A nlp` (untested).
+1. ~~Run the diagnostics?~~ Authorised on 2026-10-16 ("audit why our implementation was so off compared to theirs"; R2 and R5 started). Still open: R1/R3 (superseded by the R5 BOS cells), their script 06, INT5/INT4 in R5, a cell for the corpus/population difference (D5/D6) if `O_keep` does not land near our original 98%/94%.
 2. Who writes the paper's rewritten results/discussion (must be the team)?
+
+## 11. Audit jobs in flight and what to do on the next prompt (written 2026-10-16, around midday IST)
+
+**NEXT PROMPT: check R2/R5 status and fetch results.** The user asked for the jobs to be queued and the response ended; the next message is the cue to look.
+
+| Job | What | Ada output | Log |
+|---|---|---|---|
+| 23643 `R2-bos-mask` | their TL script, BOS prepended to identical 256-token windows, position 0 masked; ladder INT0, 16, 12, 8, 7, 6; 2 GPUs, ~4.8 h | `/home2/karma/duan-verify/out/R2/` | `logs/R2-bos-mask-23643.out` |
+| 23648 `R5smoke` | 40 windows, cells `T,O`, INT8, wandb off, selfcheck on 4 windows (gate for the two jobs below) | `/home2/karma/duan-verify/r5/R5smoke/` | `logs/R5smoke-23648.out` |
+| 23649 `R5a` | cells `T,O,T_sdpa,T_bf16sae`, INT8/7/6, 1 GPU (est. 3 h) | `r5/R5a/<cell>/` | `logs/R5a-23649.out` |
+| 23652 `R5b` | cells `T_rowquant,T_mask,T_keep,O_keep`, INT8/7/6, 1 GPU (est. 3 h) | `r5/R5b/<cell>/` | `logs/R5b-23652.out` |
+
+(`/home2/karma/duan-verify/` prefix on every path. R5a/R5b start only if the smoke exits 0 (`--dependency=afterok`); if the smoke fails they stay `DependencyNeverSatisfied` and must be cancelled (`scancel 23649 23652`), the bug fixed test-first, the code redeployed (`rsync` `r5_run.py r5_lib.py g0_wandb.py` and `src/*.py` to `r5code/`, `run_r5.sbatch` to the parent), and resubmitted. A finished cell is skipped on resubmission with the same out-name.)
+
+Steps for the next prompt, in order:
+
+1. `ssh karma@ada-gw1 'squeue -u karma; sacct -j 23643,23648,23649,23652 -o JobID,JobName,State,Elapsed,ExitCode'`; read the log tails (`tail -c 3000 ... | tr '\r' '\n'`). Never touch the user's other jobs.
+2. **Smoke first.** Read `r5/R5smoke/selfcheck.json`: `int0_identity.identical` must be true; record `sdpa_vs_eager` (the size of the missing soft-cap effect), `ours_fp32_vs_sae_lens` (should be Jaccard ~1, max abs diff ~0), `ours_bf16_vs_fp32`, and the token SHA-256. Check the first cell's printed numbers are sane (FP perplexity ~450, not NaN).
+3. When R5a/R5b/R2 finish, fetch the results (small files only: summaries, selfcheck, a few per-feature files; leave `*.pt`, snapshots and the full per-feature set on Ada): `rsync -a --exclude '*.pt' --exclude 'snap_*' karma@ada-gw1:/home2/karma/duan-verify/r5/R5a/ reports/g0/r5/R5a/` (same for R5b, R5smoke; R2 to `reports/g0/R2_bos_mask/`).
+4. Verify the R2/R5 token windows agree on Ada (`torch.equal(R2_tokens[:, 1:], R5_tokens)` on the two `tokens_2d.pt` files, for the `R2` and `R5a` directories); the R5 selfcheck also records the SHA-256.
+5. Judge with the rules in `reports/audit_our_vs_duan.md` section 5 (anchor `T` vs `reports/g0/baseline_full`, single-factor deltas with the 5 pp / 1 pp thresholds, `O` vs `T`, `O_keep` vs our original 98.28 % / 94.31 %, R2 vs `T_mask`, R2's own 10 pp rule). Fill section 6 of the audit with the numbers; do not move the thresholds.
+6. Upload to wandb from the fetched files if the live logging failed (project `anlp-project`; Ada has outbound access again since ~12:00; if not, use the throwaway venv on the laptop and never handle the key). Update `PROGRESS.md`, `PLAN.md`, `README.md`, `reports/progress_log.md`, `issues.md` B1 with what was found, then commit and push to `main`.
+7. Report to the user: which differences are material, which are not, and what is still unexplained. No paper prose.
