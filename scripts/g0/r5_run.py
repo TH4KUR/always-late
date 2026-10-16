@@ -38,6 +38,7 @@ _T = CellSpec(attn="eager", sae_dtype="fp32", quant="duan", regime="none")
 CELLS = {
     "T": _T,                                                # "theirs-in-HF" anchor: should reproduce the vendored baseline if the factors are enumerated
     "O": CellSpec("sdpa", "bf16", "ours", "none"),          # our pipeline as it stands, no BOS, on their tokens
+    "O_mask": CellSpec("sdpa", "bf16", "ours", "mask"),     # our pipeline as it stands with BOS prepended and position 0 masked (completes Q4 for the mask regime)
     "O_keep": CellSpec("sdpa", "bf16", "ours", "keep"),     # our pipeline as it stands INCLUDING BOS, on their tokens (links R5 back to our original numbers)
     "T_sdpa": CellSpec("sdpa", "fp32", "duan", "none"),
     "T_bf16sae": CellSpec("eager", "bf16", "duan", "none"),

@@ -234,6 +234,8 @@ class Specs(unittest.TestCase):
         self.assertEqual((O.attn, O.sae_dtype, O.quant, O.regime), ("sdpa", "bf16", "ours", "none"))
         OK = r5_run.CELLS["O_keep"]     # our full pipeline with BOS on their 500k tokens: the cell that links R5 back to our original 98% / 94%
         self.assertEqual((OK.attn, OK.sae_dtype, OK.quant, OK.regime), ("sdpa", "bf16", "ours", "keep"))
+        OM = r5_run.CELLS["O_mask"]     # our pipeline as is with BOS masked: completes Q4 for the mask regime (T_mask vs R2 is the other half)
+        self.assertEqual((OM.attn, OM.sae_dtype, OM.quant, OM.regime), ("sdpa", "bf16", "ours", "mask"))
 
 
 if __name__ == "__main__":
