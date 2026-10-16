@@ -75,6 +75,8 @@ Interpretation limits: survival percentages are counts over ~7,100 features, so 
 
 ## 6. Results (R2 and R5 complete)
 
+wandb (project `anlp-project`, entity `karma-skz-`; all runs finished): `g0-R2-23643` (`168a7bd4`), `R5a-23649-{T, O, T_sdpa, T_bf16sae}`, `R5b-23660-{T_rowquant, T_mask, T_keep, O_keep}`; each run logged live heartbeats and per-condition metrics and uploaded the cell's files as an artifact.
+
 ### 6.1 Selfcheck of the smoke job (23648; small samples: 4 windows = 1,024 positions for each check, `reports/g0/r5_smoke/selfcheck.json`)
 
 - **Restore integrity**: quantize-then-restore leaves the FP logits bit-identical (max abs difference 0.0). The cell results do not depend on leftover state.
