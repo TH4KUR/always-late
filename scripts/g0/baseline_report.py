@@ -133,7 +133,7 @@ def main():
         import os
         lg = G0Logger.start(project=os.environ.get("WANDB_PROJECT", "anlp-project"), entity=os.environ.get("WANDB_ENTITY") or None,
                             name=os.environ.get("G0_WANDB_NAME", f"baseline-{run.name}"), config={"run_dir": str(run), "kind": "baseline-replication"},
-                            out_dir=run, tags=["g0", "baseline", "duan03-faithful"])
+                            out_dir=run, tags=["g0", "baseline", "duan03-vendored"])
         for r_ in rep_rows:
             lg.log_condition({k: (_f(v) if _f(v) is not None else v) for k, v in r_.items()})
         lg.log_table(cmp_["rows"], key="comparison_vs_published")

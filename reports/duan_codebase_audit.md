@@ -191,6 +191,25 @@ After any disposition: record it in `reports/progress_log.md`; archive `reports/
 ### 7.4 Our own pipeline's validity (independent of Duan; required before any paper claim)
 F1: own WikiText-2 perplexity with BOS under the default (`sdpa`) and `eager` attention backends. F2: HF-vs-TL FP feature agreement on identical tokens (part of Q4). F3: mean L0 ≈ 82 and explained variance on text. F4: FP-vs-FP noise floor under a different batch layout plus the INT16/INT12 scaling test on our pipeline. F5: log versions; Ada's stack (transformers 5.19.0 / torch 2.14.1) differs from the paper's (5.17.0 / 2.13.0), so repeat F4 under the pinned versions or document the difference. F6: FLORES content validity (`issues.md` C1) is a separate problem outside G0.
 
+## 7.5 Baseline result (Layer 1, job 23472, 2026-10-16)
+
+**Q1 passed on all four bands.**
+
+| condition | ppl (ours / published) | ppl delta % | survived % (r>0.9) | median r | active features |
+|---|---|---|---|---|---|
+| FP16 baseline | 458.4 / 458.5 | 0 / 0 | 100 / 100 | 1.0000 / 1.0000 | 7,134 / 7,144 |
+| RTN INT8 | 469.9 / 470.6 | +2.52 / +2.62 | 99.12 / 99.09 | 0.9707 / 0.9707 | same |
+| RTN INT7 | 432.7 / 432.6 | **-5.61 / -5.65** | 81.19 / 81.26 | 0.9499 / 0.9499 | same |
+| RTN INT6 | 476.8 / 476.8 | +4.02 / +3.99 | 51.15 / 51.30 | 0.9027 / 0.9027 | same |
+| RTN INT5 | 539.7 / 539.8 | +17.73 / +17.72 | 27.57 / 27.72 | 0.7775 / 0.7780 | same |
+| RTN INT4 | 670.4 / 669.8 | +46.25 / +46.08 | 12.39 / 12.40 | 0.4504 / 0.4512 | same |
+
+Largest survival gap over all five rungs **0.15 pp**; largest median-r gap **0.0008**; per-feature Spearman at INT6 over 7,121 commonly active features: **r 0.99965, firing rate 0.99995**. Job 23472 on gnode057: 4 h 08 min, exit 0, no errors, peak GPU 8,183 / 8,009 MiB of 11,264 per card. Vendored script sha256 prefix `7f1e638a0508c3ca` (verified by the launcher before running). wandb: `https://wandb.ai/karma-skz-/anlp-project/runs/86f26788`.
+
+**What it means.** (1) Their published Gemma Phase-3 numbers are reproducible with their own code on different hardware (our Turing GPUs emulate bf16; theirs did not), including the odd parts: baseline perplexity of 458 and **INT7 improving perplexity by 5.6%**. So their degraded regime is real in their pipeline, not a typo or a one-off. (2) The per-feature correlations agree across hardware at 0.9996, so the INT6 survival values are a deterministic function of the weight perturbation, **not** hardware-noise realizations; this argues against the idea that their numbers are chaotic rounding noise (inference; the INT16/INT12 noise-floor control of the closure protocol has not been run). (3) It does **not** yet explain why our own pipeline gives 98%/94% at INT7/INT6: that is the diagnostics layer (BOS regime, TransformerLens vs HF, SAE dtype), which has not been run. (4) Not demonstrated: that our four device edits equal their unmodified single-device run (no GPU of >= 16 GB is reachable); the agreement above is strong indirect evidence.
+
+**Operational note.** On 2026-10-16 ~09:24 Ada lost *all* outbound internet (W&B, Hugging Face and PyPI time out from the login node; they answered from the laptop). The job's own post-hoc wandb upload therefore failed (non-fatal, by design) and the results were uploaded from the laptop. Check outbound access before launching any job that downloads the 10.5 GB model.
+
 ## 8. Open items
 - **Layer 1 baseline** (their `3b_full`, pruning off, ~4.1 h): runbook in `HANDOFF.md` section 3.
 - Layer 2 (R1-R3, R4, R5): after the baseline, with the user's OK. R5 (our pipeline on their tokens) and the section 7.4 checks need a new script on our side; not written yet.

@@ -1,0 +1,2 @@
+condition,n_tokens,n_total_features,n_active_features,mean_corr,median_corr,survived_>0.9_pct,degraded_0.5_0.9_pct,damaged_<0.5_pct,layer,bits,perplexity,loss,ppl_delta_pct,method
+RTN INT7,499968,16384,7134,0.943324040875806,0.9499250469474225,81.18867395570507,18.811326044294926,0.0,12,7,432.69992887107634,6.070044482846902,-5.606662511562776,RTN

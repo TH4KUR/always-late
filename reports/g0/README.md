@@ -9,3 +9,5 @@
 | `duan03_modifications_v3.diff`, `duan06_modifications_v3.diff` | unified diffs of the **diagnostic** (v3) runners against Duan's originals | `scripts/g0/make_duan_runners_v3.py` |
 
 Not stored here: model weights, `.pt` tokens/snapshots, wandb run folders (see `.gitignore`). Runs are tracked in wandb project `anlp-project` (entity `karma-skz-`). The baseline run will add `baseline_full/` (their output CSVs, `baseline_report.md/.json`, `gpu_mem.log`).
+
+| `baseline_full/` | **the baseline**: their vendored script, `3b_full` (500k tokens, INT8..INT4, pruning off), job 23472, 4 h 08 min: their per-condition CSVs and per-feature files, `baseline_report.md/.json` (Q1 passed), `gpu_mem.log`; the wandb helper dir and run-id file are git-ignored | Ada 2026-10-16 |

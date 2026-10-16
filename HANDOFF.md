@@ -34,7 +34,7 @@ The team's own pipeline (HF transformers, `src/`) gives INT7/INT6 survival of 98
 | Vendoring tests (exact reconstruction + committed mutation suite) | done: 43 tests in the suite pass |
 | Earlier generator-based "faithful runner" | **removed**: it rewrote their file by string substitution and its test compared only 13 function bodies, not top-level statements |
 | Smoke of the vendored file on Ada (job 23463, their `3a_test` mode) | **done, passed; bit-identical to the two earlier smokes** (section 8) |
-| **Baseline: their `3b_full` config (500k tokens, INT8..INT4), pruning off** | **RUNNING as Slurm job 23472** (gnode057, started 2026-10-16). Next agent: check it (section 3 steps 5-8), do NOT resubmit unless it failed |
+| **Baseline: their `3b_full` config (500k tokens, INT8..INT4), pruning off** | **DONE, Q1 PASSED** (job 23472; section 10). Results in `reports/g0/baseline_full/`. Do not rerun. |
 | Diagnostics R1-R3 (BOS arms), R4 (their script 06), R5 (our pipeline on their tokens) | not run; R5 script not written |
 
 ## 3. Runbook for the baseline
@@ -55,7 +55,7 @@ Commands from the repo root. Ada: `ssh karma@ada-gw1` (key auth works from the u
 5. **Watch.** `squeue -u karma`, `tail -c 2000 /home2/karma/duan-verify/logs/base-full-<jobid>.out | tr '\r' '\n'`, GPU memory in `/home2/karma/duan-verify/baseline/full/gpu_mem.log` (expect ~8.2 GiB per card). Nothing is logged to wandb from inside their code: the report step at the end of the job uploads to project `anlp-project` (entity `karma-skz-`).
 6. **Collect.** `scp -r karma@ada-gw1:/home2/karma/duan-verify/baseline/full/phase3_gemma_outputs_3b_full_500k_L12 reports/g0/baseline_full/`; also `gpu_mem.log` and the slurm log; note the library versions (`reports/g0/ada_env_freeze_20261015.txt`, plus `pip show ipython`).
 7. **Judge with the pre-committed bands** (no moving goalposts): `python3 scripts/g0/baseline_report.py --run-dir reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12 --published third_party/duan2026/pristine/results/tables/phase3_summary_final.csv --per-feature <run>/RTN_INT6_per_feature.csv --published-per-feature third_party/duan2026/pristine/results/per_feature/phase5b_gemma_rtn_int6_vs_pruning_per_feature_overlap.csv`. **Q1 passes** iff INT7 survival is within 5 pp of 81.26%, INT6 within 10 pp of 51.30%, active features within 10% of 7,144, and perplexity signs hold (INT7 improves, INT6 worsens). Also record the per-feature Spearman at INT6 and every INT5/INT4 delta. (Their published table also has a pruning row; it is intentionally not replicated here.)
-8. **Record and decide.** Q1 passes -> baseline established: write the numbers into `reports/progress_log.md`, `PROGRESS.md`, `PLAN.md`, tell the user, then (only if they agree) start the diagnostics (section 5). Q1 fails -> do **not** touch their code: rerun once to check determinism (results were bit-identical across two jobs/nodes in the smoke tests), record versions, report non-reproducibility.
+8. **Record and decide.** (Done for job 23472: Q1 passed.) Q1 passes -> baseline established: write the numbers into `reports/progress_log.md`, `PROGRESS.md`, `PLAN.md`, tell the user, then (only if they agree) start the diagnostics (section 5). Q1 fails -> do **not** touch their code: rerun once to check determinism (results were bit-identical across two jobs/nodes in the smoke tests), record versions, report non-reproducibility.
 
 ## 4. Environment facts that cost us time (all verified)
 
@@ -106,7 +106,26 @@ Their vendored script (their file + the 5 whitelisted edits), run **under IPytho
 
 Different token budgets and splits, so differences are expected; the regime reproduces. **Q1 is NOT evaluated here** (INT7 not run, 20k tokens). Peak GPU memory 8,205 / 7,993 MiB per card.
 
-## 9. Open questions for the user
+## 9. Baseline result (job 23472, completed 2026-10-16)
 
-1. After the baseline: run the diagnostics R1-R3 (~15 GPU-hours)? Parallel arms need `-A nlp` (untested).
+**Q1 passed on all four pre-committed bands** (INT7 survival within 5 pp, INT6 within 10 pp, active features within 10%, perplexity signs): the replication is within ~0.15 pp of their published table at every rung. Outputs: `reports/g0/baseline_full/` (their per-condition CSVs and per-feature files, `baseline_report.md/.json`, `gpu_mem.log`).
+
+| condition | ppl (ours / published) | ppl delta % | survived % (r>0.9) | median r | active features |
+|---|---|---|---|---|---|
+| FP16 baseline | 458.4 / 458.5 | 0 / 0 | 100 / 100 | 1.0000 / 1.0000 | 7,134 / 7,144 |
+| RTN INT8 | 469.9 / 470.6 | +2.52 / +2.62 | 99.12 / 99.09 | 0.9707 / 0.9707 | same |
+| RTN INT7 | 432.7 / 432.6 | **-5.61 / -5.65** | 81.19 / 81.26 | 0.9499 / 0.9499 | same |
+| RTN INT6 | 476.8 / 476.8 | +4.02 / +3.99 | 51.15 / 51.30 | 0.9027 / 0.9027 | same |
+| RTN INT5 | 539.7 / 539.8 | +17.73 / +17.72 | 27.57 / 27.72 | 0.7775 / 0.7780 | same |
+| RTN INT4 | 670.4 / 669.8 | +46.25 / +46.08 | 12.39 / 12.40 | 0.4504 / 0.4512 | same |
+
+Largest survival gap over all five rungs **0.15 pp**; largest median-r gap **0.0008**; per-feature Spearman at INT6 over 7,121 commonly active features: **r 0.99965, firing rate 0.99995**. Job 23472 on gnode057: 4 h 08 min, exit 0, no errors, peak GPU 8,183 / 8,009 MiB of 11,264 per card. Vendored script sha256 prefix `7f1e638a0508c3ca` (verified by the launcher before running). wandb: `https://wandb.ai/karma-skz-/anlp-project/runs/86f26788`.
+
+**What it means.** (1) Their published Gemma Phase-3 numbers are reproducible with their own code on different hardware (our Turing GPUs emulate bf16; theirs did not), including the odd parts: baseline perplexity of 458 and **INT7 improving perplexity by 5.6%**. So their degraded regime is real in their pipeline, not a typo or a one-off. (2) The per-feature correlations agree across hardware at 0.9996, so the INT6 survival values are a deterministic function of the weight perturbation, **not** hardware-noise realizations; this argues against the idea that their numbers are chaotic rounding noise (inference; the INT16/INT12 noise-floor control of the closure protocol has not been run). (3) It does **not** yet explain why our own pipeline gives 98%/94% at INT7/INT6: that is the diagnostics layer (BOS regime, TransformerLens vs HF, SAE dtype), which has not been run. (4) Not demonstrated: that our four device edits equal their unmodified single-device run (no GPU of >= 16 GB is reachable); the agreement above is strong indirect evidence.
+
+**Operational note.** On 2026-10-16 ~09:24 Ada lost *all* outbound internet (W&B, Hugging Face and PyPI time out from the login node; they answered from the laptop). The job's own post-hoc wandb upload therefore failed (non-fatal, by design) and the results were uploaded from the laptop. Check outbound access before launching any job that downloads the 10.5 GB model.
+
+## 10. Open questions for the user
+
+1. Run the diagnostics (Layer 2: BOS arms R1-R3 ~15 GPU-hours, their script 06, our pipeline on their tokens) to explain why our pipeline gives 98%/94% where theirs gives 81%/51%? Check Ada's outbound network first. Parallel arms need `-A nlp` (untested).
 2. Who writes the paper's rewritten results/discussion (must be the team)?

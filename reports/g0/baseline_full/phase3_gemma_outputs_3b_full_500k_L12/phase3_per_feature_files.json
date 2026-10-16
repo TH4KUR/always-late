@@ -1,0 +1,8 @@
+{
+  "FP16_baseline": "phase3_gemma_outputs_3b_full_500k_L12/FP16_baseline_per_feature.csv",
+  "RTN_INT8": "phase3_gemma_outputs_3b_full_500k_L12/RTN_INT8_per_feature.csv",
+  "RTN_INT7": "phase3_gemma_outputs_3b_full_500k_L12/RTN_INT7_per_feature.csv",
+  "RTN_INT6": "phase3_gemma_outputs_3b_full_500k_L12/RTN_INT6_per_feature.csv",
+  "RTN_INT5": "phase3_gemma_outputs_3b_full_500k_L12/RTN_INT5_per_feature.csv",
+  "RTN_INT4": "phase3_gemma_outputs_3b_full_500k_L12/RTN_INT4_per_feature.csv"
+}

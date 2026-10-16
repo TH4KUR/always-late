@@ -142,6 +142,8 @@ Locations: `paper/main.tex:36` (abstract), `:312`, `:334-337` (discussion), `REA
 
 *Most plausible explanation of the gap* (evidence-backed, lower confidence than first stated): the G0 bands were produced in a degraded regime (no BOS, 256-token windows, baseline perplexity 458, non-monotone perplexity), where tiny weight changes cause large feature decorrelation. Our pipeline runs with BOS and has English FLORES loss 3.08, which is comparable to their sliding-window loss 3.84, so much higher survival is expected. Contributing differences that were not isolated are TransformerLens-vs-HF bf16 numerics (TL computes RMSNorm in bf16), the 256 vs 128 window, WikiText vs FLORES, and the fp32 vs bf16 SAE.
 
+*Update 2026-10-16, baseline result.* Running their own vendored code on Ada reproduced their published table to within 0.15 pp at every rung (INT7 81.19% vs 81.26%, INT6 51.15% vs 51.30%; baseline perplexity 458.4 vs 458.5; INT7 perplexity -5.61% vs -5.65%; per-feature Spearman 0.9996). So the numbers G0 targeted are reproducible and are not a hardware or one-off artifact; the open question is now why *our* pipeline differs (BOS regime, TransformerLens vs HF, SAE dtype), which the diagnostics layer would answer. See `HANDOFF.md` section 9.
+
 *What is still not established.*
 - We have never measured our own pipeline's WikiText-2 perplexity, or run it on Duan's exact tokens (WikiText-2 train, 256-token windows, no BOS) with and without BOS. That single experiment would confirm or refute the explanation.
 - Under the proposal's rule (§6, "instrument-validity criterion"), failing G0 downgrades survival comparisons to *descriptive*. The paper labels INT7/INT6 as confirmatory.

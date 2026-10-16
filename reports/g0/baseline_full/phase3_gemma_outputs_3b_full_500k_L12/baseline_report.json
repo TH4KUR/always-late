@@ -1,0 +1,116 @@
+{
+  "comparison": {
+    "rows": [
+      {
+        "condition": "FP16 baseline",
+        "perplexity_rep": 458.40092148885003,
+        "perplexity_pub": 458.53480267202224,
+        "ppl_delta_pct_rep": 0.0,
+        "ppl_delta_pct_pub": 0.0,
+        "survived_rep": 100.0,
+        "survived_pub": 100.0,
+        "d_survived_pp": 0.0,
+        "median_corr_rep": 1.0,
+        "median_corr_pub": 1.0,
+        "d_median_corr": 0.0,
+        "n_active_rep": 7134.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9986002239641657
+      },
+      {
+        "condition": "RTN INT8",
+        "perplexity_rep": 469.94222754185296,
+        "perplexity_pub": 470.5648830080225,
+        "ppl_delta_pct_rep": 2.517731861340433,
+        "ppl_delta_pct_pub": 2.623591549844706,
+        "survived_rep": 99.11690496215307,
+        "survived_pub": 99.09014557670773,
+        "d_survived_pp": 0.026759385445345174,
+        "median_corr_rep": 0.9706829663003368,
+        "median_corr_pub": 0.9706584637033512,
+        "d_median_corr": 2.4502596985609415e-05,
+        "n_active_rep": 7134.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9986002239641657
+      },
+      {
+        "condition": "RTN INT7",
+        "perplexity_rep": 432.69992887107634,
+        "perplexity_pub": 432.6358899221099,
+        "ppl_delta_pct_rep": -5.606662511562776,
+        "ppl_delta_pct_pub": -5.648189101239742,
+        "survived_rep": 81.18867395570507,
+        "survived_pub": 81.25699888017918,
+        "d_survived_pp": -0.06832492447411198,
+        "median_corr_rep": 0.9499250469474225,
+        "median_corr_pub": 0.9498963839818639,
+        "d_median_corr": 2.866296555859016e-05,
+        "n_active_rep": 7134.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9986002239641657
+      },
+      {
+        "condition": "RTN INT6",
+        "perplexity_rep": 476.8236411108342,
+        "perplexity_pub": 476.8236411108342,
+        "ppl_delta_pct_rep": 4.018909814175031,
+        "ppl_delta_pct_pub": 3.9885387831495756,
+        "survived_rep": 51.14942528735632,
+        "survived_pub": 51.30179171332587,
+        "d_survived_pp": -0.15236642596954653,
+        "median_corr_rep": 0.9027254081752699,
+        "median_corr_pub": 0.9026694090394689,
+        "d_median_corr": 5.599913580101035e-05,
+        "n_active_rep": 7134.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9986002239641657
+      },
+      {
+        "condition": "RTN INT5",
+        "perplexity_rep": 539.6768972841579,
+        "perplexity_pub": 539.7675764232008,
+        "ppl_delta_pct_rep": 17.730325569881032,
+        "ppl_delta_pct_pub": 17.71572698033179,
+        "survived_rep": 27.572189514998595,
+        "survived_pub": 27.715565509518473,
+        "d_survived_pp": -0.1433759945198787,
+        "median_corr_rep": 0.7775215887424001,
+        "median_corr_pub": 0.7780036880039277,
+        "d_median_corr": -0.0004820992615276465,
+        "n_active_rep": 7134.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9986002239641657
+      },
+      {
+        "condition": "RTN INT4",
+        "perplexity_rep": 670.4308107799505,
+        "perplexity_pub": 669.8330148944029,
+        "ppl_delta_pct_rep": 46.254245868975175,
+        "ppl_delta_pct_pub": 46.08117224495971,
+        "survived_rep": 12.391365292963275,
+        "survived_pub": 12.402015677491601,
+        "d_survived_pp": -0.010650384528325674,
+        "median_corr_rep": 0.45042116546822925,
+        "median_corr_pub": 0.45124168152747435,
+        "d_median_corr": -0.0008205160592451022,
+        "n_active_rep": 7134.0,
+        "n_active_pub": 7144.0,
+        "active_ratio": 0.9986002239641657
+      }
+    ],
+    "bands": {
+      "int7_survival_within_5pp": true,
+      "int6_survival_within_10pp": true,
+      "active_features_within_10pct": true,
+      "ppl_signs_int7_improves_int6_worsens": true
+    },
+    "q1_pass": true
+  },
+  "per_feature_int6": {
+    "n_common_active": 7121,
+    "n_active_rep": 7134,
+    "n_active_pub": 7144,
+    "spearman_corr": 0.9996451864656191,
+    "spearman_firing_rate": 0.9999528521444792
+  }
+}

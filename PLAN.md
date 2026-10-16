@@ -6,7 +6,7 @@ Context: our "replication" of Duan (2026) was an independent re-implementation n
 
 **Principle:** no new claim goes into the paper until the Duan question is closed, and the baseline is a **replication of their code, not a modification of it**.
 
-### Layer 1: BASELINE (their code, vendored; the next thing to do)
+### Layer 1: BASELINE (their code, vendored; DONE, Q1 passed)
 - Code: `third_party/duan2026/` = their repo downloaded fresh, pruned to the Gemma Phase-3 study. The one script we run is their file plus a short whitelist (`UPSTREAM.md`): delete their unrunnable tail cells (22+), their own `RUN_PRUNING` flag off, and four device references so the second bf16 model sits on a second 11 GB card. No generator, no rewrite; `display()` works unedited under IPython.
 - Proof: `scripts/g0/tests/test_vendor.py` rebuilds the working copy from their pristine file plus the whitelist and requires byte equality over the whole file (top-level statements included); retained files must match the recorded upstream hashes (upstream content tree hash `a84e43da...adc`); a committed mutation suite (13 mutations) must be rejected. The launcher refuses to run unless the deployed file matches `working.sha256`.
 - Launcher: `scripts/g0/run_baseline.sbatch <arm> <full|smoke>`; runs their script under IPython, then compares with their published table (`scripts/g0/baseline_report.py`, pre-committed bands) and uploads to wandb post hoc.
@@ -34,8 +34,8 @@ v3 runner (`make_duan_runners_v3.py`: BOS arms, INT0 control, ladder 0/16/12/8/7
 | 3 | v3-runner smoke R0 (job 23355): TL works on both cards, 8.2 GiB peak. Early signal at 20k tokens: INT6 survived 49.8% (published 51.3%), baseline ppl 414 (458) | **done** |
 | 4 | Vendor their repo (fresh download, byte-identical twice), prune to the Gemma Phase-3 study, whitelist edits, exact-reconstruction + mutation tests | **done** (43 tests pass); the earlier generator-based "faithful runner" was removed |
 | 5 | Smoke of the vendored file on Ada (their `3a_test` mode, job 23463) | **done: exit 0, bit-identical to the two earlier smokes** (max abs diff 0.0 over all summary columns and 3 x 16,384 per-feature correlations); `reports/g0/baseline_smoke_vendored/` |
-| 6 | **Baseline: their `3b_full` (pruning off) on Ada** (job **23472**, gnode057, queued 2026-10-16 right after the vendored smoke passed; ~4.1 h compute + model download; the earlier partial run 23439 was cancelled and moved to `baseline/cancelled_23439` on Ada) | **running** |
-| 7 | Apply Q1; record in `reports/progress_log.md`; archive `reports/g0/baseline_full/` | after 6 |
+| 6 | **Baseline: their `3b_full` (pruning off) on Ada**, job 23472, gnode057, 4 h 08 min, exit 0 | **done** |
+| 7 | Apply Q1; record in `reports/progress_log.md`; archive `reports/g0/baseline_full/` | **done: Q1 PASSED**: all five rungs within 0.15 pp survival / 0.0008 median r of their published table; per-feature Spearman 0.9996; baseline ppl 458.4 vs 458.5; INT7 perplexity -5.61% vs -5.65% (HANDOFF section 9) |
 | 8 | Layer 2 diagnostics R1-R3, R4, R5 and the closure protocol (audit section 7) | after 7, with the user's OK (~15 GPU-hours for R1-R3) |
 | 9 | Re-derive the confirmatory family at discriminating bit-widths (INT6-INT4), language-level permutation test with a script covariate and TOST, content-matched sentence sets, activation-magnitude matching, BOS excluded (`issues.md` section 7) | after 8 |
 | 10 | Rewrite abstract/discussion/README results to match `reports/` (`issues.md` A1-A6); remove synthetic figures. **Prose must be written by the team (course policy).** | after 9 |
