@@ -10,5 +10,6 @@
 
 Not stored here: model weights, `.pt` tokens/snapshots, wandb run folders (see `.gitignore`). Runs are tracked in wandb project `anlp-project` (entity `karma-skz-`). The baseline run will add `baseline_full/` (their output CSVs, `baseline_report.md/.json`, `gpu_mem.log`).
 
+| `r5_smoke/` | smoke job 23648 (R5 code on Ada, 40 windows, cells T and O at INT8): `selfcheck.json`, summaries, `code.sha256` (hashes of the deployed code), key log lines. Not comparable to the 500k-token tables | Ada 2026-10-16 |
 | `audit` (see `../audit_our_vs_duan.md`) | why our pipeline disagrees with theirs; R2 and R5 outputs will be added as `R2_bos_mask/` and `r5/` after the jobs finish (Slurm 23643 / 23648, 23649, 23652; HANDOFF section 11) | Ada, pending |
 | `baseline_full/` | **the baseline**: their vendored script, `3b_full` (500k tokens, INT8..INT4, pruning off), job 23472, 4 h 08 min: their per-condition CSVs and per-feature files, `baseline_report.md/.json` (Q1 passed), `gpu_mem.log`; the wandb helper dir is git-ignored; the on-cluster `wandb_run_id.txt` was removed because that in-job upload failed and never created a run (the results are in wandb run `86f26788`, uploaded from the laptop) | Ada 2026-10-16 |

@@ -1,0 +1,6 @@
+windows (40, 256) = 10,240 tokens; bos_id=2
+default attention: sdpa | dtype: torch.bfloat16
+[T] FP16 baseline: active=6553 survived=100.00% median_r=1.0000 ppl=500.509 (+0.00%)
+[T] RTN INT8: active=6553 survived=93.73% median_r=0.9721 ppl=515.590 (+3.01%)
+[O] FP16 baseline: active=6552 survived=100.00% median_r=1.0000 ppl=503.647 (+0.00%)
+[O] RTN INT8: active=6552 survived=95.89% median_r=0.9760 ppl=516.397 (+2.53%)

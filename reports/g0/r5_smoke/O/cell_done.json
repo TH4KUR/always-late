@@ -1,0 +1,13 @@
+{
+  "cell": "O",
+  "spec": {
+    "attn": "sdpa",
+    "sae_dtype": "bf16",
+    "quant": "ours",
+    "regime": "none"
+  },
+  "bits": [
+    8
+  ],
+  "n_windows": 40
+}

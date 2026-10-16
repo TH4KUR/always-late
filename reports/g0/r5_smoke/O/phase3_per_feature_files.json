@@ -1,0 +1,4 @@
+{
+  "FP16_baseline": "/home2/karma/duan-verify/r5/R5smoke/O/FP16_baseline_per_feature.csv",
+  "RTN_INT8": "/home2/karma/duan-verify/r5/R5smoke/O/RTN_INT8_per_feature.csv"
+}

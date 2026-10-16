@@ -58,7 +58,7 @@ All run on Ada, 1 x RTX 2080 Ti per R5 job (R2 uses 2). Our R5 code is `scripts/
 | `O` | sdpa | bf16 | ours | none | our pipeline as is, no BOS |
 | `O_keep` | sdpa | bf16 | ours | **kept** | our pipeline as is, with BOS, on their 500k tokens |
 
-Jobs: smoke 23648 (40 windows, cells `T,O`, INT8, wandb off) -> `R5a` 23649 (`T,O,T_sdpa,T_bf16sae`) and `R5b` 23652 (`T_rowquant,T_mask,T_keep,O_keep`), both `afterok` on the smoke, ladder INT8/7/6. The first stage of every job is the **selfcheck**: INT0 identity (quantize then restore leaves the FP logits bit-identical; the job aborts if not), sdpa-vs-eager size on layer-12 residuals/logits/loss, our fp32 JumpReLU vs the installed `sae_lens` SAE on real activations, bf16-vs-fp32 SAE agreement, and a SHA-256 of the token windows (R2's `tokens_2d.pt[:, 1:]` must equal R5's `tokens_2d.pt`).
+Jobs: smoke 23648 (40 windows, cells `T,O`, INT8, wandb off; **completed, exit 0, 10 min 57 s**) -> `R5a` 23649 (`T,O,T_sdpa,T_bf16sae`, account `research`) and `R5b` **23660** (`T_rowquant,T_mask,T_keep,O_keep`, account `nlp`), ladder INT8/7/6. The first R5b submission (23652, `research`) was cancelled: R2 (18 CPUs) + R5a (14) + R5b (14) exceeded QOS `medium`'s 40-CPU per-user cap (`-c 8` with `--mem=40G` is inflated to 14 CPUs), so it sat in `QOSMaxCpuPerUserLimit`; `-A nlp` (QOS `normal`, no per-user cap) started immediately. The first stage of every job is the **selfcheck**: INT0 identity (quantize then restore leaves the FP logits bit-identical; the job aborts if not), sdpa-vs-eager size on layer-12 residuals/logits/loss, our fp32 JumpReLU vs the installed `sae_lens` SAE on real activations, bf16-vs-fp32 SAE agreement, and a SHA-256 of the token windows (R2's `tokens_2d.pt[:, 1:]` must equal R5's `tokens_2d.pt`).
 
 Not covered: D6 (population), D7 (weights mirror), the INT5/INT4 rungs, and any claim about which pipeline is *correct*.
 
@@ -75,4 +75,15 @@ Interpretation limits: survival percentages are counts over ~7,100 features, so 
 
 ## 6. Results
 
-*(to be filled in when R2 and R5 finish; see `HANDOFF.md` "Next prompt")*
+### 6.1 Selfcheck of the smoke job (23648; small samples: 4 windows = 1,024 positions for each check, `reports/g0/r5_smoke/selfcheck.json`)
+
+- **Restore integrity**: quantize-then-restore leaves the FP logits bit-identical (max abs difference 0.0). The cell results do not depend on leftover state.
+- **Our SAE code vs `sae_lens`** (the SAE their script uses): active set identical (94,326 of 94,326 entries, Jaccard 1.0), maximum value difference 0.0. Our JumpReLU encoder is not a source of the gap; any SAE effect is the dtype (D3).
+- **bf16 vs fp32 SAE on the same activations**: Jaccard 0.9930 (about 0.7% of active entries differ), mean relative difference 0.25% on entries active in both, maximum absolute difference 0.43.
+- **sdpa vs eager (D2)**: layer-12 resid_post differs by 1.98% in relative L2 (max abs 2.0); logits differ by up to 2.4; mean loss changes by -0.006 (6.764 -> 6.759). This is the combined difference between the two attention paths (soft-capping plus kernel numerics), not the soft-cap alone. Whether it matters for survival is what `T` vs `T_sdpa` measures.
+- Token windows: SHA-256 `f7340069...54163f2` for the 40-window smoke subset (the full jobs record their own).
+- Smoke cells (40 windows = 10,240 tokens, INT8 only; **not comparable to the 500k-token tables**): `T` INT8 survival 93.73%, median r 0.9721, perplexity +3.01% (their full-run INT8 median r is 0.9707); `O` INT8 survival 95.89%, median r 0.9760, +2.53%. The survival levels at this sample size are depressed (their own vendored smoke at 20k tokens had INT8 survival 96.15%, against 99.09% at 500k).
+
+### 6.2 R2 and R5 cells
+
+*(to be filled in when the jobs finish; see `HANDOFF.md` section 11)*

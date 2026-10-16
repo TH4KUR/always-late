@@ -37,7 +37,7 @@ The team's own pipeline (HF transformers, `src/`) gives INT7/INT6 survival of 98
 | **Baseline: their `3b_full` config (500k tokens, INT8..INT4), pruning off** | **DONE, Q1 PASSED** (job 23472; section 10). Results in `reports/g0/baseline_full/`. Do not rerun. |
 | **Audit of the disagreement** (`reports/audit_our_vs_duan.md`: 12 listed differences, pre-committed reading rules) | **written; experiments running** (section 11) |
 | R2 (their code + BOS prepended and masked; ladder INT0/16/12/8/7/6), Slurm 23643 | **running** (submitted 2026-10-16 12:04 IST, ~4.8 h) |
-| R5 (our HF pipeline on their tokens, one factor flipped per cell): `r5_run.py`, `r5_lib.py`, `run_r5.sbatch`; 31 CPU tests (+ mutation checks) pass locally and in the Ada env | smoke 23648 -> R5a 23649, R5b 23652 (`afterok`) queued (section 11) |
+| R5 (our HF pipeline on their tokens, one factor flipped per cell): `r5_run.py`, `r5_lib.py`, `run_r5.sbatch`; 31 CPU tests (+ mutation checks) pass locally and in the Ada env | smoke 23648 **passed**; R5a 23649 and R5b 23660 (account `nlp`) **running** (section 11) |
 | R1/R3 (BOS arms of the v3 generator), R4 (their script 06) | not run; R3 is superseded by `T_keep`/`O_keep` |
 
 ## 3. Runbook for the baseline
@@ -68,6 +68,7 @@ Commands from the repo root. Ada: `ssh karma@ada-gw1` (key auth works from the u
 - **Hugging Face.** The gated `google/gemma-2-2b` needs a token: `hf auth login` was done on Ada (`/home2/karma/duan-verify/hf/token`; jobs use `HF_TOKEN_PATH`). **Never copy or print a token.** **Do not set `HF_HUB_DISABLE_XET=1`** (plain HTTP was ~15x slower and kept dropping connections).
 - **wandb.** Key already in `~/.netrc` on Ada (account `karma-skz`, entity `karma-skz-`); project `anlp-project`. To change account the user runs `wandb login --relogin` themselves. Never ask for or handle a key.
 - **Measured costs (TransformerLens, 2 x 2080 Ti).** Perplexity pass 3.3 it/s, streaming pass 1.08 it/s, peak GPU 8.2 GiB per card, host RSS peak 21.8 GB, **40 min per condition at 500k tokens**.
+- **Per-user caps (QOS `medium`, account `research`): 4 GPUs, 40 CPUs, 125 GB.** `-c 8` with `--mem=40G` was inflated by Slurm to 14 CPUs per R5 job and R2 holds 18, so R2 + two R5 jobs exceed the 40-CPU cap and the third waits in `QOSMaxCpuPerUserLimit`. `-A nlp` (QOS `normal`) has no per-user cap and starts immediately. Check `scontrol show job <id> | grep NumCPUs` before queueing several jobs.
 - **Queue.** Wait was ~0 s for every job so far. `sbatch --test-only` predictions ("starts tomorrow") were wrong; ignore them.
 
 ## 5. After the baseline: diagnostics (modified code, clearly labelled)
@@ -142,15 +143,15 @@ Largest survival gap over all five rungs **0.15 pp**; largest median-r gap **0.0
 | Job | What | Ada output | Log |
 |---|---|---|---|
 | 23643 `R2-bos-mask` | their TL script, BOS prepended to identical 256-token windows, position 0 masked; ladder INT0, 16, 12, 8, 7, 6; 2 GPUs, ~4.8 h | `/home2/karma/duan-verify/out/R2/` | `logs/R2-bos-mask-23643.out` |
-| 23648 `R5smoke` | 40 windows, cells `T,O`, INT8, wandb off, selfcheck on 4 windows (gate for the two jobs below) | `/home2/karma/duan-verify/r5/R5smoke/` | `logs/R5smoke-23648.out` |
+| 23648 `R5smoke` | 40 windows, cells `T,O`, INT8, wandb off, selfcheck on 4 windows. **COMPLETED exit 0 (10 min 57 s); results fetched to `reports/g0/r5_smoke/`; selfcheck numbers in audit section 6.1** | `/home2/karma/duan-verify/r5/R5smoke/` | `logs/R5smoke-23648.out` |
 | 23649 `R5a` | cells `T,O,T_sdpa,T_bf16sae`, INT8/7/6, 1 GPU (est. 3 h) | `r5/R5a/<cell>/` | `logs/R5a-23649.out` |
-| 23652 `R5b` | cells `T_rowquant,T_mask,T_keep,O_keep`, INT8/7/6, 1 GPU (est. 3 h) | `r5/R5b/<cell>/` | `logs/R5b-23652.out` |
+| 23660 `R5b-nlp` | cells `T_rowquant,T_mask,T_keep,O_keep`, INT8/7/6, 1 GPU (est. 3 h); **account `nlp`** (the first copy, 23652 on `research`, was cancelled: QOS `medium` caps the user at 40 CPUs and R2 18 + R5a 14 + R5b 14 exceeded it) | `r5/R5b/<cell>/` | `logs/R5b-nlp-23660.out` |
 
-(`/home2/karma/duan-verify/` prefix on every path. R5a/R5b start only if the smoke exits 0 (`--dependency=afterok`); if the smoke fails they stay `DependencyNeverSatisfied` and must be cancelled (`scancel 23649 23652`), the bug fixed test-first, the code redeployed (`rsync` `r5_run.py r5_lib.py g0_wandb.py` and `src/*.py` to `r5code/`, `run_r5.sbatch` to the parent), and resubmitted. A finished cell is skipped on resubmission with the same out-name.)
+(`/home2/karma/duan-verify/` prefix on every path. The smoke passed, so R5a (gnode053) and R5b (gnode058) started. If a job dies, fix test-first, redeploy (`rsync` `r5_run.py r5_lib.py g0_wandb.py` and `src/*.py` to `r5code/`, `run_r5.sbatch` to the parent) and resubmit with the same out-name: finished cells (`cell_done.json`) are skipped. `-A nlp` works for parallel arms.)
 
 Steps for the next prompt, in order:
 
-1. `ssh karma@ada-gw1 'squeue -u karma; sacct -j 23643,23648,23649,23652 -o JobID,JobName,State,Elapsed,ExitCode'`; read the log tails (`tail -c 3000 ... | tr '\r' '\n'`). Never touch the user's other jobs.
+1. `ssh karma@ada-gw1 'squeue -u karma; sacct -j 23643,23648,23649,23660 -o JobID,JobName,State,Elapsed,ExitCode'`; read the log tails (`tail -c 3000 ... | tr '\r' '\n'`). Never touch the user's other jobs.
 2. **Smoke first.** Read `r5/R5smoke/selfcheck.json`: `int0_identity.identical` must be true; record `sdpa_vs_eager` (the size of the missing soft-cap effect), `ours_fp32_vs_sae_lens` (should be Jaccard ~1, max abs diff ~0), `ours_bf16_vs_fp32`, and the token SHA-256. Check the first cell's printed numbers are sane (FP perplexity ~450, not NaN).
 3. When R5a/R5b/R2 finish, fetch the results (small files only: summaries, selfcheck, a few per-feature files; leave `*.pt`, snapshots and the full per-feature set on Ada): `rsync -a --exclude '*.pt' --exclude 'snap_*' karma@ada-gw1:/home2/karma/duan-verify/r5/R5a/ reports/g0/r5/R5a/` (same for R5b, R5smoke; R2 to `reports/g0/R2_bos_mask/`).
 4. Verify the R2/R5 token windows agree on Ada (`torch.equal(R2_tokens[:, 1:], R5_tokens)` on the two `tokens_2d.pt` files, for the `R2` and `R5a` directories); the R5 selfcheck also records the SHA-256.
