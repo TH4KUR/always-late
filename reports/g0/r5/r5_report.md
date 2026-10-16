@@ -12,6 +12,7 @@
 | T_keep | 99.90 | 99.88 | 98.36 | 0.9946 | 0.9882 | 16.1 | +0.20 | 12011 | T + BOS kept |
 | T_mask | 100.00 | 99.96 | 97.47 | 0.9875 | 0.9731 | 16.1 | +0.20 | 9983 | T + BOS, position 0 masked |
 | T_rowquant | 99.76 | 89.15 | 54.87 | 0.9578 | 0.9118 | 456.9 | -2.05 | 7133 | T with per-row q/k/v quantizer |
+| O_mask | 100.00 | 99.99 | 98.79 | 0.9889 | 0.9766 | 16.1 | +0.19 | 9973 | our pipeline with BOS prepended, position 0 masked |
 | R2 (their TL code, BOS masked) | 100.00 | 99.97 | 97.52 | 0.9874 | 0.9730 | 16.1 | +0.22 | 9972 |  |
 
 ## Anchor: T vs the vendored baseline
@@ -29,6 +30,7 @@
 | T_keep | T | +18.47 | +47.06 | material |
 | T_mask | T | +18.55 | +46.17 | material |
 | T_rowquant | T | +7.74 | +3.57 | material |
+| O_mask | T_mask | +0.03 | +1.32 | minor |
 
 ## Additivity (sum of single-factor deltas vs the joint cell O - T)
 

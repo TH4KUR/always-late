@@ -1,0 +1,15 @@
+{
+  "cell": "O_mask",
+  "spec": {
+    "attn": "sdpa",
+    "sae_dtype": "bf16",
+    "quant": "ours",
+    "regime": "mask"
+  },
+  "bits": [
+    8,
+    7,
+    6
+  ],
+  "n_windows": 1953
+}

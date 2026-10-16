@@ -489,6 +489,40 @@
    ],
    "new_run_id": "3f6ad78b",
    "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "968e9ddb",
+   "old_name": "R5c-24452-O_mask",
+   "name": "R5c/O_mask",
+   "config": {
+    "experiment": "R5c",
+    "cell": "O_mask",
+    "stack": "HF",
+    "bos_regime": "mask",
+    "attn_impl": "sdpa",
+    "sae_dtype": "bf16",
+    "quantizer": "ours",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "24452",
+    "code_ref": "legacy HF harness r5_run.py 2a1c8dc5 (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "968e9ddb",
+    "replaces_name": "R5c-24452-O_mask"
+   },
+   "summary_csv": "reports/g0/r5/R5c/O_mask/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5c/O_mask/*.csv",
+    "reports/g0/r5/R5c/O_mask/*.json",
+    "reports/g0/r5/R5c/selfcheck.json",
+    "reports/g0/r5/R5c/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5c/O_mask/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5c",
+    "legacy-harness"
+   ]
   }
  ]
 }

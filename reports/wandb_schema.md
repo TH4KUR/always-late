@@ -53,7 +53,7 @@ Table `conditions` (every run): columns `condition` + the metrics above, one row
 
 ## State (2026-10-17)
 
-13 finished runs were rebuilt from the result files in this repo (manifest: `reports/g0/wandb_manifest.json`, with old and new ids) and verified before the 13 old runs were deleted: 146 summary values compared equal, every old artifact file present in the new run except `tokens_2d.pt` (stays on Ada) and `phase3_summary_partial.csv` (in the repo) where accepted. Runs: `baseline/full`, `smoke/R0-v3-runner`, `smoke/generator-runner`, `smoke/vendored`, `R2/bos-mask`, `R5a/{T,O,T_sdpa,T_bf16sae}`, `R5b/{T_rowquant,T_mask,T_keep,O_keep}`. Across them the summaries use 31 distinct keys (29 schema keys plus 2 table names); before there were 158. Still on the old logger until they finish and are rebuilt: the live runs of R1 (`339751bd`) and R5c (`968e9ddb`).
+13 finished runs were rebuilt (R5c/O_mask was added on 2026-10-17, making 14) from the result files in this repo (manifest: `reports/g0/wandb_manifest.json`, with old and new ids) and verified before the 13 old runs were deleted: 146 summary values compared equal, every old artifact file present in the new run except `tokens_2d.pt` (stays on Ada) and `phase3_summary_partial.csv` (in the repo) where accepted. Runs: `baseline/full`, `smoke/R0-v3-runner`, `smoke/generator-runner`, `smoke/vendored`, `R2/bos-mask`, `R5a/{T,O,T_sdpa,T_bf16sae}`, `R5b/{T_rowquant,T_mask,T_keep,O_keep}`. Across them the summaries use 31 distinct keys (29 schema keys plus 2 table names); before there were 158. Still on the old logger until it finishes and is rebuilt: the live run of R1 (`339751bd`).
 
 ## Conventions
 

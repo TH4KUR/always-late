@@ -34,8 +34,9 @@ The team's own pipeline gave INT7/INT6 survival of 98%/94% where Duan reports 81
 | Baseline: their `3b_full` (500k tokens, INT8..INT4, pruning off), job 23472 | **done; reproduces their table** (section 8) |
 | Audit of why the old pipeline disagreed: `reports/audit_our_vs_duan.md` | **done**: R2 (their code + masked BOS) and R5 (8 cells, old HF pipeline on their tokens) |
 | Old codebase | **discarded** (tag `legacy-pipeline-2026-10-16`); Phase-1 results kept in `reports/legacy_pipeline/` as hypotheses |
-| Pending diagnostics: R1 (their code, no BOS, INT0/16/12) and R5c (`O_mask`) | **queued/running** (section 5) |
-| Closure protocol (`duan_codebase_audit.md` section 7) | **not yet assignable**: needs Gate 1 in the no-BOS regime (R1) and Q4 in the mask/keep regimes (R5c, R3 missing); see audit section 6.4 |
+| Diagnostics: R1 (their code, no BOS, INT0/16/12) and R5c (`O_mask`) | **R5c done 2026-10-17** (Q4 mask regime passes, audit 6.5); **R1 24451 still running** (Gate 1; section 5) |
+| Closure protocol (`duan_codebase_audit.md` section 7) | **not yet assignable**: needs Gate 1 in the no-BOS regime (R1, running) and Q4 for the keep regime (R3 missing); mask regime passes; see audit section 6.4 and 6.5 |
+| Duan (2026) paper read in full (V-3) | **done 2026-10-17**: BOS never mentioned, context-reset explanation contradicted (A-014), q/k/v scale pooling contradicts Eq. 2 (A-015); audit 6.6 |
 | Study design on top of their code | **not started**; waits for the team's regime decision |
 
 ## 3. Runbook for the baseline (done once; keep for re-runs)
@@ -67,7 +68,7 @@ Tooling: `scripts/g0/make_duan_runners_v3.py` (reads the vendored *pristine* scr
 | Job | What | Ada output | Log |
 |---|---|---|---|
 | **24451 `R1-nobos-floor`** (`research`, 2 GPUs, ~3 h) | their code, **no BOS**, ladder INT0/16/12, 500k tokens: Gate 1 (noise floor) in THEIR regime | `/home2/karma/duan-verify/out/R1/` | `logs/R1-nobos-floor-24451.out` |
-| **24452 `R5c-nlp`** (`nlp`, 1 GPU, ~45 min) | `O_mask`: the legacy HF pipeline with BOS masked, INT8/7/6 (completes Q4 for the mask regime); runs the deployed legacy harness, unaffected by the repo cleanup | `/home2/karma/duan-verify/r5/R5c/O_mask/` | `logs/R5c-nlp-24452.out` |
+| **24452 `R5c-nlp`** (`nlp`, 1 GPU; **COMPLETED 2026-10-17, exit 0; fetched to `reports/g0/r5/R5c/`; judged; wandb rebuilt**) | `O_mask`: the legacy HF pipeline with BOS masked, INT8/7/6 (completes Q4 for the mask regime); runs the deployed legacy harness, unaffected by the repo cleanup | `/home2/karma/duan-verify/r5/R5c/O_mask/` | `logs/R5c-nlp-24452.out` |
 
 Already done and fetched: R2 (`reports/g0/R2_bos_mask/`), R5a/R5b (`reports/g0/r5/`), smoke (`reports/g0/r5_smoke/`).
 
