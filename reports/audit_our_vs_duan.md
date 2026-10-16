@@ -84,6 +84,10 @@ Interpretation limits: survival percentages are counts over ~7,100 features, so 
 - Token windows: SHA-256 `f7340069...54163f2` for the 40-window smoke subset (the full jobs record their own).
 - Smoke cells (40 windows = 10,240 tokens, INT8 only; **not comparable to the 500k-token tables**): `T` INT8 survival 93.73%, median r 0.9721, perplexity +3.01% (their full-run INT8 median r is 0.9707); `O` INT8 survival 95.89%, median r 0.9760, +2.53%. The survival levels at this sample size are depressed (their own vendored smoke at 20k tokens had INT8 survival 96.15%, against 99.09% at 500k).
 
+### 6.1b Selfcheck of the full R5a job (23649; 16 windows = 4,096 positions, `reports/g0/r5/R5a_selfcheck.json`)
+
+Same picture with four times the sample: quantize/restore bit-identical; our fp32 SAE identical to `sae_lens` (391,237 of 391,237 active entries, max diff 0.0); bf16 vs fp32 SAE Jaccard 0.9928, mean relative difference 0.25%, max abs 0.49; sdpa vs eager layer-12 resid_post 1.92% relative L2 (max abs 2.25), logits up to 2.55, mean loss 6.713 (eager) vs 6.718 (sdpa). R5a's windows are (1953, 256) = 499,968 tokens (the same count as their published run); SHA-256 `23b44fad30303c6a...`. **Verified on Ada: R2's `tokens_2d.pt[:, 1:]` equals R5a's `tokens_2d.pt` exactly** (R2's first column is BOS id 2 everywhere), so R2 and R5 see identical text windows.
+
 ### 6.2 R2 and R5 cells
 
 *(to be filled in when the jobs finish; see `HANDOFF.md` section 11)*
