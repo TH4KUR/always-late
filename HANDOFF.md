@@ -37,7 +37,7 @@ The team's own pipeline (HF transformers, `src/`) gives INT7/INT6 survival of 98
 | **Baseline: their `3b_full` config (500k tokens, INT8..INT4), pruning off** | **DONE, Q1 PASSED** (job 23472; section 10). Results in `reports/g0/baseline_full/`. Do not rerun. |
 | **Audit of the disagreement** (`reports/audit_our_vs_duan.md`: 12 listed differences, pre-committed reading rules) | **written; experiments running** (section 11) |
 | R2 (their code + BOS prepended and masked; ladder INT0/16/12/8/7/6), Slurm 23643 | **running** (submitted 2026-10-16 12:04 IST, ~4.8 h) |
-| R5 (our HF pipeline on their tokens, one factor flipped per cell): `r5_run.py`, `r5_lib.py`, `run_r5.sbatch`; 31 CPU tests (+ mutation checks) pass locally and in the Ada env | smoke 23648 **passed**; R5a 23649 and R5b 23660 (account `nlp`) **running** (section 11) |
+| R5 (our HF pipeline on their tokens, one factor flipped per cell): `r5_run.py`, `r5_lib.py`, `run_r5.sbatch`; 31 CPU tests (+ mutation checks) pass locally and in the Ada env | smoke 23648 passed; **R5a 23649 and R5b 23660 COMPLETED (exit 0), results fetched and judged** (`reports/g0/r5/`, audit section 6.2); R2 still running (section 11) |
 | R1/R3 (BOS arms of the v3 generator), R4 (their script 06) | not run; R3 is superseded by `T_keep`/`O_keep` |
 
 ## 3. Runbook for the baseline
@@ -144,8 +144,8 @@ Largest survival gap over all five rungs **0.15 pp**; largest median-r gap **0.0
 |---|---|---|---|
 | 23643 `R2-bos-mask` | their TL script, BOS prepended to identical 256-token windows, position 0 masked; ladder INT0, 16, 12, 8, 7, 6; 2 GPUs, ~4.8 h | `/home2/karma/duan-verify/out/R2/` | `logs/R2-bos-mask-23643.out` |
 | 23648 `R5smoke` | 40 windows, cells `T,O`, INT8, wandb off, selfcheck on 4 windows. **COMPLETED exit 0 (10 min 57 s); results fetched to `reports/g0/r5_smoke/`; selfcheck numbers in audit section 6.1** | `/home2/karma/duan-verify/r5/R5smoke/` | `logs/R5smoke-23648.out` |
-| 23649 `R5a` | cells `T,O,T_sdpa,T_bf16sae`, INT8/7/6, 1 GPU (est. 3 h) | `r5/R5a/<cell>/` | `logs/R5a-23649.out` |
-| 23660 `R5b-nlp` | cells `T_rowquant,T_mask,T_keep,O_keep`, INT8/7/6, 1 GPU (est. 3 h); **account `nlp`** (the first copy, 23652 on `research`, was cancelled: QOS `medium` caps the user at 40 CPUs and R2 18 + R5a 14 + R5b 14 exceeded it) | `r5/R5b/<cell>/` | `logs/R5b-nlp-23660.out` |
+| 23649 `R5a` | cells `T,O,T_sdpa,T_bf16sae`, INT8/7/6, 1 GPU. **COMPLETED exit 0 (2 h 28 min); fetched** | `r5/R5a/<cell>/` | `logs/R5a-23649.out` |
+| 23660 `R5b-nlp` | cells `T_rowquant,T_mask,T_keep,O_keep`, INT8/7/6, 1 GPU. **COMPLETED exit 0 (2 h 47 min); fetched**; **account `nlp`** (the first copy, 23652 on `research`, was cancelled: QOS `medium` caps the user at 40 CPUs and R2 18 + R5a 14 + R5b 14 exceeded it) | `r5/R5b/<cell>/` | `logs/R5b-nlp-23660.out` |
 
 (`/home2/karma/duan-verify/` prefix on every path. The smoke passed, so R5a (gnode053) and R5b (gnode058) started. If a job dies, fix test-first, redeploy (`rsync` `r5_run.py r5_lib.py g0_wandb.py` and `src/*.py` to `r5code/`, `run_r5.sbatch` to the parent) and resubmit with the same out-name: finished cells (`cell_done.json`) are skipped. `-A nlp` works for parallel arms.)
 
@@ -158,3 +158,5 @@ Steps for the next prompt, in order:
 5. Judge with the rules in `reports/audit_our_vs_duan.md` section 5 (anchor `T` vs `reports/g0/baseline_full`, single-factor deltas with the 5 pp / 1 pp thresholds, `O` vs `T`, `O_keep` vs our original 98.28 % / 94.31 %, R2 vs `T_mask`, R2's own 10 pp rule). Fill section 6 of the audit with the numbers; do not move the thresholds.
 6. Upload to wandb from the fetched files if the live logging failed (project `anlp-project`; Ada has outbound access again since ~12:00; if not, use the throwaway venv on the laptop and never handle the key). Update `PROGRESS.md`, `PLAN.md`, `README.md`, `reports/progress_log.md`, `issues.md` B1 with what was found, then commit and push to `main`.
 7. Report to the user: which differences are material, which are not, and what is still unexplained. No paper prose.
+
+**Status update (2026-10-16, ~15:40 IST): R5 is done and judged; only R2 is still running.** Results: `reports/audit_our_vs_duan.md` section 6.2, `reports/g0/r5/r5_report.md`. In short: the anchor `T` (their pipeline inside HF) passes; BOS in the windows is the dominant factor (INT7 81% -> 99.9%, INT6 51% -> 97-98%, perplexity 457 -> 16 in both HF and TL); their q/k/v scale sharing costs ~8 / ~3.5 pp in the no-BOS regime but nothing measurable with BOS; HF sdpa without soft-capping and a bf16 SAE make no measurable difference. **Remaining for the next prompt: R2 (23643) survival rungs INT8/7/6 (expected to finish around 17:15 IST) for the cross-stack check R2 vs `T_mask`** (fetch `/home2/karma/duan-verify/out/R2/` small files to `reports/g0/R2_bos_mask/`, compare INT7/INT6 survival with `T_mask` 99.96 / 97.47 within 3 pp, fill audit section 6.3, then finish the closure: update issues.md B1, README, PLAN, PROGRESS, progress log, push). Decisions for the user/team: which regime the study should use (BOS or not), and whether to run the optional small-sample cell for D5.

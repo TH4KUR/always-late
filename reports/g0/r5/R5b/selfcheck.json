@@ -1,0 +1,36 @@
+{
+  "tokens_sha256": "23b44fad30303c6a5ffced220a2ac18d876c82751bac7baebfbe7fa443e217f5",
+  "windows": [
+    1953,
+    256
+  ],
+  "default_attention": "sdpa",
+  "int0_identity": {
+    "identical": true,
+    "max_abs_diff": 0.0
+  },
+  "sdpa_vs_eager": {
+    "resid_rel_l2": 0.019225466575162817,
+    "resid_max_abs": 2.25,
+    "logit_max_abs": 2.546875,
+    "loss_eager": 6.712877690792084,
+    "loss_sdpa": 6.718269437551498,
+    "loss_delta": 0.005391746759414673
+  },
+  "ours_fp32_vs_sae_lens": {
+    "n_active_a": 391237,
+    "n_active_b": 391237,
+    "n_both": 391237,
+    "active_jaccard": 1.0,
+    "max_abs_diff_common": 0.0,
+    "mean_rel_diff_common": 0.0
+  },
+  "ours_bf16_vs_fp32": {
+    "n_active_a": 391237,
+    "n_active_b": 389113,
+    "n_both": 388773,
+    "active_jaccard": 0.9928392117003808,
+    "max_abs_diff_common": 0.494293212890625,
+    "mean_rel_diff_common": 0.0024639677722007036
+  }
+}

@@ -51,7 +51,7 @@ Last updated: **2026-10-16**, after a full code and results review, the Ada veri
 ## Next steps
 
 1. **Baseline (Layer 1): done, Q1 passed** (see above). Do not rerun; do not modify their code.
-2. **Audit running (started 2026-10-16): R2 (job 23643) and R5 (smoke 23648 passed; R5a 23649; R5b 23660). On the next prompt: check job status, fetch results, judge with the rules in `reports/audit_our_vs_duan.md` section 5, update the docs** (steps in `HANDOFF.md` section 11). Afterwards optionally R4 (their script 06) and the closure protocol (`reports/duan_codebase_audit.md` section 7). The protocol is terminal for the Duan question, not against future reviewer questions.
+2. **Audit (2026-10-16): R5 done and judged (see `reports/audit_our_vs_duan.md` section 6.2); R2 (job 23643, TransformerLens cross-check with BOS masked) still running. On the next prompt: check R2, fetch, compare with `T_mask`, finish the docs** (`HANDOFF.md` section 11). Afterwards optionally R4 (their script 06) and the closure protocol (`reports/duan_codebase_audit.md` section 7). The protocol is terminal for the Duan question, not against future reviewer questions.
 3. Only then re-derive the confirmatory results and rewrite the paper (by the team). Deadline for the final submission: Oct 31.
 
 Gotchas learned on Ada: `/share1` is not mounted on compute nodes and has a 3,000-file quota; `/home2` (~19 GB free) is shared with other jobs, so the 10.5 GB model goes to node-local `/scratch` per job; do **not** disable xet for Hugging Face downloads (15x slower, drops connections). TransformerLens makes a Gemma model ~6.4 GB (un-tied unembedding), so two models fit on two 11 GB cards but not one. Script 06 from Duan's repo does not parse as shipped; the diagnostic generator fixes it.

@@ -8,6 +8,7 @@
 | T | 99.17 | 81.41 | 51.30 | 0.9503 | 0.9033 | 456.9 | -5.74 | 7133 | attn eager, SAE fp32, their quantizer, no BOS (anchor) |
 | T_bf16sae | 99.21 | 81.46 | 51.31 | 0.9502 | 0.9033 | 456.9 | -5.74 | 7113 | T with bf16 SAE |
 | T_sdpa | 99.27 | 81.44 | 51.22 | 0.9502 | 0.9025 | 458.3 | -5.72 | 7154 | T with sdpa attention (no soft-cap) |
+| O_keep | 99.93 | 99.84 | 99.19 | 0.9952 | 0.9897 | 16.1 | +0.19 | 12012 | our pipeline with BOS kept, on their tokens |
 | T_keep | 99.90 | 99.88 | 98.36 | 0.9946 | 0.9882 | 16.1 | +0.20 | 12011 | T + BOS kept |
 | T_mask | 100.00 | 99.96 | 97.47 | 0.9875 | 0.9731 | 16.1 | +0.20 | 9983 | T + BOS, position 0 masked |
 | T_rowquant | 99.76 | 89.15 | 54.87 | 0.9578 | 0.9118 | 456.9 | -2.05 | 7133 | T with per-row q/k/v quantizer |
@@ -23,6 +24,7 @@
 | O | T | +8.16 | +3.51 | material |
 | T_bf16sae | T | +0.05 | +0.02 | none |
 | T_sdpa | T | +0.03 | -0.08 | none |
+| O_keep | T_keep | -0.04 | +0.83 | none |
 | T_keep | T | +18.47 | +47.06 | material |
 | T_mask | T | +18.55 | +46.17 | material |
 | T_rowquant | T | +7.74 | +3.57 | material |
@@ -31,4 +33,8 @@
 
 - INT7: sum +7.81 pp, joint +8.16 pp
 - INT6: sum +3.51 pp, joint +3.51 pp
+
+## Loop closure: O_keep vs our original demo (98.28 / 94.31)
+
+- INT7 +1.56 pp, INT6 +4.88 pp
 
