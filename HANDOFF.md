@@ -34,8 +34,8 @@ The team's own pipeline gave INT7/INT6 survival of 98%/94% where Duan reports 81
 | Baseline: their `3b_full` (500k tokens, INT8..INT4, pruning off), job 23472 | **done; reproduces their table** (section 8) |
 | Audit of why the old pipeline disagreed: `reports/audit_our_vs_duan.md` | **done**: R2 (their code + masked BOS) and R5 (8 cells, old HF pipeline on their tokens) |
 | Old codebase | **discarded** (tag `legacy-pipeline-2026-10-16`); Phase-1 results kept in `reports/legacy_pipeline/` as hypotheses |
-| Diagnostics: R1 (their code, no BOS, INT0/16/12) and R5c (`O_mask`) | **R5c done 2026-10-17** (Q4 mask regime passes, audit 6.5); **R1 24451 still running** (Gate 1; section 5) |
-| Closure protocol (`duan_codebase_audit.md` section 7) | **not yet assignable**: needs Gate 1 in the no-BOS regime (R1, running) and Q4 for the keep regime (R3 missing); mask regime passes; see audit section 6.4 and 6.5 |
+| Diagnostics: R1 (their code, no BOS, INT0/16/12) and R5c (`O_mask`) | **both done 2026-10-17**: R1 gives Gate 1 `noise_dominated` in their regime (audit 6.7); R5c passes Q4 for the mask regime (6.5) |
+| Closure protocol (`duan_codebase_audit.md` section 7) | **CLOSED 2026-10-17: D-NOISE** (Gate 0 pass, Gate 1 noise-dominated in their no-BOS regime by a 0.001 margin, passes with BOS masked; decision D-009, audit 6.7). Terminal: no further verification of Duan is planned |
 | Duan (2026) paper read in full (V-3) | **done 2026-10-17**: BOS never mentioned, context-reset explanation contradicted (A-014), q/k/v scale pooling contradicts Eq. 2 (A-015); audit 6.6 |
 | Study design on top of their code | **not started**; waits for the team's regime decision |
 
@@ -67,7 +67,7 @@ Tooling: `scripts/g0/make_duan_runners_v3.py` (reads the vendored *pristine* scr
 
 | Job | What | Ada output | Log |
 |---|---|---|---|
-| **24451 `R1-nobos-floor`** (`research`, 2 GPUs, ~3 h) | their code, **no BOS**, ladder INT0/16/12, 500k tokens: Gate 1 (noise floor) in THEIR regime | `/home2/karma/duan-verify/out/R1/` | `logs/R1-nobos-floor-24451.out` |
+| **24451 `R1-nobos-floor`** (`research`, 2 GPUs) | their code, **no BOS**, ladder INT0/16/12: Gate 1 in THEIR regime. **COMPLETED 2026-10-17 (3 h 06 min, exit 0); fetched to `reports/g0/R1_nobos_floor/`; judged (audit 6.7); wandb rebuilt** | `/home2/karma/duan-verify/out/R1/` | `logs/R1-nobos-floor-24451.out` |
 | **24452 `R5c-nlp`** (`nlp`, 1 GPU; **COMPLETED 2026-10-17, exit 0; fetched to `reports/g0/r5/R5c/`; judged; wandb rebuilt**) | `O_mask`: the legacy HF pipeline with BOS masked, INT8/7/6 (completes Q4 for the mask regime); runs the deployed legacy harness, unaffected by the repo cleanup | `/home2/karma/duan-verify/r5/R5c/O_mask/` | `logs/R5c-nlp-24452.out` |
 
 Already done and fetched: R2 (`reports/g0/R2_bos_mask/`), R5a/R5b (`reports/g0/r5/`), smoke (`reports/g0/r5_smoke/`).
@@ -116,7 +116,7 @@ Largest survival gap 0.15 pp; per-feature Spearman at INT6 over 7,121 commonly a
 3. Who writes the rewritten results/discussion (must be the team)?
 4. Optional: R3 (their TL code, BOS kept), a small-sample cell for the 2,048-token demo residual, INT5/INT4 with BOS.
 
-## 10. NEXT PROMPT: check R1 and R5c, fetch, judge, finish the audit
+## 10. (COMPLETED 2026-10-17) check R1 and R5c, fetch, judge, finish the audit: both done, closure D-NOISE; kept for reference
 
 1. `ssh karma@ada-gw1 'squeue -u karma; sacct -j 24451,24452 -o JobID,JobName,State,Elapsed,ExitCode'`; read the log tails (`tail -c 3000 ... | tr '\r' '\n'`). If a job died: fix test-first or resubmit with the same out-name (R5c skips finished cells; R1 has resume), never touch the user's other jobs.
 2. Fetch small files only, excludes before includes, then **verify by listing**: R1 `out/R1/` -> `reports/g0/R1_nobos_floor/` (summaries, `weight_perturbation_*.json`, `run_meta.json`; not `*_per_feature.csv`, `snap_*`, `*.pt`); R5c `r5/R5c/` -> `reports/g0/r5/R5c/` (summary, `cell_done.json`, `selfcheck.json`, `code.sha256`).
@@ -135,4 +135,4 @@ Limits: it is **session-only** (it dies when Claude Code exits, nothing is store
 
 ## 12. wandb: one fixed schema (since 2026-10-17)
 
-Every run, live or rebuilt, uses the vocabulary in `reports/wandb_schema.md` (15 config keys, 12 per-condition metrics with the condition as data in `bits`, 29 fixed summary keys, 3 fixed table names). The old per-condition-prefixed names (`INT7/median_corr`, `baseline/...`) no longer exist. Rules: never log ad-hoc keys (`python3 scripts/g0/wandb_rebuild.py verify` fails on them); to change the vocabulary change the constants in `g0_wandb.py`, bump `SCHEMA_VERSION`, update the tests and rebuild; run the live check `selftest_wandb.py` (creates and deletes one run) after any logger change. wandb access needs the throwaway venv `/tmp/claude-1000/wbvenv/bin/python` (system python has no wandb; recreate it with `python3 -m venv` and `pip install wandb` if it is gone); never print or handle keys. **Status 2026-10-17: the 13 finished runs are rebuilt under the schema and their 13 old runs deleted (verified first; see `reports/wandb_schema.md`).** The schema-aware `g0_wandb.py`, `run_g0.sbatch`, `run_baseline.sbatch` and `baseline_report.py` are deployed to Ada only after R1 and R5c have finished (R1 and R5c still run the old logger; their live wandb runs `339751bd` and `968e9ddb` are rebuilt and replaced when they finish).
+Every run, live or rebuilt, uses the vocabulary in `reports/wandb_schema.md` (15 config keys, 12 per-condition metrics with the condition as data in `bits`, 29 fixed summary keys, 3 fixed table names). The old per-condition-prefixed names (`INT7/median_corr`, `baseline/...`) no longer exist. Rules: never log ad-hoc keys (`python3 scripts/g0/wandb_rebuild.py verify` fails on them); to change the vocabulary change the constants in `g0_wandb.py`, bump `SCHEMA_VERSION`, update the tests and rebuild; run the live check `selftest_wandb.py` (creates and deletes one run) after any logger change. wandb access needs the throwaway venv `/tmp/claude-1000/wbvenv/bin/python` (system python has no wandb; recreate it with `python3 -m venv` and `pip install wandb` if it is gone); never print or handle keys. **Status 2026-10-17: the 13 finished runs are rebuilt under the schema and their 13 old runs deleted (verified first; see `reports/wandb_schema.md`).** The schema-aware `g0_wandb.py`, `run_g0.sbatch`, `run_baseline.sbatch` and `baseline_report.py` **were deployed to Ada on 2026-10-17 after R1 and R5c finished** (sha256 equal to the repo's; the module imports on Ada). R1 and R5c were rebuilt under the schema and their old live runs deleted: all 15 runs in the project conform (`wandb_rebuild.py verify`).

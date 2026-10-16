@@ -523,6 +523,41 @@
     "R5c",
     "legacy-harness"
    ]
+  },
+  {
+   "old_run_id": "339751bd",
+   "old_name": "g0-R1-24451",
+   "name": "R1/nobos-floor",
+   "config": {
+    "experiment": "R1",
+    "cell": "nobos-floor",
+    "stack": "TL",
+    "bos_regime": "none",
+    "attn_impl": "tl",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "24451",
+    "code_ref": "diagnostic generator make_duan_runners_v3.py, deployed runner hash 2c34fecaee1d2e32",
+    "replaces_wandb_run": "339751bd",
+    "replaces_name": "g0-R1-24451"
+   },
+   "summary_csv": "reports/g0/R1_nobos_floor/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/R1_nobos_floor/*.csv",
+    "reports/g0/R1_nobos_floor/*.json",
+    "/tmp/claude-1000/perfeature_extra/R1/*"
+   ],
+   "tags": [
+    "g0",
+    "R1",
+    "diagnostic"
+   ],
+   "accepted_missing": [
+    "tokens_2d.pt"
+   ]
   }
  ]
 }

@@ -73,7 +73,7 @@ Not covered: D6 (population), D7 (weights mirror), the INT5/INT4 rungs, and any 
 
 Interpretation limits: survival percentages are counts over ~7,100 features, so differences under ~1 pp are not meaningful even before systematic effects; matching their numbers shows we reproduce a regime, not that the regime is the right instrument.
 
-## 6. Results (R2 and R5 complete; R5c added 2026-10-17; R1 pending)
+## 6. Results (R2, R5, R5c and R1 complete)
 
 wandb (project `anlp-project`, entity `karma-skz-`; all runs finished): `g0-R2-23643` (`168a7bd4`), `R5a-23649-{T, O, T_sdpa, T_bf16sae}`, `R5b-23660-{T_rowquant, T_mask, T_keep, O_keep}`; each run logged live heartbeats and per-condition metrics and uploaded the cell's files as an artifact.
 
@@ -136,7 +136,7 @@ Not shown by these data: which regime is the right instrument. They show that th
 - **Gate 0 (run integrity)**: INT0 gives r = 1 for every active feature and perplexity identical to the baseline.
 - **Noise floor in the BOS regime**: median r is already 0.9969 at INT16 and 0.9968 at INT12 (the bf16 re-rounding floor, weight change 1.3e-3), so INT8's 0.9932 is only 0.004 below the floor. The scaling test (slope of log(1 - median r) against log relative L2 weight change, `g0_wandb.compute_gate_metrics`) gives **0.592, inside [0.5, 1.5]**: with BOS the decorrelation follows the weight perturbation (signal-limited). This is Gate 1 evaluated on R2, **not** on the arm the protocol names (R1, no BOS).
 
-### 6.4 Where the closure protocol (audit `duan_codebase_audit.md` section 7) stands
+### 6.4 Where the closure protocol (audit `duan_codebase_audit.md` section 7) stands (**final: D-NOISE, see 6.7**)
 
 The protocol fixed its dispositions before the experiments and cannot be assigned yet, honestly:
 - **Gate 0**: passes (R2 INT0; baseline anchors within bands).
@@ -164,3 +164,33 @@ Q4 conditions for the mask regime, `O_mask` vs R2 (audit `duan_codebase_audit.md
 - **Quantizer**: Eq. 2 and Appendix L state one RTN scale per output channel for every targeted tensor; their TransformerLens code pools the q/k/v scale across heads (A-015), worth +7.7 / +3.6 pp (INT7 / INT6) on survival without BOS.
 - Table 3 and Appendix D disclose that the sliding-window rows reuse the chunked survival (A-007); the abstract's phrasing can be read as implying survival under sliding windows.
 - Consistent with our reproduction: Table H.7 (INT8..INT4 survival 99.09 / 81.26 / 51.30 / 27.72 / 12.40, 7,144 active), Table 3 (chunked perplexity 458.53, sliding 46.39).
+
+### 6.7 R1: their code, no BOS, ladder INT0 / INT16 / INT12 (job 24451, 3 h 06 min, exit 0, `reports/g0/R1_nobos_floor/`): Gate 1 in their regime
+
+| rung | active | survival % | median r | 1 - median r | perplexity | relative L2 weight change | BOS-masked 1 - median r (R2) |
+|---|---|---|---|---|---|---|---|
+| FP baseline | 7,134 | 100.00 | 1.0000 | 0 | 458.401 | | 0 |
+| INT0 (restore only) | 7,134 | 100.00 | 1.0000 | 0 | 458.401 | 0 | 0 |
+| INT16 | 7,134 | 100.00 | 0.98897 | 0.01103 | 458.665 | 0.001334 | 0.00315 |
+| INT12 | 7,134 | 100.00 | 0.98895 | 0.01105 | 458.496 | 0.001397 | 0.00317 |
+| INT8 (baseline_full) | 7,134 | 99.12 | 0.9707 | 0.02932 | | 0.010881 | 0.00677 |
+| INT7 (baseline_full) | | 81.19 | 0.9499 | 0.05007 | | 0.021235 | 0.01258 |
+| INT6 (baseline_full) | | 51.15 | 0.9027 | 0.09727 | | 0.042769 | 0.02700 |
+
+- **Gate 0 passes**: INT0 gives r = 1 for every active feature and a perplexity identical to the baseline; R1's FP perplexity equals the vendored baseline's in every printed digit (A-017).
+- **Gate 1 (protocol section 7.2): (a) median r at INT16 and INT12 >= 0.99: 0.98897 and 0.98895, fails by 0.001; (b) slope of log(1 - median r) against log(relative L2) over INT12..INT6: 0.613, inside [0.5, 1.5], passes.** Computed with `g0_wandb.compute_gate_metrics` from R1's rungs, the baseline's INT8/7/6 (identical code and tokens, bit-identical smokes) and the weight-perturbation JSONs (R1's and R2's are identical). Verdict: **`noise_dominated`**. In the BOS-masked regime the same function gives `signal_limited` (R2: 0.99685 / 0.99683, slope 0.592).
+- At the same weight perturbation the no-BOS regime decorrelates 3.5x (INT16, INT12) to 4.3x (INT8) more than the BOS-masked one. The bf16 floor (INT16) is 38% / 22% / 11% of the no-BOS 1 - r at INT8 / 7 / 6; survival (r > 0.9) at INT16 and INT12 is 100%.
+- **Mean L0 per token** (sum of FP firing rates, A-018): 95.06 without BOS, 82.4-82.6 with BOS masked, against the SAE's nominal 82.
+
+**Disposition under the pre-committed table (section 7.3 of `duan_codebase_audit.md`): Gate 0 pass, Gate 1 noise-dominated, Q4 any -> D-NOISE (decision D-009).** The protocol's wording of what may be said: their pipeline's feature statistics are noise-dominated even for near-lossless perturbations, so its survival numbers are not a usable reference; cite Duan as prior work only; our validity rests on section 7.4. Recorded qualifiers that do not change the disposition: the margin is 0.001 and the thresholds were judgement calls; the verdict holds for their regime (no BOS) and the same gate passes with BOS masked; 100% survival at INT16 / INT12 means the INT7 / INT6 survival percentages are not artifacts of the r > 0.9 cut at the floor. The protocol is terminal: no further verification of Duan's work is planned (their script 06 stays optional, D-005).
+
+**Section 7.4 checklist (validity of the instrument we build on, independent of Duan), status 2026-10-17:**
+
+| item | status |
+|---|---|
+| F1 own WikiText-2 perplexity with BOS under default (sdpa) and eager attention | **done**: HF eager (`T_mask`) 16.110, HF sdpa (`O_mask`) 16.109 (499,968 tokens); TL (R2) 16.106 |
+| F2 HF-vs-TL feature agreement on identical tokens | **done** for the mask regime: `O_mask` vs R2 Spearman of firing rate 0.99994, max activation 0.99986, r at INT6 0.9953 over 9,964 common active features |
+| F3 mean L0 near 82 and explained variance on text | **L0 done**: 82.39 (R2, `O_mask`); explained variance **not computed** (needs the SAE reconstructions) |
+| F4 FP-vs-FP noise floor under another batch layout, INT16/INT12 scaling test | scaling test **done** in TL for both regimes (R2 slope 0.592, R1 0.613); the different-batch-layout null and the scaling test for the HF stack **not run** |
+| F5 log versions and repeat under the paper's pinned versions or document | **documented** (Ada: transformers 5.19.0, torch 2.14.1; paper pinned 5.17.0 / 2.13.0, not repeated) |
+| F6 FLORES content validity | out of scope here (`issues.md` C1) |

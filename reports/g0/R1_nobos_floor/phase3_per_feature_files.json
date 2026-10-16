@@ -1,0 +1,6 @@
+{
+  "FP16_baseline": "/home2/karma/duan-verify/out/R1/FP16_baseline_per_feature.csv",
+  "RTN_INT0": "/home2/karma/duan-verify/out/R1/RTN_INT0_per_feature.csv",
+  "RTN_INT16": "/home2/karma/duan-verify/out/R1/RTN_INT16_per_feature.csv",
+  "RTN_INT12": "/home2/karma/duan-verify/out/R1/RTN_INT12_per_feature.csv"
+}
