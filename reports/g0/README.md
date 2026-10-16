@@ -10,4 +10,4 @@
 
 Not stored here: model weights, `.pt` tokens/snapshots, wandb run folders (see `.gitignore`). Runs are tracked in wandb project `anlp-project` (entity `karma-skz-`). The baseline run will add `baseline_full/` (their output CSVs, `baseline_report.md/.json`, `gpu_mem.log`).
 
-| `baseline_full/` | **the baseline**: their vendored script, `3b_full` (500k tokens, INT8..INT4, pruning off), job 23472, 4 h 08 min: their per-condition CSVs and per-feature files, `baseline_report.md/.json` (Q1 passed), `gpu_mem.log`; the wandb helper dir and run-id file are git-ignored | Ada 2026-10-16 |
+| `baseline_full/` | **the baseline**: their vendored script, `3b_full` (500k tokens, INT8..INT4, pruning off), job 23472, 4 h 08 min: their per-condition CSVs and per-feature files, `baseline_report.md/.json` (Q1 passed), `gpu_mem.log`; the wandb helper dir is git-ignored; the on-cluster `wandb_run_id.txt` was removed because that in-job upload failed and never created a run (the results are in wandb run `86f26788`, uploaded from the laptop) | Ada 2026-10-16 |
