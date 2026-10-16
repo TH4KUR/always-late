@@ -1,6 +1,6 @@
 # Audit: why our pipeline disagrees with Duan et al. (2026)
 
-Status: **written 2026-10-16, experiments queued, no result below is from R2/R5 yet.** Sections 1-3 are established (code reading, unit tests, or the finished baseline job). Section 5 is a pre-committed reading guide for the experiments. Section 6 is filled in when the jobs finish.
+Status: **written 2026-10-16; R2 and all R5 cells finished the same day (section 6).** Sections 1-3 are established (code reading, unit tests, or the finished baseline job). Section 5 is the reading guide fixed before the experiments. Section 6 holds the results, section 6.4 the status of the closure protocol.
 
 ## 1. The disagreement
 
@@ -73,7 +73,7 @@ Not covered: D6 (population), D7 (weights mirror), the INT5/INT4 rungs, and any 
 
 Interpretation limits: survival percentages are counts over ~7,100 features, so differences under ~1 pp are not meaningful even before systematic effects; matching their numbers shows we reproduce a regime, not that the regime is the right instrument.
 
-## 6. Results
+## 6. Results (R2 and R5 complete)
 
 ### 6.1 Selfcheck of the smoke job (23648; small samples: 4 windows = 1,024 positions for each check, `reports/g0/r5_smoke/selfcheck.json`)
 
@@ -116,6 +116,27 @@ Readings under the rules of section 5 (not moved after seeing the data):
 
 Not shown by these data: which regime is the right instrument. They show that the published 81% / 51% are a property of feeding windows with no BOS (perplexity 457); with BOS, every configuration tested leaves at least 97% of features above r = 0.9 at INT6.
 
-### 6.3 R2 (pending)
+### 6.3 R2: their TransformerLens code with BOS prepended and masked (job 23643, 5 h 11 min, exit 0; `reports/g0/R2_bos_mask/`)
 
-R2 control rungs so far (their TL code, BOS prepended and masked, FP perplexity 16.106 against 16.110 for HF `T_mask`): perplexity change INT0 +0.00%, INT16 +0.01%, INT12 +0.02%, so the noise floor under every rung is small. INT8 perplexity +0.18% (HF `T_mask`: +0.11%). INT8/7/6 survival for R2 is still running; to be filled in with the cross-stack check (R2 vs `T_mask`, within 3 pp).
+| rung | active | survival % | degraded % | median r | mean r | perplexity | relative L2 weight change |
+|---|---|---|---|---|---|---|---|
+| FP baseline | 9,972 | 100.00 | 0.00 | 1.0000 | 1.0000 | 16.106 | |
+| INT0 (restore only) | 9,972 | 100.00 | 0.00 | 1.0000 | 1.0000 | 16.106 | 0 |
+| INT16 | 9,972 | 100.00 | 0.00 | 0.9969 | 0.9961 | 16.107 | 0.00133 |
+| INT12 | 9,972 | 100.00 | 0.00 | 0.9968 | 0.9961 | 16.108 | 0.00140 |
+| INT8 | 9,972 | 100.00 | 0.00 | 0.9932 | 0.9916 | 16.134 | 0.01088 |
+| INT7 | 9,972 | 99.97 | 0.03 | 0.9874 | 0.9844 | 16.141 | 0.02123 |
+| INT6 | 9,972 | 97.52 | 2.48 | 0.9730 | 0.9669 | 16.272 | 0.04277 |
+
+- **Cross-stack check passes**: R2 (TL) vs `T_mask` (HF), survival +0.01 pp at INT7 and +0.06 pp at INT6 (limit 3 pp); median r 0.9874 / 0.9730 vs 0.9875 / 0.9731; perplexity 16.106 / 16.134 / 16.141 / 16.272 vs 16.110 / 16.128 / 16.142 / 16.271. The two stacks agree in the BOS regime to a tenth of a percentage point.
+- **R2's own BOS rule (Q3)**: INT7 survival moves +18.78 pp from the no-BOS baseline (81.19 -> 99.97); material at the 10 pp threshold.
+- **Gate 0 (run integrity)**: INT0 gives r = 1 for every active feature and perplexity identical to the baseline.
+- **Noise floor in the BOS regime**: median r is already 0.9969 at INT16 and 0.9968 at INT12 (the bf16 re-rounding floor, weight change 1.3e-3), so INT8's 0.9932 is only 0.004 below the floor. The scaling test (slope of log(1 - median r) against log relative L2 weight change, `g0_wandb.compute_gate_metrics`) gives **0.592, inside [0.5, 1.5]**: with BOS the decorrelation follows the weight perturbation (signal-limited). This is Gate 1 evaluated on R2, **not** on the arm the protocol names (R1, no BOS).
+
+### 6.4 Where the closure protocol (audit `duan_codebase_audit.md` section 7) stands
+
+The protocol fixed its dispositions before the experiments and cannot be assigned yet, honestly:
+- **Gate 0**: passes (R2 INT0; baseline anchors within bands).
+- **Gate 1** is defined on R1 (their pipeline, no BOS, ladder incl. INT16/INT12). R1 was not run; the vendored baseline has no INT16/INT12 rungs. R2 passes Gate 1 but R2 is the BOS regime. Whether their no-BOS regime is signal-limited or noise-amplifying is **not measured**.
+- **Q4** needs our pipeline vs their code in all three regimes (none, mask, keep). Available: none: `T` vs the baseline passes (0.22 / 0.15 pp), but our own pipeline `O` differs from the baseline by +8.4 / +3.7 pp and matches only with their q/k/v grouping toggled; mask: `T_mask` vs R2 passes, but our pipeline in the mask regime (`O_mask`) was not run; keep: `O_keep` vs `T_keep` (+/- 0.83 pp) but their TL keep arm (R3) was not run.
+- So the closest literal reading is **D-EQUIV-UP-TO-TOGGLE for the no-BOS regime** (quantizer grouping), and **incomplete** for mask and keep. Minimal runs that would complete it: (a) Gate 1 in their regime: `T` at INT16/INT12 in HF (about 45 min, 1 GPU) or R1 ladder 0/16/12 in their TL code (about 2 h, 2 GPUs); (b) `O_mask` (about 45 min); (c) R3 in TL (about 5 h, 2 GPUs) or accept `T_keep` as its HF stand-in, which departs from the protocol text. Whether to run them is a decision for the user/team.

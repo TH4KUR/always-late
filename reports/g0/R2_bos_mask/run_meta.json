@@ -1,0 +1,33 @@
+{
+  "run_mode": "g0_core",
+  "bos": "prepend_mask",
+  "token_budget": 500000,
+  "bits": [
+    0,
+    16,
+    12,
+    8,
+    7,
+    6
+  ],
+  "pruning": false,
+  "torch": "2.14.1+cu126",
+  "transformer_lens": "3.9.0",
+  "sae_lens": "6.54.5",
+  "transformers": "5.19.0",
+  "python": "3.10.22",
+  "gpus": [
+    "NVIDIA GeForce RTX 2080 Ti",
+    "NVIDIA GeForce RTX 2080 Ti"
+  ],
+  "work_device": "cuda:1",
+  "model_candidates": [
+    "gemma-2-2b",
+    "google/gemma-2-2b"
+  ],
+  "sae": [
+    "gemma-scope-2b-pt-res-canonical",
+    "layer_12/width_16k/canonical"
+  ],
+  "snap_every": 100
+}

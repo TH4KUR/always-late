@@ -377,3 +377,9 @@ Request from the user: "we need to audit why our implementation was so off compa
 - Final R5 table, readings and the 7-point interpretation are in `reports/audit_our_vs_duan.md` section 6.2; generated report `reports/g0/r5/r5_report.md`. R5b's selfcheck equals R5a's (same token SHA-256 `23b44fad...`); the full-job code hashes equal the smoke's.
 - R2 (23643) control rungs INT0 / INT16 / INT12 perplexity +0.00 / +0.01 / +0.02%, INT8 +0.18%; its survival rungs INT8/7/6 are still to come (~17:15 IST).
 - Fetching lesson: 3 fetch mistakes in this session (rsync include-before-exclude order, "fetched" echo printed after a failed rsync, a transient DNS failure) were all caught by listing the directories; verify fetches by listing files, not by the loop's own output.
+
+## 2026-10-16 (~17:20 IST) -- R2 finished; audit complete; closure protocol not yet assignable
+
+- R2 (23643, their TL code, BOS prepended and masked) completed, exit 0, 5 h 11 min. Ladder in the audit section 6.3: INT0 identical to FP; INT16/INT12 median r 0.9969 / 0.9968 (bf16 re-rounding floor, weight change 1.3e-3); INT8/7/6 survival 100.00 / 99.97 / 97.52, median r 0.9932 / 0.9874 / 0.9730, perplexity 16.134 / 16.141 / 16.272. Cross-stack vs HF `T_mask`: +0.01 / +0.06 pp survival. Q3 (R2's rule): INT7 +18.78 pp vs the no-BOS baseline, material. Scaling test slope 0.592 (signal-limited) in the BOS regime.
+- Honest status of the closure protocol (audit section 6.4): Gate 0 passes; Gate 1 is defined on R1 (no BOS), which was not run (R2 passes it but is the BOS regime); Q4 needs all three regimes (`O_mask` and R3 missing). Closest reading: D-EQUIV-UP-TO-TOGGLE in the no-BOS regime; incomplete for mask and keep. Minimal completions are listed there; not run (decision for the user/team).
+- Nothing is queued or running on Ada. Fetched `reports/g0/R2_bos_mask/` (summaries, weight-perturbation JSONs, run_meta; snapshots, tokens and per-feature files stay on Ada under `out/R2/`).

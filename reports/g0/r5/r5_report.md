@@ -12,6 +12,7 @@
 | T_keep | 99.90 | 99.88 | 98.36 | 0.9946 | 0.9882 | 16.1 | +0.20 | 12011 | T + BOS kept |
 | T_mask | 100.00 | 99.96 | 97.47 | 0.9875 | 0.9731 | 16.1 | +0.20 | 9983 | T + BOS, position 0 masked |
 | T_rowquant | 99.76 | 89.15 | 54.87 | 0.9578 | 0.9118 | 456.9 | -2.05 | 7133 | T with per-row q/k/v quantizer |
+| R2 (their TL code, BOS masked) | 100.00 | 99.97 | 97.52 | 0.9874 | 0.9730 | 16.1 | +0.22 | 9972 |  |
 
 ## Anchor: T vs the vendored baseline
 
@@ -37,4 +38,12 @@
 ## Loop closure: O_keep vs our original demo (98.28 / 94.31)
 
 - INT7 +1.56 pp, INT6 +4.88 pp
+
+## Cross-stack: R2 vs T_mask
+
+- INT7 +0.01 pp (within 3 pp: True), INT6 +0.06 pp (within 3 pp: True)
+
+## R2's own rule
+
+- INT7 survival moves +18.78 pp from the baseline (material at 10 pp)
 
