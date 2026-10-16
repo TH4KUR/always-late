@@ -1,5 +1,7 @@
 # Code & results review: issues found (documentation only, nothing was fixed)
 
+> **Note (2026-10-16, night).** This review was written against the pipeline that has since been **discarded** (`src/` and the Phase-1 scripts; recoverable from the git tag `legacy-pipeline-2026-10-16`). File and line references below point into that tag, and the Phase-1 result files moved to `reports/legacy_pipeline/`. The findings stay here as evidence; the post-mortem (what was wrong, why results conflicted, whether the direction was worth it) is the last entry of `reports/progress_log.md`.
+
 Reviewed 2026-10-15 against commit `3c17b8e`. Scope: everything in `src/`, `scripts/`, `reports/`, `paper/main.tex`, `README.md`, and the proposal (`anlp_revised.txt`).
 
 **How things were checked**
@@ -113,7 +115,7 @@ Locations: `paper/main.tex:36` (abstract), `:312`, `:334-337` (discussion), `REA
 
 **B1. Gate G0 (replication of Duan 2026) was never run, and our numbers diverge massively from the reference. The reference pipeline itself looks pathological (S1).**
 
-*Observation.* The reference bands (`anlp_revised.txt` §4.2) are INT7 81.26% ±5 pp and INT6 51.30% ±10 pp. Our demo (`reports/quantization_survival_demo_result.json`) gives 98.28% and 94.31%. The 27-language run gives universal controls at 99.96% and 97.35%.
+*Observation.* The reference bands (`anlp_revised.txt` §4.2) are INT7 81.26% ±5 pp and INT6 51.30% ±10 pp. Our demo (`reports/legacy_pipeline/quantization_survival_demo_result.json`) gives 98.28% and 94.31%. The 27-language run gives universal controls at 99.96% and 97.35%.
 
 *What Duan's released code and table show.* I fetched their public artifact (`anonymous.4open.science/r/sae-feature-survival-quantization-0141`, `scripts/03_gemma_phase3_streaming_sweep.py` and `results/tables/phase3_summary_final.csv`) and compared it line by line with ours:
 
@@ -261,7 +263,7 @@ Locations: `paper/main.tex:36` (abstract), `:312`, `:334-337` (discussion), `REA
 **D5. Stale and synthetic artifacts remain in the repo and in wandb.**
 - `scripts/analyze_selectivity.py` still draws Fig 1, 4 and 5 from `np.random` (lognormal/exponential: `:94,139-141,156-157`).
 - It has hard-coded fallbacks: `n_active=10436`, median S=5.2, median firing rate=0.004 (`:68-69,79-80`).
-- `reports/selectivity_summary_table.csv` therefore contains those constants and stale 1.5k numbers (eng 229, etc.).
+- `reports/legacy_pipeline/selectivity_summary_table.csv` therefore contains those constants and stale 1.5k numbers (eng 229, etc.).
 - `figures/fig1_selectivity_distribution.png`, `fig4_selectivity_vs_firing_rate.png` and `fig5_firing_rate_comparison.png` are synthetic. `fig3_selective_pct_by_tier.png` divides by the hard-coded 10,436. They are copied to `paper/figures/`.
 - `scripts/log_to_wandb.py:98` uploads every `fig[2-5]_*.png`, so the synthetic ones are logged as if they were results.
 - `main.tex` does not include the synthetic ones; it uses the real figures from `generate_mid_submission_figures.py` (`fig2_selectivity_populations.png` and so on). Both sets share the `figN_` prefix, which makes mix-ups easy.

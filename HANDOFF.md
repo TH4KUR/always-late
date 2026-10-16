@@ -1,164 +1,124 @@
-# HANDOFF: establish the baseline by running Duan (2026)'s OWN code
+# HANDOFF: building on Duan (2026)'s OWN code
 
-Written 2026-10-16 (revised the same day) for an agent with no memory of the previous sessions. Read this file fully, then `issues.md` (why we are doing this), `PLAN.md`, `third_party/duan2026/UPSTREAM.md` (exactly what was removed and edited) and `reports/duan_codebase_audit.md` (evidence, Ada facts, closure protocol). Items marked **UNVERIFIED** were not verified.
+Written 2026-10-16, rewritten the same night after the audit and the decision to **discard our previous codebase**. For an agent with no memory of the previous sessions. Read this file fully, then the "POST-MORTEM of our previous codebase" entry at the end of `reports/progress_log.md`, `reports/audit_our_vs_duan.md` (what was found), `third_party/duan2026/UPSTREAM.md` (exactly what was removed and edited) and `reports/duan_codebase_audit.md` (Ada facts, closure protocol). Items marked **UNVERIFIED** were not verified.
 
-## 0. Mission and the one rule that matters
+## 0. Mission and the rules that matter
 
-**Mission.** Establish *baseline results*: run Duan et al.'s own Phase-3 script (Gemma-2-2B, Gemma Scope layer-12 16k SAE, RTN INT8..INT4 on WikiText-2, perplexity + per-feature Pearson survival) on Ada and compare with their published table. This tells us whether their numbers are reproducible and gives a reference for judging our own pipeline.
+**Where we are.** Duan et al.'s own Phase-3 script is vendored and reproduces their published Gemma table on Ada (within 0.15 pp). The audit showed that our earlier pipeline disagreed with theirs because of a **regime difference** (their windows have no BOS token; ours had one), not a bug. Our old pipeline (`src/`, Phase-1 scripts) was **discarded**: recoverable only from the git tag `legacy-pipeline-2026-10-16`. Everything new is built on their code.
 
-**The rule.** We run **their code, in their repo layout**, not a re-implementation and not a generated rewrite. `third_party/duan2026/` is their repository downloaded fresh, pruned to what this study needs, with the working copy of the one script we run differing from their file by a **short explicit whitelist** and nothing else:
+**Mission now.** (1) Finish the two pending diagnostics (section 5). (2) Get the team's decisions (section 9), above all which regime (BOS or no BOS) the study uses. (3) If the team chooses, rebuild the language-selective analysis as a small, labelled diff on top of their script, verified against the baseline before any new claim.
+
+**The rule.** We run **their code, in their repo layout**. `third_party/duan2026/` is their repository downloaded fresh, pruned to what this study needs, with the working copy of the one script we run differing from their file by a **short explicit whitelist** and nothing else:
 
 | What | Detail |
 |---|---|
 | Removed (not needed) | Pythia scripts, the feature-class predictor, `src/`, Pythia/pruning-overlap results and figures, env files. Hashes of every removed file stay in `MANIFEST.sha256`. |
-| Retained byte-identical (`pristine/`) | `LICENSE`, `README.md`, `scripts/03_gemma_phase3_streaming_sweep.py` (the study), `scripts/06_gemma_sliding_window_ppl_check.py` (kept for later), and their published Gemma results (`phase3_summary_final.csv`, `gemma_chunked_vs_sliding_ppl_w2048_s512_FULL.csv`, the INT6 per-feature file). |
-| Working copy = pristine script + | (tail) delete their cells 22+, which call three functions never defined in the file and run after all results are written; (1) `RUN_PRUNING = False` in their `3b_full` branch (their own flag; pruning is not needed here); (2) `WORK_DEVICE = "cuda:1" if torch.cuda.device_count() > 1 else DEVICE`; (3) `device == "cuda"` -> `str(device).startswith("cuda")` in their dtype test (otherwise `"cuda:1"` silently gives float32); (4) `load_gemma_tl_model(..., device=WORK_DEVICE)`; (5) `model_work.to(WORK_DEVICE)`. Edits 2-5 are device references forced by 11 GB GPUs (two bf16 models do not fit one card). |
-| No edit for `display()` | their notebook-only `display(...)` works when run with `ipython script.py` (IPython is installed in the Ada env). |
+| Retained byte-identical (`pristine/`) | `LICENSE`, `README.md`, `scripts/03_gemma_phase3_streaming_sweep.py` (the study), `scripts/06_gemma_sliding_window_ppl_check.py`, and their published Gemma results (`phase3_summary_final.csv`, `gemma_chunked_vs_sliding_ppl_w2048_s512_FULL.csv`, the INT6 per-feature file). |
+| Working copy = pristine script + | (tail) delete their cells 22+, which call three functions never defined in the file and run after all results are written; (1) `RUN_PRUNING = False`; (2) `WORK_DEVICE = "cuda:1" if torch.cuda.device_count() > 1 else DEVICE`; (3) `device == "cuda"` -> `str(device).startswith("cuda")` in their dtype test; (4) `load_gemma_tl_model(..., device=WORK_DEVICE)`; (5) `model_work.to(WORK_DEVICE)`. Edits 2-5 are device references forced by 11 GB GPUs. |
+| No edit for `display()` | their notebook-only `display(...)` works under `ipython script.py`. |
 
-**Do not edit the working copy by hand, and do not add edits.** The whitelist lives in `scripts/g0/verify_vendor.py` (`EDITS`, `TRUNCATE_AT`). `python3 -m unittest discover -s scripts/g0/tests -v` must print `OK` before any run: `tests/test_vendor.py` requires the working copy to equal *their pristine file plus exactly that whitelist, byte for byte over the whole file including top-level statements*, requires every retained file to match the recorded upstream hash and every removed file to be absent, and carries a **committed mutation suite** (13 mutations of their math, thresholds, constants, config, structure and an appended statement; each must be rejected). If you need a different edit, stop and ask the user. Anything beyond the baseline (BOS arms, extra bit-widths, our pipeline on their tokens) is a diagnostic experiment (section 5), must be labelled "modified/diagnostic" and must never be called a replication.
+**Do not edit the working copy by hand, and do not add edits.** The whitelist lives in `scripts/g0/verify_vendor.py` (`EDITS`, `TRUNCATE_AT`). `python3 -m unittest discover -s scripts/g0/tests -v` must print `OK` before any run (54 tests: exact reconstruction of the working copy, a committed mutation suite, report/wandb tooling). Anything beyond the baseline (BOS arms, extra bit-widths, new study code) is a **diagnostic / modified** experiment, must be labelled so and never called a replication. New study code must be a diff against their pristine script (the pattern in `scripts/g0/make_duan_runners_v3.py`), with tests, and must reproduce the baseline when its new switches are off.
 
-**Honest limit (UNVERIFIED).** We never ran their *unmodified* script: it needs a >= 16 GB GPU and none is reachable. That edits 2-5 do not change results relative to a single-device run is argued from the code and from bit-identical logits across the two cards, not demonstrated on a large GPU.
+**Honest limit (UNVERIFIED).** We never ran their *unmodified* script (needs >= 16 GB; none reachable). That edits 2-5 do not change results is argued from the code and from bit-identical logits across the two cards, not demonstrated on a large GPU.
 
-## 1. Why this exists
+## 1. Why this exists (short)
 
-The team's own pipeline (HF transformers, `src/`) gives INT7/INT6 survival of 98%/94% where Duan reports 81%/51%. The Gate-G0 replication was never run; it was an independent re-implementation. Their released data show a degraded regime (no BOS token, baseline WikiText-2 perplexity 458 chunked vs 46 in their own BOS sliding-window run; non-monotone perplexity vs bits). Before trusting either side we run *their* code. Read `issues.md`: the paper and README contradicted the team's own data and must be rewritten **by the team** (course policy forbids AI-generated report text; do not write paper prose).
+The team's own pipeline gave INT7/INT6 survival of 98%/94% where Duan reports 81%/51%. After running their code (reproduces) and a factor-by-factor audit (`reports/audit_our_vs_duan.md`): with one BOS token their own pipeline gives 99.97% / 97.5% (their TransformerLens code and an HF reimplementation agree to 0.1 pp); perplexity is 457 without BOS and 16 with it. Their quantizer's shared q/k/v scales cost ~8 / 3.5 pp but only without BOS; HF's sdpa attention path and a bf16 SAE make no measurable difference. The old code, its flaws and the verdict on whether its direction was worth it are in the post-mortem entry. The paper and README of that period contradicted the team's own data (`issues.md` A1-A6); the paper must be rewritten **by the team** (course policy forbids AI-generated report text; do not write paper prose).
 
-## 2. State of play (2026-10-16)
+## 2. State of play (2026-10-16, night)
 
 | Item | Status |
 |---|---|
-| Review of code and results, `issues.md` | done |
-| Their repo downloaded twice (byte-identical both times), vendored and pruned in `third_party/duan2026/`, content tree hash `a84e43da...adc` (the zip hash is NOT stable: the server stamps download time) | done |
-| Ada probed; env built (+ IPython); benchmark; independent re-verification by a second reviewer | done |
-| wandb logging (`scripts/g0/g0_wandb.py`), live-tested; post-hoc upload from `baseline_report.py` | done |
-| Vendoring tests (exact reconstruction + committed mutation suite) | done: 43 tests in the suite pass |
-| Earlier generator-based "faithful runner" | **removed**: it rewrote their file by string substitution and its test compared only 13 function bodies, not top-level statements |
-| Smoke of the vendored file on Ada (job 23463, their `3a_test` mode) | **done, passed; bit-identical to the two earlier smokes** (section 8) |
-| **Baseline: their `3b_full` config (500k tokens, INT8..INT4), pruning off** | **DONE, Q1 PASSED** (job 23472; section 10). Results in `reports/g0/baseline_full/`. Do not rerun. |
-| **Audit of the disagreement** (`reports/audit_our_vs_duan.md`: 12 listed differences, pre-committed reading rules) | **written; experiments running** (section 11) |
-| R2 (their code + BOS prepended and masked; ladder INT0/16/12/8/7/6), Slurm 23643 | **COMPLETED exit 0 (5 h 11 min), fetched to `reports/g0/R2_bos_mask/`; cross-check vs `T_mask` passes (+0.01 / +0.06 pp)** |
-| R5 (our HF pipeline on their tokens, one factor flipped per cell): `r5_run.py`, `r5_lib.py`, `run_r5.sbatch`; 31 CPU tests (+ mutation checks) pass locally and in the Ada env | smoke 23648 passed; **R5a 23649 and R5b 23660 COMPLETED (exit 0), results fetched and judged** (`reports/g0/r5/`, audit section 6.2); R2 completed too (section 11) |
-| R1/R3 (BOS arms of the v3 generator), R4 (their script 06) | not run; R3 is superseded by `T_keep`/`O_keep` |
+| Review of the old code and results, `issues.md` | done (kept as evidence of the discarded work) |
+| Their repo vendored and pruned (`third_party/duan2026/`, content tree hash `a84e43da...adc`), 54 tests | done |
+| Baseline: their `3b_full` (500k tokens, INT8..INT4, pruning off), job 23472 | **done; reproduces their table** (section 8) |
+| Audit of why the old pipeline disagreed: `reports/audit_our_vs_duan.md` | **done**: R2 (their code + masked BOS) and R5 (8 cells, old HF pipeline on their tokens) |
+| Old codebase | **discarded** (tag `legacy-pipeline-2026-10-16`); Phase-1 results kept in `reports/legacy_pipeline/` as hypotheses |
+| Pending diagnostics: R1 (their code, no BOS, INT0/16/12) and R5c (`O_mask`) | **queued/running** (section 5) |
+| Closure protocol (`duan_codebase_audit.md` section 7) | **not yet assignable**: needs Gate 1 in the no-BOS regime (R1) and Q4 in the mask/keep regimes (R5c, R3 missing); see audit section 6.4 |
+| Study design on top of their code | **not started**; waits for the team's regime decision |
 
-## 3. Runbook for the baseline
+## 3. Runbook for the baseline (done once; keep for re-runs)
 
 Commands from the repo root. Ada: `ssh karma@ada-gw1` (key auth works from the user's laptop; `ada.iiit.ac.in` is closed).
 
-1. **Pre-flight (local).** `python3 -m unittest discover -s scripts/g0/tests -v` -> `OK`. `python3 scripts/g0/verify_vendor.py --verify` -> `pristine problems: none | working copy == pristine + whitelist: True`. To re-verify against upstream yourself: download `https://anonymous.4open.science/api/repo/sae-feature-survival-quantization-0141/zip`, extract with a path-safe extractor into an empty directory, run `python3 scripts/g0/verify_vendor.py --build <that dir>`, then `git status third_party/duan2026` must show no change (the build is deterministic).
-2. **Deploy.**
-   ```
-   V=third_party/duan2026
-   scp $V/scripts/03_gemma_phase3_streaming_sweep.py karma@ada-gw1:/home2/karma/duan-verify/vendor/scripts/
-   scp $V/working.sha256 karma@ada-gw1:/home2/karma/duan-verify/vendor/
-   scp scripts/g0/run_baseline.sbatch scripts/g0/baseline_report.py scripts/g0/g0_wandb.py karma@ada-gw1:/home2/karma/duan-verify/
-   ```
-   The launcher refuses to run if the deployed script's sha256 does not match `working.sha256` and logs the hash of the file it runs.
-3. **Pre-flight (Ada).** `sinfo -N -p u22 -t idle -h -o "%N %f" | grep -c 2080ti` (>= 1; there were 7-11), `df -h /home2/karma` (>= 12 GB free; it was 19 GB), `squeue -u karma` (the user's own `plan02-train` job is not yours: never touch it).
-4. **Submit.** `ssh karma@ada-gw1 'cd /home2/karma/duan-verify && sbatch -J base-full run_baseline.sbatch full full'`. Their shipped `3b_full` (500k tokens, INT8/7/6/5/4), pruning off: 6 conditions x ~40 min = **~4.1 h compute**, plus 10-20 min of model download to node-local scratch. There is no resume (adding it would modify their loop); if the job dies, rerun it whole.
-5. **Watch.** `squeue -u karma`, `tail -c 2000 /home2/karma/duan-verify/logs/base-full-<jobid>.out | tr '\r' '\n'`, GPU memory in `/home2/karma/duan-verify/baseline/full/gpu_mem.log` (expect ~8.2 GiB per card). Nothing is logged to wandb from inside their code: the report step at the end of the job uploads to project `anlp-project` (entity `karma-skz-`).
-6. **Collect.** `scp -r karma@ada-gw1:/home2/karma/duan-verify/baseline/full/phase3_gemma_outputs_3b_full_500k_L12 reports/g0/baseline_full/`; also `gpu_mem.log` and the slurm log; note the library versions (`reports/g0/ada_env_freeze_20261015.txt`, plus `pip show ipython`).
-7. **Judge with the pre-committed bands** (no moving goalposts): `python3 scripts/g0/baseline_report.py --run-dir reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12 --published third_party/duan2026/pristine/results/tables/phase3_summary_final.csv --per-feature <run>/RTN_INT6_per_feature.csv --published-per-feature third_party/duan2026/pristine/results/per_feature/phase5b_gemma_rtn_int6_vs_pruning_per_feature_overlap.csv`. **Q1 passes** iff INT7 survival is within 5 pp of 81.26%, INT6 within 10 pp of 51.30%, active features within 10% of 7,144, and perplexity signs hold (INT7 improves, INT6 worsens). Also record the per-feature Spearman at INT6 and every INT5/INT4 delta. (Their published table also has a pruning row; it is intentionally not replicated here.)
-8. **Record and decide.** (Done for job 23472: Q1 passed.) Q1 passes -> baseline established: write the numbers into `reports/progress_log.md`, `PROGRESS.md`, `PLAN.md`, tell the user, then (only if they agree) start the diagnostics (section 5). Q1 fails -> do **not** touch their code: rerun once to check determinism (results were bit-identical across two jobs/nodes in the smoke tests), record versions, report non-reproducibility.
+1. **Pre-flight (local).** `python3 -m unittest discover -s scripts/g0/tests -v` -> `OK`; `python3 scripts/g0/verify_vendor.py --verify` -> `pristine problems: none | working copy == pristine + whitelist: True`. To re-verify against upstream: download `https://anonymous.4open.science/api/repo/sae-feature-survival-quantization-0141/zip`, extract with a path-safe extractor into an empty directory, run `python3 scripts/g0/verify_vendor.py --build <that dir>`, then `git status third_party/duan2026` must show no change.
+2. **Deploy.** `V=third_party/duan2026; scp $V/scripts/03_gemma_phase3_streaming_sweep.py karma@ada-gw1:/home2/karma/duan-verify/vendor/scripts/; scp $V/working.sha256 karma@ada-gw1:/home2/karma/duan-verify/vendor/; scp scripts/g0/run_baseline.sbatch scripts/g0/baseline_report.py scripts/g0/g0_wandb.py karma@ada-gw1:/home2/karma/duan-verify/`. The launcher refuses to run if the deployed script's sha256 does not match `working.sha256`.
+3. **Pre-flight (Ada).** `sinfo -N -p u22 -t idle -h -o "%N %f" | grep -c 2080ti` (>= 1), `df -h /home2/karma` (>= 12 GB free), `squeue -u karma` (the user's own `plan02-train` job is not yours: never touch it), outbound network (`curl -sI https://huggingface.co`).
+4. **Submit.** `ssh karma@ada-gw1 'cd /home2/karma/duan-verify && sbatch -J base-full run_baseline.sbatch full full'` (~4.1 h compute + 10-20 min model download). No resume.
+5. **Watch / collect / judge.** `squeue -u karma`; logs in `/home2/karma/duan-verify/logs/`; results in `/home2/karma/duan-verify/baseline/full/`; judge with `scripts/g0/baseline_report.py` (pre-committed bands; Q1 passes iff INT7 survival within 5 pp of 81.26%, INT6 within 10 pp of 51.30%, active features within 10% of 7,144, perplexity signs hold).
 
 ## 4. Environment facts that cost us time (all verified)
 
-- **Cluster.** Slurm. Accounts `nlp` (QOS normal) and `research` (QOS medium: max 4 GPUs, 40 CPUs, 125 GB per user, 1 node per job). Only partition `u22` is open to us. GPUs reachable are 11 GB-class only: GTX 1080 Ti (gnode001-042) and RTX 2080 Ti (gnode044-092, `--constraint=2080ti`). The 3090 nodes (`plafnet2`, `rrc`) and 3080 Ti nodes (`ihub`) are closed to our accounts. Turing has no native bf16: PyTorch emulates it (correct results, ~2x slower matmuls).
-- **Filesystems.** `/home2/karma` (NFS, ~19 GB free, **shared with the user's other jobs**; an earlier retry nearly filled it to 97%: keep the model off it). **`/share1` is NOT mounted on compute nodes** and has a 3,000-file quota. Node-local `/scratch` (1.2 TB) holds the 10.5 GB gated model per job, deleted at job end. `/share7` and `/data3` are mounted on compute nodes but we have no directories there: never write into shared areas you do not own.
-- **Software.** `/home2/karma/duan-verify/env`: Python 3.10, torch 2.14.1+cu126, transformer-lens 3.9.0, sae-lens 6.54.5, transformers 5.19.0, wandb 0.30.0, ipython 8.39.0. Their `requirements.txt` was unpinned; these versions are part of the result.
-- **Hugging Face.** The gated `google/gemma-2-2b` needs a token: `hf auth login` was done on Ada (`/home2/karma/duan-verify/hf/token`; jobs use `HF_TOKEN_PATH`). **Never copy or print a token.** **Do not set `HF_HUB_DISABLE_XET=1`** (plain HTTP was ~15x slower and kept dropping connections).
-- **wandb.** Key already in `~/.netrc` on Ada (account `karma-skz`, entity `karma-skz-`); project `anlp-project`. To change account the user runs `wandb login --relogin` themselves. Never ask for or handle a key.
-- **Measured costs (TransformerLens, 2 x 2080 Ti).** Perplexity pass 3.3 it/s, streaming pass 1.08 it/s, peak GPU 8.2 GiB per card, host RSS peak 21.8 GB, **40 min per condition at 500k tokens**.
-- **Per-user caps (QOS `medium`, account `research`): 4 GPUs, 40 CPUs, 125 GB.** `-c 8` with `--mem=40G` was inflated by Slurm to 14 CPUs per R5 job and R2 holds 18, so R2 + two R5 jobs exceed the 40-CPU cap and the third waits in `QOSMaxCpuPerUserLimit`. `-A nlp` (QOS `normal`) has no per-user cap and starts immediately. Check `scontrol show job <id> | grep NumCPUs` before queueing several jobs.
-- **Queue.** Wait was ~0 s for every job so far. `sbatch --test-only` predictions ("starts tomorrow") were wrong; ignore them.
+- **Cluster.** Slurm. Accounts `nlp` (QOS normal, no per-user cap) and `research` (QOS medium: max 4 GPUs, **40 CPUs**, 125 GB per user, 1 node per job). Only partition `u22` is open. GPUs reachable are 11 GB-class only: GTX 1080 Ti (gnode001-042) and RTX 2080 Ti (gnode044-092, `--constraint=2080ti`). Turing has no native bf16: PyTorch emulates it (correct, ~2x slower).
+- **CPU cap trap.** `-c 8` with `--mem=40G` is inflated by Slurm to 14 CPUs (and 18 for the 2-GPU jobs), so several jobs on `research` hit `QOSMaxCpuPerUserLimit`. `-A nlp` starts immediately. Check `scontrol show job <id> | grep NumCPUs`.
+- **Filesystems.** `/home2/karma` (NFS, ~19 GB free, **shared with the user's other jobs**): keep the model off it. **`/share1` is NOT mounted on compute nodes** (3,000-file quota). Node-local `/scratch` holds the 10.5 GB gated model per job (deleted at job end). Never write into shared areas you do not own.
+- **Software.** `/home2/karma/duan-verify/env`: Python 3.10, torch 2.14.1+cu126, transformer-lens 3.9.0, sae-lens 6.54.5, transformers 5.19.0, wandb 0.30.0, ipython 8.39.0 (freeze in `reports/g0/`). Their `requirements.txt` was unpinned; these versions are part of the result.
+- **Hugging Face.** The gated `google/gemma-2-2b` needs a token already stored on Ada (`/home2/karma/duan-verify/hf/token`; jobs use `HF_TOKEN_PATH`). **Never copy or print a token.** **Do not set `HF_HUB_DISABLE_XET=1`** (15x slower, drops connections).
+- **wandb.** Key in `~/.netrc` (account `karma-skz`, entity `karma-skz-`), project `anlp-project`. Never ask for or handle a key.
+- **Measured costs (TransformerLens, 2 x 2080 Ti).** 40-45 min per condition at 500k tokens, peak GPU 8.2 GiB per card, host RSS 21.8 GB.
+- **Fetching results.** rsync filters: **excludes must come before includes** (first match wins); a transient DNS failure on the laptop can leave an empty directory while the loop still echoes "fetched": verify fetches by listing the files.
+- **Tests.** Python reuses stale `.pyc` for same-size edits within one second: run mutation checks with `python -B` after clearing `__pycache__`.
 
-## 5. After the baseline: diagnostics (modified code, clearly labelled)
+## 5. Diagnostics on THEIR code (modified; always labelled) and pending jobs
 
-Only after the baseline exists and the user agrees. Design and closure rules: `reports/duan_codebase_audit.md` sections 6-7. Tooling: `scripts/g0/make_duan_runners_v3.py` (reads the vendored *pristine* scripts; BOS arms, INT0 restore-only control, ladder, snapshots for block-bootstrap CIs, resume, wandb heartbeats) and `scripts/g0/run_g0.sbatch`. R1 no BOS, R2 BOS prepended with position 0 masked, R3 BOS prepended and kept (our pipeline's regime), each ~4.8 h; R4 = their script 06 (does not parse as shipped; the generator fixes it); R5 = our pipeline on their exact tokens (`scripts/g0/r5_run.py`, section 11; its design and the list of differences it isolates are in `reports/audit_our_vs_duan.md`). The closure protocol maps every outcome to a terminal disposition so Duan is never re-verified afterwards.
+Tooling: `scripts/g0/make_duan_runners_v3.py` (reads the vendored *pristine* scripts; BOS arms `none`/`prepend_keep`/`prepend_mask`, INT0 restore-only control, ladder, snapshots, resume, wandb heartbeats), `scripts/g0/run_g0.sbatch <arm> <none|prepend_keep|prepend_mask> [bits] [tokens] [mode]` (2 x 2080 Ti), `scripts/g0/g0_wandb.py` (logger and `compute_gate_metrics`), `scripts/g0/r5_compare.py` (rules of the audit as code; reads summary CSVs only). Deployed copies on Ada: `/home2/karma/duan-verify/duan03_runner_v3.py` (hash prefix `2c34fecaee1d2e32`), `run_g0.sbatch`, and the legacy harness copy `r5code/` (used only by R5c).
+
+| Job | What | Ada output | Log |
+|---|---|---|---|
+| **24451 `R1-nobos-floor`** (`research`, 2 GPUs, ~3 h) | their code, **no BOS**, ladder INT0/16/12, 500k tokens: Gate 1 (noise floor) in THEIR regime | `/home2/karma/duan-verify/out/R1/` | `logs/R1-nobos-floor-24451.out` |
+| **24452 `R5c-nlp`** (`nlp`, 1 GPU, ~45 min) | `O_mask`: the legacy HF pipeline with BOS masked, INT8/7/6 (completes Q4 for the mask regime); runs the deployed legacy harness, unaffected by the repo cleanup | `/home2/karma/duan-verify/r5/R5c/O_mask/` | `logs/R5c-nlp-24452.out` |
+
+Already done and fetched: R2 (`reports/g0/R2_bos_mask/`), R5a/R5b (`reports/g0/r5/`), smoke (`reports/g0/r5_smoke/`).
 
 ## 6. Do-not list
 
 - Do not edit `third_party/duan2026/` by hand, add edits, change the baseline constants, or change the comparison bands. Do not describe diagnostics as replication.
-- Do not edit `paper/` prose or write report text. Do not change `src/` or scripts outside `scripts/g0/` without asking the user.
+- Do not resurrect the legacy pipeline into the working tree. If something from it is needed, check out the tag and port the *idea* as a tested diff on their code.
+- Do not edit `paper/` prose or write report text.
 - Do not touch the user's `plan02-train` jobs, other users' files, `~/.netrc`, `~/.env`, `~/.ssh`, HF tokens. Do not fill `/home2`. No long jobs on the login node.
-- Do not commit data, weights, `.pt` files or secrets. Commit results as small CSV/JSON/MD under `reports/g0/`.
+- Do not commit data, weights, `.pt` files, per-feature CSV dumps or secrets. Commit small CSV/JSON/MD results under `reports/g0/`.
 
 ## 7. File map
 
 | Path | What |
 |---|---|
-| `HANDOFF.md`, `PLAN.md`, `PROGRESS.md`, `reports/progress_log.md` | handoff, plan, status, dated evidence log |
-| `issues.md` | the review (A paper vs data, B instrument, C method, D implementation, external-resources audit) |
-| `reports/duan_codebase_audit.md` | audit of Duan's repo, verified Ada facts, closure protocol, reviewer reconciliation |
+| `HANDOFF.md`, `PLAN.md`, `PROGRESS.md`, `reports/progress_log.md` | handoff, plan, status, dated evidence log (ends with the post-mortem of the old codebase) |
+| `issues.md` | review of the discarded pipeline and paper |
+| `reports/audit_our_vs_duan.md` | why the old pipeline disagreed with theirs: 12 differences, experiments, pre-committed rules, results (sections 6.1-6.4) |
+| `reports/duan_codebase_audit.md` | audit of Duan's repo, verified Ada facts, closure protocol (section 7) |
+| `reports/g0/` | `baseline_full/`, `baseline_smoke*/`, `R2_bos_mask/`, `r5/` (+ `r5_report.md`), `r5_smoke/`, benchmark, env freeze, runner diffs |
+| `reports/legacy_pipeline/` | Phase-1 results of the discarded pipeline: hypotheses, not findings |
 | `third_party/duan2026/` | **their code**: `UPSTREAM.md`, `MANIFEST.sha256`, `pristine/`, `scripts/` (working copy), `patches/`, `working.sha256` |
-| `scripts/g0/verify_vendor.py` | the edit whitelist + verification/build CLI |
-| `scripts/g0/run_baseline.sbatch`, `baseline_report.py` | baseline launcher and the comparison with their published table (post-hoc wandb) |
-| `scripts/g0/make_duan_runners_v3.py`, `run_g0.sbatch`, `unit_test_runner.py` | diagnostic runner (modified; not a replication) |
-| `scripts/g0/r5_run.py`, `r5_lib.py`, `run_r5.sbatch`, `tests_torch/` | R5: OUR pipeline on THEIR tokens with factor toggles (attention impl, SAE dtype, quantizer grouping, BOS regime); torch tests (`/tmp/claude-1000/torchvenv/bin/python -m unittest discover -s scripts/g0/tests_torch -v`, 31 tests, CPU) |
-| `reports/audit_our_vs_duan.md` | why our pipeline disagrees with theirs: difference table, experiments, pre-committed reading rules, results (section 6 there, filled in after the jobs finish) |
-| `scripts/g0/g0_wandb.py`, `selftest_wandb.py`, `bench_fit.py` | wandb helper and its live self-test; Ada fit/speed benchmark |
-| `scripts/g0/tests/` | stdlib tests (vendoring + mutation suite, comparison, logger, generator) |
-| `reports/g0/` | smoke results, benchmark JSON, env freeze, diffs of diagnostic runners |
+| `scripts/g0/` | `verify_vendor.py`, `run_baseline.sbatch`, `baseline_report.py`, `make_duan_runners_v3.py`, `run_g0.sbatch`, `unit_test_runner.py`, `g0_wandb.py`, `selftest_wandb.py`, `bench_fit.py`, `r5_compare.py`, `tests/` |
 
-## 8. Smoke of the vendored file (done, job 23463, 14.5 min incl. model download)
+## 8. Baseline result (job 23472, completed 2026-10-16)
 
-Their vendored script (their file + the 5 whitelisted edits), run **under IPython** in their `3a_test` mode (a temporary copy that differs from the vendored file by the single `RUN_MODE` line; the launcher printed that diff), 20k tokens, 2 x RTX 2080 Ti: **completed with exit 0, no traceback**, `display()` worked unedited, the report step and wandb upload worked (`https://wandb.ai/karma-skz-/anlp-project/runs/f722c81a`).
+**Q1 passed on all four pre-committed bands.** Outputs: `reports/g0/baseline_full/`. wandb run `https://wandb.ai/karma-skz-/anlp-project/runs/86f26788`.
 
-**Bit-identical to both earlier smoke runs** (the generator-based runner, job 23419, and the instrumented v3 runner R0, job 23355): max absolute difference 0.0 over every summary column and over the per-feature correlations of all 16,384 features for the baseline, INT8 and INT6 conditions; active flags identical. Evidence: `reports/g0/baseline_smoke_vendored/neutrality_check.json`.
-
-| 3a_test, 20k tokens | baseline ppl | INT8 ppl delta / survived / median r | INT6 ppl delta / survived / median r | active |
+| condition | ppl (ours / published) | survived % (r>0.9) | median r | active features |
 |---|---|---|---|---|
-| vendored script (this) | 414.07 | +2.06% / 96.15% / 0.9713 | +3.26% / 49.82% / 0.8994 | 6,702 |
-| Duan published (3b_full, 500k tokens, train split) | 458.53 | +2.62% / 99.09% / 0.9707 | +3.99% / 51.30% / 0.9027 | 7,144 |
+| FP16 baseline | 458.4 / 458.5 | 100 / 100 | 1.0000 / 1.0000 | 7,134 / 7,144 |
+| RTN INT8 | 469.9 / 470.6 | 99.12 / 99.09 | 0.9707 / 0.9707 | same |
+| RTN INT7 | 432.7 / 432.6 | 81.19 / 81.26 | 0.9499 / 0.9499 | same |
+| RTN INT6 | 476.8 / 476.8 | 51.15 / 51.30 | 0.9027 / 0.9027 | same |
+| RTN INT5 | 539.7 / 539.8 | 27.57 / 27.72 | 0.7775 / 0.7780 | same |
+| RTN INT4 | 670.4 / 669.8 | 12.39 / 12.40 | 0.4504 / 0.4512 | same |
 
-Different token budgets and splits, so differences are expected; the regime reproduces. **Q1 is NOT evaluated here** (INT7 not run, 20k tokens). Peak GPU memory 8,205 / 7,993 MiB per card.
+Largest survival gap 0.15 pp; per-feature Spearman at INT6 over 7,121 commonly active features 0.99965. Job 23472 on gnode057: 4 h 08 min, exit 0, peak GPU 8,183 / 8,009 MiB. Not demonstrated: that our four device edits equal their unmodified single-device run.
 
-## 9. Baseline result (job 23472, completed 2026-10-16)
+## 9. Open decisions for the user / team
 
-**Q1 passed on all four pre-committed bands** (INT7 survival within 5 pp, INT6 within 10 pp, active features within 10%, perplexity signs): the replication is within ~0.15 pp of their published table at every rung. Outputs: `reports/g0/baseline_full/` (their per-condition CSVs and per-feature files, `baseline_report.md/.json`, `gpu_mem.log`).
+1. **Which regime does the study use?** Their no-BOS windows (perplexity 457, INT7 improves perplexity: a degraded regime) or BOS (perplexity 16, survival >= 97% at INT6)? This decides how the paper treats Duan's numbers and whether INT7/INT6 can still be confirmatory (in the BOS regime they are at ceiling; INT5/INT4 have the headroom and were never measured with BOS in a verified setup).
+2. Rebuild the language-selective analysis (FLORES panel, selectivity, tiers) as a diff on their code, or stop at the audit result ("survival depends on BOS handling by 18-46 pp at INT7/INT6") and write that up? Deadline for the final submission: Oct 31.
+3. Who writes the rewritten results/discussion (must be the team)?
+4. Optional: R3 (their TL code, BOS kept), a small-sample cell for the 2,048-token demo residual, INT5/INT4 with BOS.
 
-| condition | ppl (ours / published) | ppl delta % | survived % (r>0.9) | median r | active features |
-|---|---|---|---|---|---|
-| FP16 baseline | 458.4 / 458.5 | 0 / 0 | 100 / 100 | 1.0000 / 1.0000 | 7,134 / 7,144 |
-| RTN INT8 | 469.9 / 470.6 | +2.52 / +2.62 | 99.12 / 99.09 | 0.9707 / 0.9707 | same |
-| RTN INT7 | 432.7 / 432.6 | **-5.61 / -5.65** | 81.19 / 81.26 | 0.9499 / 0.9499 | same |
-| RTN INT6 | 476.8 / 476.8 | +4.02 / +3.99 | 51.15 / 51.30 | 0.9027 / 0.9027 | same |
-| RTN INT5 | 539.7 / 539.8 | +17.73 / +17.72 | 27.57 / 27.72 | 0.7775 / 0.7780 | same |
-| RTN INT4 | 670.4 / 669.8 | +46.25 / +46.08 | 12.39 / 12.40 | 0.4504 / 0.4512 | same |
+## 10. NEXT PROMPT: check R1 and R5c, fetch, judge, finish the audit
 
-Largest survival gap over all five rungs **0.15 pp**; largest median-r gap **0.0008**; per-feature Spearman at INT6 over 7,121 commonly active features: **r 0.99965, firing rate 0.99995**. Job 23472 on gnode057: 4 h 08 min, exit 0, no errors, peak GPU 8,183 / 8,009 MiB of 11,264 per card. Vendored script sha256 prefix `7f1e638a0508c3ca` (verified by the launcher before running). wandb: `https://wandb.ai/karma-skz-/anlp-project/runs/86f26788`.
-
-**What it means.** (1) Their published Gemma Phase-3 numbers are reproducible with their own code on different hardware (our Turing GPUs emulate bf16; theirs did not), including the odd parts: baseline perplexity of 458 and **INT7 improving perplexity by 5.6%**. So their degraded regime is real in their pipeline, not a typo or a one-off. (2) The per-feature correlations agree across hardware at 0.9996, so the INT6 survival values are a deterministic function of the weight perturbation, **not** hardware-noise realizations; this argues against the idea that their numbers are chaotic rounding noise (inference; the INT16/INT12 noise-floor control of the closure protocol has not been run). (3) It does **not** yet explain why our own pipeline gives 98%/94% at INT7/INT6: that is the diagnostics layer (BOS regime, TransformerLens vs HF, SAE dtype), which has not been run. (4) Not demonstrated: that our four device edits equal their unmodified single-device run (no GPU of >= 16 GB is reachable); the agreement above is strong indirect evidence.
-
-**Operational note.** On 2026-10-16 ~09:24 Ada lost *all* outbound internet (W&B, Hugging Face and PyPI time out from the login node; they answered from the laptop). The job's own post-hoc wandb upload therefore failed (non-fatal, by design) and the results were uploaded from the laptop. Check outbound access before launching any job that downloads the 10.5 GB model.
-
-## 10. Open questions for the user
-
-1. ~~Run the diagnostics?~~ Authorised on 2026-10-16 ("audit why our implementation was so off compared to theirs"; R2 and R5 started). Still open: R1/R3 (superseded by the R5 BOS cells), their script 06, INT5/INT4 in R5, a cell for the corpus/population difference (D5/D6) if `O_keep` does not land near our original 98%/94%.
-2. Who writes the paper's rewritten results/discussion (must be the team)?
-
-## 11. Audit jobs in flight and what to do on the next prompt (written 2026-10-16, around midday IST)
-
-**NEXT PROMPT: check R2/R5 status and fetch results.** The user asked for the jobs to be queued and the response ended; the next message is the cue to look.
-
-| Job | What | Ada output | Log |
-|---|---|---|---|
-| 23643 `R2-bos-mask` | their TL script, BOS prepended to identical 256-token windows, position 0 masked; ladder INT0, 16, 12, 8, 7, 6; 2 GPUs, ~4.8 h | `/home2/karma/duan-verify/out/R2/` | `logs/R2-bos-mask-23643.out` |
-| 23648 `R5smoke` | 40 windows, cells `T,O`, INT8, wandb off, selfcheck on 4 windows. **COMPLETED exit 0 (10 min 57 s); results fetched to `reports/g0/r5_smoke/`; selfcheck numbers in audit section 6.1** | `/home2/karma/duan-verify/r5/R5smoke/` | `logs/R5smoke-23648.out` |
-| 23649 `R5a` | cells `T,O,T_sdpa,T_bf16sae`, INT8/7/6, 1 GPU. **COMPLETED exit 0 (2 h 28 min); fetched** | `r5/R5a/<cell>/` | `logs/R5a-23649.out` |
-| 23660 `R5b-nlp` | cells `T_rowquant,T_mask,T_keep,O_keep`, INT8/7/6, 1 GPU. **COMPLETED exit 0 (2 h 47 min); fetched**; **account `nlp`** (the first copy, 23652 on `research`, was cancelled: QOS `medium` caps the user at 40 CPUs and R2 18 + R5a 14 + R5b 14 exceeded it) | `r5/R5b/<cell>/` | `logs/R5b-nlp-23660.out` |
-
-(`/home2/karma/duan-verify/` prefix on every path. The smoke passed, so R5a (gnode053) and R5b (gnode058) started. If a job dies, fix test-first, redeploy (`rsync` `r5_run.py r5_lib.py g0_wandb.py` and `src/*.py` to `r5code/`, `run_r5.sbatch` to the parent) and resubmit with the same out-name: finished cells (`cell_done.json`) are skipped. `-A nlp` works for parallel arms.)
-
-Steps for the next prompt, in order:
-
-1. `ssh karma@ada-gw1 'squeue -u karma; sacct -j 23643,23648,23649,23660 -o JobID,JobName,State,Elapsed,ExitCode'`; read the log tails (`tail -c 3000 ... | tr '\r' '\n'`). Never touch the user's other jobs.
-2. **Smoke first.** Read `r5/R5smoke/selfcheck.json`: `int0_identity.identical` must be true; record `sdpa_vs_eager` (the size of the missing soft-cap effect), `ours_fp32_vs_sae_lens` (should be Jaccard ~1, max abs diff ~0), `ours_bf16_vs_fp32`, and the token SHA-256. Check the first cell's printed numbers are sane (FP perplexity ~450, not NaN).
-3. When R5a/R5b/R2 finish, fetch the results (small files only: summaries, selfcheck, a few per-feature files; leave `*.pt`, snapshots and the full per-feature set on Ada): `rsync -a --exclude '*.pt' --exclude 'snap_*' karma@ada-gw1:/home2/karma/duan-verify/r5/R5a/ reports/g0/r5/R5a/` (same for R5b, R5smoke; R2 to `reports/g0/R2_bos_mask/`).
-4. (**Done 2026-10-16 for R2 vs R5a: equal**; repeat for R5b, whose selfcheck records its own SHA-256.) Verify the R2/R5 token windows agree on Ada (`torch.equal(R2_tokens[:, 1:], R5_tokens)` on the two `tokens_2d.pt` files, for the `R2` and `R5a` directories); the R5 selfcheck also records the SHA-256.
-5. Judge with the rules in `reports/audit_our_vs_duan.md` section 5 (anchor `T` vs `reports/g0/baseline_full`, single-factor deltas with the 5 pp / 1 pp thresholds, `O` vs `T`, `O_keep` vs our original 98.28 % / 94.31 %, R2 vs `T_mask`, R2's own 10 pp rule). Fill section 6 of the audit with the numbers; do not move the thresholds.
-6. Upload to wandb from the fetched files if the live logging failed (project `anlp-project`; Ada has outbound access again since ~12:00; if not, use the throwaway venv on the laptop and never handle the key). Update `PROGRESS.md`, `PLAN.md`, `README.md`, `reports/progress_log.md`, `issues.md` B1 with what was found, then commit and push to `main`.
-7. Report to the user: which differences are material, which are not, and what is still unexplained. No paper prose.
-
-**Status update (2026-10-16, ~15:40 IST): R5 is done and judged; only R2 is still running.** Results: `reports/audit_our_vs_duan.md` section 6.2, `reports/g0/r5/r5_report.md`. In short: the anchor `T` (their pipeline inside HF) passes; BOS in the windows is the dominant factor (INT7 81% -> 99.9%, INT6 51% -> 97-98%, perplexity 457 -> 16 in both HF and TL); their q/k/v scale sharing costs ~8 / ~3.5 pp in the no-BOS regime but nothing measurable with BOS; HF sdpa without soft-capping and a bf16 SAE make no measurable difference. **Remaining for the next prompt: R2 (23643) survival rungs INT8/7/6 (expected to finish around 17:15 IST) for the cross-stack check R2 vs `T_mask`** (fetch `/home2/karma/duan-verify/out/R2/` small files to `reports/g0/R2_bos_mask/`, compare INT7/INT6 survival with `T_mask` 99.96 / 97.47 within 3 pp, fill audit section 6.3, then finish the closure: update issues.md B1, README, PLAN, PROGRESS, progress log, push). Decisions for the user/team: which regime the study should use (BOS or not), and whether to run the optional small-sample cell for D5.
-
-**Final status of the audit (2026-10-16, ~17:20 IST): R2 and R5 are complete; nothing is queued or running on Ada.** R2 (TL, BOS masked) agrees with `T_mask` (HF) to 0.01 / 0.06 pp survival at INT7 / INT6; R2's own rule: BOS effect +18.78 pp at INT7 (material). In the BOS regime the scaling test is signal-limited (slope 0.592, median r 0.9969 at INT16, 0.9968 at INT12). Details and an honest statement of what the closure protocol still lacks (Gate 1 in the no-BOS regime, `O_mask`, R3): `reports/audit_our_vs_duan.md` sections 6.3-6.4. **Open decisions for the user/team**: (1) which regime the study uses (BOS or no BOS) and how the paper presents Duan's no-BOS numbers; (2) whether to run the minimal completions listed in audit 6.4 (about 45 min each on 1 GPU for `T` at INT16/INT12 and `O_mask`; R1/R3 in TL need 2 GPUs and 2-5 h each); (3) the optional small-sample cell for D5. Nothing else is pending. The paper must be written by the team.
+1. `ssh karma@ada-gw1 'squeue -u karma; sacct -j 24451,24452 -o JobID,JobName,State,Elapsed,ExitCode'`; read the log tails (`tail -c 3000 ... | tr '\r' '\n'`). If a job died: fix test-first or resubmit with the same out-name (R5c skips finished cells; R1 has resume), never touch the user's other jobs.
+2. Fetch small files only, excludes before includes, then **verify by listing**: R1 `out/R1/` -> `reports/g0/R1_nobos_floor/` (summaries, `weight_perturbation_*.json`, `run_meta.json`; not `*_per_feature.csv`, `snap_*`, `*.pt`); R5c `r5/R5c/` -> `reports/g0/r5/R5c/` (summary, `cell_done.json`, `selfcheck.json`, `code.sha256`).
+3. **Gate 1 in their regime** (audit section 7.2): rows = R1's FP/INT0/INT16/INT12 conditions plus the vendored baseline's INT8/7/6 (identical code and tokens; bit-identical smokes), perturbation sizes from R2's `weight_perturbation_INT*.json` (same weights and quantizer), `g0_wandb.compute_gate_metrics`; pass iff median r at INT16 and INT12 >= 0.99 and slope in [0.5, 1.5]. Gate 0: R1's INT0 must be identical to FP.
+4. **Q4, mask regime**: `python3 scripts/g0/r5_compare.py --r5 reports/g0/r5 --baseline reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/phase3_summary_final.csv --published third_party/duan2026/pristine/results/tables/phase3_summary_final.csv --r2 reports/g0/R2_bos_mask/phase3_summary_final.csv --out reports/g0/r5/r5_report.md` (it now also compares `O_mask` with `T_mask`); the per-feature Spearman at INT6 of Q4 needs the per-feature CSVs on Ada (compute there with the Ada env or fetch the two files to the scratch directory, not into the repo).
+5. Assign a disposition from audit section 7.3 only if its inputs exist (R3, their TL keep arm, is still missing: say so), fill audit sections 6.3-6.4, add a progress-log entry, update `PLAN.md`/`PROGRESS.md`/this file, run the tests, push.
+6. Report to the user: Gate 1 verdict in their regime, Q4 for the mask regime, what is still open. No paper prose.

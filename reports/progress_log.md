@@ -66,7 +66,7 @@ of 16,384 total layer-12 features:
 verdict: PASS -- nonzero language-selective feature population confirmed
 ```
 
-Full machine-readable output: `reports/w0_sanity_check_result.json`.
+Full machine-readable output: `reports/legacy_pipeline/w0_sanity_check_result.json`.
 
 **Caveat (important, do not overclaim in the write-up):** this is the
 bounded precondition check described in Section 8 ("verify a nonzero
@@ -142,7 +142,7 @@ INT5: survived=82.37%  damaged=0.35%  median_r=0.985
 INT4: survived=60.40%  damaged=5.29%  median_r=0.950
 ```
 
-Full machine-readable output: `reports/quantization_survival_demo_result.json`.
+Full machine-readable output: `reports/legacy_pipeline/quantization_survival_demo_result.json`.
 
 **Caveat (do not overclaim in the write-up):** survival percentages here
 are noticeably higher (less damage) than Duan (2026)'s pinned INT7
@@ -171,7 +171,7 @@ kan vs tel: kan-selective=145   tel-selective=255
 ```
 
 verdict: PASS -- every pair shows a nonzero selective population in both
-directions. Full output: `reports/multilang_sanity_check_result.json`.
+directions. Full output: `reports/legacy_pipeline/multilang_sanity_check_result.json`.
 Same caveat as the original W0 check applies: this is still the coarse
 >=5x-ratio precondition test, not the pre-registered bootstrap-stable S(f)
 score, and counts should not be read as resource-tier effect sizes.
@@ -196,9 +196,9 @@ below was produced by code in this repo; wandb project `always-late`.
 ### Commands actually run
 ```
 python scripts/run_phase1_selectivity_pipeline.py --tokens 20000 --languages <27 codes, cmn_Hans> \
-    --output reports/selectivity_results_27lang.json            # 80 s
+    --output reports/legacy_pipeline/selectivity_results_27lang.json            # 80 s
 python scripts/run_phase1_survival_gpu.py --tracked all --bitwidths 8,7,6,5,4   # ~15 s/bit-width
-python scripts/statistical_analysis.py --report reports/phase1_survival_results_27lang_gpu.json
+python scripts/statistical_analysis.py --report reports/legacy_pipeline/phase1_survival_results_27lang_gpu.json
 python scripts/run_behavioral_loss_link.py --tokens 1000 --bitwidths 7,6
 python scripts/generate_mid_submission_figures.py; python scripts/generate_master_results.py
 python scripts/log_to_wandb.py --tokens 20000
@@ -212,7 +212,7 @@ wandb runs: survival-gpu-20000tok-all (hhojw7cs), phase1-27lang-20000tok summary
   behavioral correlation (Spearman +0.58, p=0.001) came from that synthetic data
   and is NOT supported. Both scripts now read measured results.
 - Table 1 / appendix fertility values were not measured; replaced with measured
-  FLORES-dev token ratios vs English (`reports/fertility_vs_english_flores_dev.json`).
+  FLORES-dev token ratios vs English (`reports/legacy_pipeline/fertility_vs_english_flores_dev.json`).
 - Null permutation uses n_permutations=20 on the first 6 languages only (not 50,
   not all languages). Null cutoff = 3.000 in both runs (1,500 and 20,000 tok).
   NOT the cap (cap = max(1.5, 0.75*6) = 4.5 since the null uses 6 languages), so the
@@ -383,3 +383,46 @@ Request from the user: "we need to audit why our implementation was so off compa
 - R2 (23643, their TL code, BOS prepended and masked) completed, exit 0, 5 h 11 min. Ladder in the audit section 6.3: INT0 identical to FP; INT16/INT12 median r 0.9969 / 0.9968 (bf16 re-rounding floor, weight change 1.3e-3); INT8/7/6 survival 100.00 / 99.97 / 97.52, median r 0.9932 / 0.9874 / 0.9730, perplexity 16.134 / 16.141 / 16.272. Cross-stack vs HF `T_mask`: +0.01 / +0.06 pp survival. Q3 (R2's rule): INT7 +18.78 pp vs the no-BOS baseline, material. Scaling test slope 0.592 (signal-limited) in the BOS regime.
 - Honest status of the closure protocol (audit section 6.4): Gate 0 passes; Gate 1 is defined on R1 (no BOS), which was not run (R2 passes it but is the BOS regime); Q4 needs all three regimes (`O_mask` and R3 missing). Closest reading: D-EQUIV-UP-TO-TOGGLE in the no-BOS regime; incomplete for mask and keep. Minimal completions are listed there; not run (decision for the user/team).
 - Nothing is queued or running on Ada. Fetched `reports/g0/R2_bos_mask/` (summaries, weight-perturbation JSONs, run_meta; snapshots, tokens and per-feature files stay on Ada under `out/R2/`).
+
+## 2026-10-16 (night) -- POST-MORTEM of our previous codebase. It is discarded; we build on Duan's codebase from here
+
+**Decision (user, 2026-10-16):** discard the previous codebase, which was unverified and had been misleading us, and restart on top of Duan's codebase and setup (`third_party/duan2026/` plus the Ada environment). Two completions were queued before the cleanup (below).
+
+### What was removed, and how to get it back
+- Removed from the tree: `src/` (HF-transformers pipeline: model/SAE loading, hook, RTN quantizer, survival and selectivity functions, data utilities), all our Phase-1 / demo / sanity / statistics / figure / wandb scripts in `scripts/` (12 files), the root `figures/` (several were synthetic, `issues.md` D5), `requirements.txt` (the pins of that stack), `writeoff.md`, and our HF audit harness of today (`scripts/g0/r5_run.py`, `r5_lib.py`, `run_r5.sbatch`, `tests_torch/`; it imported `src/`).
+- **Everything is recoverable from the git tag `legacy-pipeline-2026-10-16`** (commit `a72a373`, pushed).
+- Kept: `third_party/duan2026/` (their code), `scripts/g0/` (vendoring verifier, baseline launcher and report, diagnostic runner generator for THEIR code, wandb helper, `r5_compare.py` which only reads summary CSVs), all of `reports/` (evidence), `paper/` (the team's, untouched), `issues.md`. The Phase-1 result files of the old pipeline moved to `reports/legacy_pipeline/` (see its README: hypotheses, not findings).
+
+### What the old codebase was
+An independent re-implementation of Duan et al.'s pipeline in plain HF transformers (bf16 model, our own JumpReLU loader, per-row RTN quantizer, FLORES-200 27-language panel with selectivity scores), plus statistics, figures and a paper draft. It was called a "replication" of Duan (Gate G0) but never ran against their code, and its headline interpretations contradicted its own data (`issues.md` A1-A6).
+
+### Were there implementation errors?
+**Verified correct (by tests and runs against their code, 2026-10-16):** the JumpReLU encoder is identical to the `sae_lens` SAE their script uses (active sets identical on 4,096 positions, max value difference 0.0); the quantize-then-restore path leaves the model bit-identical; with a BOS token, our pipeline run on their tokens agrees with their own code with a BOS token (HF `O_keep` vs `T_keep`: -0.04 pp at INT7, +0.83 pp at INT6; their TransformerLens run R2 vs HF `T_mask`: +0.01 / +0.06 pp). **We found no computational bug that makes the old pipeline's numbers wrong for the regime it ran in** (BOS present, WikiText, INT8-INT6).
+
+**Real differences from their pipeline** (full table: `reports/audit_our_vs_duan.md` section 3): BOS token present (theirs absent); per-row quantizer for all modules (theirs shares one scale across heads for q/k/v); sdpa attention that skips Gemma-2's attention soft-capping; bf16 SAE (theirs fp32); 2,048-token WikiText-test demo against their 499,968 train tokens.
+
+**Real flaws of the old codebase, independent of the disagreement** (`issues.md`): BOS counted as an ordinary token in every statistic (D1: 0.78% of tokens, enters the "universal" pool); decode-then-re-encode changed the tokens in 0-32% of chunks and chunks start mid-sentence (D2); everything bf16 with no noise-floor control (D3); the reported run not reproducible from the repo as documented (D4); synthetic figures and hard-coded fallbacks (D5); panel not content-matched (C1); the "null cutoff" not a calibrated null (C3); feature-level tests on clustered features (C4); controls matched on firing rate only while activation magnitude is the main predictor of survival (C6); Holm implementation without a stop rule (C5); Phase-1 never validated against a reference.
+
+### Why the results conflicted (ours 98.28 / 94.31 at INT7 / INT6 vs theirs 81.26 / 51.30)
+Measured, 500k tokens, survival in pp (`reports/audit_our_vs_duan.md` section 6):
+| factor | effect on INT7 / INT6 survival |
+|---|---|
+| **BOS token in the windows** (their pipeline, none vs one masked BOS) | **+18.55 / +46.17 pp** (perplexity 457 -> 16; INT7 stops "improving" perplexity) |
+| their q/k/v scale sharing, **without BOS only** | +7.74 / +3.57 pp when replaced by per-row scales; with BOS: +/-0.83 pp |
+| sdpa attention without soft-capping; bf16 SAE | +0.03 / -0.08 and +0.05 / +0.02 pp (none) |
+| small demo (2,048 tokens of WikiText-test) vs 500k | our pipeline with BOS on their tokens is +1.56 / +4.88 pp above the demo (not isolated) |
+The root cause is a **regime difference, not a bug on either side**: they feed 256-token windows with no BOS (a regime in which the model itself is degraded: baseline perplexity 457 against 16 with BOS, in both stacks), we always had a BOS. Their 81% / 51% are reproducible (their code on Ada, within 0.15 pp) but are a property of the no-BOS regime. Our "replication" never tested that regime, so we mistook a regime mismatch for a validity question, and used their numbers as the target of Gate G0 although their reference pipeline was the odd one out.
+
+### Was the old implementation direction correct, and is it worth exploring?
+Judgement, from the evidence above:
+- **Mechanics: sound.** An HF pipeline of this kind reproduces their TransformerLens results in both regimes (anchor `T`; `O_keep` vs `T_keep` vs R2). So the idea of measuring SAE feature survival with our own light stack was not wrong.
+- **As executed: not worth continuing.** (1) It is now redundant: anything we need is a small, labelled diff on Duan's script, and keeping two pipelines is what produced the confusion about why the numbers disagreed. (2) Its distinctive parts (FLORES panel, selectivity score, tier tests) carry unresolved design flaws (C1, C3, C4, C6, D1, D2). (3) Its confirmatory widths (INT7/INT6) sit at ceiling in the BOS regime (their code with BOS: 99.97% / 97.52%; ours 99.84% / 99.19%), so the pre-registered contrasts have no resolving power; the informative widths are INT5/INT4 and were descriptive-only.
+- **Decision: discard the code (done); keep the question and a few ideas** (language-selective features, resource-tier analysis, an exploratory behavioural link) and rebuild them, only if the team chooses, as diffs on Duan's codebase after a regime decision. The old Phase-1 numbers are hypotheses (they were produced in the BOS regime whose machinery we have now cross-checked on WikiText, but not on FLORES, not at INT5/INT4, and with the content/statistics flaws above).
+- **What is worth exploring now (recommendation, not a decision):** (a) the regime question, because survival numbers in this literature depend on BOS handling by 18-46 pp at INT7/INT6 (a verified finding in two stacks); (b) a BOS-regime language-selective analysis at INT6-INT4 with matched content, language-level statistics and activation-magnitude-matched controls. If (b) does not fit before the Oct 31 deadline, the audit itself (BOS sensitivity of survival, with reproducible evidence) is the most solid result the project currently owns.
+
+### What is NOT verified
+The Phase-1 FLORES stage was not re-run under the audit; INT5/INT4 in the BOS regime were not measured; whether Gemma Scope's SAEs were trained with BOS excluded was never checked against Lieberum et al.; whether their no-BOS regime is signal-limited or noise-amplifying (Gate 1) is being measured by R1 (job 24451, below); the equivalence of our four device edits to a single-GPU run of their script was never demonstrated.
+
+### Jobs queued before the cleanup (fetch and judge on the next prompt)
+- **R1 `R1-nobos-floor`, Slurm 24451** (their TL code via the diagnostic generator, no BOS, ladder INT0/16/12, 500k tokens, 2 GPUs, account `research`): Gate 1 (noise floor) in THEIR regime. INT8/7/6 for the slope come from the vendored baseline (job 23472, bit-identical smokes), perturbation sizes from R2's `weight_perturbation_INT*.json`. Output on Ada `/home2/karma/duan-verify/out/R1/`.
+- **R5c `R5c-nlp`, Slurm 24452** (account `nlp`): `O_mask`, our legacy pipeline as it stood with BOS masked, INT8/7/6, completes Q4 for the mask regime; runs the deployed copy of the legacy harness (hash `2a1c8dc5...` for `r5_run.py`, recorded in `r5/R5c/code.sha256`), so it is unaffected by the cleanup. Output `/home2/karma/duan-verify/r5/R5c/O_mask/`.

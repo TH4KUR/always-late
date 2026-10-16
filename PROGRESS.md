@@ -1,6 +1,6 @@
 # Progress at a Glance
 
-Last updated: **2026-10-16**, after a full code and results review, the Ada verification run-up, wandb logging, and the faithful-baseline tooling. **New agent? Start with `HANDOFF.md`.** This replaces the earlier snapshot, which contained claims the data do not support (corrections are listed below, not hidden). Evidence: `reports/progress_log.md`. Issues: `issues.md`. Plan: `PLAN.md`. Duan codebase audit: `reports/duan_codebase_audit.md`.
+Last updated: **2026-10-16 (night)**, after the audit of why our old pipeline disagreed with Duan's and the decision to **discard that pipeline and build on Duan's codebase**. **New agent? Start with `HANDOFF.md`.** The post-mortem of the old codebase is the last entry of `reports/progress_log.md`; its code is only at the git tag `legacy-pipeline-2026-10-16`; its Phase-1 results are in `reports/legacy_pipeline/` (hypotheses, not findings). Evidence: `reports/progress_log.md`, `reports/audit_our_vs_duan.md`, `issues.md`, `PLAN.md`.
 
 ## Where we really are
 

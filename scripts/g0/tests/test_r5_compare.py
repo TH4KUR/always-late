@@ -71,6 +71,13 @@ class Rules(unittest.TestCase):
         d = rc.factor_deltas({"T": T, "T_sdpa": X})["T_sdpa"]
         self.assertAlmostEqual(d["INT7"], -11.0); self.assertAlmostEqual(d["INT6"], -0.5); self.assertEqual(d["class"], "material")
 
+    def test_our_pipeline_cells_are_compared_with_their_own_bos_regime(self):
+        mk = lambda s7, s6: {r["condition"]: r for r in rows(surv={8: 99.0, 7: s7, 6: s6})}
+        cells = {"T": mk(81, 51), "T_mask": mk(99.9, 97.5), "T_keep": mk(99.8, 98.0), "O_mask": mk(99.5, 97.0), "O_keep": mk(99.7, 98.4)}
+        d = rc.factor_deltas(cells)
+        self.assertEqual(d["O_mask"]["vs"], "T_mask"); self.assertAlmostEqual(d["O_mask"]["INT7"], -0.4); self.assertAlmostEqual(d["O_mask"]["INT6"], -0.5)
+        self.assertEqual(d["O_keep"]["vs"], "T_keep"); self.assertEqual(d["O_mask"]["class"], "none")
+
     def test_additivity_compares_the_sum_of_single_factor_deltas_with_the_joint_cell(self):
         mk = lambda s7, s6: {r["condition"]: r for r in rows(surv={8: 99.0, 7: s7, 6: s6})}
         cells = {"T": mk(81, 51), "T_sdpa": mk(78, 51), "T_bf16sae": mk(80, 49), "T_rowquant": mk(90, 70), "O": mk(97, 94)}

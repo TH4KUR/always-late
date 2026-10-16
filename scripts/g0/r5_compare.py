@@ -14,10 +14,11 @@ CROSS_PP = 3.0                                          # R2 (TL + masked BOS) v
 R2_BOS_PP = 10.0                                        # R2's own rule: BOS material if INT7 moves >= 10 pp from the baseline
 EPS = 1e-9                                              # a difference of exactly the tolerance must pass despite float rounding (0.96 - 0.95 = 0.010000000000000009)
 DEMO_DEFAULT = (98.28, 94.31)                           # our original 2,048-token demo, INT7 / INT6
-REFERENCE = {"O_keep": "T_keep"}                        # comparator for a cell; default is T
+REFERENCE = {"O_keep": "T_keep", "O_mask": "T_mask"}                        # comparator for a cell; default is T
 NOTES = {"T": "attn eager, SAE fp32, their quantizer, no BOS (anchor)", "T_sdpa": "T with sdpa attention (no soft-cap)", "T_bf16sae": "T with bf16 SAE",
          "T_rowquant": "T with per-row q/k/v quantizer", "T_mask": "T + BOS, position 0 masked", "T_keep": "T + BOS kept",
-         "O": "our pipeline (sdpa, bf16 SAE, per-row quantizer), no BOS", "O_keep": "our pipeline with BOS kept, on their tokens"}
+         "O": "our pipeline (sdpa, bf16 SAE, per-row quantizer), no BOS", "O_keep": "our pipeline with BOS kept, on their tokens",
+         "O_mask": "our pipeline with BOS prepended, position 0 masked"}
 
 
 def _num(v):
