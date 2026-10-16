@@ -1,0 +1,15 @@
+{
+  "cell": "T_rowquant",
+  "spec": {
+    "attn": "eager",
+    "sae_dtype": "fp32",
+    "quant": "ours",
+    "regime": "none"
+  },
+  "bits": [
+    8,
+    7,
+    6
+  ],
+  "n_windows": 1953
+}

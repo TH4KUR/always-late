@@ -1,0 +1,15 @@
+{
+  "cell": "T_keep",
+  "spec": {
+    "attn": "eager",
+    "sae_dtype": "fp32",
+    "quant": "duan",
+    "regime": "keep"
+  },
+  "bits": [
+    8,
+    7,
+    6
+  ],
+  "n_windows": 1953
+}

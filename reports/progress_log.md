@@ -364,3 +364,9 @@ Request from the user: "we need to audit why our implementation was so off compa
 - R2 (23643): wandb run `168a7bd4` (`g0-R2-23643`) heartbeats verified live (100/1953 windows, per-GPU memory), resolving the open item from R0.
 - Test-suite state at this commit boundary: 53 stdlib tests, 31 torch tests, vendor verification clean.
 - R5a selfcheck (16 windows, `reports/g0/r5/R5a_selfcheck.json`) reproduces the smoke: restore bit-identical; fp32 SAE == `sae_lens`; bf16 SAE Jaccard 0.9928; sdpa vs eager 1.92% relative L2 at layer 12. R5a windows (1953, 256) = 499,968 tokens. R2's `tokens_2d.pt[:, 1:]` equals R5a's tokens exactly (checked on Ada), so R2 and R5 share identical windows.
+
+## 2026-10-16 (15:00-15:20 IST) -- R5 results (partial): their regime reproduced in HF; BOS and q/k/v grouping are the material factors
+
+- R5a (23649: T, O, T_sdpa, T_bf16sae) completed; R5b (23660) completed T_rowquant, T_mask, T_keep and is running O_keep; R2 (23643) is at INT12 streaming (its control rungs: INT0 +0.00%, INT16 +0.01%, INT12 +0.02% perplexity). Fetched summaries to `reports/g0/r5/` (per-feature CSVs kept on Ada; a first fetch pulled 38 MB of them into the repo directory because of an rsync filter-order mistake (first match wins); they were moved out before committing). One fetch also hit a transient DNS failure on the laptop (`Could not resolve hostname ada-gw1`) and left `T_mask` empty; it was re-fetched and verified by listing the directory, not by the loop's "fetched" echo.
+- Judged with `scripts/g0/r5_compare.py` (rules fixed in the audit before the data): anchor `T` PASS; material: BOS (+18.5 / +46 pp at INT7 / INT6) and q/k/v grouping (+7.7 / +3.6); none: sdpa and bf16 SAE; additive (sum +7.81 / +3.51 vs joint +8.16 / +3.51). Table and readings: `reports/audit_our_vs_duan.md` section 6.2.
+- Pending: `O_keep` (loop closure against our 98.28 / 94.31), R2 (TL + masked BOS, cross-stack check with `T_mask`).
