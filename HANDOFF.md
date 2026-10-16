@@ -122,3 +122,11 @@ Largest survival gap 0.15 pp; per-feature Spearman at INT6 over 7,121 commonly a
 4. **Q4, mask regime**: `python3 scripts/g0/r5_compare.py --r5 reports/g0/r5 --baseline reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/phase3_summary_final.csv --published third_party/duan2026/pristine/results/tables/phase3_summary_final.csv --r2 reports/g0/R2_bos_mask/phase3_summary_final.csv --out reports/g0/r5/r5_report.md` (it now also compares `O_mask` with `T_mask`); the per-feature Spearman at INT6 of Q4 needs the per-feature CSVs on Ada (compute there with the Ada env or fetch the two files to the scratch directory, not into the repo).
 5. Assign a disposition from audit section 7.3 only if its inputs exist (R3, their TL keep arm, is still missing: say so), fill audit sections 6.3-6.4, add a progress-log entry, update `PLAN.md`/`PROGRESS.md`/this file, run the tests, push.
 6. Report to the user: Gate 1 verdict in their regime, Q4 for the mask regime, what is still open. No paper prose.
+
+## 11. Scheduled hourly check (set up 2026-10-17 at the user's request)
+
+A recurring job (id `9bc324b1`, cron `17 * * * *`, local time) runs inside the Claude Code session: it checks R1 24451 and R5c 24452 on Ada, fetches and judges results, works through the source-verification queue in `reports/decisions_and_anomalies.md`, updates the docs and the plan, and commits and pushes when something changed. It does **not** queue new Ada jobs, touch wandb, edit `paper/` or change the vendored code (a wandb redesign awaits the user's approval, decision D-008).
+
+Limits: it is **session-only** (it dies when Claude Code exits, nothing is stored on disk), it **auto-expires after 7 days** (2026-10-24), it only fires while the session is idle, and the harness delays each run by up to 30 minutes after the nominal minute.
+
+**To stop it:** tell Claude "stop the scheduled job" (it runs `CronDelete 9bc324b1`; `CronList` shows what is scheduled), or exit the Claude Code session. A job run already in progress finishes its current step.

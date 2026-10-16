@@ -16,6 +16,29 @@ Context: our earlier pipeline (an unverified re-implementation of Duan (2026)) w
 ### Layer 2: DIAGNOSTICS (modified code, always labelled as such; only after Layer 1 and the user's OK)
 v3 runner (`make_duan_runners_v3.py`: BOS arms, INT0 control, ladder 0/16/12/8/7/6, snapshots, resume, wandb heartbeats), R1-R3 BOS arms, R4 their script 06, R5 our pipeline on their exact tokens, gates and dispositions in audit section 7. These explain *why* the pipelines differ; they are not part of the replication. **Audit in progress (user request 2026-10-16: "audit why our implementation was so off compared to theirs")**: `reports/audit_our_vs_duan.md` lists 12 differences between the pipelines and fixes the reading rules before the results exist; R2 (their code + BOS, job 23643) and R5 (our pipeline on their tokens, one factor flipped per cell; smoke 23648 passed; R5a 23649 and R5b 23660 running) are running; HANDOFF section 11 says what to do on the next prompt.
 
+### Layer 3: the study on top of their code (LIVING plan, grounded in the proposal `anlp_revised.txt`; written 2026-10-17)
+
+Every row names the proposal section, the source whose code/setup we reuse, and the decision or anomaly entry in `reports/decisions_and_anomalies.md` (DEC/ANOM/VER ids below are the table IDs D-, A-, V-). Nothing here is launched without the user's approval; the scheduled hourly check only fetches results, verifies sources and updates this plan.
+
+| Step | Proposal ref | Source / code reused verbatim | Status and next action |
+|---|---|---|---|
+| **P0-a** G0 (a)-(c): active features, INT7 and INT6 survival | 4.2 | Duan's script 03 (vendored) | **done**: 7,134 active (7,144), INT7 81.19% (81.26), INT6 51.15% (51.30) |
+| **P0-b** G0 (d) chunked perplexity signs (INT7 improves, INT6 degrades) | 4.2 | same | **done**: -5.61% / +4.02% |
+| **P0-c** G0 (d) sliding-window perplexity signs (W=2048, stride 512; INT6 improves about -3.45%) | 4.2 | Duan's script 06 (does not parse as shipped; diagnostic generator fixes it) | **TODO (D-005)**: needs a decision to queue (about 2 h on 2 GPUs) |
+| **P0-d** closure: Gate 1 in their regime, Q4 per regime | audit 7 | their TL code via the generator; legacy harness for `O_mask` | **running**: R1 24451, R5c 24452 (A-012); R3 (their TL keep arm) optional |
+| **P0-e** test their claim "even under sliding-window evaluation only 51.3% survive" | 1, 4.2 | their script 03 logic with BOS and sliding windows (diagnostic) | **proposal** (A-007): their sliding rows reuse chunked survival; R2 already shows 97.5% at INT6 in the BOS regime with 256-token windows |
+| **P1-0** decide the regime for Phase 1 | 6 | Gemma Scope paper sections 3.1 and 4 (BOS excluded from training and metrics) | **needs the team (D-001)**: recommended `mask` |
+| **P1-1** language roster and tier table (27 languages, 9 per tier, >= 4 scripts per tier) | 5 | Joshi et al. (2020) classes; NLLB data | **TODO (V-5)**: verify the classes of all 27; check whether the OSF table was frozen (V-10) |
+| **P1-2** data: FLORES-200 dev (tagging) / devtest (survival), equal token budgets | 4.1, 5 | official NLLB archive (FLORES-200, not FLORES+) | **TODO (V-6)**; note the old pipeline's decode/re-encode token drift (issues D2): feed token ids directly, no decode |
+| **P1-3** selectivity: S(f) (pre-registered) with its 3 safeguards, plus Deng's nu as robustness | 4.1 | Deng et al. Eq. 3 and repository `Aatrox103/multilingual-llm-features` | **TODO (D-003, V-2)**: read their scripts before writing ours |
+| **P1-4** survival pipeline as a diff on their script 03 (per-language accumulators, BOS switch, FLORES tokens), anchored by reproducing the baseline with the new switches off | 4.3 | their `streaming_feature_metrics`, quantizer and thresholds, verbatim | **TODO (D-004)**; tests first; labelled "diagnostic/modified" |
+| **P1-5** controls: firing-rate-quintile-matched universal features (proposal) and activation-magnitude matching (issues C6: Spearman 0.78 vs -0.085 for rate in their data) | 4.3 | proposal; Duan's released per-feature table | **TODO**; document the added control as an amendment |
+| **P1-6** statistics: language-level permutation test with script covariate, TOST, mixed-effects logistic regression, Holm over 3 tests | 7 | standard libraries (scipy, statsmodels); no feature-level Fisher as the primary test (issues C4) | **TODO** |
+| **P1-7** widths: INT7/INT6 confirmatory plus INT5/INT4 where there is headroom | 4.3, 6 | Duan's protocol | **needs the team (D-006)** |
+| **Ext.** Llama-3.2-1B (A), pruning (B), causal ablation (C) | 4.3, 4.4 | seonglae SAE; Borobia et al.; Wanda | cut first if time is short (proposal section 6); not started |
+
+Compute (measured, 2 x RTX 2080 Ti, TransformerLens): about 40-45 min per condition at 500k tokens, so a 27-language panel of about 540k tokens costs about 4.5 h per regime for FP plus INT8..INT4 (the proposal budgeted 30-50 GPU-hours for the core). Realistic calendar to the Oct 31 deadline, subject to the team's decisions: **Oct 17-18** finish P0-d, verification items V-3/V-5/V-6/V-9, team decision D-001/D-006; **Oct 19-22** build and test P1-3/P1-4 (anchor against the baseline); **Oct 23-26** runs; **Oct 27-29** statistics and anomaly review; **Oct 30-31** team write-up and final checks. If P1 does not fit, the audit itself (BOS sensitivity of survival by 18-46 pp at INT7/INT6, two stacks) is the result to write up.
+
 ### Venue (verified on Ada 2026-10-15/16)
 - **Ada `u22`, 2 x RTX 2080 Ti per job** (`--constraint=2080ti --gres=gpu:2`); `model_ref`+SAE on `cuda:0`, `model_work` on `cuda:1`.
 - **No GPU larger than 11 GB is reachable** from our accounts (3090/3080 Ti partitions closed to `nlp`/`research`).

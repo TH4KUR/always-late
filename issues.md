@@ -239,7 +239,7 @@ Locations: `paper/main.tex:36` (abstract), `:312`, `:334-337` (discussion), `REA
 
 **D1. BOS is counted as an ordinary token and survives into every statistic** (S2; the BOS handling is verified, the effects are *unverified*).
 - `encode_texts` and `encode_batched` call `tokenizer(chunk, truncation=True, max_length=128)`, which prepends BOS. Each "128-token" chunk is therefore BOS + 127 content tokens; the 129th token is dropped in 68–100% of chunks. BOS is 0.78% of all tokens in every language (157/20,094).
-- Gemma Scope SAEs are, to my recollection, trained with BOS excluded, and BOS residuals have a very large norm; verify against Lieberum et al.
+- Gemma Scope SAEs are trained with BOS excluded (**verified 2026-10-17** in Lieberum et al. 2024, arXiv:2408.05147v2, sections 3.1 and 4: activations from BOS, EOS and padding tokens are not collected and are masked out of the metrics); BOS residuals also have a very large norm (not re-checked).
 - Features that fire on BOS get rate ≥ 0.0078 in every language. They enter the "universal" candidate pool and the top rate quintiles, with r dominated by one deterministic spike.
 - Locations: `src/pipeline.py:74`, `scripts/run_phase1_survival_gpu.py:43`.
 
