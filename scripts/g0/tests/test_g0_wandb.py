@@ -64,12 +64,15 @@ class GateMetrics(unittest.TestCase):
 class FakeRun:
     def __init__(self, fail_log=False):
         self.summary, self.logged, self.artifacts, self.finished, self.fail_log = {}, [], [], False, fail_log
+        self.defined = []
     def log(self, d, **kw):
         if self.fail_log:
             raise ConnectionError("network down")
         self.logged.append(d)
     def log_artifact(self, a):
         self.artifacts.append(a)
+    def define_metric(self, name, **kw):
+        self.defined.append((name, kw))
     def finish(self):
         self.finished = True
 
@@ -116,7 +119,7 @@ class LoggerBehaviour(unittest.TestCase):
     def test_disabled_logger_never_touches_wandb(self):
         lg = start(Exploding(), self.out, enabled=False)
         self.assertFalse(lg.active)
-        lg.log({"x": 1}); lg.log_condition({"condition": "RTN INT8", "bits": 8}); lg.heartbeat("c", 1, 2, 3.0)
+        lg.log({"x": 1}); lg.log_condition({"condition": "RTN INT8", "bits": 8}); lg.heartbeat("c", 1, 2, 3.0); lg.log_table([{"condition": "x"}])
         lg.log_gates([], self.out); lg.finish(self.out)
 
     def test_env_switch_disables_logging(self):
@@ -129,23 +132,49 @@ class LoggerBehaviour(unittest.TestCase):
         self.assertFalse(lg.active)
         lg.log({"x": 1}); lg.finish(self.out)
 
-    def test_log_condition_logs_numeric_metrics_with_width_prefix(self):
+    def test_log_condition_logs_fixed_metric_names_that_never_contain_the_condition(self):
         fw = FakeWandb(); lg = start(fw, self.out)
         lg.log_condition({"condition": "RTN INT8", "bits": 8, "median_corr": 0.97, "survived_>0.9_pct": 99.0,
                           "perplexity": 470.5, "method": "RTN", "bad": float("nan")})
         d = fw.run.logged[-1]
-        self.assertEqual(d["INT8/median_corr"], 0.97)
-        self.assertEqual(d["INT8/survived_gt0.9_pct"], 99.0)
-        self.assertNotIn("INT8/method", d); self.assertNotIn("INT8/bad", d)
-        lg.log_condition({"condition": "FP16 baseline", "bits": 16, "median_corr": 1.0})
-        self.assertIn("baseline/median_corr", fw.run.logged[-1])
+        self.assertEqual(d["bits"], 8); self.assertEqual(d["median_corr"], 0.97); self.assertEqual(d["survival_pct"], 99.0)
+        self.assertNotIn("method", d); self.assertNotIn("bad", d); self.assertNotIn("survived_>0.9_pct", d)
+        lg.log_condition({"condition": "FP16 baseline", "bits": 16, "median_corr": 1.0, "perplexity": 458.5})
+        d = fw.run.logged[-1]
+        self.assertEqual(d["bits"], 32)                       # FP baseline has its own bits value: 16 would collide with the INT16 rung
+        for logged in fw.run.logged:
+            for k in logged:
+                self.assertNotRegex(k, r"INT\d|baseline|/")  # one name per metric, whatever the condition
 
-    def test_heartbeat_logs_progress_and_gpu_memory(self):
+    def test_summary_keys_come_from_a_fixed_vocabulary(self):
+        fw = FakeWandb(); lg = start(fw, self.out)
+        lg.log_condition({"condition": "FP16 baseline", "median_corr": 1.0, "perplexity": 458.5, "n_active_features": 7134})
+        lg.log_condition({"condition": "RTN INT7", "median_corr": 0.95, "survived_>0.9_pct": 81.2, "perplexity": 432.7, "ppl_delta_pct": -5.6})
+        self.assertEqual(fw.run.summary["fp_perplexity"], 458.5); self.assertEqual(fw.run.summary["fp_n_active_features"], 7134)
+        self.assertEqual(fw.run.summary["survival_pct_int7"], 81.2); self.assertEqual(fw.run.summary["median_corr_int7"], 0.95)
+        self.assertEqual(fw.run.summary["ppl_delta_pct_int7"], -5.6)
+        self.assertTrue(set(fw.run.summary) <= set(g0_wandb.SUMMARY_KEYS))
+
+    def test_progress_and_memory_use_fixed_sys_names_that_stay_out_of_the_runs_table(self):
         fw = FakeWandb(); lg = start(fw, self.out)
         lg.heartbeat("RTN INT8", 100, 1953, 42.5, {"cuda:0": 7.5, "cuda:1": 6.9})
         d = fw.run.logged[-1]
-        self.assertEqual(d["progress/windows_done"], 100); self.assertEqual(d["progress/windows_total"], 1953)
-        self.assertEqual(d["progress/elapsed_s"], 42.5); self.assertEqual(d["mem/cuda:0_gib"], 7.5)
+        self.assertEqual(d["sys/windows_done"], 100); self.assertEqual(d["sys/windows_total"], 1953)
+        self.assertEqual(d["sys/elapsed_s"], 42.5); self.assertEqual(d["sys/mem_cuda0_gib"], 7.5); self.assertEqual(d["sys/mem_cuda1_gib"], 6.9)
+        self.assertIn(("sys/*", {"summary": "none"}), fw.run.defined)
+        self.assertTrue(all(k.startswith("sys/") for k in d))
+
+    def test_the_condition_axis_is_bits(self):
+        fw = FakeWandb(); start(fw, self.out)
+        names = [n for n, _ in fw.run.defined]
+        self.assertIn(("bits", {"summary": "none"}), fw.run.defined)
+        self.assertIn(("median_corr", {"step_metric": "bits", "summary": "none"}), fw.run.defined)   # per-condition values are history, not runs-table columns
+
+    def test_run_config_has_exactly_the_fixed_keys(self):
+        fw = FakeWandb(); start(fw, self.out)
+        cfg = fw.init_calls[0]["config"]
+        self.assertEqual(set(cfg), set(g0_wandb.CONFIG_KEYS)); self.assertEqual(cfg["schema_version"], g0_wandb.SCHEMA_VERSION)
+        self.assertEqual(cfg["bos_regime"], "n/a")
 
     def test_finish_uploads_artifact_without_snapshots_by_default(self):
         for n in ("RTN_INT8_summary.csv", "run_meta.json", "snap_RTN_INT8.pt", "tokens_2d.pt"):
@@ -176,18 +205,38 @@ class LoggerBehaviour(unittest.TestCase):
         lg.log_gates(ladder(lambda b: 0.7 * REL[b]), self.out)
         self.assertEqual(fw.run.summary["gate1_verdict"], "signal_limited")
         self.assertTrue(fw.run.summary["gate0_int0_identity"])
-        self.assertAlmostEqual(fw.run.logged[-1]["gate1/slope"], 1.0, places=2)
+        self.assertAlmostEqual(fw.run.summary["gate1_slope"], 1.0, places=1)
+        self.assertTrue(set(fw.run.summary) <= set(g0_wandb.SUMMARY_KEYS))
 
-    def test_log_table_sends_all_columns(self):
+    def test_set_summary_accepts_only_fixed_summary_keys(self):
         fw = FakeWandb(); lg = start(fw, self.out)
-        lg.log_table([{"condition": "RTN INT8", "median_corr": 0.97}, {"condition": "RTN INT6", "median_corr": 0.9}])
-        t = fw.run.logged[-1]["summary"]
-        self.assertEqual(t.columns, ["condition", "median_corr"]); self.assertEqual(len(t.data), 2)
+        lg.set_summary({"q1_pass": True, "made_up_key": 1, "INT7/median_corr": 0.9})
+        self.assertEqual(fw.run.summary, {"q1_pass": True})
+
+    def test_conditions_table_always_has_the_fixed_columns(self):
+        fw = FakeWandb(); lg = start(fw, self.out)
+        lg.log_table([{"condition": "RTN INT8", "median_corr": 0.97, "survived_>0.9_pct": 99.0, "method": "RTN"}, {"condition": "FP16 baseline", "perplexity": 458.5}])
+        t = fw.run.logged[-1]["conditions"]
+        self.assertEqual(t.columns, ["condition"] + list(g0_wandb.METRIC_KEYS)); self.assertEqual(len(t.data), 2)
+        self.assertEqual(t.data[0][t.columns.index("survival_pct")], 99.0); self.assertEqual(t.data[1][t.columns.index("bits")], 32)
+
+    def test_other_tables_keep_their_own_columns(self):
+        fw = FakeWandb(); lg = start(fw, self.out)
+        lg.log_table([{"condition": "RTN INT8", "delta": 0.1}], key="comparison_vs_published")
+        t = fw.run.logged[-1]["comparison_vs_published"]
+        self.assertEqual(t.columns, ["condition", "delta"])
+
+    def test_finish_logs_the_conditions_table_from_what_was_logged(self):
+        fw = FakeWandb(); lg = start(fw, self.out)
+        lg.log_condition({"condition": "RTN INT8", "median_corr": 0.97}); lg.log_condition({"condition": "RTN INT6", "median_corr": 0.9})
+        lg.finish(self.out)
+        t = [d for d in fw.run.logged if "conditions" in d][-1]["conditions"]
+        self.assertEqual(len(t.data), 2); self.assertEqual(t.columns[0], "condition")
 
     def test_logging_errors_never_propagate_into_the_experiment(self):
         fw = FakeWandb(run=FakeRun(fail_log=True)); lg = start(fw, self.out)
         lg.log({"x": 1}); lg.log_condition({"condition": "RTN INT8", "median_corr": 0.9})
-        lg.heartbeat("c", 1, 2, 1.0); lg.log_table([{"a": 1}]); lg.finish(self.out)
+        lg.heartbeat("c", 1, 2, 1.0); lg.log_table([{"a": 1}], key="other"); lg.finish(self.out)
 
 
 class FakeCuda:

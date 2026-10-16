@@ -28,7 +28,7 @@ for attempt in 1 2 3 4 5 6; do
   echo "model download attempt $attempt failed; retrying"; sleep 10
 done
 export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=8
-export WANDB_PROJECT=${WANDB_PROJECT:-anlp-project} G0_WANDB_NAME=${G0_WANDB_NAME:-baseline-$ARM-$SLURM_JOB_ID}
+export WANDB_PROJECT=${WANDB_PROJECT:-anlp-project} G0_WANDB_NAME=${G0_WANDB_NAME:-baseline/$ARM}
 OUT=$V/baseline/$ARM; mkdir -p "$OUT"; cd "$OUT"                  # their script writes phase3_gemma_outputs_<mode>_<k>k_L12 relative to the cwd
 SRC=$V/vendor/scripts/03_gemma_phase3_streaming_sweep.py
 if [ "$KIND" = "smoke" ]; then

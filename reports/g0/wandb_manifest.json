@@ -1,0 +1,494 @@
+{
+ "schema_version": 1,
+ "note": "Rebuild of the 13 finished wandb runs under the fixed schema (scripts/g0/g0_wandb.py). Files: patterns relative to the repo root or absolute (scratch copies of per-feature CSVs that are not kept in git). R1 (old 339751bd) and R5c (old 968e9ddb) were still running and are added after they finish. accepted_missing = files of the old run that are deliberately not re-uploaded (tokens_2d.pt stays on Ada, phase3_summary_partial.csv is in the repo). Executed 2026-10-17: 13 runs rebuilt and verified (146 values equal, artifact files complete except the accepted ones); the 13 old runs were deleted by `wandb_rebuild.py delete --execute`. Pending: R1 (old 339751bd) and R5c (old 968e9ddb).",
+ "runs": [
+  {
+   "old_run_id": "4c8044ca",
+   "old_name": "g0-smoke-23355",
+   "name": "smoke/R0-v3-runner",
+   "config": {
+    "experiment": "smoke",
+    "cell": "R0-v3-runner",
+    "stack": "TL",
+    "bos_regime": "none",
+    "attn_impl": "tl",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 20000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23355",
+    "code_ref": "v3 diagnostic runner (first smoke, 3a_test mode)",
+    "replaces_wandb_run": "4c8044ca",
+    "replaces_name": "g0-smoke-23355"
+   },
+   "summary_csv": "reports/g0/r0_smoke/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r0_smoke/*.json",
+    "/tmp/claude-1000/perfeature_extra/R0_smoke/*"
+   ],
+   "tags": [
+    "g0",
+    "smoke"
+   ],
+   "accepted_missing": [
+    "tokens_2d.pt"
+   ],
+   "new_run_id": "f218cf14",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "8f6f4d3a",
+   "old_name": "baseline-smoke-23419",
+   "name": "smoke/generator-runner",
+   "config": {
+    "experiment": "smoke",
+    "cell": "generator-runner",
+    "stack": "TL",
+    "bos_regime": "none",
+    "attn_impl": "tl",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 20000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23419",
+    "code_ref": "generator-based faithful runner (make_faithful_runner.py, removed in commit 73a1f33)",
+    "replaces_wandb_run": "8f6f4d3a",
+    "replaces_name": "baseline-smoke-23419"
+   },
+   "summary_csv": "reports/g0/baseline_smoke/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/baseline_smoke/*.json",
+    "reports/g0/baseline_smoke/*.md",
+    "/tmp/claude-1000/perfeature_extra/smoke_generator/*"
+   ],
+   "tags": [
+    "g0",
+    "smoke"
+   ],
+   "new_run_id": "ae80c055",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "f722c81a",
+   "old_name": "baseline-smoke2-23463",
+   "name": "smoke/vendored",
+   "config": {
+    "experiment": "smoke",
+    "cell": "vendored",
+    "stack": "TL",
+    "bos_regime": "none",
+    "attn_impl": "tl",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 20000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23463",
+    "code_ref": "third_party/duan2026 working copy, working.sha256 7f1e638a0508c3ca",
+    "replaces_wandb_run": "f722c81a",
+    "replaces_name": "baseline-smoke2-23463"
+   },
+   "summary_csv": "reports/g0/baseline_smoke_vendored/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/baseline_smoke_vendored/*.json",
+    "reports/g0/baseline_smoke_vendored/*.md",
+    "/tmp/claude-1000/perfeature_extra/smoke_vendored/*"
+   ],
+   "tags": [
+    "g0",
+    "smoke",
+    "duan03-vendored"
+   ],
+   "new_run_id": "c6299cf3",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "86f26788",
+   "old_name": "baseline-full-23472",
+   "name": "baseline/full",
+   "config": {
+    "experiment": "baseline",
+    "cell": "full",
+    "stack": "TL",
+    "bos_regime": "none",
+    "attn_impl": "tl",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23472",
+    "code_ref": "third_party/duan2026 working copy, working.sha256 7f1e638a0508c3ca",
+    "replaces_wandb_run": "86f26788",
+    "replaces_name": "baseline-full-23472"
+   },
+   "summary_csv": "reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/*.csv",
+    "reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/*.json",
+    "reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/*.md",
+    "reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/*.png",
+    "reports/g0/baseline_full/gpu_mem.log"
+   ],
+   "tags": [
+    "g0",
+    "baseline",
+    "duan03-vendored"
+   ],
+   "comparison_json": "reports/g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/baseline_report.json",
+   "summary_extra": {
+    "q1_pass": true
+   },
+   "new_run_id": "4cbbbf7d",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "168a7bd4",
+   "old_name": "g0-R2-23643",
+   "name": "R2/bos-mask",
+   "config": {
+    "experiment": "R2",
+    "cell": "bos-mask",
+    "stack": "TL",
+    "bos_regime": "mask",
+    "attn_impl": "tl",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23643",
+    "code_ref": "diagnostic generator make_duan_runners_v3.py, deployed runner hash 2c34fecaee1d2e32",
+    "replaces_wandb_run": "168a7bd4",
+    "replaces_name": "g0-R2-23643"
+   },
+   "summary_csv": "reports/g0/R2_bos_mask/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/R2_bos_mask/*.csv",
+    "reports/g0/R2_bos_mask/*.json",
+    "/tmp/claude-1000/perfeature_extra/R2/*"
+   ],
+   "tags": [
+    "g0",
+    "R2",
+    "diagnostic"
+   ],
+   "accepted_missing": [
+    "tokens_2d.pt"
+   ],
+   "new_run_id": "f5436b25",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "0df8557f",
+   "old_name": "R5a-23649-T",
+   "name": "R5a/T",
+   "config": {
+    "experiment": "R5a",
+    "cell": "T",
+    "stack": "HF",
+    "bos_regime": "none",
+    "attn_impl": "eager",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23649",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "0df8557f",
+    "replaces_name": "R5a-23649-T"
+   },
+   "summary_csv": "reports/g0/r5/R5a/T/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5a/T/*.csv",
+    "reports/g0/r5/R5a/T/*.json",
+    "reports/g0/r5/R5a/selfcheck.json",
+    "reports/g0/r5/R5a/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5a/T/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5a",
+    "legacy-harness"
+   ],
+   "accepted_missing": [
+    "phase3_summary_partial.csv"
+   ],
+   "new_run_id": "e39ccd0d",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "3ae90be2",
+   "old_name": "R5a-23649-O",
+   "name": "R5a/O",
+   "config": {
+    "experiment": "R5a",
+    "cell": "O",
+    "stack": "HF",
+    "bos_regime": "none",
+    "attn_impl": "sdpa",
+    "sae_dtype": "bf16",
+    "quantizer": "ours",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23649",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "3ae90be2",
+    "replaces_name": "R5a-23649-O"
+   },
+   "summary_csv": "reports/g0/r5/R5a/O/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5a/O/*.csv",
+    "reports/g0/r5/R5a/O/*.json",
+    "reports/g0/r5/R5a/selfcheck.json",
+    "reports/g0/r5/R5a/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5a/O/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5a",
+    "legacy-harness"
+   ],
+   "accepted_missing": [
+    "phase3_summary_partial.csv"
+   ],
+   "new_run_id": "032a7e53",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "d15d7e62",
+   "old_name": "R5a-23649-T_sdpa",
+   "name": "R5a/T_sdpa",
+   "config": {
+    "experiment": "R5a",
+    "cell": "T_sdpa",
+    "stack": "HF",
+    "bos_regime": "none",
+    "attn_impl": "sdpa",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23649",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "d15d7e62",
+    "replaces_name": "R5a-23649-T_sdpa"
+   },
+   "summary_csv": "reports/g0/r5/R5a/T_sdpa/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5a/T_sdpa/*.csv",
+    "reports/g0/r5/R5a/T_sdpa/*.json",
+    "reports/g0/r5/R5a/selfcheck.json",
+    "reports/g0/r5/R5a/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5a/T_sdpa/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5a",
+    "legacy-harness"
+   ],
+   "accepted_missing": [
+    "phase3_summary_partial.csv"
+   ],
+   "new_run_id": "798651c3",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "f5d49754",
+   "old_name": "R5a-23649-T_bf16sae",
+   "name": "R5a/T_bf16sae",
+   "config": {
+    "experiment": "R5a",
+    "cell": "T_bf16sae",
+    "stack": "HF",
+    "bos_regime": "none",
+    "attn_impl": "eager",
+    "sae_dtype": "bf16",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23649",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "f5d49754",
+    "replaces_name": "R5a-23649-T_bf16sae"
+   },
+   "summary_csv": "reports/g0/r5/R5a/T_bf16sae/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5a/T_bf16sae/*.csv",
+    "reports/g0/r5/R5a/T_bf16sae/*.json",
+    "reports/g0/r5/R5a/selfcheck.json",
+    "reports/g0/r5/R5a/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5a/T_bf16sae/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5a",
+    "legacy-harness"
+   ],
+   "accepted_missing": [
+    "phase3_summary_partial.csv"
+   ],
+   "new_run_id": "fe2634d7",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "c99ad620",
+   "old_name": "R5b-23660-T_rowquant",
+   "name": "R5b/T_rowquant",
+   "config": {
+    "experiment": "R5b",
+    "cell": "T_rowquant",
+    "stack": "HF",
+    "bos_regime": "none",
+    "attn_impl": "eager",
+    "sae_dtype": "fp32",
+    "quantizer": "ours",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23660",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "c99ad620",
+    "replaces_name": "R5b-23660-T_rowquant"
+   },
+   "summary_csv": "reports/g0/r5/R5b/T_rowquant/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5b/T_rowquant/*.csv",
+    "reports/g0/r5/R5b/T_rowquant/*.json",
+    "reports/g0/r5/R5b/selfcheck.json",
+    "reports/g0/r5/R5b/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5b/T_rowquant/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5b",
+    "legacy-harness"
+   ],
+   "accepted_missing": [
+    "phase3_summary_partial.csv"
+   ],
+   "new_run_id": "5821ed0b",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "ad2ad1ed",
+   "old_name": "R5b-23660-T_mask",
+   "name": "R5b/T_mask",
+   "config": {
+    "experiment": "R5b",
+    "cell": "T_mask",
+    "stack": "HF",
+    "bos_regime": "mask",
+    "attn_impl": "eager",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23660",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "ad2ad1ed",
+    "replaces_name": "R5b-23660-T_mask"
+   },
+   "summary_csv": "reports/g0/r5/R5b/T_mask/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5b/T_mask/*.csv",
+    "reports/g0/r5/R5b/T_mask/*.json",
+    "reports/g0/r5/R5b/selfcheck.json",
+    "reports/g0/r5/R5b/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5b/T_mask/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5b",
+    "legacy-harness"
+   ],
+   "new_run_id": "9666bb79",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "a11f3939",
+   "old_name": "R5b-23660-T_keep",
+   "name": "R5b/T_keep",
+   "config": {
+    "experiment": "R5b",
+    "cell": "T_keep",
+    "stack": "HF",
+    "bos_regime": "keep",
+    "attn_impl": "eager",
+    "sae_dtype": "fp32",
+    "quantizer": "duan",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23660",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "a11f3939",
+    "replaces_name": "R5b-23660-T_keep"
+   },
+   "summary_csv": "reports/g0/r5/R5b/T_keep/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5b/T_keep/*.csv",
+    "reports/g0/r5/R5b/T_keep/*.json",
+    "reports/g0/r5/R5b/selfcheck.json",
+    "reports/g0/r5/R5b/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5b/T_keep/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5b",
+    "legacy-harness"
+   ],
+   "accepted_missing": [
+    "phase3_summary_partial.csv"
+   ],
+   "new_run_id": "2effe5bf",
+   "old_run_deleted": "2026-10-17"
+  },
+  {
+   "old_run_id": "5c7f2f49",
+   "old_name": "R5b-23660-O_keep",
+   "name": "R5b/O_keep",
+   "config": {
+    "experiment": "R5b",
+    "cell": "O_keep",
+    "stack": "HF",
+    "bos_regime": "keep",
+    "attn_impl": "sdpa",
+    "sae_dtype": "bf16",
+    "quantizer": "ours",
+    "n_tokens": 500000,
+    "layer": 12,
+    "model": "google/gemma-2-2b",
+    "slurm_job": "23660",
+    "code_ref": "legacy HF harness r5_run.py 38fe66da (git tag legacy-pipeline-2026-10-16)",
+    "replaces_wandb_run": "5c7f2f49",
+    "replaces_name": "R5b-23660-O_keep"
+   },
+   "summary_csv": "reports/g0/r5/R5b/O_keep/phase3_summary_final.csv",
+   "files": [
+    "reports/g0/r5/R5b/O_keep/*.csv",
+    "reports/g0/r5/R5b/O_keep/*.json",
+    "reports/g0/r5/R5b/selfcheck.json",
+    "reports/g0/r5/R5b/code.sha256",
+    "/tmp/claude-1000/r5_perfeature/R5b/O_keep/*_per_feature.csv"
+   ],
+   "tags": [
+    "g0",
+    "R5b",
+    "legacy-harness"
+   ],
+   "accepted_missing": [
+    "phase3_summary_partial.csv"
+   ],
+   "new_run_id": "3f6ad78b",
+   "old_run_deleted": "2026-10-17"
+  }
+ ]
+}

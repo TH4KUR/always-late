@@ -83,6 +83,8 @@ always-late/
 ├── reports/
 │   ├── progress_log.md      # dated evidence log, incl. the post-mortem of the discarded codebase
 │   ├── audit_our_vs_duan.md # why our old pipeline disagreed with theirs; results of R2 and R5
+│   ├── wandb_schema.md      # the one fixed wandb schema every run follows
+│   ├── decisions_and_anomalies.md  # decision log, anomaly register, source-verification queue
 │   ├── duan_codebase_audit.md
 │   ├── g0/                  # baseline, diagnostics R2/R5 (+ R1 pending), benchmark, env freeze
 │   └── legacy_pipeline/     # results of the discarded pipeline: hypotheses, not findings

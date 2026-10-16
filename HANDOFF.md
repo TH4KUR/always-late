@@ -87,6 +87,7 @@ Already done and fetched: R2 (`reports/g0/R2_bos_mask/`), R5a/R5b (`reports/g0/r
 | `issues.md` | review of the discarded pipeline and paper |
 | `reports/audit_our_vs_duan.md` | why the old pipeline disagreed with theirs: 12 differences, experiments, pre-committed rules, results (sections 6.1-6.4) |
 | `reports/duan_codebase_audit.md` | audit of Duan's repo, verified Ada facts, closure protocol (section 7) |
+| `reports/wandb_schema.md`, `scripts/g0/g0_wandb.py`, `wandb_rebuild.py`, `reports/g0/wandb_manifest.json`, `wandb_backup_pre_schema.json` | the fixed wandb schema, its code and tests, what was rebuilt, and the backup of the old runs' metadata |
 | `reports/g0/` | `baseline_full/`, `baseline_smoke*/`, `R2_bos_mask/`, `r5/` (+ `r5_report.md`), `r5_smoke/`, benchmark, env freeze, runner diffs |
 | `reports/legacy_pipeline/` | Phase-1 results of the discarded pipeline: hypotheses, not findings |
 | `third_party/duan2026/` | **their code**: `UPSTREAM.md`, `MANIFEST.sha256`, `pristine/`, `scripts/` (working copy), `patches/`, `working.sha256` |
@@ -125,8 +126,12 @@ Largest survival gap 0.15 pp; per-feature Spearman at INT6 over 7,121 commonly a
 
 ## 11. Scheduled hourly check (set up 2026-10-17 at the user's request)
 
-A recurring job (id `9bc324b1`, cron `17 * * * *`, local time) runs inside the Claude Code session: it checks R1 24451 and R5c 24452 on Ada, fetches and judges results, works through the source-verification queue in `reports/decisions_and_anomalies.md`, updates the docs and the plan, and commits and pushes when something changed. It does **not** queue new Ada jobs, touch wandb, edit `paper/` or change the vendored code (a wandb redesign awaits the user's approval, decision D-008).
+A recurring job (id `5a2e98c0`, cron `17 * * * *`, local time; it replaced the first version `9bc324b1` when the wandb schema was approved) runs inside the Claude Code session: it checks R1 24451 and R5c 24452 on Ada, fetches and judges results, works through the source-verification queue in `reports/decisions_and_anomalies.md`, updates the docs and the plan, and commits and pushes when something changed. It does **not** queue new Ada jobs, edit `paper/` or change the vendored code. Its only wandb duty: when R1 and R5c finish it adds them to the manifest, rebuilds them under the fixed schema, verifies, deletes their two old live runs, and deploys the schema-aware logger to Ada (section 12).
 
 Limits: it is **session-only** (it dies when Claude Code exits, nothing is stored on disk), it **auto-expires after 7 days** (2026-10-24), it only fires while the session is idle, and the harness delays each run by up to 30 minutes after the nominal minute.
 
-**To stop it:** tell Claude "stop the scheduled job" (it runs `CronDelete 9bc324b1`; `CronList` shows what is scheduled), or exit the Claude Code session. A job run already in progress finishes its current step.
+**To stop it:** tell Claude "stop the scheduled job" (it runs `CronDelete 5a2e98c0`; `CronList` shows what is scheduled), or exit the Claude Code session. A job run already in progress finishes its current step.
+
+## 12. wandb: one fixed schema (since 2026-10-17)
+
+Every run, live or rebuilt, uses the vocabulary in `reports/wandb_schema.md` (15 config keys, 12 per-condition metrics with the condition as data in `bits`, 29 fixed summary keys, 3 fixed table names). The old per-condition-prefixed names (`INT7/median_corr`, `baseline/...`) no longer exist. Rules: never log ad-hoc keys (`python3 scripts/g0/wandb_rebuild.py verify` fails on them); to change the vocabulary change the constants in `g0_wandb.py`, bump `SCHEMA_VERSION`, update the tests and rebuild; run the live check `selftest_wandb.py` (creates and deletes one run) after any logger change. wandb access needs the throwaway venv `/tmp/claude-1000/wbvenv/bin/python` (system python has no wandb; recreate it with `python3 -m venv` and `pip install wandb` if it is gone); never print or handle keys. **Status 2026-10-17: the 13 finished runs are rebuilt under the schema and their 13 old runs deleted (verified first; see `reports/wandb_schema.md`).** The schema-aware `g0_wandb.py`, `run_g0.sbatch`, `run_baseline.sbatch` and `baseline_report.py` are deployed to Ada only after R1 and R5c have finished (R1 and R5c still run the old logger; their live wandb runs `339751bd` and `968e9ddb` are rebuilt and replaced when they finish).

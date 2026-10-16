@@ -113,6 +113,24 @@ def to_markdown(cmp_, pf=None):
     return "\n".join(L) + "\n"
 
 
+def upload_to_wandb(run, rep_rows, cmp_, pf, logger_cls=None, project="anlp-project", entity=None, name=None):
+    """Post-hoc upload under the fixed schema (scripts/g0/g0_wandb.py): conditions as rows, the comparison and per-feature agreement as tables,
+    q1_pass as the only extra summary value. Never fatal."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    if logger_cls is None:
+        from g0_wandb import G0Logger as logger_cls
+    cfg = {"experiment": "baseline", "cell": str(Path(run).name), "stack": "TL", "bos_regime": "none", "run_dir": str(run), "kind": "baseline-replication"}
+    lg = logger_cls.start(project=project, entity=entity, name=name or f"baseline/{Path(run).name}", config=cfg, out_dir=run,
+                          tags=["g0", "baseline", "duan03-vendored"])
+    for r_ in rep_rows:
+        lg.log_condition({k: (_f(v) if _f(v) is not None else v) for k, v in r_.items()})
+    lg.log_table(cmp_["rows"], key="comparison_vs_published")
+    if pf:
+        lg.log_table([{"metric": k, "value": v} for k, v in pf.items()], key="per_feature_int6")
+    lg.set_summary({"q1_pass": cmp_["q1_pass"]})
+    lg.finish(run)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", required=True); ap.add_argument("--published", required=True)
@@ -128,22 +146,9 @@ def main():
     out.write_text(md); (out.with_suffix(".json")).write_text(json.dumps({"comparison": cmp_, "per_feature_int6": pf}, indent=2))
     print(md)
     if a.wandb:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from g0_wandb import G0Logger
         import os
-        lg = G0Logger.start(project=os.environ.get("WANDB_PROJECT", "anlp-project"), entity=os.environ.get("WANDB_ENTITY") or None,
-                            name=os.environ.get("G0_WANDB_NAME", f"baseline-{run.name}"), config={"run_dir": str(run), "kind": "baseline-replication"},
-                            out_dir=run, tags=["g0", "baseline", "duan03-vendored"])
-        for r_ in rep_rows:
-            lg.log_condition({k: (_f(v) if _f(v) is not None else v) for k, v in r_.items()})
-        lg.log_table(cmp_["rows"], key="comparison_vs_published")
-        if lg.active:
-            lg.run.summary["q1_pass"] = cmp_["q1_pass"]
-            for k, v in cmp_["bands"].items():
-                lg.run.summary[k] = v
-            if pf:
-                lg.run.summary.update({f"per_feature_int6/{k}": v for k, v in pf.items()})
-        lg.finish(run)
+        upload_to_wandb(run, rep_rows, cmp_, pf, project=os.environ.get("WANDB_PROJECT", "anlp-project"), entity=os.environ.get("WANDB_ENTITY") or None,
+                        name=os.environ.get("G0_WANDB_NAME", f"baseline/{run.name}"))
 
 
 if __name__ == "__main__":

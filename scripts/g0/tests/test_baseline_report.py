@@ -8,6 +8,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import baseline_report as br  # noqa: E402
 
 
+class _RecLogger:
+    instances = []
+    active = True
+    def __init__(self): self.calls = []; _RecLogger.instances.append(self)
+    @classmethod
+    def start(cls, **kw): lg = cls(); lg.kw = kw; return lg
+    def log_condition(self, row): self.calls.append(("cond", row["condition"]))
+    def log_table(self, rows, key="conditions"): self.calls.append(("table", key))
+    def set_summary(self, d): self.calls.append(("summary", dict(d)))
+    def finish(self, out): self.calls.append(("finish",))
+
+
+class WandbUpload(unittest.TestCase):
+    def test_upload_uses_the_fixed_schema_only(self):
+        _RecLogger.instances.clear()
+        rep = [r("FP16 baseline", 100.0, 0.0), r("RTN INT7", 81.2, -5.6)]
+        cmp_ = {"rows": [{"condition": "RTN INT7", "d_survived_pp": -0.1}], "q1_pass": True, "bands": {"x": 1}}
+        pf = {"n_common_active": 7121, "spearman_corr": 0.9996, "spearman_firing_rate": 0.9999}
+        br.upload_to_wandb(Path("/tmp/run-xyz"), rep, cmp_, pf, logger_cls=_RecLogger, project="p", entity=None, name="baseline/full")
+        lg = _RecLogger.instances[0]
+        self.assertEqual([c for c in lg.calls if c[0] == "cond"], [("cond", "FP16 baseline"), ("cond", "RTN INT7")])
+        self.assertIn(("table", "comparison_vs_published"), lg.calls); self.assertIn(("table", "per_feature_int6"), lg.calls)
+        self.assertIn(("summary", {"q1_pass": True}), lg.calls); self.assertEqual(lg.calls[-1], ("finish",))
+        self.assertEqual(lg.kw["name"], "baseline/full"); self.assertEqual(lg.kw["config"]["experiment"], "baseline")
+
+
 def r(cond, survived, delta, active=7144, median=0.9, ppl=450.0):
     return {"condition": cond, "survived_>0.9_pct": survived, "ppl_delta_pct": delta, "n_active_features": active,
             "median_corr": median, "perplexity": ppl}

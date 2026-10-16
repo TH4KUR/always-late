@@ -30,7 +30,7 @@ du -sh "$HF_HOME"
 export G0_RUN_MODE=$MODE G0_BOS=$BOS G0_BITS=$BITS G0_TOKENS=$TOK G0_WORK_DEVICE=cuda:1
 export G0_OUT=/home2/karma/duan-verify/out/$ARM
 export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=8
-export WANDB_PROJECT=${WANDB_PROJECT:-anlp-project} G0_WANDB_NAME=${G0_WANDB_NAME:-g0-$ARM-$SLURM_JOB_ID}   # wandb: key comes from ~/.netrc (wandb login); G0_WANDB=0 disables; WANDB_MODE=offline + `wandb sync` as fallback
+export WANDB_PROJECT=${WANDB_PROJECT:-anlp-project} G0_WANDB_NAME=${G0_WANDB_NAME:-$ARM} G0_EXPERIMENT=$ARM G0_CODE_REF="runner $(sha256sum /home2/karma/duan-verify/duan03_runner_v3.py | cut -c1-16)"   # wandb: key comes from ~/.netrc (wandb login); G0_WANDB=0 disables; WANDB_MODE=offline + `wandb sync` as fallback
 mkdir -p "$G0_OUT" /home2/karma/duan-verify/logs
 nvidia-smi -L; date
 # measured GPU memory/utilization every 5 s (answers "does it really fit?")
