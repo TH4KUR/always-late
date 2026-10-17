@@ -2,6 +2,8 @@
 run_tagging / run_survival take the model forward, the SAE encoder, the quantizer and the restore as injectable callables: in production they are
 THEIR functions (extracted verbatim from the vendored pristine script, see load_their_functions); in the tests they are a fake causal model.
 Decisions: D-001 (regimes), D-003 (selectivity), D-004 (this design), D-006 (ladder), D-010 (all sentences)."""
+import math
+
 import torch
 
 import phase1_lib as p1
@@ -44,7 +46,7 @@ def _pack(lp, loss):
     rs = [lp.result(l) for l in range(n_lang)]
     stack = lambda k: torch.stack([r[k].float() for r in rs])
     return {"corr": stack("corr"), "firing_rate": stack("firing_rate"), "mean_activation": stack("mean_activation"), "max_activation": stack("max_activation"),
-            "n": [r["n"] for r in rs], "loss_sum": list(loss.s), "loss_n": list(loss.n)}
+            "n": [r["n"] for r in rs], "loss_sum": list(loss.s), "loss_n": list(loss.n), "pooled": lp.pooled()}
 
 
 def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_id, n_feat, bits_list, device="cpu", batch_size=32, max_tokens=None, max_len=256):
@@ -77,3 +79,43 @@ def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_i
             results[bits] = _pack(lp, loss)
         restore()
     return results
+
+
+def survival_summary(corr, firing_rate, threshold=0.001):
+    """Their summary definitions (streaming_feature_metrics): active = full-precision firing rate > threshold; survived r > 0.9; degraded 0.5 < r <= 0.9;
+    damaged r < 0.5 (so r == 0.5 falls in no bin, as in their code); median is torch's lower-middle value."""
+    active = firing_rate > threshold
+    c = corr[active].double()
+    if c.numel() == 0:
+        raise RuntimeError("No active features. Lower FIRING_THRESHOLD.")
+    return {"n_active_features": int(active.sum()), "mean_corr": float(c.mean()), "median_corr": float(c.median()),
+            "survived_>0.9_pct": float((c > 0.9).double().mean() * 100), "degraded_0.5_0.9_pct": float(((c > 0.5) & (c <= 0.9)).double().mean() * 100),
+            "damaged_<0.5_pct": float((c < 0.5).double().mean() * 100)}
+
+
+def _loss(r):
+    return sum(r["loss_sum"]) / sum(r["loss_n"])
+
+
+def condition_rows(results, bits_list, n_feat, layer=12, threshold=0.001):
+    """One row per condition over ALL languages pooled, in the column order of their phase3_summary_final.csv. FP baseline has bits 32 (wandb schema v1);
+    bits == 0 is the restore-only control."""
+    fp = results["FP"]; fp_loss = _loss(fp); fp_ppl = math.exp(fp_loss); rate = fp["pooled"]["firing_rate"]
+    rows = []
+    for key in ["FP"] + list(bits_list):
+        r = results[key]; loss = _loss(r); ppl = math.exp(loss)
+        name, method, bits = ("FP16 baseline", "FP16", 32) if key == "FP" else ((f"RTN INT{key}", "RTN", key) if key else ("restore-only control (INT0)", "control", 0))
+        rows.append({"layer": layer, "condition": name, "method": method, "bits": bits, "perplexity": ppl, "ppl_delta_pct": (ppl / fp_ppl - 1) * 100,
+                     **survival_summary(r["pooled"]["corr"], rate, threshold), "n_tokens": int(sum(r["n"])), "n_total_features": int(n_feat), "loss": loss})
+    return rows
+
+
+def language_rows(results, bits_list, lang_names, threshold=0.001):
+    """Per language and rung: the same survival summary with that language's own full-precision active set (a sanity table; the Phase 1 analysis proper is phase1_analysis.py)."""
+    fp, rows = results["FP"], []
+    for li, name in enumerate(lang_names):
+        for bits in bits_list:
+            r = results[bits]
+            rows.append({"language": name, "bits": bits, "n_tokens": int(fp["n"][li]), "perplexity": math.exp(r["loss_sum"][li] / r["loss_n"][li]),
+                         **survival_summary(r["corr"][li].double(), fp["firing_rate"][li].double(), threshold)})
+    return rows

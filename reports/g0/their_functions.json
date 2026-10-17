@@ -1,0 +1,38 @@
+{
+ "file": "third_party/duan2026/pristine/scripts/03_gemma_phase3_streaming_sweep.py",
+ "file_sha256": "ddc43cc7856a0217360763054d96c4741ccba08b905f54851cef4a0f490164cf",
+ "functions": {
+  "load_gemma_tl_model": {
+   "lineno": 139,
+   "sha256": "43a237c15f31ff6b254d2cc1139d26a3af6451295e060ea887e70661b13eac2d"
+  },
+  "load_sae_compat": {
+   "lineno": 176,
+   "sha256": "cb8bd6750dedfd9a27bbabafb9158ae314e3b82f00c0d2b8fa63278be25e713b"
+  },
+  "build_tokens_2d": {
+   "lineno": 237,
+   "sha256": "a103d4f0184dd75acdfb55155f9f430e03811d90f2d482109949dbd0f1f70300"
+  },
+  "clone_state_to_cpu": {
+   "lineno": 279,
+   "sha256": "1aead3de7c1e33b2e8c7003f912e87427fd33c7255492ee7641a447a1c854d8e"
+  },
+  "restore_model_work": {
+   "lineno": 288,
+   "sha256": "76b62309d3f371af002efb02ed2997c1c130942ec3e0728d169cf556651bff71"
+  },
+  "target_tl_weight": {
+   "lineno": 302,
+   "sha256": "e86c0a30c516603ba82752987e2f0f17693588198c0a5812d7560bdd08f7baed"
+  },
+  "quantize_rtn_per_output_channel_tl": {
+   "lineno": 307,
+   "sha256": "435b0f7f498087fe73cd7107f1eb039322f45f3aec123c327aba101e3f1c16ff"
+  },
+  "encode_sae": {
+   "lineno": 399,
+   "sha256": "c4c8c49723c677e020194b69a35b1f624f8fc4615782a87d816dd68339bb900e"
+  }
+ }
+}
