@@ -7,32 +7,40 @@ import torch
 REGIMES = ("mask", "none")     # mask: BOS prepended, position 0 excluded from every statistic (Gemma Scope's own protocol); none: Duan's regime
 
 
-def make_batches(data, bos_id, regime, pad_id=0, max_len=256, batch_size=32):
-    """data: {lang_index: [token-id list per sentence, no special tokens]} -> list of batches, each single-language and length-sorted.
+def make_batches(data, bos_id, regime, pad_id=0, max_len=256, batch_size=32, max_tokens=None):
+    """data: {lang_index: [token-id lists per sentence, no special tokens]} -> list of batches, each single-language and length-sorted.
     tokens [B, L] right-padded (a causal model cannot be influenced by later padding); valid [B, L] marks real content positions only
-    (never BOS under `mask`, never padding); sent = sentence indices within the language; content longer than max_len is truncated."""
+    (never BOS under `mask`, never padding); sent = sentence indices within the language; content longer than max_len is truncated;
+    a batch holds at most batch_size sentences and, if max_tokens is given, at most max_tokens padded positions (B x L)."""
     if regime not in REGIMES:
         raise ValueError(f"unknown BOS regime {regime!r}; choose from {REGIMES}")
     off, batches = (1 if regime == "mask" else 0), []
     for lang in sorted(data):
         order = sorted(range(len(data[lang])), key=lambda i: (len(data[lang][i]), i))
-        for k in range(0, len(order), batch_size):
-            idx = order[k:k + batch_size]
+        groups, cur = [], []
+        for i in order:
+            new_L = min(len(data[lang][i]), max_len) + off
+            if cur and (len(cur) + 1 > batch_size or (max_tokens is not None and (len(cur) + 1) * new_L > max_tokens)):
+                groups.append(cur); cur = []
+            cur.append(i)
+        if cur:
+            groups.append(cur)
+        for idx in groups:
             seqs, trunc = [], 0
             for i in idx:
-                s = data[lang][i]
-                if len(s) > max_len:
-                    s, trunc = s[:max_len], trunc + 1
-                seqs.append(s)
-            L = max(len(s) for s in seqs) + off
+                s_ = data[lang][i]
+                if len(s_) > max_len:
+                    s_, trunc = s_[:max_len], trunc + 1
+                seqs.append(s_)
+            L = max(len(s_) for s_ in seqs) + off
             tokens = torch.full((len(seqs), L), pad_id, dtype=torch.long)
             valid = torch.zeros((len(seqs), L), dtype=torch.bool)
-            for r, s in enumerate(seqs):
+            for r, s_ in enumerate(seqs):
                 if off:
                     tokens[r, 0] = bos_id
-                if s:
-                    tokens[r, off:off + len(s)] = torch.tensor(s, dtype=torch.long)
-                    valid[r, off:off + len(s)] = True
+                if s_:
+                    tokens[r, off:off + len(s_)] = torch.tensor(s_, dtype=torch.long)
+                    valid[r, off:off + len(s_)] = True
             batches.append({"lang": lang, "tokens": tokens, "valid": valid, "sent": torch.tensor(idx, dtype=torch.long), "n_truncated": trunc})
     return batches
 
@@ -85,6 +93,33 @@ class TagStats:
         u = uniq.cpu()
         self.counts[u] += c.cpu().to(torch.int16); self.sums[u] += s.cpu(); self.ntok[u] += n.cpu()
 
+
+
+def chunked_nll(logits, tokens, valid, chunk=256):
+    """Per-row sum of -log p(token_t | tokens_<t) over positions t >= 1 whose position is valid, and the number of such positions
+    (float32 log-softmax per row chunk so a 256k-vocabulary logits tensor never has to be converted whole)."""
+    sums, counts = [], []
+    for i in range(0, logits.shape[0], chunk):
+        lp = torch.log_softmax(logits[i:i + chunk, :-1].float(), dim=-1).gather(-1, tokens[i:i + chunk, 1:, None])[..., 0]
+        m = valid[i:i + chunk, 1:]
+        sums.append(-(lp * m).sum(1).double()); counts.append(m.sum(1))
+    return torch.cat(sums), torch.cat(counts)
+
+
+class SparseRows:
+    """JumpReLU features are about 0.5% non-zero: keep the full-precision features of every batch sparsely on the host."""
+    def __init__(self):
+        self._b = []
+
+    def add(self, dense):
+        r, c = dense.nonzero(as_tuple=True)
+        self._b.append((tuple(dense.shape), dense.dtype, r.to(torch.int32).cpu(), c.to(torch.int32).cpu(), dense[r, c].cpu()))
+
+    def get(self, i, device):
+        shape, dt, r, c, v = self._b[i]
+        out = torch.zeros(shape, dtype=dt, device=device)
+        out[r.to(device).long(), c.to(device).long()] = v.to(device)
+        return out
 
 # ------------------------------------------------------------------ S2: selectivity (proposal section 4.1) and controls
 import numpy as np
