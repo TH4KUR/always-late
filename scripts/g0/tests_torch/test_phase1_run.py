@@ -307,5 +307,19 @@ class SaveOutputs(unittest.TestCase):
         z = torch.load(out / "selectivity.pt"); self.assertTrue(torch.equal(z["selective"], r["selective"])); self.assertEqual(z["null_cutoff"], r["null_cutoff"]); self.assertTrue(torch.equal(z["controls"], r["controls"]))
 
 
+class PackageVersions(unittest.TestCase):
+    def test_versions_come_from_package_metadata_and_a_missing_package_is_reported_not_raised(self):
+        v = run.package_versions(["torch", "no-such-package-xyz"])
+        self.assertEqual(list(v), ["torch", "no-such-package-xyz"]); self.assertTrue(v["torch"].startswith(torch.__version__.split("+")[0])); self.assertEqual(v["no-such-package-xyz"], "not installed")
+
+
+class ForwardPathCheck(unittest.TestCase):
+    def test_identical_paths_pass_and_a_differing_path_raises(self):
+        toks = torch.randint(3, V, (2, 6)); f = Fake(); full = lambda t: f.forward(t); short = lambda t: (f.forward(t)[0], None)
+        run.check_forward_paths(full, short, toks)
+        bad = lambda t: (f.forward(t)[0] * 1.001, None)
+        with self.assertRaises(AssertionError): run.check_forward_paths(full, bad, toks)
+
+
 if __name__ == "__main__":
     unittest.main()

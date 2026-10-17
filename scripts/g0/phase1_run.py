@@ -169,6 +169,24 @@ def save_outputs(out_dir, meta, results, bits_list, lang_names, n_feat, threshol
                                                "their_functions_sha256": manifest["file_sha256"], "their_functions": manifest["functions"]}, indent=1, default=str) + "\n")
 
 
+def package_versions(names):
+    """Installed distribution versions from package metadata ({name: version or 'not installed'}); transformer_lens has no __version__ attribute."""
+    from importlib import metadata
+    out = {}
+    for n in names:
+        try:
+            out[n] = metadata.version(n)
+        except metadata.PackageNotFoundError:
+            out[n] = "not installed"
+    return out
+
+
+def check_forward_paths(full, short, tokens):
+    """The tagging pass stops after the hooked block (no logits); its activations must equal those of the full forward pass exactly."""
+    a, b = full(tokens)[0], short(tokens)[0]
+    assert torch.equal(a, b), f"stop-at-layer activations differ from the full forward pass (max abs diff {float((a.float() - b.float()).abs().max())})"
+
+
 SAE_RELEASE, SAE_ID, LAYER, SEQ_LEN, FIRING_THRESHOLD = "gemma-scope-2b-pt-res-canonical", "layer_12/width_16k/canonical", 12, 256, 0.001     # their config, copied
 MODEL_CANDIDATES = ["gemma-2-2b", "google/gemma-2-2b"]
 DEFAULT_BITS = [8, 7, 6, 5, 4, 16, 12, 0]       # decision D-006: ladder INT8/7/6/5/4, then the INT16/INT12 noise-floor controls and INT0 (restore only)
@@ -225,7 +243,7 @@ def main(argv=None):
 
     meta = {"corpus": a.corpus, "regime": a.regime, "bits": a.bits, "seed": a.seed, "commit": a.commit, "model": model_name, "sae_release": SAE_RELEASE, "sae_id": SAE_ID,
             "hook": hook, "bos_id": bos, "pad_id": pad, "batch_size": a.batch_size, "max_tokens": a.max_tokens, "device": DEVICE,
-            "versions": {k: __import__(k).__version__ for k in ("torch", "transformer_lens", "sae_lens")}, "argv": list(argv) if argv is not None else None}
+            "versions": package_versions(["torch", "transformer-lens", "sae-lens", "transformers", "datasets"]), "argv": list(argv) if argv is not None else None}
     if a.corpus == "flores":
         roster = pd_.load_roster(a.roster)
         if a.languages:
@@ -243,6 +261,8 @@ def main(argv=None):
 
     report = None
     if dev is not None and not a.skip_tagging:
+        probe = p1.make_batches({0: dev[0][:8]}, bos, a.regime, pad, 256, 8)[0]["tokens"].to(DEVICE)
+        check_forward_paths(forward, forward_acts, probe); log("stop-at-layer tagging forward equals the full forward pass on a probe batch")
         tag, offsets, lang_of = run_tagging(forward_acts, encode, dev, a.regime, bos, pad, n_feat, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens)
         log("tagging pass done; sentences", len(lang_of))
         report = selectivity_report(tag, lang_of, len(names), n_boot=a.n_boot, n_perm=a.n_perm, seed=a.seed)
