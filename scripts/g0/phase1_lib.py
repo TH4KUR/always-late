@@ -7,11 +7,29 @@ import torch
 REGIMES = ("mask", "none")     # mask: BOS prepended, position 0 excluded from every statistic (Gemma Scope's own protocol); none: Duan's regime
 
 
-def make_batches(data, bos_id, regime, pad_id=0, max_len=256, batch_size=32, max_tokens=None):
+def budget_for(data, max_len=256):
+    """Equal token budget (decision D-015): the smallest per-language number of content tokens (sentences truncated to max_len; BOS and padding never count)."""
+    return min(sum(min(len(s), max_len) for s in ss) for ss in data.values())
+
+
+def keep_masks(data, budget, seed, split_offset=0, max_len=256):
+    """{language: [bool tensor per sentence, length = truncated sentence length]} with EXACTLY min(budget, n_tokens) True per language, drawn uniformly without replacement.
+    The generator is seeded by (seed, split_offset, language) only, so a language's draw does not depend on the other languages, on batching, or on the quantization rung."""
+    out = {}
+    for lang, ss in data.items():
+        lens = [min(len(x), max_len) for x in ss]; n = sum(lens)
+        g = torch.Generator().manual_seed(int(seed) * 1_000_003 + int(split_offset) * 10_007 + int(lang))
+        flat = torch.zeros(n, dtype=torch.bool); flat[torch.randperm(n, generator=g)[:min(budget, n)]] = True
+        out[lang] = list(torch.split(flat, lens))
+    return out
+
+
+def make_batches(data, bos_id, regime, pad_id=0, max_len=256, batch_size=32, max_tokens=None, keep=None):
     """data: {lang_index: [token-id lists per sentence, no special tokens]} -> list of batches, each single-language and length-sorted.
     tokens [B, L] right-padded (a causal model cannot be influenced by later padding); valid [B, L] marks real content positions only
     (never BOS under `mask`, never padding); sent = sentence indices within the language; content longer than max_len is truncated;
-    a batch holds at most batch_size sentences and, if max_tokens is given, at most max_tokens padded positions (B x L)."""
+    a batch holds at most batch_size sentences and, if max_tokens is given, at most max_tokens padded positions (B x L).
+    eq [B, L] marks the positions of the equal-budget stream: valid AND selected by `keep` (from keep_masks); without `keep` it equals valid."""
     if regime not in REGIMES:
         raise ValueError(f"unknown BOS regime {regime!r}; choose from {REGIMES}")
     off, batches = (1 if regime == "mask" else 0), []
@@ -34,14 +52,15 @@ def make_batches(data, bos_id, regime, pad_id=0, max_len=256, batch_size=32, max
                 seqs.append(s_)
             L = max(len(s_) for s_ in seqs) + off
             tokens = torch.full((len(seqs), L), pad_id, dtype=torch.long)
-            valid = torch.zeros((len(seqs), L), dtype=torch.bool)
+            valid = torch.zeros((len(seqs), L), dtype=torch.bool); eq = torch.zeros((len(seqs), L), dtype=torch.bool)
             for r, s_ in enumerate(seqs):
                 if off:
                     tokens[r, 0] = bos_id
                 if s_:
                     tokens[r, off:off + len(s_)] = torch.tensor(s_, dtype=torch.long)
                     valid[r, off:off + len(s_)] = True
-            batches.append({"lang": lang, "tokens": tokens, "valid": valid, "sent": torch.tensor(idx, dtype=torch.long), "n_truncated": trunc})
+                    eq[r, off:off + len(s_)] = True if keep is None else keep[lang][idx[r]]
+            batches.append({"lang": lang, "tokens": tokens, "valid": valid, "eq": eq, "sent": torch.tensor(idx, dtype=torch.long), "n_truncated": trunc})
     return batches
 
 
