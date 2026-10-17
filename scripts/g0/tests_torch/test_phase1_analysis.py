@@ -188,7 +188,9 @@ class Cli(unittest.TestCase):
         out = RunAnalysis().synth(low_penalty=0.05, seed=11); dest = Path(out) / "cli_out"
         r = subprocess.run([sys.executable, "-B", str(Path(an.__file__)), "--run", str(out), "--out", str(dest), "--n-perm", "100", "--n-boot", "50"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr[-800:]); self.assertTrue((dest / "analysis.json").exists() and (dest / "analysis.md").exists())
-        self.assertIn("T3_tier", r.stdout); self.assertIn("Holm", r.stdout)
+        import json
+        j = json.loads((dest / "analysis.json").read_text()); self.assertEqual((j["n_perm"], j["n_boot"]), (100, 50))               # the command-line counts reach the analysis
+        for k in ("T1_int7", "T2_int6", "T3_tier"): self.assertIn(f"{k}: p {j['tests'][k]['p']:.4g}  Holm {j['holm'][k]:.4g}", r.stdout)
 
 
 class PartialSlope(unittest.TestCase):
