@@ -222,6 +222,27 @@ class TheirLossNumerics(unittest.TestCase):
         self.assertTrue(len(calls) > 0); self.assertEqual(res["FP"]["loss_sum"], [12.0, 8.0, 6.0]); self.assertEqual(res[8]["loss_sum"], [12.0, 8.0, 6.0])    # 2.0 per sentence row: 6, 4, 3 sentences
 
 
+class TheirWindowLoss(unittest.TestCase):
+    """Their reported loss is TransformerLens' lm_cross_entropy_loss per window: `-predicted_log_probs.sum() / n` computed in bf16 (a sum near 1536 is rounded to a multiple of 8,
+    so every window loss is a multiple of 1/32 and the mean carries a systematic offset: diagnostics diag_loss.py / diag_loss2.py, anomaly A-024). The anchor reproduces it by calling
+    that function window by window; the production loss is the exact float64 token sum."""
+    def test_row_wise_loss_is_scaled_to_a_token_sum_and_matches_the_function_per_row(self):
+        g = torch.Generator().manual_seed(0); logits = torch.randn(3, 7, V, generator=g); toks = torch.randint(0, V, (3, 7), generator=g); valid = torch.ones(3, 7, dtype=torch.bool)
+        calls = []
+        def loss_fn(lg, tk):
+            calls.append(tuple(lg.shape)); lp = torch.log_softmax(lg, -1)[:, :-1].gather(-1, tk[:, 1:, None])[..., 0]; return -lp.sum() / lp.numel()
+        s_, n = run.tl_window_nll(loss_fn)(logits, toks, valid)
+        self.assertEqual(calls, [(1, 7, V)] * 3); self.assertEqual(n.tolist(), [6, 6, 6])
+        lp = torch.log_softmax(logits, -1)[:, :-1].gather(-1, toks[:, 1:, None])[..., 0]
+        self.assertTrue(torch.allclose(s_, (-lp.sum(1)).double(), atol=1e-5))                 # sums = per-window loss x positions
+
+    def test_padding_or_masked_positions_are_refused_because_the_function_averages_every_position(self):
+        logits = torch.randn(2, 5, V); toks = torch.randint(0, V, (2, 5)); valid = torch.ones(2, 5, dtype=torch.bool); valid[1, 3:] = False
+        with self.assertRaises(AssertionError): run.tl_window_nll(lambda lg, tk: torch.tensor(1.0))(logits, toks, valid)
+        valid = torch.ones(2, 5, dtype=torch.bool); valid[0, 0] = False                        # a masked BOS position 0 does not matter for position >= 1 targets
+        run.tl_window_nll(lambda lg, tk: torch.tensor(1.0))(logits, toks, valid)
+
+
 class MaxTokens(unittest.TestCase):
     def test_batches_respect_a_token_budget_without_losing_sentences(self):
         data = {0: [[5] * n for n in (3, 4, 9, 2, 8)]}

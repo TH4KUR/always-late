@@ -1,7 +1,7 @@
 #!/bin/bash
 # One Phase 1 run (one BOS regime) on ONE GPU of Ada (u22, RTX 2080 Ti 11 GB), on top of Duan et al.'s functions (see scripts/g0/phase1_run.py).
 # Usage: sbatch [-A nlp] scripts/g0/run_phase1.sbatch <name> <flores|wikitext> <mask|none> [extra args for phase1_run.py ...]
-# S5 anchor : sbatch run_phase1.sbatch anchor wikitext none --budget 20000 --bits 8 6 --batch-size 1
+# S5 anchor : sbatch run_phase1.sbatch anchor wikitext none --budget 20000 --bits 8 6 --batch-size 1 --loss tl
 # S5 smoke  : sbatch run_phase1.sbatch smoke flores mask --languages eng_Latn hin_Deva khm_Khmr --max-sentences 120 --bits 8 6 0 --n-boot 20 --n-perm 5
 # S6 full   : sbatch run_phase1.sbatch p1-mask flores mask      (and  p1-none flores none)
 # Prereqs: env at /home2/karma/duan-verify/env; HF token at /home2/karma/duan-verify/hf/token; code deployed by scripts/g0/deploy_phase1.sh; FLORES extracted in phase1/data.

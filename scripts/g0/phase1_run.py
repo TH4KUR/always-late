@@ -171,6 +171,17 @@ def save_outputs(out_dir, meta, results, bits_list, lang_names, n_feat, threshol
                                                "their_functions_sha256": manifest["file_sha256"], "their_functions": manifest["functions"]}, indent=1, default=str) + "\n")
 
 
+def tl_window_nll(loss_fn):
+    """Their loss: `loss_fn(logits_row, tokens_row)` (TransformerLens' lm_cross_entropy_loss, a bf16 sum divided by the number of positions) called window by window and scaled back
+    to a token sum, so the aggregate equals the mean of their per-window losses when all windows have the same length. Refuses padding or masked targets (the function averages every position)."""
+    def fn(logits, tokens, valid):
+        assert bool(valid[:, 1:].all()), "their per-window loss averages every position: no padding or masked targets are allowed (use the exact loss)"
+        L = logits.shape[1] - 1
+        return (torch.tensor([float(loss_fn(logits[i:i + 1], tokens[i:i + 1])) * L for i in range(logits.shape[0])], dtype=torch.float64),
+                torch.full((logits.shape[0],), L, dtype=torch.long))
+    return fn
+
+
 def package_versions(names):
     """Installed distribution versions from package metadata ({name: version or 'not installed'}); transformer_lens has no __version__ attribute."""
     from importlib import metadata
@@ -206,6 +217,7 @@ def main(argv=None):
     ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024, help="padded tokens per batch; 2048 ran out of memory on an 11 GB card (the logit soft cap allocates several 0.9 GB temporaries)")
     ap.add_argument("--skip-tagging", action="store_true"); ap.add_argument("--n-boot", type=int, default=100); ap.add_argument("--n-perm", type=int, default=50)
     ap.add_argument("--seed", type=int, default=0); ap.add_argument("--commit", default="unknown")
+    ap.add_argument("--loss", choices=["exact", "tl"], default="exact", help="exact: float32 log-softmax, float64 token sums (default); tl: their per-window TransformerLens loss (anchor only: equal-length windows, no padding)")
     a = ap.parse_args(argv)
     t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
 
@@ -244,7 +256,7 @@ def main(argv=None):
     restore = env["restore_model_work"]
 
     meta = {"corpus": a.corpus, "regime": a.regime, "bits": a.bits, "seed": a.seed, "commit": a.commit, "model": model_name, "sae_release": SAE_RELEASE, "sae_id": SAE_ID,
-            "hook": hook, "bos_id": bos, "pad_id": pad, "batch_size": a.batch_size, "max_tokens": a.max_tokens, "device": DEVICE,
+            "hook": hook, "loss": a.loss, "bos_id": bos, "pad_id": pad, "batch_size": a.batch_size, "max_tokens": a.max_tokens, "device": DEVICE,
             "versions": package_versions(["torch", "transformer-lens", "sae-lens", "transformers", "datasets"]), "argv": list(argv) if argv is not None else None}
     if a.corpus == "flores":
         roster = pd_.load_roster(a.roster)
@@ -272,7 +284,7 @@ def main(argv=None):
         del tag
 
     results = run_survival(forward, encode, quantize, restore, devtest, a.regime, bos, pad, n_feat, a.bits, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens,
-                           nll_fn=lambda lg, tk, v: p1.chunked_nll(lg, tk, v, chunk=4, cast_float=False))      # their numerics: bf16 log-softmax as in TransformerLens' loss
+                           nll_fn=tl_window_nll(lambda lg, tk: model.loss_fn(lg, tk)) if a.loss == "tl" else None)
     log("survival pass done; peak GPU memory GB:", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
     meta["seconds"] = time.time() - t0; meta["peak_gpu_gb"] = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
     save_outputs(a.out, meta, results, a.bits, names, n_feat, FIRING_THRESHOLD, report)
