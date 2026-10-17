@@ -84,3 +84,104 @@ class TagStats:
         n = torch.bincount(inv, minlength=len(uniq))
         u = uniq.cpu()
         self.counts[u] += c.cpu().to(torch.int16); self.sums[u] += s.cpu(); self.ntok[u] += n.cpu()
+
+
+# ------------------------------------------------------------------ S2: selectivity (proposal section 4.1) and controls
+import numpy as np
+
+
+def language_totals(x, lang, n_lang, weights=None, chunk=4096):
+    """Sum the rows of x [S, d] per language -> [n_lang, d] float64 (optional 0/1 row weights; chunked to bound memory)."""
+    out = torch.zeros(n_lang, x.shape[1], dtype=torch.float64)
+    for i in range(0, x.shape[0], chunk):
+        rows = x[i:i + chunk].double()
+        if weights is not None:
+            rows = rows * weights[i:i + chunk].double()[:, None]
+        out.index_add_(0, lang[i:i + chunk], rows)
+    return out
+
+
+def tokens_per_language(ntok, lang, n_lang, weights=None):
+    n = ntok.double() if weights is None else ntok.double() * weights.double()
+    return torch.zeros(n_lang, dtype=torch.float64).index_add_(0, lang, n)
+
+
+def firing_rates(counts, ntok, lang, n_lang):
+    """r_l(f): mean firing rate of feature f on language l (positive tokens over tokens)."""
+    return language_totals(counts, lang, n_lang) / tokens_per_language(ntok, lang, n_lang)[:, None]
+
+
+def mean_activations(sums, ntok, lang, n_lang):
+    """mu_l(f): mean activation (zeros included) on language l, the input of Deng et al.'s nu."""
+    return language_totals(sums, lang, n_lang) / tokens_per_language(ntok, lang, n_lang)[:, None]
+
+
+def selectivity_S(rates):
+    """Proposal section 4.1: S(f) = max_l r_l(f) / mean_l r_l(f); 0 for features that never fire."""
+    mean = rates.mean(0)
+    return torch.where(mean > 0, rates.max(0).values / mean.clamp_min(1e-300), torch.zeros_like(mean))
+
+
+def peak_language(rates):
+    return rates.argmax(0)
+
+
+def supported_mask(rates, totals, min_panel_rate=1e-5, min_pos=50):
+    """Support rule of the proposal: panel mean firing rate above a numerical floor AND at least `min_pos` positive activations at the peak language
+    (`totals` = language_totals of the positive-token counts). The floor value is not given in the proposal (provisional, decision D-003)."""
+    peak = rates.argmax(0)
+    pos = totals[peak, torch.arange(rates.shape[1])]
+    return (rates.mean(0) >= min_panel_rate) & (pos >= min_pos)
+
+
+def bootstrap_peak_stability(counts, ntok, lang, n_lang, peak, n_boot=100, frac=0.9, seed=0):
+    """Number of draws (out of n_boot) in which the peak language is recovered after resampling `frac` of the sentences of every language."""
+    g = torch.Generator().manual_seed(seed)
+    S, stable = counts.shape[0], torch.zeros(counts.shape[1], dtype=torch.long)
+    members = [(lang == l).nonzero().squeeze(1) for l in range(n_lang)]
+    for _ in range(n_boot):
+        keep = torch.zeros(S)
+        for idx in members:
+            k = int(round(frac * len(idx)))
+            keep[idx[torch.randperm(len(idx), generator=g)[:k]]] = 1.0
+        rates = language_totals(counts, lang, n_lang, weights=keep) / tokens_per_language(ntok, lang, n_lang, weights=keep)[:, None]
+        stable += (rates.argmax(0) == peak).long()
+    return stable
+
+
+def shuffled_null_cutoff(counts, ntok, lang, n_lang, supported, n_perm=20, q=0.95, seed=0):
+    """q-quantile of S(f) over supported features after shuffling the sentence-language assignment (the proposal's null for the binary split)."""
+    g = torch.Generator().manual_seed(seed)
+    vals = []
+    for _ in range(n_perm):
+        perm = lang[torch.randperm(len(lang), generator=g)]
+        S = selectivity_S(language_totals(counts, perm, n_lang) / tokens_per_language(ntok, perm, n_lang)[:, None])
+        vals.append(S[supported])
+    return float(np.quantile(torch.cat(vals).numpy(), q))
+
+
+def deng_nu(means):
+    """Deng et al. (2025) Eq. 3: nu_l(f) = mu_l(f) - mean over the other languages of mu_l'(f); means [n_lang, d]."""
+    n = means.shape[0]
+    return means - (means.sum(0, keepdim=True) - means) / (n - 1)
+
+
+def strata_ids(values, n=5):
+    """Equal-count quantile strata (0..n-1) of a 1-D tensor (ties broken by order)."""
+    ranks = values.argsort().argsort()
+    return (ranks * n) // len(values)
+
+
+def matched_sample(strata, selective, pool, seed=0):
+    """For every stratum draw, without replacement, as many features from `pool` as `selective` has in that stratum.
+    Returns (sorted indices, list of strata where the pool was too small and all candidates were taken)."""
+    g = torch.Generator().manual_seed(seed)
+    chosen, short = [], []
+    for s in strata.unique().tolist():
+        need = int(((strata == s) & selective).sum())
+        cand = ((strata == s) & pool).nonzero().squeeze(1)
+        if len(cand) < need:
+            short.append(s); chosen.append(cand)
+        else:
+            chosen.append(cand[torch.randperm(len(cand), generator=g)[:need]])
+    return torch.cat(chosen).sort().values, short
