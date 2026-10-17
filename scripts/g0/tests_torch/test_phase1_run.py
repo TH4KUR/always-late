@@ -257,6 +257,20 @@ class EqualBudgetStream(unittest.TestCase):
         tag, _, _ = run.run_tagging(self.fake.forward, self.fake.encode, self.data, "mask", BOS, PAD, F, batch_size=4); self.assertFalse(hasattr(tag, "eq") and tag.eq is not None)
 
 
+class SplitStreams(unittest.TestCase):
+    def test_all_and_eq_results_are_separated_and_the_loss_stays_with_all_tokens(self):
+        data = corpus(); keep = p1.keep_masks(data, p1.budget_for(data), 0); res = call(Fake(), data, "mask", bits=(8,), keep=keep)
+        a, e = run.split_streams(res)
+        self.assertEqual(set(a), set(res)); self.assertEqual(set(e), set(res))
+        for key in ("FP", 8):
+            self.assertNotIn("eq", a[key]); self.assertTrue(torch.equal(a[key]["corr"], res[key]["corr"])); self.assertTrue(torch.equal(e[key]["corr"], res[key]["eq"]["corr"]))
+            self.assertEqual(e[key]["loss_sum"], res[key]["loss_sum"]); self.assertEqual(e[key]["loss_n"], res[key]["loss_n"]); self.assertEqual(e[key]["n"], [p1.budget_for(data)] * 3)
+        rows = run.condition_rows(e, [8], F); self.assertEqual(rows[0]["n_tokens"], 3 * p1.budget_for(data)); self.assertEqual(run.condition_rows(a, [8], F)[0]["n_tokens"], sum(res["FP"]["n"]))
+
+    def test_without_keep_there_is_no_eq_stream(self):
+        res = call(Fake(), corpus(), "mask", bits=(8,)); a, e = run.split_streams(res); self.assertIs(a, res); self.assertIsNone(e)
+
+
 class TheirLossNumerics(unittest.TestCase):
     """Their perplexity comes from TransformerLens' lm_cross_entropy_loss, which takes log_softmax of the bf16 logits WITHOUT a float32 cast. The anchor run showed the
     float32 version is 0.72% lower in perplexity (411.09 vs 414.07 at 20k tokens), so the Phase 1 runner reproduces their numerics when asked (cast_float=False)."""

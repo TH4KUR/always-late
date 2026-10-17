@@ -99,6 +99,16 @@ def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_i
     return results
 
 
+def split_streams(results):
+    """(all-token results, equal-budget results). The equal-budget results carry the same fields over the equal-budget positions; the loss fields stay those of all
+    tokens (loss and perplexity always use every token). Without an equal-budget stream (no `keep`) -> (results, None)."""
+    if "eq" not in results["FP"]:
+        return results, None
+    allr = {k: {f: v for f, v in r.items() if f != "eq"} for k, r in results.items()}
+    eqr = {k: {**r["eq"], "loss_sum": r["loss_sum"], "loss_n": r["loss_n"]} for k, r in results.items()}
+    return allr, eqr
+
+
 def survival_summary(corr, firing_rate, threshold=0.001):
     """Their summary definitions (streaming_feature_metrics): active = full-precision firing rate > threshold; survived r > 0.9; degraded 0.5 < r <= 0.9;
     damaged r < 0.5 (so r == 0.5 falls in no bin, as in their code); median is torch's lower-middle value."""
@@ -234,6 +244,7 @@ def main(argv=None):
     ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024, help="padded tokens per batch; 2048 ran out of memory on an 11 GB card (the logit soft cap allocates several 0.9 GB temporaries)")
     ap.add_argument("--skip-tagging", action="store_true"); ap.add_argument("--n-boot", type=int, default=100); ap.add_argument("--n-perm", type=int, default=50)
     ap.add_argument("--seed", type=int, default=0); ap.add_argument("--commit", default="unknown")
+    ap.add_argument("--no-equal-budget", action="store_true", help="flores only: skip the equal-token-budget stream (D-015); default computes both streams in one pass")
     ap.add_argument("--loss", choices=["exact", "tl"], default="exact", help="exact: float32 log-softmax, float64 token sums (default); tl: their per-window TransformerLens loss (anchor only: equal-length windows, no padding)")
     a = ap.parse_args(argv)
     t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
@@ -290,21 +301,36 @@ def main(argv=None):
         dev, devtest, names = None, {0: [row.tolist() for row in toks.cpu()]}, ["wikitext"]
     log("languages:", len(names), "devtest sentences:", sum(len(v) for v in devtest.values()))
 
-    report = None
+    keep_dev = keep_test = None
+    if dev is not None and not a.no_equal_budget:
+        budget_dev, budget_test = p1.budget_for(dev), p1.budget_for(devtest)
+        keep_dev, keep_test = p1.keep_masks(dev, budget_dev, a.seed, split_offset=1), p1.keep_masks(devtest, budget_test, a.seed, split_offset=2)
+        meta["equal_budget"] = {"dev_tokens_per_language": budget_dev, "devtest_tokens_per_language": budget_test, "rule": "minimum over languages of the content tokens (D-015)", "seed": a.seed}
+        log("equal budgets per language: dev", budget_dev, "devtest", budget_test, "(all-token counts min/max dev:", min(r["tokens"] for r in rep_dev), max(r["tokens"] for r in rep_dev), ")")
+    report = report_eq = None
     if dev is not None and not a.skip_tagging:
         probe = p1.make_batches({0: dev[0][:8]}, bos, a.regime, pad, 256, 8)[0]["tokens"].to(DEVICE)
         check_forward_paths(forward, forward_acts, probe); log("stop-at-layer tagging forward equals the full forward pass on a probe batch")
-        tag, offsets, lang_of = run_tagging(forward_acts, encode, dev, a.regime, bos, pad, n_feat, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens)
+        tag, offsets, lang_of = run_tagging(forward_acts, encode, dev, a.regime, bos, pad, n_feat, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens, keep=keep_dev)
         log("tagging pass done; sentences", len(lang_of))
         report = selectivity_report(tag, lang_of, len(names), n_boot=a.n_boot, n_perm=a.n_perm, seed=a.seed)
-        log("supported", int(report["supported"].sum()), "selective", int(report["selective"].sum()), "controls", len(report["controls"]), "null cutoff", report["null_cutoff"])
+        log("[all tokens] supported", int(report["supported"].sum()), "selective", int(report["selective"].sum()), "controls", len(report["controls"]), "null cutoff", report["null_cutoff"])
+        if tag.eq is not None:
+            report_eq = selectivity_report(tag.eq, lang_of, len(names), n_boot=a.n_boot, n_perm=a.n_perm, seed=a.seed)
+            log("[equal budget] supported", int(report_eq["supported"].sum()), "selective", int(report_eq["selective"].sum()), "controls", len(report_eq["controls"]), "null cutoff", report_eq["null_cutoff"])
         del tag
 
     results = run_survival(forward, encode, quantize, restore, devtest, a.regime, bos, pad, n_feat, a.bits, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens,
-                           nll_fn=tl_window_nll(lambda lg, tk: model.loss_fn(lg, tk)) if a.loss == "tl" else None)
+                           nll_fn=tl_window_nll(lambda lg, tk: model.loss_fn(lg, tk)) if a.loss == "tl" else None, keep=keep_test)
     log("survival pass done; peak GPU memory GB:", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
     meta["seconds"] = time.time() - t0; meta["peak_gpu_gb"] = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
-    save_outputs(a.out, meta, results, a.bits, names, n_feat, FIRING_THRESHOLD, report)
+    res_all, res_eq = split_streams(results)
+    if res_eq is None:
+        save_outputs(a.out, meta, res_all, a.bits, names, n_feat, FIRING_THRESHOLD, report)
+    else:                                   # equal-budget stream = primary (D-015), all tokens = sensitivity; same file formats in two directories
+        from pathlib import Path
+        save_outputs(Path(a.out) / "eq", {**meta, "stream": "eq"}, res_eq, a.bits, names, n_feat, FIRING_THRESHOLD, report_eq)
+        save_outputs(Path(a.out) / "all", {**meta, "stream": "all"}, res_all, a.bits, names, n_feat, FIRING_THRESHOLD, report)
     log("saved", a.out)
 
 
