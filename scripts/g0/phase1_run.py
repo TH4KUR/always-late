@@ -16,17 +16,23 @@ def _offsets(data):
     return offsets, lang_of
 
 
-def run_tagging(forward, encode, data, regime, bos_id, pad_id, n_feat, device="cpu", batch_size=32, max_tokens=None, max_len=256):
-    """Full-precision pass over the dev split: per-sentence positive-token counts, activation sums and token counts of every SAE feature."""
+def run_tagging(forward, encode, data, regime, bos_id, pad_id, n_feat, device="cpu", batch_size=32, max_tokens=None, max_len=256, keep=None):
+    """Full-precision pass over the dev split: per-sentence positive-token counts, activation sums and token counts of every SAE feature (all tokens).
+    With `keep` (keep_masks, decision D-015) the same statistics are also accumulated over the equal-budget positions only, in `tag.eq`."""
     offsets, lang_of = _offsets(data)
     tag = p1.TagStats(len(lang_of), n_feat)
+    if keep is not None:
+        tag.eq = p1.TagStats(len(lang_of), n_feat)
     with torch.no_grad():
-        for b in p1.make_batches(data, bos_id, regime, pad_id, max_len, batch_size, max_tokens):
+        for b in p1.make_batches(data, bos_id, regime, pad_id, max_len, batch_size, max_tokens, keep):
             resid, _ = forward(b["tokens"].to(device))
             feats = encode(resid.reshape(-1, resid.shape[-1]))
             v = b["valid"].reshape(-1)
             gsent = (offsets[b["lang"]] + b["sent"])[:, None].expand_as(b["valid"]).reshape(-1)[v]
             tag.update(feats[v.to(feats.device)], gsent.to(feats.device))
+            if keep is not None:
+                e = b["eq"].reshape(-1)
+                tag.eq.update(feats[e.to(feats.device)], gsent[e[v]].to(feats.device))
     return tag, offsets, torch.tensor(lang_of)
 
 
@@ -42,42 +48,53 @@ class _Loss:
         self.s[b["lang"]] += float(s.sum()); self.n[b["lang"]] += int(n.sum())
 
 
-def _pack(lp, loss):
+def _pack(lp, loss, lp_eq=None):
     n_lang = lp.n_lang
     rs = [lp.result(l) for l in range(n_lang)]
     stack = lambda k: torch.stack([r[k].float() for r in rs])
-    return {"corr": stack("corr"), "firing_rate": stack("firing_rate"), "mean_activation": stack("mean_activation"), "max_activation": stack("max_activation"),
-            "n": [r["n"] for r in rs], "loss_sum": list(loss.s), "loss_n": list(loss.n), "pooled": lp.pooled()}
+    out = {"corr": stack("corr"), "firing_rate": stack("firing_rate"), "mean_activation": stack("mean_activation"), "max_activation": stack("max_activation"),
+           "n": [r["n"] for r in rs], "loss_sum": list(loss.s), "loss_n": list(loss.n), "pooled": lp.pooled()}
+    if lp_eq is not None:
+        out["eq"] = _pack(lp_eq, _Loss(n_lang))                      # same fields over the equal-budget stream (its loss fields are empty: loss always uses all tokens)
+    return out
 
 
-def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_id, n_feat, bits_list, device="cpu", batch_size=32, max_tokens=None, max_len=256, nll_fn=None):
+def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_id, n_feat, bits_list, device="cpu", batch_size=32, max_tokens=None, max_len=256, nll_fn=None, keep=None):
     """Devtest pass: the full-precision features of every batch are cached sparsely on the host, then each rung quantizes the single model in place,
     recomputes the features and updates the per-language streaming Pearson against the cached ones; bits == 0 is the restore-only control (INT0).
     Returns {"FP": result, bits: result, ...}; every result holds per-language corr / firing_rate / mean_activation / max_activation [n_lang, n_feat],
-    token counts n and loss sums / counts per language."""
+    token counts n and loss sums / counts per language. With `keep` (keep_masks, decision D-015) every result also holds ["eq"]: the same statistics over the
+    equal-budget positions only (the primary, pre-registered stream); the all-token statistics and the loss are unchanged."""
     n_lang = len(data)
-    batches = p1.make_batches(data, bos_id, regime, pad_id, max_len, batch_size, max_tokens)
+    batches = p1.make_batches(data, bos_id, regime, pad_id, max_len, batch_size, max_tokens, keep)
     cache, results = p1.SparseRows(), {}
+    new_eq = lambda: p1.LangPearson(n_lang, n_feat, device) if keep is not None else None
+    sel = lambda b: b["eq"].reshape(-1)[b["valid"].reshape(-1)]            # which of the valid rows belong to the equal-budget stream
     with torch.no_grad():
         restore()
-        lp, loss = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn)
+        lp, loss, lp_eq = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn), new_eq()
         for b in batches:
             resid, logits = forward(b["tokens"].to(device))
             feats = encode(resid.reshape(-1, resid.shape[-1]))
             x = feats[b["valid"].reshape(-1).to(feats.device)]
             cache.add(x); lp.update(b["lang"], x, x); loss.add(b, logits)
-        results["FP"] = _pack(lp, loss)
+            if keep is not None:
+                xe = x[sel(b).to(x.device)]; lp_eq.update(b["lang"], xe, xe)
+        results["FP"] = _pack(lp, loss, lp_eq)
         for bits in bits_list:
             restore()
             if bits != 0:
                 quantize(bits)
-            lp, loss = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn)
+            lp, loss, lp_eq = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn), new_eq()
             for i, b in enumerate(batches):
                 resid, logits = forward(b["tokens"].to(device))
                 feats = encode(resid.reshape(-1, resid.shape[-1]))
                 y = feats[b["valid"].reshape(-1).to(feats.device)]
-                lp.update(b["lang"], cache.get(i, feats.device), y); loss.add(b, logits)
-            results[bits] = _pack(lp, loss)
+                x = cache.get(i, feats.device)
+                lp.update(b["lang"], x, y); loss.add(b, logits)
+                if keep is not None:
+                    m = sel(b).to(x.device); lp_eq.update(b["lang"], x[m], y[m])
+            results[bits] = _pack(lp, loss, lp_eq)
         restore()
     return results
 

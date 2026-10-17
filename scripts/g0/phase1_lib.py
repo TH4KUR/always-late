@@ -72,6 +72,8 @@ class LangPearson:
         self.n, self.d, self.n_lang = [0] * n_lang, d, n_lang
 
     def update(self, lang, x, y):
+        if x.shape[0] == 0:                                   # a batch of the equal-budget stream can hold no selected position
+            return
         x, y = x.to(torch.float64), y.to(torch.float64)
         self.sx[lang] += x.sum(0); self.sy[lang] += y.sum(0); self.sx2[lang] += (x ** 2).sum(0); self.sy2[lang] += (y ** 2).sum(0)
         self.sxy[lang] += (x * y).sum(0); self.fire[lang] += (x > 0).sum(0); self.maxx[lang] = torch.maximum(self.maxx[lang], x.max(0).values)
@@ -101,9 +103,12 @@ class TagStats:
         self.counts = torch.zeros(n_sentences, d, dtype=torch.int16)
         self.sums = torch.zeros(n_sentences, d, dtype=torch.float32)
         self.ntok = torch.zeros(n_sentences, dtype=torch.long)
+        self.eq = None                                       # optional TagStats of the equal-budget stream (decision D-015), set by run_tagging when `keep` is given
 
     def update(self, feats, row_sent):
         """feats [N, d] features of the VALID rows of a batch, row_sent [N] global sentence index of each row."""
+        if feats.shape[0] == 0:
+            return
         uniq, inv = torch.unique(row_sent, return_inverse=True)
         d = feats.shape[1]
         c = torch.zeros(len(uniq), d, dtype=torch.int32, device=feats.device).index_add_(0, inv, (feats > 0).to(torch.int32))

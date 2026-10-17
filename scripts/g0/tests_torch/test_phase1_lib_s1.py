@@ -99,6 +99,18 @@ class LangPearson(unittest.TestCase):
         self.assertEqual(s.result(1)["n"], 0)                           # a language with no data yields n = 0, not an exception
 
 
+class EmptyUpdates(unittest.TestCase):
+    """A batch of the equal-budget stream can hold no kept position at all; accumulators must ignore it."""
+    def test_langpearson_and_tagstats_ignore_an_empty_update(self):
+        lp = p1.LangPearson(2, 5, "cpu"); x = torch.rand(7, 5); lp.update(0, x, x * 0.5)
+        before = [t.clone() for t in (lp.sx, lp.sy, lp.sx2, lp.sy2, lp.sxy, lp.fire, lp.maxx)]; n = list(lp.n)
+        lp.update(0, torch.zeros(0, 5), torch.zeros(0, 5))
+        self.assertTrue(all(torch.equal(a, b) for a, b in zip(before, (lp.sx, lp.sy, lp.sx2, lp.sy2, lp.sxy, lp.fire, lp.maxx)))); self.assertEqual(lp.n, n)
+        tag = p1.TagStats(3, 5); tag.update(torch.rand(4, 5), torch.tensor([0, 0, 1, 2])); c, s_, k = tag.counts.clone(), tag.sums.clone(), tag.ntok.clone()
+        tag.update(torch.zeros(0, 5), torch.zeros(0, dtype=torch.long))
+        self.assertTrue(torch.equal(c, tag.counts) and torch.equal(s_, tag.sums) and torch.equal(k, tag.ntok))
+
+
 class TagStats(unittest.TestCase):
     def test_per_sentence_counts_and_sums_equal_brute_force(self):
         g = torch.Generator().manual_seed(3); d = 9

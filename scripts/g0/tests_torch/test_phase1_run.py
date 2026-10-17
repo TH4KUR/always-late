@@ -200,6 +200,63 @@ class ChunkedNll(unittest.TestCase):
         self.assertTrue(torch.allclose(s, -(lp * m).sum(1).double(), atol=1e-5)); self.assertEqual(n.tolist(), m.sum(1).tolist())
 
 
+def brute_keep(fake, data, regime, keep, bits=None):
+    """Per language: the x / y rows of the KEPT positions only, sentence by sentence without padding (the reference for the equal-budget stream)."""
+    out = {}
+    for l, sents in data.items():
+        xs, ys = [], []
+        for i, s in enumerate(sents):
+            toks = ([BOS] if regime == "mask" else []) + s; off = 1 if regime == "mask" else 0
+            fake.restore(); r, _ = fake.forward(torch.tensor([toks])); x = fake.encode(r[0])[off:]
+            if bits is not None: fake.quantize(bits)
+            r2, _ = fake.forward(torch.tensor([toks])); y = fake.encode(r2[0])[off:]
+            m = keep[l][i]; xs.append(x[m]); ys.append(y[m])
+        fake.restore(); out[l] = (torch.cat(xs).double(), torch.cat(ys).double())
+    return out
+
+
+class EqualBudgetStream(unittest.TestCase):
+    def setUp(self):
+        self.fake, self.data = Fake(), corpus(); self.budget = p1.budget_for(self.data); self.keep = p1.keep_masks(self.data, self.budget, 0)
+
+    def test_equal_budget_correlation_equals_brute_force_over_the_kept_positions(self):
+        res = call(self.fake, self.data, "mask", bits=(8,), batch_size=4, keep=self.keep); ref = brute_keep(Fake(), self.data, "mask", self.keep, bits=8)
+        for l in self.data:
+            x, y = ref[l]; ok = (x > 0).any(0) & (x.std(0) > 0) & (y.std(0) > 0)
+            expect = torch.tensor([np.corrcoef(x[:, j].numpy(), y[:, j].numpy())[0, 1] for j in range(F) if ok[j]])
+            self.assertTrue(torch.allclose(res[8]["eq"]["corr"][l][ok].double(), expect, atol=1e-6)); self.assertEqual(res[8]["eq"]["n"][l], self.budget)
+            self.assertTrue(torch.allclose(res["FP"]["eq"]["firing_rate"][l].double(), (x > 0).double().mean(0), atol=1e-6))
+
+    def test_every_language_has_exactly_the_budget_in_the_eq_stream_and_the_all_stream_is_untouched(self):
+        with_keep = call(self.fake, self.data, "mask", bits=(8, 0), keep=self.keep); without = call(Fake(), self.data, "mask", bits=(8, 0))
+        self.assertEqual(with_keep["FP"]["eq"]["n"], [self.budget] * 3); self.assertTrue(with_keep["FP"]["n"] != with_keep["FP"]["eq"]["n"])
+        for key in ("FP", 8, 0):
+            self.assertTrue(torch.equal(with_keep[key]["corr"], without[key]["corr"])); self.assertEqual(with_keep[key]["n"], without[key]["n"]); self.assertEqual(with_keep[key]["loss_sum"], without[key]["loss_sum"])
+            self.assertNotIn("eq", without[key])
+
+    def test_the_eq_stream_does_not_depend_on_batching(self):
+        a = call(Fake(), self.data, "mask", bits=(8,), keep=self.keep, batch_size=1); b = call(Fake(), self.data, "mask", bits=(8,), keep=self.keep, batch_size=64, max_tokens=24)
+        for key in ("FP", 8): self.assertTrue(torch.allclose(a[key]["eq"]["corr"], b[key]["eq"]["corr"], atol=1e-6)); self.assertEqual(a[key]["eq"]["n"], b[key]["eq"]["n"])
+
+    def test_pooled_eq_result_is_over_the_equal_budget_streams_of_all_languages(self):
+        res = call(self.fake, self.data, "mask", bits=(8,), keep=self.keep); self.assertEqual(res[8]["eq"]["pooled"]["n"], 3 * self.budget)
+        ref = brute_keep(Fake(), self.data, "mask", self.keep, bits=8); x = torch.cat([ref[l][0] for l in self.data]); y = torch.cat([ref[l][1] for l in self.data]); ok = (x.std(0) > 0) & (y.std(0) > 0)
+        expect = torch.tensor([np.corrcoef(x[:, j].numpy(), y[:, j].numpy())[0, 1] for j in range(F) if ok[j]])
+        self.assertTrue(torch.allclose(res[8]["eq"]["pooled"]["corr"][ok].double(), expect, atol=1e-6))
+
+    def test_tagging_eq_statistics_equal_brute_force_over_the_kept_positions(self):
+        tag, offsets, lang_of = run.run_tagging(self.fake.forward, self.fake.encode, self.data, "mask", BOS, PAD, F, batch_size=4, keep=self.keep)
+        for l, sents in self.data.items():
+            for i, s in enumerate(sents):
+                r, _ = self.fake.forward(torch.tensor([[BOS] + s])); x = self.fake.encode(r[0])[1:]; m = self.keep[l][i]; g = offsets[l] + i
+                self.assertTrue(torch.equal(tag.eq.counts[g].long(), (x[m] > 0).sum(0))); self.assertEqual(int(tag.eq.ntok[g]), int(m.sum()))
+                self.assertTrue(torch.allclose(tag.eq.sums[g], x[m].sum(0), atol=1e-4)); self.assertEqual(int(tag.ntok[g]), len(s))            # the all-token statistics are unchanged
+        self.assertEqual(int(tag.eq.ntok[:6].sum()), self.budget)
+
+    def test_without_keep_the_tag_statistics_have_no_eq_part(self):
+        tag, _, _ = run.run_tagging(self.fake.forward, self.fake.encode, self.data, "mask", BOS, PAD, F, batch_size=4); self.assertFalse(hasattr(tag, "eq") and tag.eq is not None)
+
+
 class TheirLossNumerics(unittest.TestCase):
     """Their perplexity comes from TransformerLens' lm_cross_entropy_loss, which takes log_softmax of the bf16 logits WITHOUT a float32 cast. The anchor run showed the
     float32 version is 0.72% lower in perplexity (411.09 vs 414.07 at 20k tokens), so the Phase 1 runner reproduces their numerics when asked (cast_float=False)."""
