@@ -9,10 +9,10 @@ def survived(r, cut=CUT):
     return np.asarray(r) > cut
 
 
-def feature_table(corr, fire, sel, meta, bits_list, threshold=0.001):
+def feature_table(corr, fire, sel, meta, bits_list, threshold=0.001, features=None):
     """Selective features and their matched controls, each read at its peak language (D-013): r at every width, whether the feature is evaluable there
     (full-precision devtest firing rate above their threshold), stratum, rank score, tier and script of the peak language."""
-    feats = np.concatenate([np.flatnonzero(np.asarray(sel["selective"])), np.asarray(sel["controls"], dtype=int)])
+    feats = np.concatenate([np.flatnonzero(np.asarray(sel["selective"])), np.asarray(sel["controls"], dtype=int)]) if features is None else np.asarray(features, dtype=int)
     lang = np.asarray(sel["peak"])[feats]
     pick = lambda key: np.array([meta[l][key] for l in lang])
     return {"feature": feats, "group": np.asarray(sel["selective"])[feats].astype(int), "lang": lang, "stratum": np.asarray(sel["strata"])[feats],
@@ -95,6 +95,13 @@ def freedman_lane_tier_test(gap, tier_score, script, n_perm=10000, seed=0):
             "high_minus_low": float(hi.mean() - lo.mean()) if len(hi) and len(lo) else float("nan")}
 
 
+def partial_slope(gap, tier, script):
+    """OLS coefficient of the tier score in gap ~ script dummies + tier (Frisch-Waugh: regress on the tier residualised on the script dummies)."""
+    gap, tier = np.asarray(gap, dtype=float), np.asarray(tier, dtype=float); Z = _design(np.asarray(script))
+    tr = tier - Z @ np.linalg.pinv(Z) @ tier
+    return float(tr @ gap / (tr @ tr))
+
+
 def holm(pvals):
     p = np.asarray(pvals, dtype=float); m = len(p); order = np.argsort(p); adj = np.empty(m)
     run = 0.0
@@ -109,7 +116,11 @@ def tost(boot, bound, alpha=0.05):
     return {"interval": (lo, hi), "equivalent": bool(lo > -bound and hi < bound), "bound": bound}
 
 
-TIER_SCORE = {"Low": 0, "Mid": 1, "High": 2}
+TIER_SCORE = {"low": 0, "mid": 1, "high": 2}
+
+
+def tier_score(name):
+    return TIER_SCORE[str(name).lower()]
 MIXED_FORMULA = "bits_c + C(stratum) + S_rank + tier + S_rank:tier"
 
 
@@ -153,7 +164,7 @@ def mixed_logit(table, bits_list, max_features=None, seed=0, gee=True):
         keep = np.sort(np.random.default_rng(seed).choice(keep, max_features, replace=False))
     centre = float(np.mean(bits_list))
     df = pd.concat([pd.DataFrame({"feature": np.asarray(table["feature"])[keep], "y": survived(np.asarray(table["r"][b])[keep]).astype(int), "bits_c": b - centre,
-                                  "S_rank": np.asarray(table["S_rank"])[keep], "tier": [TIER_SCORE[t] for t in np.asarray(table["tier"])[keep]],
+                                  "S_rank": np.asarray(table["S_rank"])[keep], "tier": [tier_score(t) for t in np.asarray(table["tier"])[keep]],
                                   "stratum": np.asarray(table["stratum"])[keep]}) for b in bits_list], ignore_index=True)
     X = patsy.dmatrix(MIXED_FORMULA, df, return_type="dataframe"); names = list(X.columns); K, F = len(bits_list), len(keep)
     fit = _fit_random_intercept_logit(X.to_numpy().reshape(K, F, -1), df["y"].to_numpy().reshape(K, F))
@@ -167,3 +178,120 @@ def mixed_logit(table, bits_list, max_features=None, seed=0, gee=True):
         g = smf.gee("y ~ " + MIXED_FORMULA, groups="feature", data=df, family=sm.families.Binomial(), cov_struct=sm.cov_struct.Exchangeable()).fit()
         out["gee"] = {"names": list(g.params.index), "coef": [float(x) for x in g.params], "se": [float(x) for x in g.bse], "p": [float(x) for x in g.pvalues]}
     return out
+
+
+def _py(x):
+    """JSON-friendly copy (numpy scalars / arrays, tuples, torch-free)."""
+    if isinstance(x, dict):
+        return {str(k): _py(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_py(v) for v in x]
+    if isinstance(x, np.ndarray):
+        return _py(x.tolist())
+    if isinstance(x, (np.floating, float)):
+        return None if x != x else float(x)
+    if isinstance(x, (np.integer,)):
+        return int(x)
+    if isinstance(x, (np.bool_,)):
+        return bool(x)
+    return x
+
+
+def _avg_gaps(table, bits, mask, n_lang, min_features, idx=None):
+    """Per-language median-r gap averaged over `bits` (and the matching survival-rate gap); `idx` resamples the evaluable rows (bootstrap)."""
+    sel = np.flatnonzero(mask) if idx is None else np.flatnonzero(mask)[idx]
+    g, lang = table["group"][sel], table["lang"][sel]
+    gaps = [language_gaps(lang, g, table["r"][b][sel], np.ones(len(sel), bool), n_lang, min_features) for b in bits]
+    rate = [language_gaps(lang, g, survived(table["r"][b][sel]).astype(float), np.ones(len(sel), bool), n_lang, min_features) for b in bits]
+    return {"gap": np.nanmean([x["gap"] for x in gaps], axis=0) if len(gaps) else None, "rate_gap": np.nanmean([x["gap"] for x in rate], axis=0),
+            "n_selective": gaps[0]["n_selective"], "populated": gaps[0]["populated"]}
+
+
+def run_analysis(run_dir, roster_path, out_dir, n_perm=10000, n_boot=2000, seed=0, min_features=10, min_languages=20, tost_median_r=0.02, tost_rate=0.05, mixed_cap=None):
+    """Confirmatory family (INT7 and INT6 selectivity contrasts, language-level tier test, Holm; decision D-014) plus labelled exploratory sections, from the files
+    phase1_run.save_outputs wrote. Writes analysis.json and analysis.md into out_dir and returns the result dict."""
+    import json
+    from pathlib import Path
+    import torch
+    from scipy.stats import mannwhitneyu
+    run_dir, out_dir = Path(run_dir), Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+    surv = torch.load(run_dir / "survival.pt"); selp = torch.load(run_dir / "selectivity.pt"); meta = json.loads((run_dir / "meta.json").read_text())
+    roster = {l["code"]: l for l in json.loads(Path(roster_path).read_text())["languages"]}
+    langs = list(surv["languages"]); lm = [roster[c] for c in langs]; n_lang = len(langs); bits = list(surv["bits"])
+    corr = {b: surv["corr"][b].numpy() for b in bits}; fire = surv["firing_rate"].numpy()
+    sel = {k: selp[k].numpy() for k in ("selective", "supported", "peak", "S_rank", "strata", "controls")}
+    table = feature_table(corr, fire, sel, lm, bits); ev = table["evaluable"]
+    tier = np.array([tier_score(l["tier"]) for l in lm]); joshi = np.array([l["joshi_class"] for l in lm], float)
+    fam = sorted({l["script_family"] for l in lm}); script = np.array([fam.index(l["script_family"]) for l in lm])
+
+    def contrast(b):
+        m = ev; y = survived(table["r"][b][m]).astype(float); g = table["group"][m]
+        r = stratified_permutation_contrast(g, y, table["stratum"][m], n_perm, seed)
+        r["ci"] = cluster_bootstrap_ci(g, y, table["lang"][m], n_boot, seed); r["survival_selective"] = float(y[g == 1].mean()); r["survival_control"] = float(y[g == 0].mean())
+        r["n_dropped_not_evaluable"] = int((~ev).sum()); return r
+    t1, t2 = contrast(7), contrast(6)
+
+    ag = _avg_gaps(table, (7, 6), ev, n_lang, min_features); used = ag["populated"] & ~np.isnan(ag["gap"]); enough = bool(used.sum() >= min_languages)
+    t3 = {"n_languages": int(used.sum()), "enough_languages": enough, "min_features": min_features, "min_languages": min_languages}
+    if used.sum() >= 4 and len(set(tier[used])) > 1:
+        fl = freedman_lane_tier_test(ag["gap"][used], tier[used], script[used], n_perm, seed); t3.update(fl)
+        rng = np.random.default_rng(seed); mask_idx = np.flatnonzero(ev); slopes, hl = [], []
+        for _ in range(n_boot):
+            idx = _bootstrap_indices(table["group"][mask_idx], table["lang"][mask_idx], rng)
+            bg = _avg_gaps(table, (7, 6), ev, n_lang, min_features, idx=idx)["gap"][used]
+            if np.isnan(bg).any():
+                continue
+            slopes.append(partial_slope(bg, tier[used], script[used])); hl.append(bg[tier[used] == 2].mean() - bg[tier[used] == 0].mean() if (tier[used] == 2).any() and (tier[used] == 0).any() else np.nan)
+        t3["tost_slope"] = tost(np.array(slopes), tost_median_r); t3["tost_high_minus_low"] = tost(np.array(hl)[~np.isnan(hl)], tost_median_r)
+        rate_used = ag["populated"] & ~np.isnan(ag["rate_gap"]); t3["survival_rate_gap_sensitivity"] = freedman_lane_tier_test(ag["rate_gap"][rate_used], tier[rate_used], script[rate_used], n_perm, seed)
+        t3["joshi_class_sensitivity"] = freedman_lane_tier_test(ag["gap"][used], joshi[used], script[used], n_perm, seed)
+    else:
+        t3.update({"slope": None, "p": 1.0, "note": "too few populated languages or a single tier"})
+    t3["languages"] = [{"code": langs[i], "tier": lm[i]["tier"], "joshi_class": lm[i]["joshi_class"], "gap_median_r": ag["gap"][i], "gap_survival_rate": ag["rate_gap"][i],
+                        "n_selective": int(ag["n_selective"][i]), "used": bool(used[i])} for i in range(n_lang)]
+    ps = [t1["p"], t2["p"], t3["p"]]; adj = holm(ps)
+    result = {"regime": meta.get("regime"), "bits": bits, "n_perm": n_perm, "n_boot": n_boot, "seed": seed, "decision": "D-014",
+              "tests": {"T1_int7": t1, "T2_int6": t2, "T3_tier": t3}, "holm": dict(zip(("T1_int7", "T2_int6", "T3_tier"), (float(x) for x in adj)))}
+
+    exploratory = {"label": "not part of the confirmatory family; p-values are uncorrected", "contrasts": {}}
+    for b in (5, 4):
+        if b in table["r"]:
+            exploratory["contrasts"][f"int{b}"] = contrast(b)
+    sup = np.flatnonzero(sel["supported"]); st = feature_table(corr, fire, sel, lm, [b for b in (7, 6) if b in corr], features=sup)
+    exploratory["mixed_logit"] = mixed_logit(st, [b for b in (7, 6) if b in corr], max_features=mixed_cap, seed=seed)
+    rate = selp["rates"].numpy().mean(0); a, c = rate[sel["selective"]], rate[sel["supported"] & ~sel["selective"]]
+    exploratory["P1_firing_rate"] = {"mean_rate_selective": float(a.mean()) if len(a) else None, "mean_rate_other_supported": float(c.mean()) if len(c) else None,
+                                     "mannwhitney_p_selective_lower": float(mannwhitneyu(a, c, alternative="less").pvalue) if len(a) and len(c) else None}
+    result["exploratory"] = exploratory
+    result["controls"] = {"label": "survival of the same features at the noise-floor widths INT16, INT12 and restore-only INT0 (all should be at the ceiling)",
+                          "survival_at": {f"int{b}": {"selective": float(survived(table["r"][b][ev & (table["group"] == 1)]).mean()), "control": float(survived(table["r"][b][ev & (table["group"] == 0)]).mean())}
+                                          for b in (16, 12, 0) if b in table["r"]}}
+    result = _py(result)
+    (out_dir / "analysis.json").write_text(json.dumps(result, indent=1) + "\n"); (out_dir / "analysis.md").write_text(render_markdown(result))
+    return result
+
+
+def render_markdown(r):
+    t = r["tests"]; L = [f"# Phase 1 analysis, regime `{r['regime']}` (decision D-014)", "", f"{r['n_perm']} permutations, {r['n_boot']} bootstrap draws, seed {r['seed']}.", "",
+                         "## Confirmatory family (Holm over three tests)", "", "| test | estimate | 95% CI / detail | p | Holm p |", "|---|---|---|---|---|"]
+    for k, nm in (("T1_int7", "INT7 selective minus matched-universal survival"), ("T2_int6", "INT6 selective minus matched-universal survival")):
+        x = t[k]; L.append(f"| {nm} | {x['delta']:+.4f} | [{x['ci'][0]:+.4f}, {x['ci'][1]:+.4f}] (selective {x['survival_selective']:.4f}, control {x['survival_control']:.4f}, n {x['n_selective']}+{x['n_control']}) | {x['p']:.4g} | {r['holm'][k]:.4g} |")
+    x = t["T3_tier"]
+    L.append(f"| language-level tier slope (median-r gap, INT7+INT6, one-sided) | {x['slope'] if x.get('slope') is None else format(x['slope'], '+.4f')} | languages used {x['n_languages']} (need {x['min_languages']}: {'ok' if x['enough_languages'] else 'P2 DEMOTED to exploratory'}); High minus Low {x.get('high_minus_low')} | {x['p']:.4g} | {r['holm']['T3_tier']:.4g} |")
+    if "tost_slope" in x:
+        L += ["", "TOST (90% bootstrap interval vs bound): slope " + f"{x['tost_slope']['interval'][0]:+.4f}..{x['tost_slope']['interval'][1]:+.4f}, equivalent within +-{x['tost_slope']['bound']}: {x['tost_slope']['equivalent']}; "
+              f"High minus Low {x['tost_high_minus_low']['interval'][0]:+.4f}..{x['tost_high_minus_low']['interval'][1]:+.4f}, equivalent: {x['tost_high_minus_low']['equivalent']}."]
+    L += ["", "### Per-language gaps (median r of selective minus matched controls, mean of INT7 and INT6)", "", "| language | tier | Joshi | selective features | gap (median r) | gap (survival rate) | used |", "|---|---|---|---|---|---|---|"]
+    for l in x["languages"]:
+        f = lambda v: "" if v is None else f"{v:+.4f}"
+        L.append(f"| {l['code']} | {l['tier']} | {l['joshi_class']} | {l['n_selective']} | {f(l['gap_median_r'])} | {f(l['gap_survival_rate'])} | {'yes' if l['used'] else 'no'} |")
+    e = r["exploratory"]; L += ["", f"## Exploratory analyses ({e['label']})", "", "| width | selective minus control | 95% CI | p (uncorrected) |", "|---|---|---|---|"]
+    for k, v in e["contrasts"].items():
+        L.append(f"| {k.upper()} | {v['delta']:+.4f} | [{v['ci'][0]:+.4f}, {v['ci'][1]:+.4f}] | {v['p']:.4g} |")
+    m = e["mixed_logit"]["mixed"]; L += ["", f"Mixed-effects logistic model (random intercept per feature, quadrature ML; {e['mixed_logit']['n_features']} features, sigma {m['sigma']:.3f}, converged {m['converged']}):", "",
+                                         "| term | estimate | SE | p |", "|---|---|---|---|"]
+    L += [f"| {n} | {c:+.4f} | {s_:.4f} | {p:.4g} |" if p is not None else f"| {n} | {c:+.4f} | {s_:.4f} | |" for n, c, s_, p in zip(m["names"], m["coef"], m["se"], m["p"])]
+    L += ["", "P1 (selective features fire less): mean panel firing rate selective %.5f, other supported %.5f, Mann-Whitney p %.4g." % (e["P1_firing_rate"]["mean_rate_selective"], e["P1_firing_rate"]["mean_rate_other_supported"], e["P1_firing_rate"]["mannwhitney_p_selective_lower"]),
+          "", f"## Instrument check: {r['controls']['label']}", "", "| width | selective | control |", "|---|---|---|"]
+    L += [f"| {k.upper()} | {v['selective']:.4f} | {v['control']:.4f} |" for k, v in r["controls"]["survival_at"].items()]
+    return "\n".join(L) + "\n"
