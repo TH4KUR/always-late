@@ -182,6 +182,15 @@ class MixedLogit(unittest.TestCase):
         self.assertEqual(an.mixed_logit(t, [7, 6], gee=False)["n_features"], 250)
 
 
+class Cli(unittest.TestCase):
+    def test_command_line_runs_the_analysis_on_a_run_directory_and_writes_the_report(self):
+        import subprocess
+        out = RunAnalysis().synth(low_penalty=0.05, seed=11); dest = Path(out) / "cli_out"
+        r = subprocess.run([sys.executable, "-B", str(Path(an.__file__)), "--run", str(out), "--out", str(dest), "--n-perm", "100", "--n-boot", "50"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr[-800:]); self.assertTrue((dest / "analysis.json").exists() and (dest / "analysis.md").exists())
+        self.assertIn("T3_tier", r.stdout); self.assertIn("Holm", r.stdout)
+
+
 class PartialSlope(unittest.TestCase):
     def test_equals_the_ols_coefficient_of_the_full_model_with_script_dummies(self):
         rng = np.random.default_rng(0); tier = rng.integers(0, 3, 27).astype(float); script = rng.integers(0, 3, 27); gap = 0.3 * tier + 0.5 * script + rng.normal(0, 0.1, 27)

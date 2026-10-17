@@ -295,3 +295,25 @@ def render_markdown(r):
           "", f"## Instrument check: {r['controls']['label']}", "", "| width | selective | control |", "|---|---|---|"]
     L += [f"| {k.upper()} | {v['selective']:.4f} | {v['control']:.4f} |" for k, v in r["controls"]["survival_at"].items()]
     return "\n".join(L) + "\n"
+
+
+def main(argv=None):
+    """python3 phase1_analysis.py --run <dir with survival.pt, selectivity.pt, meta.json> --out <dir> [--roster ...] [--n-perm N] [--n-boot N] [--seed S]
+    Prints the confirmatory table (p and Holm-adjusted p) and writes analysis.json / analysis.md into --out."""
+    import argparse
+    from pathlib import Path
+    ap = argparse.ArgumentParser(description=main.__doc__)
+    ap.add_argument("--run", required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--roster", default=str(Path(__file__).resolve().parents[2] / "reports/g0/phase1_languages.json"))
+    ap.add_argument("--n-perm", type=int, default=10000); ap.add_argument("--n-boot", type=int, default=2000); ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--mixed-cap", type=int, default=None)
+    a = ap.parse_args(argv)
+    r = run_analysis(a.run, a.roster, a.out, n_perm=a.n_perm, n_boot=a.n_boot, seed=a.seed, mixed_cap=a.mixed_cap)
+    print(f"regime {r['regime']}: confirmatory family (Holm over 3 tests)")
+    for k, v in r["tests"].items():
+        print(f"  {k}: p {v['p']:.4g}  Holm {r['holm'][k]:.4g}  " + (f"delta {v['delta']:+.4f}" if "delta" in v else f"slope {v.get('slope')}"))
+    print("wrote", Path(a.out) / "analysis.md")
+
+
+if __name__ == "__main__":
+    main()
