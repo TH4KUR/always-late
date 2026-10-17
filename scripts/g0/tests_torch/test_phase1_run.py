@@ -200,6 +200,28 @@ class ChunkedNll(unittest.TestCase):
         self.assertTrue(torch.allclose(s, -(lp * m).sum(1).double(), atol=1e-5)); self.assertEqual(n.tolist(), m.sum(1).tolist())
 
 
+class TheirLossNumerics(unittest.TestCase):
+    """Their perplexity comes from TransformerLens' lm_cross_entropy_loss, which takes log_softmax of the bf16 logits WITHOUT a float32 cast. The anchor run showed the
+    float32 version is 0.72% lower in perplexity (411.09 vs 414.07 at 20k tokens), so the Phase 1 runner reproduces their numerics when asked (cast_float=False)."""
+    def data(self):
+        g = torch.Generator().manual_seed(1); logits = (torch.randn(4, 9, 4000, generator=g) * 6).bfloat16(); toks = torch.randint(0, 4000, (4, 9), generator=g)
+        return logits, toks, torch.ones(4, 9, dtype=torch.bool)
+
+    def test_native_dtype_path_equals_log_softmax_on_the_bf16_logits_and_differs_from_the_float32_path(self):
+        logits, toks, valid = self.data()
+        s_native, n = p1.chunked_nll(logits, toks, valid, chunk=2, cast_float=False); s_f32, _ = p1.chunked_nll(logits, toks, valid, chunk=2)
+        lp = torch.log_softmax(logits, dim=-1)[:, :-1].gather(-1, toks[:, 1:, None])[..., 0].double()
+        self.assertTrue(torch.equal(s_native, -lp.sum(1))); self.assertEqual(n.tolist(), [8] * 4)
+        self.assertFalse(torch.equal(s_native, s_f32)); self.assertEqual(s_native.dtype, torch.float64)           # premise: the two numerics really differ; sums are float64
+
+    def test_run_survival_uses_the_injected_loss_function(self):
+        calls = []
+        def nll(logits, tokens, valid):
+            calls.append(1); return torch.full((logits.shape[0],), 2.0, dtype=torch.float64), valid[:, 1:].sum(1)
+        res = call(Fake(), corpus(), "mask", bits=(8,), nll_fn=nll)
+        self.assertTrue(len(calls) > 0); self.assertEqual(res["FP"]["loss_sum"], [12.0, 8.0, 6.0]); self.assertEqual(res[8]["loss_sum"], [12.0, 8.0, 6.0])    # 2.0 per sentence row: 6, 4, 3 sentences
+
+
 class MaxTokens(unittest.TestCase):
     def test_batches_respect_a_token_budget_without_losing_sentences(self):
         data = {0: [[5] * n for n in (3, 4, 9, 2, 8)]}
@@ -225,7 +247,7 @@ class SelectivityReport(unittest.TestCase):
         return t, lang
 
     def report(self, **kw):
-        t, lang = self.tag(); args = dict(n_boot=20, min_stable=16, n_perm=10, seed=0); args.update(kw)
+        t, lang = self.tag(); args = dict(n_boot=20, n_perm=10, seed=0); args.update(kw)
         return run.selectivity_report(t, lang, self.NL, **args)
 
     def test_supported_features_are_the_ones_with_enough_positives_at_the_peak_language(self):
@@ -255,29 +277,34 @@ class SelectivityReport(unittest.TestCase):
 
     def test_a_pool_too_small_for_a_stratum_is_reported_not_hidden(self):
         t, lang = self.tag(); t.counts[:, 4:self.NU] = 0; t.sums[:, 4:self.NU] = 0                # every universal feature silenced: nothing to match with
-        r = run.selectivity_report(t, lang, self.NL, n_boot=20, min_stable=16, n_perm=10, seed=0)
+        r = run.selectivity_report(t, lang, self.NL, n_boot=20, n_perm=10, seed=0)
         self.assertEqual(len(r["controls"]), 0); self.assertTrue(len(r["control_strata_short"]) > 0)
 
     def test_a_feature_whose_score_equals_the_null_cutoff_is_not_selective(self):
         S = self.NL * self.SP; t = p1.TagStats(S, 10); t.counts = torch.ones(S, 10, dtype=torch.int16); t.sums = t.counts.float(); t.ntok = torch.full((S,), self.NT, dtype=torch.long)
-        r = run.selectivity_report(t, torch.arange(S) // self.SP, self.NL, n_boot=20, min_stable=16, n_perm=5, seed=0)    # constant counts: S == 1 in every shuffle
+        r = run.selectivity_report(t, torch.arange(S) // self.SP, self.NL, n_boot=20, n_perm=5, seed=0)    # constant counts: S == 1 in every shuffle
         self.assertEqual(float(r["S"][0]), r["null_cutoff"]); self.assertEqual(int(r["selective"].sum()), 0)
 
     def test_the_stability_threshold_is_inclusive(self):
-        self.assertEqual(self.report(min_stable=20)["selective"].nonzero().squeeze(1).tolist(), [0, 1, 2, 3])        # stable_count == n_boot == min_stable still passes
+        self.assertEqual(self.report(min_stable_frac=1.0)["selective"].nonzero().squeeze(1).tolist(), [0, 1, 2, 3])        # stable_count == n_boot, needed == n_boot: still passes
 
     def test_a_supported_high_score_feature_with_an_unstable_peak_is_not_selective(self):
         t, lang = self.tag(); S = len(lang)
         i = torch.arange(S) % self.SP                                                                                           # languages 0 and 1 tied (150 positives each; first index wins) with
         t.counts[:, 79] = torch.where(lang == 0, 2 + i % 2, torch.where(lang == 1, 2 + (i // 2) % 2, 0)).to(torch.int16)   # different sentences carrying them: the peak flips under resampling
         t.sums = t.counts.float() * 0.5
-        r = run.selectivity_report(t, lang, self.NL, n_boot=20, min_stable=16, n_perm=10, seed=0)
+        r = run.selectivity_report(t, lang, self.NL, n_boot=20, n_perm=10, seed=0)
         self.assertTrue(bool(r["supported"][79])); self.assertGreater(float(r["S"][79]), r["null_cutoff"]); self.assertLess(int(r["stable_count"][79]), 16)
         self.assertFalse(bool(r["selective"][79])); self.assertEqual(r["selective"].nonzero().squeeze(1).tolist(), [0, 1, 2, 3])
 
     def test_strata_are_quantiles_of_the_panel_mean_firing_rate_within_supported_features(self):
         r = self.report(); sup = r["supported"]
         self.assertTrue(torch.equal(r["strata"][sup], p1.strata_ids(r["rates"].mean(0)[sup], 5))); self.assertTrue(bool((r["strata"][~sup] == -1).all()))
+
+    def test_the_stability_requirement_scales_with_the_number_of_draws_80_percent_as_in_the_proposal(self):
+        for n_boot, need in ((7, 6), (10, 8), (20, 16), (100, 80)):                 # 0.8 * 7 = 5.6 rounds UP
+            r = self.report(n_boot=n_boot); self.assertEqual(r["min_stable_needed"], need)
+            self.assertEqual(r["selective"].nonzero().squeeze(1).tolist(), [0, 1, 2, 3])               # a smoke run with fewer draws must not silently select nothing
 
     def test_the_selected_sets_are_reproducible_for_a_given_seed(self):
         a, b = self.report(seed=3), self.report(seed=3)
@@ -301,7 +328,7 @@ class SaveOutputs(unittest.TestCase):
 
     def test_selectivity_is_saved_when_a_report_is_given(self):
         import tempfile
-        t, lang = SelectivityReport().tag(); r = run.selectivity_report(t, lang, 3, n_boot=20, min_stable=16, n_perm=5, seed=0)
+        t, lang = SelectivityReport().tag(); r = run.selectivity_report(t, lang, 3, n_boot=20, n_perm=5, seed=0)
         out = Path(tempfile.mkdtemp()); fake, data = Fake(), corpus(); res = call(fake, data, "mask", bits=(8,))
         run.save_outputs(out, {}, res, [8], ["a", "b", "c"], F, threshold=0.001, report=r)
         z = torch.load(out / "selectivity.pt"); self.assertTrue(torch.equal(z["selective"], r["selective"])); self.assertEqual(z["null_cutoff"], r["null_cutoff"]); self.assertTrue(torch.equal(z["controls"], r["controls"]))

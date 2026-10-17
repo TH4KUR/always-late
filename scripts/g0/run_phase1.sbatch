@@ -24,7 +24,7 @@ export HF_HOME=$BASE/hf_cache HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
 mkdir -p "$BASE/logs"
 ls $HF_HOME/hub/models--google--gemma-2-2b/snapshots/*/model-00003-of-00003.safetensors > /dev/null || { echo "model cache missing: run fetch_model.sh on the login node"; exit 3; }
 trap 'kill ${MONPID:-0} 2>/dev/null || true' EXIT
-export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=6
+export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=6 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 OUT=$BASE/out/phase1/$NAME; mkdir -p "$OUT"
 REPO=$BASE/phase1/repo; COMMIT=$(cat $REPO/COMMIT)
 nvidia-smi -L; date

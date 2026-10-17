@@ -31,13 +31,14 @@ def run_tagging(forward, encode, data, regime, bos_id, pad_id, n_feat, device="c
 
 
 class _Loss:
-    def __init__(self, n_lang):
-        self.s, self.n = [0.0] * n_lang, [0] * n_lang
+    def __init__(self, n_lang, nll_fn=None):
+        self.s, self.n, self.nll_fn = [0.0] * n_lang, [0] * n_lang, nll_fn
 
     def add(self, b, logits):
         if logits is None:
             return
-        s, n = p1.chunked_nll(logits, b["tokens"].to(logits.device), b["valid"].to(logits.device), chunk=4)   # 4 rows x 256k vocabulary in float32 ~ 1 GB at 256 tokens
+        fn = self.nll_fn or (lambda lg, tk, v: p1.chunked_nll(lg, tk, v, chunk=4))        # float32 by default; 4 rows x 256k vocabulary ~ 1 GB at 256 tokens
+        s, n = fn(logits, b["tokens"].to(logits.device), b["valid"].to(logits.device))
         self.s[b["lang"]] += float(s.sum()); self.n[b["lang"]] += int(n.sum())
 
 
@@ -49,7 +50,7 @@ def _pack(lp, loss):
             "n": [r["n"] for r in rs], "loss_sum": list(loss.s), "loss_n": list(loss.n), "pooled": lp.pooled()}
 
 
-def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_id, n_feat, bits_list, device="cpu", batch_size=32, max_tokens=None, max_len=256):
+def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_id, n_feat, bits_list, device="cpu", batch_size=32, max_tokens=None, max_len=256, nll_fn=None):
     """Devtest pass: the full-precision features of every batch are cached sparsely on the host, then each rung quantizes the single model in place,
     recomputes the features and updates the per-language streaming Pearson against the cached ones; bits == 0 is the restore-only control (INT0).
     Returns {"FP": result, bits: result, ...}; every result holds per-language corr / firing_rate / mean_activation / max_activation [n_lang, n_feat],
@@ -59,7 +60,7 @@ def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_i
     cache, results = p1.SparseRows(), {}
     with torch.no_grad():
         restore()
-        lp, loss = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang)
+        lp, loss = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn)
         for b in batches:
             resid, logits = forward(b["tokens"].to(device))
             feats = encode(resid.reshape(-1, resid.shape[-1]))
@@ -70,7 +71,7 @@ def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_i
             restore()
             if bits != 0:
                 quantize(bits)
-            lp, loss = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang)
+            lp, loss = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn)
             for i, b in enumerate(batches):
                 resid, logits = forward(b["tokens"].to(device))
                 feats = encode(resid.reshape(-1, resid.shape[-1]))
@@ -121,9 +122,9 @@ def language_rows(results, bits_list, lang_names, threshold=0.001):
     return rows
 
 
-def selectivity_report(tag, lang_of, n_lang, min_panel_rate=1e-5, min_pos=50, n_boot=100, frac=0.9, min_stable=80, n_perm=50, q=0.95, n_strata=5, seed=0):
+def selectivity_report(tag, lang_of, n_lang, min_panel_rate=1e-5, min_pos=50, n_boot=100, frac=0.9, min_stable_frac=0.8, n_perm=50, q=0.95, n_strata=5, seed=0):
     """Proposal section 4.1 on the tagging statistics of the dev split: S(f) = max_l r_l / mean_l r_l with its three safeguards (support rule; bootstrap stability
-    of the peak language in >= min_stable of n_boot draws; the binary split at the q-quantile of S after shuffling the sentence-language assignment), the
+    of the peak language in >= ceil(min_stable_frac * n_boot) of n_boot draws (80 of 100 in the proposal; a fraction, so a smoke run with fewer draws is not silently empty); the binary split at the q-quantile of S after shuffling the sentence-language assignment), the
     rank-normalised score S~ within supported features (empirical CDF, ties share the largest rank), Deng et al.'s nu (decision D-003), and the
     firing-rate-quintile-matched universal controls (non-selective supported features drawn without replacement per stratum of the panel mean firing rate)."""
     rates = p1.firing_rates(tag.counts, tag.ntok, lang_of, n_lang); means = p1.mean_activations(tag.sums, tag.ntok, lang_of, n_lang)
@@ -132,7 +133,8 @@ def selectivity_report(tag, lang_of, n_lang, min_panel_rate=1e-5, min_pos=50, n_
     supported = p1.supported_mask(rates, totals, min_panel_rate, min_pos)
     stable = p1.bootstrap_peak_stability(tag.counts, tag.ntok, lang_of, n_lang, peak, n_boot, frac, seed)
     cutoff = p1.shuffled_null_cutoff(tag.counts, tag.ntok, lang_of, n_lang, supported, n_perm, q, seed)
-    selective = supported & (stable >= min_stable) & (S > cutoff)
+    need = math.ceil(min_stable_frac * n_boot - 1e-9)
+    selective = supported & (stable >= need) & (S > cutoff)
     idx = supported.nonzero().squeeze(1)
     S_rank = torch.zeros_like(S); strata = torch.full((S.shape[0],), -1, dtype=torch.long)
     if len(idx):
@@ -141,7 +143,7 @@ def selectivity_report(tag, lang_of, n_lang, min_panel_rate=1e-5, min_pos=50, n_
         strata[idx] = p1.strata_ids(rates.mean(0)[idx], n_strata)
     controls, short = p1.matched_sample(strata, selective, supported & ~selective, seed)
     return {"rates": rates, "mean_activation": means, "S": S, "S_rank": S_rank, "peak": peak, "supported": supported, "stable_count": stable, "null_cutoff": cutoff,
-            "selective": selective, "nu": p1.deng_nu(means), "strata": strata, "controls": controls, "control_strata_short": short}
+            "selective": selective, "min_stable_needed": need, "nu": p1.deng_nu(means), "strata": strata, "controls": controls, "control_strata_short": short}
 
 
 def save_outputs(out_dir, meta, results, bits_list, lang_names, n_feat, threshold=0.001, report=None):
@@ -201,7 +203,7 @@ def main(argv=None):
     ap.add_argument("--bits", type=int, nargs="*", default=DEFAULT_BITS); ap.add_argument("--budget", type=int, default=20000, help="wikitext only: token budget (their 3a_test = 20000)")
     ap.add_argument("--flores-root"); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
     ap.add_argument("--languages", nargs="*", help="subset of FLORES codes (smoke)"); ap.add_argument("--max-sentences", type=int, help="first N sentences per language and split (smoke)")
-    ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=2048)
+    ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024, help="padded tokens per batch; 2048 ran out of memory on an 11 GB card (the logit soft cap allocates several 0.9 GB temporaries)")
     ap.add_argument("--skip-tagging", action="store_true"); ap.add_argument("--n-boot", type=int, default=100); ap.add_argument("--n-perm", type=int, default=50)
     ap.add_argument("--seed", type=int, default=0); ap.add_argument("--commit", default="unknown")
     a = ap.parse_args(argv)
@@ -269,7 +271,8 @@ def main(argv=None):
         log("supported", int(report["supported"].sum()), "selective", int(report["selective"].sum()), "controls", len(report["controls"]), "null cutoff", report["null_cutoff"])
         del tag
 
-    results = run_survival(forward, encode, quantize, restore, devtest, a.regime, bos, pad, n_feat, a.bits, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens)
+    results = run_survival(forward, encode, quantize, restore, devtest, a.regime, bos, pad, n_feat, a.bits, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens,
+                           nll_fn=lambda lg, tk, v: p1.chunked_nll(lg, tk, v, chunk=4, cast_float=False))      # their numerics: bf16 log-softmax as in TransformerLens' loss
     log("survival pass done; peak GPU memory GB:", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
     meta["seconds"] = time.time() - t0; meta["peak_gpu_gb"] = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
     save_outputs(a.out, meta, results, a.bits, names, n_feat, FIRING_THRESHOLD, report)

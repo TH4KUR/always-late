@@ -95,14 +95,16 @@ class TagStats:
 
 
 
-def chunked_nll(logits, tokens, valid, chunk=256):
-    """Per-row sum of -log p(token_t | tokens_<t) over positions t >= 1 whose position is valid, and the number of such positions
-    (float32 log-softmax per row chunk so a 256k-vocabulary logits tensor never has to be converted whole)."""
+def chunked_nll(logits, tokens, valid, chunk=256, cast_float=True):
+    """Per-row sum (float64) of -log p(token_t | tokens_<t) over positions t >= 1 whose position is valid, and the number of such positions.
+    cast_float=True: float32 log-softmax per row chunk (accurate; a 256k-vocabulary logits tensor is never converted whole).
+    cast_float=False: log-softmax in the logits' own dtype, which is what TransformerLens' lm_cross_entropy_loss does and therefore what their published perplexity is."""
     sums, counts = [], []
     for i in range(0, logits.shape[0], chunk):
-        lp = torch.log_softmax(logits[i:i + chunk, :-1].float(), dim=-1).gather(-1, tokens[i:i + chunk, 1:, None])[..., 0]
+        x = logits[i:i + chunk, :-1]
+        lp = torch.log_softmax(x.float() if cast_float else x, dim=-1).gather(-1, tokens[i:i + chunk, 1:, None])[..., 0].double()
         m = valid[i:i + chunk, 1:]
-        sums.append(-(lp * m).sum(1).double()); counts.append(m.sum(1))
+        sums.append(-(lp * m).sum(1)); counts.append(m.sum(1))
     return torch.cat(sums), torch.cat(counts)
 
 
