@@ -207,5 +207,82 @@ class MaxTokens(unittest.TestCase):
         self.assertTrue(all(b["tokens"].numel() <= 20 or len(b["sent"]) == 1 for b in bs)); self.assertEqual(sorted(i for b in bs for i in b["sent"].tolist()), [0, 1, 2, 3, 4])
 
 
+class SelectivityReport(unittest.TestCase):
+    """Synthetic tagging statistics: 3 languages x 60 sentences x 20 tokens; features 0-3 fire only in one language (3 positives per sentence of that language),
+    4-73 are universal (the same count pattern in every language, so S = 1; a third of them have rate 0.05 like the selective ones' panel mean),
+    74-77 are rare noise (40 positives at the peak language: below the 50 floor), 78-79 never fire."""
+    NL, SP, NT, F_, NU = 3, 60, 20, 80, 74
+
+    def tag(self):
+        S = self.NL * self.SP; counts = torch.zeros(S, self.F_, dtype=torch.int16); lang = torch.arange(S) // self.SP; odd = torch.arange(S) % 2
+        for j in range(4):
+            counts[lang == j % self.NL, j] = 3
+        for j in range(4, self.NU):
+            counts[:, j] = 1 + (j % 3) * odd
+        for j in range(74, 78):
+            counts[(lang == 1) & (torch.arange(S) % self.SP < 10), j] = 4
+        t = p1.TagStats(S, self.F_); t.counts, t.sums, t.ntok = counts, counts.float() * 0.5, torch.full((S,), self.NT, dtype=torch.long)
+        return t, lang
+
+    def report(self, **kw):
+        t, lang = self.tag(); args = dict(n_boot=20, min_stable=16, n_perm=10, seed=0); args.update(kw)
+        return run.selectivity_report(t, lang, self.NL, **args)
+
+    def test_supported_features_are_the_ones_with_enough_positives_at_the_peak_language(self):
+        self.assertEqual(self.report()["supported"].nonzero().squeeze(1).tolist(), list(range(self.NU)))
+
+    def test_one_language_features_are_selective_and_universal_ones_are_not(self):
+        r = self.report()
+        self.assertEqual(r["selective"].nonzero().squeeze(1).tolist(), [0, 1, 2, 3])
+        self.assertEqual(r["peak"][:4].tolist(), [0, 1, 2, 0]); self.assertAlmostEqual(float(r["S"][0]), 3.0)
+        self.assertTrue(torch.allclose(r["S"][4:self.NU], torch.ones(self.NU - 4, dtype=r["S"].dtype)))
+        self.assertEqual(r["stable_count"][:4].tolist(), [20] * 4)
+
+    def test_rank_normalised_score_is_defined_only_within_supported_features(self):
+        sr = self.report()["S_rank"]
+        self.assertTrue(bool((sr[self.NU:] == 0).all())); self.assertTrue(bool(((sr[:self.NU] > 0) & (sr[:self.NU] <= 1)).all())); self.assertAlmostEqual(float(sr[:self.NU].max()), 1.0)
+        self.assertTrue(float(sr[:4].min()) > float(sr[4:self.NU].max()))              # the four selective features rank above every universal one
+
+    def test_nu_is_the_deng_statistic_of_the_per_language_mean_activations(self):
+        t, lang = self.tag(); r = self.report(); means = p1.mean_activations(t.sums, t.ntok, lang, self.NL)
+        self.assertTrue(torch.allclose(r["nu"], p1.deng_nu(means))); self.assertTrue(torch.allclose(r["mean_activation"], means))
+        self.assertGreater(float(r["nu"][0, 0]), 0)                                      # feature 0 fires in language 0 only: positive nu there
+
+    def test_matched_universal_controls_come_from_the_non_selective_supported_pool_and_match_the_strata(self):
+        r = self.report(); c = r["controls"].tolist()
+        self.assertEqual(r["control_strata_short"], []); self.assertEqual(len(c), 4); self.assertEqual(len(c), len(set(c))); self.assertTrue(set(c) <= set(range(4, self.NU)))
+        st = r["strata"]; self.assertEqual(sorted(st[c].tolist()), sorted(st[:4].tolist()))      # the controls have the selective features' firing-rate strata
+
+    def test_a_pool_too_small_for_a_stratum_is_reported_not_hidden(self):
+        t, lang = self.tag(); t.counts[:, 4:self.NU] = 0; t.sums[:, 4:self.NU] = 0                # every universal feature silenced: nothing to match with
+        r = run.selectivity_report(t, lang, self.NL, n_boot=20, min_stable=16, n_perm=10, seed=0)
+        self.assertEqual(len(r["controls"]), 0); self.assertTrue(len(r["control_strata_short"]) > 0)
+
+    def test_a_feature_whose_score_equals_the_null_cutoff_is_not_selective(self):
+        S = self.NL * self.SP; t = p1.TagStats(S, 10); t.counts = torch.ones(S, 10, dtype=torch.int16); t.sums = t.counts.float(); t.ntok = torch.full((S,), self.NT, dtype=torch.long)
+        r = run.selectivity_report(t, torch.arange(S) // self.SP, self.NL, n_boot=20, min_stable=16, n_perm=5, seed=0)    # constant counts: S == 1 in every shuffle
+        self.assertEqual(float(r["S"][0]), r["null_cutoff"]); self.assertEqual(int(r["selective"].sum()), 0)
+
+    def test_the_stability_threshold_is_inclusive(self):
+        self.assertEqual(self.report(min_stable=20)["selective"].nonzero().squeeze(1).tolist(), [0, 1, 2, 3])        # stable_count == n_boot == min_stable still passes
+
+    def test_a_supported_high_score_feature_with_an_unstable_peak_is_not_selective(self):
+        t, lang = self.tag(); S = len(lang)
+        i = torch.arange(S) % self.SP                                                                                           # languages 0 and 1 tied (150 positives each; first index wins) with
+        t.counts[:, 79] = torch.where(lang == 0, 2 + i % 2, torch.where(lang == 1, 2 + (i // 2) % 2, 0)).to(torch.int16)   # different sentences carrying them: the peak flips under resampling
+        t.sums = t.counts.float() * 0.5
+        r = run.selectivity_report(t, lang, self.NL, n_boot=20, min_stable=16, n_perm=10, seed=0)
+        self.assertTrue(bool(r["supported"][79])); self.assertGreater(float(r["S"][79]), r["null_cutoff"]); self.assertLess(int(r["stable_count"][79]), 16)
+        self.assertFalse(bool(r["selective"][79])); self.assertEqual(r["selective"].nonzero().squeeze(1).tolist(), [0, 1, 2, 3])
+
+    def test_strata_are_quantiles_of_the_panel_mean_firing_rate_within_supported_features(self):
+        r = self.report(); sup = r["supported"]
+        self.assertTrue(torch.equal(r["strata"][sup], p1.strata_ids(r["rates"].mean(0)[sup], 5))); self.assertTrue(bool((r["strata"][~sup] == -1).all()))
+
+    def test_the_selected_sets_are_reproducible_for_a_given_seed(self):
+        a, b = self.report(seed=3), self.report(seed=3)
+        self.assertTrue(torch.equal(a["controls"], b["controls"])); self.assertEqual(a["null_cutoff"], b["null_cutoff"])
+
+
 if __name__ == "__main__":
     unittest.main()

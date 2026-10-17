@@ -119,3 +119,26 @@ def language_rows(results, bits_list, lang_names, threshold=0.001):
             rows.append({"language": name, "bits": bits, "n_tokens": int(fp["n"][li]), "perplexity": math.exp(r["loss_sum"][li] / r["loss_n"][li]),
                          **survival_summary(r["corr"][li].double(), fp["firing_rate"][li].double(), threshold)})
     return rows
+
+
+def selectivity_report(tag, lang_of, n_lang, min_panel_rate=1e-5, min_pos=50, n_boot=100, frac=0.9, min_stable=80, n_perm=50, q=0.95, n_strata=5, seed=0):
+    """Proposal section 4.1 on the tagging statistics of the dev split: S(f) = max_l r_l / mean_l r_l with its three safeguards (support rule; bootstrap stability
+    of the peak language in >= min_stable of n_boot draws; the binary split at the q-quantile of S after shuffling the sentence-language assignment), the
+    rank-normalised score S~ within supported features (empirical CDF, ties share the largest rank), Deng et al.'s nu (decision D-003), and the
+    firing-rate-quintile-matched universal controls (non-selective supported features drawn without replacement per stratum of the panel mean firing rate)."""
+    rates = p1.firing_rates(tag.counts, tag.ntok, lang_of, n_lang); means = p1.mean_activations(tag.sums, tag.ntok, lang_of, n_lang)
+    totals = p1.language_totals(tag.counts, lang_of, n_lang)
+    S, peak = p1.selectivity_S(rates), p1.peak_language(rates)
+    supported = p1.supported_mask(rates, totals, min_panel_rate, min_pos)
+    stable = p1.bootstrap_peak_stability(tag.counts, tag.ntok, lang_of, n_lang, peak, n_boot, frac, seed)
+    cutoff = p1.shuffled_null_cutoff(tag.counts, tag.ntok, lang_of, n_lang, supported, n_perm, q, seed)
+    selective = supported & (stable >= min_stable) & (S > cutoff)
+    idx = supported.nonzero().squeeze(1)
+    S_rank = torch.zeros_like(S); strata = torch.full((S.shape[0],), -1, dtype=torch.long)
+    if len(idx):
+        _, inv, cnt = torch.unique(S[idx], return_inverse=True, return_counts=True)
+        S_rank[idx] = (cnt.cumsum(0)[inv]).to(S.dtype) / len(idx)
+        strata[idx] = p1.strata_ids(rates.mean(0)[idx], n_strata)
+    controls, short = p1.matched_sample(strata, selective, supported & ~selective, seed)
+    return {"rates": rates, "mean_activation": means, "S": S, "S_rank": S_rank, "peak": peak, "supported": supported, "stable_count": stable, "null_cutoff": cutoff,
+            "selective": selective, "nu": p1.deng_nu(means), "strata": strata, "controls": controls, "control_strata_short": short}
