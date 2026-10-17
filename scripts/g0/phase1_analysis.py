@@ -15,28 +15,53 @@ def feature_table(corr, fire, sel, meta, bits_list, threshold=0.001, features=No
     feats = np.concatenate([np.flatnonzero(np.asarray(sel["selective"])), np.asarray(sel["controls"], dtype=int)]) if features is None else np.asarray(features, dtype=int)
     lang = np.asarray(sel["peak"])[feats]
     pick = lambda key: np.array([meta[l][key] for l in lang])
+    r = {b: np.asarray(corr[b])[lang, feats] for b in bits_list}; ev = np.asarray(fire)[lang, feats] > threshold; strata = np.asarray(sel["strata"])[feats]
+    r_adj, y_adj = {}, {}                                  # firing-rate-stratum adjusted values (D-016): r minus the stratum median r, survival minus the stratum survival rate
+    for b in bits_list:
+        ra, ya = r[b].astype(float).copy(), survived(r[b]).astype(float)
+        for st in np.unique(strata[ev]):
+            m = ev & (strata == st); ra[m] = r[b][m] - np.median(r[b][m]); ya[m] = ya[m] - ya[m].mean()
+        r_adj[b], y_adj[b] = ra, ya
     return {"feature": feats, "group": np.asarray(sel["selective"])[feats].astype(int), "lang": lang, "stratum": np.asarray(sel["strata"])[feats],
-            "S_rank": np.asarray(sel["S_rank"])[feats], "r": {b: np.asarray(corr[b])[lang, feats] for b in bits_list}, "evaluable": np.asarray(fire)[lang, feats] > threshold,
+            "S_rank": np.asarray(sel["S_rank"])[feats], "r": r, "r_adj": r_adj, "y_adj": y_adj, "evaluable": ev,
             "tier": pick("tier"), "script_family": pick("script_family"), "joshi_class": pick("joshi_class")}
 
 
-def _delta(group, y):
-    return float(y[group == 1].mean() - y[group == 0].mean())
+def stratified_delta(group, y, strata):
+    """Selective-minus-control difference in mean outcome, standardised to the selective group's stratum distribution (decision D-016):
+    sum_s n1s (ybar1s - ybar0s) / sum n1s over the strata that hold both groups. Equals the plain difference when both groups have the same stratum composition;
+    unlike it, it is not confounded by selective features sitting in rarer firing-rate strata where the control pool is short."""
+    group, y, strata = np.asarray(group), np.asarray(y, dtype=float), np.asarray(strata)
+    num = den = 0.0; used = dropped = 0
+    for s_ in np.unique(strata):
+        m = strata == s_; g1, g0 = m & (group == 1), m & (group == 0); n1 = int(g1.sum())
+        if n1 == 0 or not g0.any():
+            dropped += n1; continue
+        num += n1 * (y[g1].mean() - y[g0].mean()); den += n1; used += 1
+    if den == 0:
+        raise ValueError("no stratum holds both groups")
+    return {"delta": num / den, "n_strata_used": used, "n_selective_dropped": dropped}
+
+
+def _delta(group, y, strata=None):
+    return float(y[group == 1].mean() - y[group == 0].mean()) if strata is None else stratified_delta(group, y, strata)["delta"]
 
 
 def stratified_permutation_contrast(group, y, strata, n_perm=10000, seed=0):
-    """Two-sided permutation test of the difference of group means; labels are permuted WITHIN strata (the quintile-matching of the proposal)."""
+    """Two-sided permutation test of the stratum-standardised difference (stratified_delta); labels are permuted WITHIN strata, which keeps each group's stratum
+    composition fixed (the proposal's firing-rate-quintile matching)."""
     group, y, strata = np.asarray(group), np.asarray(y, dtype=float), np.asarray(strata)
     if not ((group == 1).any() and (group == 0).any()):
         raise ValueError("both groups are needed")
     rng = np.random.default_rng(seed); cells = [np.flatnonzero(strata == s) for s in np.unique(strata)]
-    obs, cnt = _delta(group, y), 0
+    base = stratified_delta(group, y, strata); obs, cnt = base["delta"], 0
     for _ in range(n_perm):
         g = group.copy()
         for idx in cells:
             g[idx] = group[idx][rng.permutation(len(idx))]
-        cnt += abs(_delta(g, y)) >= abs(obs) - 1e-12
-    return {"delta": obs, "p": (1 + cnt) / (n_perm + 1), "n_selective": int((group == 1).sum()), "n_control": int((group == 0).sum()), "n_perm": n_perm}
+        cnt += abs(_delta(g, y, strata)) >= abs(obs) - 1e-12
+    return {"delta": obs, "p": (1 + cnt) / (n_perm + 1), "n_selective": int((group == 1).sum()), "n_control": int((group == 0).sum()), "n_perm": n_perm,
+            "n_strata_used": base["n_strata_used"], "n_selective_dropped": base["n_selective_dropped"]}
 
 
 def _bootstrap_indices(group, lang, rng):
@@ -50,10 +75,18 @@ def _bootstrap_indices(group, lang, rng):
     return np.concatenate(out)
 
 
-def cluster_bootstrap_ci(group, y, lang, n_boot=2000, seed=0, alpha=0.05):
+def cluster_bootstrap_ci(group, y, lang, n_boot=2000, seed=0, alpha=0.05, strata=None):
+    """Percentile interval of the contrast under resampling of features within (language, group) cells; with `strata` the statistic is stratified_delta
+    (a draw that leaves no stratum with both groups is skipped)."""
     group, y, lang = np.asarray(group), np.asarray(y, dtype=float), np.asarray(lang)
-    rng = np.random.default_rng(seed)
-    d = [_delta(group[i], y[i]) for i in (_bootstrap_indices(group, lang, rng) for _ in range(n_boot))]
+    strata = None if strata is None else np.asarray(strata)
+    rng = np.random.default_rng(seed); d = []
+    for _ in range(n_boot):
+        i = _bootstrap_indices(group, lang, rng)
+        try:
+            d.append(_delta(group[i], y[i], None if strata is None else strata[i]))
+        except ValueError:
+            continue
     return float(np.quantile(d, alpha / 2)), float(np.quantile(d, 1 - alpha / 2))
 
 
@@ -198,11 +231,12 @@ def _py(x):
 
 
 def _avg_gaps(table, bits, mask, n_lang, min_features, idx=None):
-    """Per-language median-r gap averaged over `bits` (and the matching survival-rate gap); `idx` resamples the evaluable rows (bootstrap)."""
+    """Per-language gap of the firing-rate-stratum ADJUSTED median r (and of the adjusted survival rate) averaged over `bits` (D-016); `idx` resamples the evaluable rows
+    (bootstrap; the stratum adjustment is treated as fixed)."""
     sel = np.flatnonzero(mask) if idx is None else np.flatnonzero(mask)[idx]
     g, lang = table["group"][sel], table["lang"][sel]
-    gaps = [language_gaps(lang, g, table["r"][b][sel], np.ones(len(sel), bool), n_lang, min_features) for b in bits]
-    rate = [language_gaps(lang, g, survived(table["r"][b][sel]).astype(float), np.ones(len(sel), bool), n_lang, min_features) for b in bits]
+    gaps = [language_gaps(lang, g, table["r_adj"][b][sel], np.ones(len(sel), bool), n_lang, min_features) for b in bits]
+    rate = [language_gaps(lang, g, table["y_adj"][b][sel], np.ones(len(sel), bool), n_lang, min_features) for b in bits]
     return {"gap": np.nanmean([x["gap"] for x in gaps], axis=0) if len(gaps) else None, "rate_gap": np.nanmean([x["gap"] for x in rate], axis=0),
             "n_selective": gaps[0]["n_selective"], "populated": gaps[0]["populated"]}
 
@@ -227,7 +261,7 @@ def run_analysis(run_dir, roster_path, out_dir, n_perm=10000, n_boot=2000, seed=
     def contrast(b):
         m = ev; y = survived(table["r"][b][m]).astype(float); g = table["group"][m]
         r = stratified_permutation_contrast(g, y, table["stratum"][m], n_perm, seed)
-        r["ci"] = cluster_bootstrap_ci(g, y, table["lang"][m], n_boot, seed); r["survival_selective"] = float(y[g == 1].mean()); r["survival_control"] = float(y[g == 0].mean())
+        r["ci"] = cluster_bootstrap_ci(g, y, table["lang"][m], n_boot, seed, strata=table["stratum"][m]); r["survival_selective"] = float(y[g == 1].mean()); r["survival_control"] = float(y[g == 0].mean())
         r["n_dropped_not_evaluable"] = int((~ev).sum()); return r
     t1, t2 = contrast(7), contrast(6)
 

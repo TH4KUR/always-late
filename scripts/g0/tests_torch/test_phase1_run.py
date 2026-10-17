@@ -1,6 +1,6 @@
 """S4 tests for scripts/g0/phase1_run.py orchestration with a FAKE causal model, SAE and quantizer (CPU): per-language results must equal a brute-force
 computation done sentence by sentence without padding, whatever the batching; position 0 is excluded under `mask`; INT0 equals FP; restore leaves the model untouched."""
-import sys, unittest
+import shutil, sys, unittest
 from pathlib import Path
 
 import numpy as np
@@ -407,7 +407,7 @@ class SaveOutputs(unittest.TestCase):
     def test_files_roundtrip_and_carry_the_provenance(self):
         import csv, json, tempfile
         fake, data = Fake(), corpus(); res = call(fake, data, "mask", bits=(8, 0)); names = ["aaa", "bbb", "ccc"]
-        out = Path(tempfile.mkdtemp()); meta = {"regime": "mask", "corpus": "flores", "seed": 0}
+        out = Path(tempfile.mkdtemp()); self.addCleanup(shutil.rmtree, out, ignore_errors=True); meta = {"regime": "mask", "corpus": "flores", "seed": 0}
         run.save_outputs(out, meta, res, [8, 0], names, F, threshold=0.001, report=None)
         rows = list(csv.DictReader(open(out / "summary.csv")))
         self.assertEqual([r["condition"] for r in rows], ["FP16 baseline", "RTN INT8", "restore-only control (INT0)"]); self.assertEqual(list(rows[0])[:3], ["layer", "condition", "method"])
@@ -421,7 +421,7 @@ class SaveOutputs(unittest.TestCase):
     def test_selectivity_is_saved_when_a_report_is_given(self):
         import tempfile
         t, lang = SelectivityReport().tag(); r = run.selectivity_report(t, lang, 3, n_boot=20, n_perm=5, seed=0)
-        out = Path(tempfile.mkdtemp()); fake, data = Fake(), corpus(); res = call(fake, data, "mask", bits=(8,))
+        out = Path(tempfile.mkdtemp()); self.addCleanup(shutil.rmtree, out, ignore_errors=True); fake, data = Fake(), corpus(); res = call(fake, data, "mask", bits=(8,))
         run.save_outputs(out, {}, res, [8], ["a", "b", "c"], F, threshold=0.001, report=r)
         z = torch.load(out / "selectivity.pt"); self.assertTrue(torch.equal(z["selective"], r["selective"])); self.assertEqual(z["null_cutoff"], r["null_cutoff"]); self.assertTrue(torch.equal(z["controls"], r["controls"]))
 

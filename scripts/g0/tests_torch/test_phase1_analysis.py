@@ -1,6 +1,6 @@
 """S7 tests for scripts/g0/phase1_analysis.py on SYNTHETIC data with planted effects (decision D-014): feature table, stratified permutation contrast, cluster bootstrap,
 per-language gaps, Freedman-Lane tier test with a script covariate, Holm, TOST. numpy only."""
-import sys, unittest
+import shutil, sys, unittest
 from pathlib import Path
 
 import numpy as np
@@ -32,8 +32,36 @@ class FeatureTable(unittest.TestCase):
             self.assertEqual(t["tier"][k], meta[sel["peak"][f]]["tier"]); self.assertEqual(t["script_family"][k], meta[sel["peak"][f]]["script_family"])
         self.assertFalse(bool(t["evaluable"][list(t["feature"]).index(5)]))                        # the inactive feature is flagged, not silently kept
 
+    def test_adjusted_values_subtract_the_stratum_median_r_and_the_stratum_survival_rate(self):
+        corr, fire, sel, meta = make_inputs(); t = an.feature_table(corr, fire, sel, meta, [7, 6], threshold=0.001)
+        for b in (7, 6):
+            r = t["r"][b]; y = an.survived(r).astype(float)
+            for st in np.unique(t["stratum"][t["evaluable"]]):
+                m = t["evaluable"] & (t["stratum"] == st)
+                self.assertTrue(np.allclose(t["r_adj"][b][m], r[m] - np.median(r[m]))); self.assertTrue(np.allclose(t["y_adj"][b][m], y[m] - y[m].mean()))
+                self.assertAlmostEqual(float(np.median(t["r_adj"][b][m])), 0.0); self.assertAlmostEqual(float(t["y_adj"][b][m].mean()), 0.0)
+
     def test_survival_is_strictly_above_the_cut(self):
         self.assertEqual(an.survived(np.array([0.9, 0.9000001, 1.0, 0.5])).tolist(), [False, True, True, False])
+
+
+class StratifiedDelta(unittest.TestCase):
+    """The contrast is standardised to the selective group's stratum distribution: sum_s n1s (ybar1s - ybar0s) / sum n1s over strata that hold both groups (D-016)."""
+    def test_hand_computed_value_and_dropped_strata(self):
+        g = np.array([1, 1, 1, 0, 0, 1, 0, 1, 1]); s_ = np.array([0, 0, 0, 0, 0, 1, 1, 2, 2]); y = np.array([1., 1., 0., 1., 0., 1., 0., 1., 1.])
+        # stratum 0: sel 2/3, ctrl 1/2 -> +1/6 (n1=3); stratum 1: sel 1, ctrl 0 -> +1 (n1=1); stratum 2: only selective -> dropped
+        r = an.stratified_delta(g, y, s_); self.assertAlmostEqual(r["delta"], (3 * (2 / 3 - 1 / 2) + 1 * 1.0) / 4); self.assertEqual(r["n_strata_used"], 2); self.assertEqual(r["n_selective_dropped"], 2)
+
+    def test_equals_the_plain_difference_when_the_two_groups_have_the_same_composition(self):
+        rng = np.random.default_rng(0); s_ = np.repeat(np.arange(5), 40); g = np.tile([0, 1], 100); y = (rng.random(200) < 0.4 + 0.1 * (s_ // 2)).astype(float)
+        self.assertAlmostEqual(an.stratified_delta(g, y, s_)["delta"], y[g == 1].mean() - y[g == 0].mean())
+
+    def test_a_pure_composition_difference_gives_zero(self):
+        s_ = np.repeat([0, 1], 40); g = np.array([1] * 30 + [0] * 10 + [1] * 10 + [0] * 30); y = s_.astype(float)                # selective features sit mostly in the low stratum, outcome = stratum
+        self.assertAlmostEqual(an.stratified_delta(g, y, s_)["delta"], 0.0); self.assertLess(y[g == 1].mean() - y[g == 0].mean(), -0.4)         # while the plain difference is -0.5
+
+    def test_no_stratum_with_both_groups_is_an_error(self):
+        with self.assertRaises(ValueError): an.stratified_delta(np.array([1, 0]), np.array([1., 0.]), np.array([0, 1]))
 
 
 class StratifiedPermutation(unittest.TestCase):
@@ -42,9 +70,9 @@ class StratifiedPermutation(unittest.TestCase):
         p = 0.5 + 0.08 * (strata - 2) + effect * group
         return group, (rng.random(n) < p).astype(float), strata
 
-    def test_delta_is_the_difference_of_group_means(self):
+    def test_delta_is_the_stratum_standardised_difference(self):
         g, y, s = self.data(0.3); r = an.stratified_permutation_contrast(g, y, s, n_perm=50, seed=0)
-        self.assertAlmostEqual(r["delta"], y[g == 1].mean() - y[g == 0].mean())
+        self.assertAlmostEqual(r["delta"], an.stratified_delta(g, y, s)["delta"]); self.assertEqual(r["n_selective_dropped"], 0)
 
     def test_a_planted_effect_is_detected_and_a_null_is_not(self):
         g, y, s = self.data(0.25); self.assertLess(an.stratified_permutation_contrast(g, y, s, 999, 0)["p"], 0.01)
@@ -52,9 +80,19 @@ class StratifiedPermutation(unittest.TestCase):
         self.assertLess(np.mean(np.array(ps) < 0.05), 0.15); self.assertGreater(np.mean(ps), 0.3)
 
     def test_labels_are_permuted_only_within_strata_so_a_stratum_effect_cannot_leak(self):
-        strata = np.repeat([0, 1], 20); group = np.array([1] * 2 + [0] * 18 + [1] * 18 + [0] * 2); y = strata.astype(float)      # selective features sit mostly in the high stratum, outcome = stratum
-        r = an.stratified_permutation_contrast(group, y, strata, 500, 0)
-        self.assertAlmostEqual(r["delta"], 0.8); self.assertEqual(r["p"], 1.0)             # within-stratum permutation keeps the composition: delta is 0.8 in every permutation
+        rng = np.random.default_rng(3); strata = np.repeat([0, 1], 1000); group = np.concatenate([np.array([1] * 800 + [0] * 200), np.array([1] * 200 + [0] * 800)])
+        rate = np.where(strata == 0, 0.8, 0.3) + 0.0 * group                                                                      # outcome depends on the stratum only
+        y = (rng.random(2000) < rate).astype(float); r = an.stratified_permutation_contrast(group, y, strata, 999, 0)
+        self.assertLess(abs(r["delta"]), 0.08); self.assertGreater(r["p"], 0.05)           # selective features sit in the high stratum: the plain difference is about 0.3, the stratified one is 0
+        self.assertGreater(y[group == 1].mean() - y[group == 0].mean(), 0.25)
+        r2 = an.stratified_permutation_contrast(group, (rng.random(2000) < rate + 0.1 * group).astype(float), strata, 999, 0); self.assertGreater(r2["delta"], 0.04); self.assertLess(r2["p"], 0.05)   # a true within-stratum effect is still found
+
+    def test_p_value_equals_the_exact_within_stratum_enumeration_on_a_tiny_design(self):
+        strata = np.repeat([0, 1], 6); group = np.array([1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0])
+        y = np.array([-0.54, -0.04, -0.08, -0.04, -0.03, -0.65, 0.95, 1.34, 3.07, 2.37, 2.59, 3.38])
+        r = an.stratified_permutation_contrast(group, y, strata, n_perm=20000, seed=0)
+        self.assertAlmostEqual(r["delta"], -0.45916666666666667, places=10)
+        self.assertAlmostEqual(r["p"], 0.15556, delta=0.015)             # all 15 x 15 = 225 within-stratum label assignments; permuting labels globally would give 0.330
 
     def test_the_test_is_two_sided_and_a_negative_effect_is_detected(self):
         g, y, s = self.data(-0.25); r = an.stratified_permutation_contrast(g, y, s, 999, 0); self.assertLess(r["delta"], -0.1); self.assertLess(r["p"], 0.01)
@@ -74,6 +112,12 @@ class ClusterBootstrap(unittest.TestCase):
         lo, hi = an.cluster_bootstrap_ci(g, y, lang, n_boot=400, seed=1); d = y[g == 1].mean() - y[g == 0].mean()
         self.assertLess(lo, d); self.assertGreater(hi, d); self.assertEqual((lo, hi), an.cluster_bootstrap_ci(g, y, lang, n_boot=400, seed=1))
         self.assertEqual(an.cluster_bootstrap_ci(g, np.ones(n), lang, n_boot=50, seed=0), (0.0, 0.0))
+
+    def test_with_strata_the_interval_is_for_the_stratum_standardised_difference(self):
+        rng = np.random.default_rng(0); strata = np.repeat([0, 1], 400); group = np.concatenate([np.array([1] * 300 + [0] * 100), np.array([1] * 100 + [0] * 300)])
+        lang = rng.integers(0, 4, 800); y = strata.astype(float)                                   # outcome = stratum: no group effect inside any stratum
+        lo, hi = an.cluster_bootstrap_ci(group, y, lang, 300, 0, strata=strata); self.assertTrue(lo <= 0.0 <= hi)
+        lo2, hi2 = an.cluster_bootstrap_ci(group, y, lang, 300, 0); self.assertLess(hi2, -0.3)       # the plain difference is about -0.5 (selective features sit in the low stratum)
 
     def test_resampling_stays_within_language_and_group_so_group_sizes_are_fixed(self):
         g = np.array([0, 0, 1, 1, 0, 1]); lang = np.array([0, 0, 0, 0, 1, 1]); y = np.arange(6, dtype=float)
@@ -185,7 +229,7 @@ class MixedLogit(unittest.TestCase):
 class Cli(unittest.TestCase):
     def test_command_line_runs_the_analysis_on_a_run_directory_and_writes_the_report(self):
         import subprocess
-        out = RunAnalysis().synth(low_penalty=0.05, seed=11); dest = Path(out) / "cli_out"
+        out = RunAnalysis().synth(low_penalty=0.05, seed=11); dest = Path(out) / "cli_out"; self.addCleanup(shutil.rmtree, out, ignore_errors=True)
         r = subprocess.run([sys.executable, "-B", str(Path(an.__file__)), "--run", str(out), "--out", str(dest), "--n-perm", "100", "--n-boot", "50"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr[-800:]); self.assertTrue((dest / "analysis.json").exists() and (dest / "analysis.md").exists())
         import json
@@ -204,24 +248,28 @@ class RunAnalysis(unittest.TestCase):
     """End to end on a synthetic run directory with the files phase1_run.save_outputs writes (survival.pt, selectivity.pt, meta.json) and the real roster."""
     ROOT = Path(__file__).resolve().parents[3]
 
-    def synth(self, low_penalty=0.0, selective_penalty=0.0, seed=0, per_lang=15, F=4000, silent=0, penalty_bits=(7, 6, 5, 4), script_penalty=0.0):
+    def synth(self, low_penalty=0.0, selective_penalty=0.0, seed=0, per_lang=15, F=4000, silent=0, penalty_bits=(7, 6, 5, 4), script_penalty=0.0, stratum_effect=0.0, low_skew=False, controls_low_strata=False):
         import json, tempfile, torch
         roster = json.loads((self.ROOT / "reports/g0/phase1_languages.json").read_text()); langs = roster["languages"] if isinstance(roster, dict) else roster
         L = len(langs); rng = np.random.default_rng(seed); n_sel = L * per_lang
         selective = np.zeros(F, bool); selective[:n_sel] = True; controls = np.arange(n_sel, 2 * n_sel)
         peak = np.concatenate([np.repeat(np.arange(L), per_lang), rng.integers(0, L, n_sel), rng.integers(0, L, F - 2 * n_sel)])
-        strata = np.concatenate([rng.integers(0, 5, n_sel)] * 2 + [np.full(F - 2 * n_sel, -1)])
+        sel_strata = rng.integers(0, 5, n_sel)
+        if low_skew:                                                       # selective features of Low-tier languages sit in the high strata (3, 4: lower r with stratum_effect), the others in 0-2
+            lowlang = np.repeat([l["tier"].lower() == "low" for l in langs], per_lang); sel_strata = np.where(lowlang, rng.integers(3, 5, n_sel), rng.integers(0, 3, n_sel))
+        ctrl_strata = rng.integers(0, 3, n_sel) if controls_low_strata else sel_strata               # a short control pool: no controls in the rarest strata
+        strata = np.concatenate([sel_strata, ctrl_strata] + [np.full(F - 2 * n_sel, -1)])
         supported = np.zeros(F, bool); supported[:2 * n_sel] = True; S_rank = np.where(selective, rng.uniform(0.9, 1, F), np.where(supported, rng.uniform(0.1, 0.6, F), 0.0))
         low = np.array([l["tier"].lower() == "low" for l in langs])
         brahmic = np.array([l["script_family"] in ("Indo-Aryan Brahmic", "Dravidian Brahmic", "SE-Asian Brahmic", "Ethiopic") for l in langs])      # non-Latin scripts of the Mid / Low tiers
         corr = {}
         for b, base in ((7, 0.985), (6, 0.95), (5, 0.9), (4, 0.8), (16, 1.0), (12, 1.0), (0, 1.0)):
-            r = np.clip(base + rng.normal(0, 0.03, (L, F)), -1, 1)
+            r = np.clip(base + rng.normal(0, 0.03, (L, F)) - stratum_effect * (np.maximum(strata, 0)[None, :] - 2) / 2.0, -1, 1) if b in penalty_bits else np.clip(base + rng.normal(0, 0.03, (L, F)), -1, 1)
             at_peak = selective[None, :] & (np.arange(L)[:, None] == peak[None, :])
             hit = at_peak & low[peak][None, :]
             r = np.where(at_peak & brahmic[peak][None, :] & (b in penalty_bits), r - script_penalty, r)
             corr[b] = torch.tensor(np.where(hit, r - low_penalty - selective_penalty, np.where(selective[None, :], r - selective_penalty, r)) if b in penalty_bits else r.clip(max=1.0), dtype=torch.float32)
-        out = Path(tempfile.mkdtemp())
+        out = Path(tempfile.mkdtemp()); self.addCleanup(shutil.rmtree, out, ignore_errors=True)         # synthetic runs are several MB each; /tmp is RAM-backed
         fire = np.full((L, F), 0.01); fire[peak[:silent], np.arange(silent)] = 0.0005                      # the first `silent` selective features are inactive at their peak language
         torch.save({"languages": [l["code"] for l in langs], "bits": [7, 6, 5, 4, 16, 12, 0], "n": [1000] * L, "corr": corr, "firing_rate": torch.tensor(fire, dtype=torch.float32), "mean_activation": torch.zeros(L, F),
                     "max_activation": torch.zeros(L, F), "loss_sum": {}, "loss_n": {}, "pooled_corr": {}, "pooled_firing_rate": torch.zeros(F)}, out / "survival.pt")
@@ -262,6 +310,17 @@ class RunAnalysis(unittest.TestCase):
         r = self.analyse(self.synth(selective_penalty=0.08, seed=9, penalty_bits=(6,)))
         self.assertGreater(r["tests"]["T1_int7"]["p"], 0.05); self.assertLess(abs(r["tests"]["T1_int7"]["delta"]), 0.05)
         self.assertLess(r["tests"]["T2_int6"]["p"], 0.01); self.assertLess(r["tests"]["T2_int6"]["delta"], -0.1)
+
+    def test_a_rarity_effect_that_correlates_with_tier_is_not_mistaken_for_a_tier_effect(self):
+        out = self.synth(stratum_effect=0.12, low_skew=True, seed=12); r = self.analyse(out)
+        self.assertGreater(r["tests"]["T3_tier"]["p"], 0.05)                                           # r depends on the firing-rate stratum only; Low languages' features are simply rarer
+        self.assertLess(abs(r["tests"]["T1_int7"]["delta"]), 0.1)                                      # and the stratified contrast sees no selectivity effect either
+        self.assertGreater(r["tests"]["T3_tier"]["survival_rate_gap_sensitivity"]["p"], 0.05)          # the survival-rate version of the tier test is adjusted too
+
+    def test_a_short_control_pool_does_not_turn_rarity_into_a_selectivity_effect(self):
+        r = self.analyse(self.synth(stratum_effect=0.12, controls_low_strata=True, seed=13)); t1 = r["tests"]["T1_int7"]
+        self.assertGreater(t1["n_selective_dropped"], 0); self.assertLess(abs(t1["delta"]), 0.05); self.assertTrue(t1["ci"][0] <= 0.0 <= t1["ci"][1])      # strata without controls are dropped and counted; no false effect
+        self.assertGreater(t1["survival_control"] - t1["survival_selective"], 0.1)                     # while the raw rates differ a lot (selective features sit in the strata where survival is lower)
 
     def test_the_tier_test_uses_both_confirmatory_widths(self):
         for pb in ((6,), (7,)):
