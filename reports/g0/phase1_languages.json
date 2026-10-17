@@ -1,0 +1,221 @@
+{
+ "note": "27-language panel of the proposal (anlp_revised.txt section 5), FLORES-200 codes (Mandarin is zho_Hans; the proposal's cmn_Hans alias does not exist in FLORES-200, V-6). Joshi et al. (2020) classes read from the authors' lang2tax.txt on 2026-10-17 (V-5; class 4 occurs in High and Mid, see A-020 / D-011). script = ISO 15924; script_family is OUR provisional grouping into nine families for the script covariate (the paper source says 'nine script families' without defining them, A-022).",
+ "languages": [
+  {
+   "code": "eng_Latn",
+   "name": "english",
+   "tier": "high",
+   "joshi_class": 5,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "deu_Latn",
+   "name": "german",
+   "tier": "high",
+   "joshi_class": 5,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "spa_Latn",
+   "name": "spanish",
+   "tier": "high",
+   "joshi_class": 5,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "fra_Latn",
+   "name": "french",
+   "tier": "high",
+   "joshi_class": 5,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "por_Latn",
+   "name": "portuguese",
+   "tier": "high",
+   "joshi_class": 4,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "rus_Cyrl",
+   "name": "russian",
+   "tier": "high",
+   "joshi_class": 4,
+   "script": "Cyrl",
+   "script_family": "Cyrillic"
+  },
+  {
+   "code": "zho_Hans",
+   "name": "mandarin",
+   "tier": "high",
+   "joshi_class": 5,
+   "script": "Hans",
+   "script_family": "Han (Chinese)"
+  },
+  {
+   "code": "jpn_Jpan",
+   "name": "japanese",
+   "tier": "high",
+   "joshi_class": 5,
+   "script": "Jpan",
+   "script_family": "Japanese"
+  },
+  {
+   "code": "kor_Hang",
+   "name": "korean",
+   "tier": "high",
+   "joshi_class": 4,
+   "script": "Hang",
+   "script_family": "Hangul"
+  },
+  {
+   "code": "hin_Deva",
+   "name": "hindi",
+   "tier": "mid",
+   "joshi_class": 4,
+   "script": "Deva",
+   "script_family": "Indo-Aryan Brahmic"
+  },
+  {
+   "code": "ben_Beng",
+   "name": "bengali",
+   "tier": "mid",
+   "joshi_class": 3,
+   "script": "Beng",
+   "script_family": "Indo-Aryan Brahmic"
+  },
+  {
+   "code": "tam_Taml",
+   "name": "tamil",
+   "tier": "mid",
+   "joshi_class": 3,
+   "script": "Taml",
+   "script_family": "Dravidian Brahmic"
+  },
+  {
+   "code": "tur_Latn",
+   "name": "turkish",
+   "tier": "mid",
+   "joshi_class": 4,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "vie_Latn",
+   "name": "vietnamese",
+   "tier": "mid",
+   "joshi_class": 4,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "ind_Latn",
+   "name": "indonesian",
+   "tier": "mid",
+   "joshi_class": 3,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "tha_Thai",
+   "name": "thai",
+   "tier": "mid",
+   "joshi_class": 3,
+   "script": "Thai",
+   "script_family": "SE-Asian Brahmic"
+  },
+  {
+   "code": "pol_Latn",
+   "name": "polish",
+   "tier": "mid",
+   "joshi_class": 4,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "ukr_Cyrl",
+   "name": "ukrainian",
+   "tier": "mid",
+   "joshi_class": 3,
+   "script": "Cyrl",
+   "script_family": "Cyrillic"
+  },
+  {
+   "code": "kan_Knda",
+   "name": "kannada",
+   "tier": "low",
+   "joshi_class": 1,
+   "script": "Knda",
+   "script_family": "Dravidian Brahmic"
+  },
+  {
+   "code": "tel_Telu",
+   "name": "telugu",
+   "tier": "low",
+   "joshi_class": 1,
+   "script": "Telu",
+   "script_family": "Dravidian Brahmic"
+  },
+  {
+   "code": "yor_Latn",
+   "name": "yoruba",
+   "tier": "low",
+   "joshi_class": 2,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "sun_Latn",
+   "name": "sundanese",
+   "tier": "low",
+   "joshi_class": 1,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "amh_Ethi",
+   "name": "amharic",
+   "tier": "low",
+   "joshi_class": 2,
+   "script": "Ethi",
+   "script_family": "Ethiopic"
+  },
+  {
+   "code": "ibo_Latn",
+   "name": "igbo",
+   "tier": "low",
+   "joshi_class": 1,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "hau_Latn",
+   "name": "hausa",
+   "tier": "low",
+   "joshi_class": 2,
+   "script": "Latn",
+   "script_family": "Latin"
+  },
+  {
+   "code": "khm_Khmr",
+   "name": "khmer",
+   "tier": "low",
+   "joshi_class": 1,
+   "script": "Khmr",
+   "script_family": "SE-Asian Brahmic"
+  },
+  {
+   "code": "lao_Laoo",
+   "name": "lao",
+   "tier": "low",
+   "joshi_class": 2,
+   "script": "Laoo",
+   "script_family": "SE-Asian Brahmic"
+  }
+ ]
+}
