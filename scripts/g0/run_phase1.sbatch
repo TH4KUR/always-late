@@ -5,7 +5,7 @@
 # S5 smoke  : sbatch run_phase1.sbatch smoke flores mask --languages eng_Latn hin_Deva khm_Khmr --max-sentences 120 --bits 8 6 0 --n-boot 20 --n-perm 5
 # S6 full   : sbatch run_phase1.sbatch p1-mask flores mask      (and  p1-none flores none)
 # Prereqs: env at /home2/karma/duan-verify/env; HF token at /home2/karma/duan-verify/hf/token; code deployed by scripts/g0/deploy_phase1.sh; FLORES extracted in phase1/data.
-# NOTE: /share1 is NOT mounted on compute nodes. Code, data and outputs live on /home2 (NFS); the gated model is fetched to node-local /scratch and deleted at the end.
+# NOTE: /share1 is NOT mounted on compute nodes. Code, data, outputs and the Hugging Face cache live on /home2 (NFS).
 #SBATCH -p u22
 #SBATCH --constraint=2080ti
 #SBATCH --gres=gpu:1
@@ -18,16 +18,12 @@ set -euo pipefail
 NAME=${1:?name}; CORPUS=${2:?corpus}; REGIME=${3:?regime}; shift 3
 BASE=/home2/karma/duan-verify
 export HF_TOKEN_PATH=$BASE/hf/token
-export HF_HOME=/scratch/karma-p1-hf-${SLURM_JOB_ID:-manual}
-export HF_XET_CACHE=$HF_HOME/xet HF_XET_HIGH_PERFORMANCE=1
-# NOTE: do NOT set HF_HUB_DISABLE_XET=1 (plain HTTP was ~15x slower and kept dropping connections).
-mkdir -p "$HF_HOME" "$BASE/logs"
-trap 'kill ${MONPID:-0} 2>/dev/null || true; rm -rf "$HF_HOME"' EXIT
-for attempt in 1 2 3 4 5 6; do
-  $BASE/env/bin/hf download google/gemma-2-2b model-00001-of-00003.safetensors model-00002-of-00003.safetensors model-00003-of-00003.safetensors config.json generation_config.json model.safetensors.index.json special_tokens_map.json tokenizer.json tokenizer.model tokenizer_config.json && break
-  echo "model download attempt $attempt failed; retrying"; sleep 10
-done
-du -sh "$HF_HOME"
+# The model (10.5 GB), SAE, WikiText-2 and tokenizer come from the PERSISTENT cache on /home2 (filled once on the login node by fetch_model.sh and prime_hf_cache.py):
+# three jobs fetching the model in parallel stalled for 20+ minutes on 2026-10-17, while one login-node download ran at ~20 MB/s. Jobs run offline.
+export HF_HOME=$BASE/hf_cache HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
+mkdir -p "$BASE/logs"
+ls $HF_HOME/hub/models--google--gemma-2-2b/snapshots/*/model-00003-of-00003.safetensors > /dev/null || { echo "model cache missing: run fetch_model.sh on the login node"; exit 3; }
+trap 'kill ${MONPID:-0} 2>/dev/null || true' EXIT
 export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=6
 OUT=$BASE/out/phase1/$NAME; mkdir -p "$OUT"
 REPO=$BASE/phase1/repo; COMMIT=$(cat $REPO/COMMIT)
