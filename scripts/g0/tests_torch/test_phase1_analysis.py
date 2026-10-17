@@ -140,5 +140,47 @@ class HolmAndTost(unittest.TestCase):
         lo, hi = an.tost(inside, 0.02)["interval"]; self.assertAlmostEqual(lo, np.quantile(inside, 0.05)); self.assertAlmostEqual(hi, np.quantile(inside, 0.95))
 
 
+class MixedLogit(unittest.TestCase):
+    """The section-7 random-intercept logistic model, fitted by maximum likelihood with Gauss-Hermite quadrature over the feature effect (statsmodels' variational and
+    MAP GLMM were measured to be intractable beyond ~1,000 features: 14.8 s at 1,000, minutes at 2,000, MAP not converging)."""
+    def table(self, beta_s=0.8, beta_t=0.4, sigma=0.8, n=3000, seed=0):
+        rng = np.random.default_rng(seed); u = rng.normal(0, sigma, n); s_rank = rng.uniform(0, 1, n); tier = rng.integers(0, 3, n); stratum = rng.integers(0, 5, n)
+        t = {"feature": np.arange(n), "S_rank": s_rank, "tier": np.array(["Low", "Mid", "High"])[tier], "stratum": stratum, "evaluable": np.ones(n, bool), "r": {}}
+        for b, shift in ((7, 1.0), (6, 0.0)):
+            logit = -0.3 + shift + beta_s * s_rank + beta_t * tier + 0.1 * (stratum - 2) + u
+            t["r"][b] = np.where(rng.random(n) < 1 / (1 + np.exp(-logit)), 0.91, 0.89)         # r just above / just below the 0.9 cut: only the 0.9 cut separates them
+        return t
+
+    def test_planted_coefficients_are_recovered_within_three_standard_errors_and_sigma_is_close(self):
+        fit = an.mixed_logit(self.table(), [7, 6], gee=False); m = fit["mixed"]; est = dict(zip(m["names"], m["coef"])); se = dict(zip(m["names"], m["se"]))
+        truth = {"bits_c": 1.0, "S_rank": 0.8, "tier": 0.4, "S_rank:tier": 0.0, "C(stratum)[T.1]": 0.1, "C(stratum)[T.2]": 0.2, "C(stratum)[T.3]": 0.3, "C(stratum)[T.4]": 0.4}
+        for k, v in truth.items():
+            self.assertLess(abs(est[k] - v), 3 * se[k], (k, est[k], v, se[k]))
+        self.assertGreater(m["sigma"], 0.5); self.assertLess(m["sigma"], 1.1); self.assertTrue(m["converged"])
+        self.assertEqual(fit["n_features"], 3000); self.assertEqual(fit["n_obs"], 6000)
+        import math
+        for zv, pv in zip(m["z"], m["p"]):
+            self.assertAlmostEqual(pv, 2 * (1 - 0.5 * (1 + math.erf(abs(zv) / math.sqrt(2)))), places=10)          # two-sided normal p-values
+
+    def test_without_a_feature_effect_it_agrees_with_plain_logistic_regression(self):
+        import pandas as pd, statsmodels.api as sm, statsmodels.formula.api as smf
+        t = self.table(sigma=0.0, n=2500, seed=3); fit = an.mixed_logit(t, [7, 6], gee=False)["mixed"]
+        df = pd.concat([pd.DataFrame({"y": an.survived(t["r"][b]).astype(int), "bits_c": b - 6.5, "S_rank": t["S_rank"], "tier": [an.TIER_SCORE[x] for x in t["tier"]], "stratum": t["stratum"]}) for b in (7, 6)], ignore_index=True)
+        ref = smf.logit("y ~ bits_c + C(stratum) + S_rank + tier + S_rank:tier", df).fit(disp=0)
+        for name, c in zip(fit["names"], fit["coef"]):
+            self.assertAlmostEqual(c, ref.params[name], delta=0.08, msg=name)
+        self.assertLess(fit["sigma"], 0.15)
+
+    def test_gee_cross_check_is_returned_with_the_same_coefficient_names(self):
+        fit = an.mixed_logit(self.table(n=800), [7, 6]); self.assertEqual(fit["gee"]["names"], fit["mixed"]["names"])
+        g = dict(zip(fit["gee"]["names"], fit["gee"]["coef"])); self.assertGreater(g["bits_c"], 0.3)
+
+    def test_non_evaluable_features_are_dropped_and_the_cap_subsamples_features_reproducibly(self):
+        t = self.table(n=300); t["evaluable"][:50] = False
+        fit = an.mixed_logit(t, [7, 6], max_features=100, seed=1, gee=False); self.assertEqual(fit["n_features"], 100); self.assertEqual(fit["n_obs"], 200)
+        self.assertEqual(an.mixed_logit(t, [7, 6], max_features=100, seed=1, gee=False)["mixed"]["coef"], fit["mixed"]["coef"])
+        self.assertEqual(an.mixed_logit(t, [7, 6], gee=False)["n_features"], 250)
+
+
 if __name__ == "__main__":
     unittest.main()

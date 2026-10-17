@@ -107,3 +107,63 @@ def tost(boot, bound, alpha=0.05):
     """Equivalence by the confidence-interval approach to TOST: the (1 - 2 alpha) bootstrap interval must lie inside (-bound, bound)."""
     lo, hi = float(np.quantile(boot, alpha)), float(np.quantile(boot, 1 - alpha))
     return {"interval": (lo, hi), "equivalent": bool(lo > -bound and hi < bound), "bound": bound}
+
+
+TIER_SCORE = {"Low": 0, "Mid": 1, "High": 2}
+MIXED_FORMULA = "bits_c + C(stratum) + S_rank + tier + S_rank:tier"
+
+
+def _fit_random_intercept_logit(X, Y, n_nodes=25):
+    """Maximum likelihood of logit Pr(Y_kf = 1) = X_kf beta + u_f, u_f ~ N(0, sigma^2), by Gauss-Hermite quadrature over u_f (what lme4's glmer does with
+    nAGQ = n_nodes for a scalar random intercept). X [K, F, p], Y [K, F] in {0, 1}. Gradient and Hessian by autograd; standard errors from the inverse Hessian
+    (pseudo-inverse if sigma collapses to 0). Returns names-free arrays: beta, se, sigma, converged, nll."""
+    import torch
+    from scipy.optimize import minimize
+    nodes, weights = np.polynomial.hermite_e.hermegauss(n_nodes)
+    z = torch.tensor(nodes, dtype=torch.float64); logw = torch.log(torch.tensor(weights / np.sqrt(2 * np.pi), dtype=torch.float64))
+    Xt, sign = torch.tensor(X, dtype=torch.float64), 2 * torch.tensor(Y, dtype=torch.float64) - 1
+    p = X.shape[2]
+
+    def nll(theta):
+        lin = (Xt @ theta[:p])[..., None] + torch.exp(theta[p]) * z                      # [K, F, nodes]
+        return -torch.logsumexp(torch.nn.functional.logsigmoid(sign[..., None] * lin).sum(0) + logw, dim=1).sum()
+
+    def fun(x):
+        th = torch.tensor(x, dtype=torch.float64, requires_grad=True); v = nll(th); v.backward()
+        return v.item(), th.grad.numpy().copy()
+
+    x0 = np.zeros(p + 1); x0[p] = np.log(0.5)
+    res = minimize(fun, x0, jac=True, method="L-BFGS-B", options={"maxiter": 500, "maxfun": 2000})
+    th = torch.tensor(res.x, dtype=torch.float64)
+    cov = np.linalg.pinv(torch.autograd.functional.hessian(nll, th).numpy())
+    return {"beta": res.x[:p], "se": np.sqrt(np.clip(np.diag(cov)[:p], 0, None)), "sigma": float(np.exp(res.x[p])),
+            "converged": bool(res.success or np.abs(res.jac).max() < 1e-3), "nll": float(res.fun)}
+
+
+def mixed_logit(table, bits_list, max_features=None, seed=0, gee=True):
+    """Section 7 model: logit Pr(survived) = b0 + b_bits * bits + b_q * quintile + b_S * S~ + b_t * tier + b_St * S~ x tier + u_feature (random intercept per
+    feature), fitted by quadrature maximum likelihood (above); as a robustness check also as a population-averaged logistic GEE with an exchangeable correlation
+    within feature (statsmodels). Non-evaluable features are dropped; with `max_features` a seeded random subset is used. The quintile enters as a categorical,
+    the tier as the ordinal 0 / 1 / 2, bits centred at the mean width."""
+    import math
+    import pandas as pd
+    import patsy
+    keep = np.flatnonzero(np.asarray(table["evaluable"]))
+    if max_features is not None and len(keep) > max_features:
+        keep = np.sort(np.random.default_rng(seed).choice(keep, max_features, replace=False))
+    centre = float(np.mean(bits_list))
+    df = pd.concat([pd.DataFrame({"feature": np.asarray(table["feature"])[keep], "y": survived(np.asarray(table["r"][b])[keep]).astype(int), "bits_c": b - centre,
+                                  "S_rank": np.asarray(table["S_rank"])[keep], "tier": [TIER_SCORE[t] for t in np.asarray(table["tier"])[keep]],
+                                  "stratum": np.asarray(table["stratum"])[keep]}) for b in bits_list], ignore_index=True)
+    X = patsy.dmatrix(MIXED_FORMULA, df, return_type="dataframe"); names = list(X.columns); K, F = len(bits_list), len(keep)
+    fit = _fit_random_intercept_logit(X.to_numpy().reshape(K, F, -1), df["y"].to_numpy().reshape(K, F))
+    z = fit["beta"] / np.where(fit["se"] > 0, fit["se"], np.nan)
+    out = {"mixed": {"names": names, "coef": [float(x) for x in fit["beta"]], "se": [float(x) for x in fit["se"]], "z": [float(x) for x in z],
+                     "p": [float(math.erfc(abs(v) / math.sqrt(2))) if v == v else float("nan") for v in z], "sigma": fit["sigma"], "converged": fit["converged"], "nll": fit["nll"]},
+           "gee": None, "n_features": int(F), "n_obs": int(len(df))}
+    if gee:
+        import statsmodels.api as sm
+        import statsmodels.formula.api as smf
+        g = smf.gee("y ~ " + MIXED_FORMULA, groups="feature", data=df, family=sm.families.Binomial(), cov_struct=sm.cov_struct.Exchangeable()).fit()
+        out["gee"] = {"names": list(g.params.index), "coef": [float(x) for x in g.params], "se": [float(x) for x in g.bse], "p": [float(x) for x in g.pvalues]}
+    return out
