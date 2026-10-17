@@ -284,5 +284,28 @@ class SelectivityReport(unittest.TestCase):
         self.assertTrue(torch.equal(a["controls"], b["controls"])); self.assertEqual(a["null_cutoff"], b["null_cutoff"])
 
 
+class SaveOutputs(unittest.TestCase):
+    def test_files_roundtrip_and_carry_the_provenance(self):
+        import csv, json, tempfile
+        fake, data = Fake(), corpus(); res = call(fake, data, "mask", bits=(8, 0)); names = ["aaa", "bbb", "ccc"]
+        out = Path(tempfile.mkdtemp()); meta = {"regime": "mask", "corpus": "flores", "seed": 0}
+        run.save_outputs(out, meta, res, [8, 0], names, F, threshold=0.001, report=None)
+        rows = list(csv.DictReader(open(out / "summary.csv")))
+        self.assertEqual([r["condition"] for r in rows], ["FP16 baseline", "RTN INT8", "restore-only control (INT0)"]); self.assertEqual(list(rows[0])[:3], ["layer", "condition", "method"])
+        lang = list(csv.DictReader(open(out / "per_language.csv"))); self.assertEqual(len(lang), 6)
+        z = torch.load(out / "survival.pt"); self.assertEqual(z["languages"], names); self.assertEqual(z["bits"], [8, 0])
+        self.assertTrue(torch.equal(z["corr"][8], res[8]["corr"])); self.assertTrue(torch.equal(z["firing_rate"], res["FP"]["firing_rate"])); self.assertEqual(z["n"], res["FP"]["n"])
+        self.assertEqual(z["loss_sum"]["FP"], res["FP"]["loss_sum"]); self.assertEqual(z["loss_n"][8], res[8]["loss_n"])
+        m = json.loads((out / "meta.json").read_text()); self.assertEqual(m["regime"], "mask"); self.assertEqual(m["languages"], names); self.assertIn("their_functions_sha256", m)
+        self.assertFalse((out / "selectivity.pt").exists())
+
+    def test_selectivity_is_saved_when_a_report_is_given(self):
+        import tempfile
+        t, lang = SelectivityReport().tag(); r = run.selectivity_report(t, lang, 3, n_boot=20, min_stable=16, n_perm=5, seed=0)
+        out = Path(tempfile.mkdtemp()); fake, data = Fake(), corpus(); res = call(fake, data, "mask", bits=(8,))
+        run.save_outputs(out, {}, res, [8], ["a", "b", "c"], F, threshold=0.001, report=r)
+        z = torch.load(out / "selectivity.pt"); self.assertTrue(torch.equal(z["selective"], r["selective"])); self.assertEqual(z["null_cutoff"], r["null_cutoff"]); self.assertTrue(torch.equal(z["controls"], r["controls"]))
+
+
 if __name__ == "__main__":
     unittest.main()

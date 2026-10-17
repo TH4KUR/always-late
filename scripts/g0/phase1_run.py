@@ -37,7 +37,7 @@ class _Loss:
     def add(self, b, logits):
         if logits is None:
             return
-        s, n = p1.chunked_nll(logits, b["tokens"].to(logits.device), b["valid"].to(logits.device))
+        s, n = p1.chunked_nll(logits, b["tokens"].to(logits.device), b["valid"].to(logits.device), chunk=4)   # 4 rows x 256k vocabulary in float32 ~ 1 GB at 256 tokens
         self.s[b["lang"]] += float(s.sum()); self.n[b["lang"]] += int(n.sum())
 
 
@@ -142,3 +142,120 @@ def selectivity_report(tag, lang_of, n_lang, min_panel_rate=1e-5, min_pos=50, n_
     controls, short = p1.matched_sample(strata, selective, supported & ~selective, seed)
     return {"rates": rates, "mean_activation": means, "S": S, "S_rank": S_rank, "peak": peak, "supported": supported, "stable_count": stable, "null_cutoff": cutoff,
             "selective": selective, "nu": p1.deng_nu(means), "strata": strata, "controls": controls, "control_strata_short": short}
+
+
+def save_outputs(out_dir, meta, results, bits_list, lang_names, n_feat, threshold=0.001, report=None):
+    """Write the files the analysis reads: summary.csv (their columns, pooled over languages), per_language.csv, survival.pt (per-language correlations of
+    every rung, FP firing statistics, token counts, loss sums), selectivity.pt (if a report is given) and meta.json (provenance)."""
+    import csv, json
+    from pathlib import Path
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    for name, rows in (("summary.csv", condition_rows(results, bits_list, n_feat, threshold=threshold)),
+                       ("per_language.csv", language_rows(results, bits_list, lang_names, threshold=threshold))):
+        with open(out / name, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
+    keys = ["FP"] + list(bits_list)
+    torch.save({"languages": list(lang_names), "bits": list(bits_list), "n": results["FP"]["n"],
+                "corr": {b: results[b]["corr"].float() for b in bits_list},
+                "firing_rate": results["FP"]["firing_rate"].float(), "mean_activation": results["FP"]["mean_activation"].float(), "max_activation": results["FP"]["max_activation"].float(),
+                "loss_sum": {k: results[k]["loss_sum"] for k in keys}, "loss_n": {k: results[k]["loss_n"] for k in keys},
+                "pooled_corr": {b: results[b]["pooled"]["corr"].float() for b in bits_list}, "pooled_firing_rate": results["FP"]["pooled"]["firing_rate"].float()}, out / "survival.pt")
+    if report is not None:
+        keep = ("rates", "mean_activation", "S", "S_rank", "nu")
+        torch.save({**{k: (v.float() if k in keep else v) for k, v in report.items()}, "languages": list(lang_names)}, out / "selectivity.pt")
+    from their_code import MANIFEST
+    manifest = json.loads(MANIFEST.read_text())
+    (out / "meta.json").write_text(json.dumps({**meta, "languages": list(lang_names), "bits": list(bits_list), "n_feat": int(n_feat), "threshold": threshold,
+                                               "their_functions_sha256": manifest["file_sha256"], "their_functions": manifest["functions"]}, indent=1, default=str) + "\n")
+
+
+SAE_RELEASE, SAE_ID, LAYER, SEQ_LEN, FIRING_THRESHOLD = "gemma-scope-2b-pt-res-canonical", "layer_12/width_16k/canonical", 12, 256, 0.001     # their config, copied
+MODEL_CANDIDATES = ["gemma-2-2b", "google/gemma-2-2b"]
+DEFAULT_BITS = [8, 7, 6, 5, 4, 16, 12, 0]       # decision D-006: ladder INT8/7/6/5/4, then the INT16/INT12 noise-floor controls and INT0 (restore only)
+
+
+def main(argv=None):
+    import argparse, json, subprocess, time
+    from pathlib import Path
+    ROOT = Path(__file__).resolve().parents[2]
+    ap = argparse.ArgumentParser(description="Phase 1 run on Duan et al.'s setup: one BOS regime, one GPU, in-place RTN quantize / restore of a single model.")
+    ap.add_argument("--corpus", choices=["flores", "wikitext"], required=True); ap.add_argument("--regime", choices=p1.REGIMES, required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--bits", type=int, nargs="*", default=DEFAULT_BITS); ap.add_argument("--budget", type=int, default=20000, help="wikitext only: token budget (their 3a_test = 20000)")
+    ap.add_argument("--flores-root"); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
+    ap.add_argument("--languages", nargs="*", help="subset of FLORES codes (smoke)"); ap.add_argument("--max-sentences", type=int, help="first N sentences per language and split (smoke)")
+    ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=2048)
+    ap.add_argument("--skip-tagging", action="store_true"); ap.add_argument("--n-boot", type=int, default=100); ap.add_argument("--n-perm", type=int, default=50)
+    ap.add_argument("--seed", type=int, default=0); ap.add_argument("--commit", default="unknown")
+    a = ap.parse_args(argv)
+    t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
+
+    import gc
+    import numpy as np
+    from tqdm.auto import tqdm
+    from transformer_lens import HookedTransformer
+    from sae_lens import SAE
+    import their_code as tc
+    import phase1_data as pd_
+    torch.set_grad_enabled(False)
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    env = {"torch": torch, "np": np, "tqdm": tqdm, "gc": gc, "HookedTransformer": HookedTransformer, "SAE": SAE, "DEVICE": DEVICE, "WORK_DEVICE": DEVICE,
+           "BATCH_SIZE": 1, "FIRING_THRESHOLD": FIRING_THRESHOLD}
+    if a.corpus == "wikitext":
+        from datasets import load_dataset
+        env["load_dataset"] = load_dataset
+    ex = tc.extract_functions(tc.PRISTINE, tc.THEIR_FUNCTIONS); tc.verify_hashes(ex, json.loads(tc.MANIFEST.read_text())["functions"]); tc.build_namespace(ex, env)
+    log("their functions verified against the frozen manifest:", sorted(ex))
+
+    model, model_name = env["load_gemma_tl_model"](MODEL_CANDIDATES)
+    sae = env["load_sae_compat"](SAE_RELEASE, SAE_ID, DEVICE)
+    hook = getattr(sae.cfg, "hook_name", None) or f"blocks.{LAYER}.hook_resid_post"
+    assert sae.cfg.d_in == model.cfg.d_model, "SAE / model width mismatch"
+    n_feat = int(sae.cfg.d_sae)
+    env["model_work"] = model; env["original_state_cpu"] = env["clone_state_to_cpu"](model)
+    tok = model.tokenizer; bos = tok.bos_token_id; pad = tok.pad_token_id if tok.pad_token_id is not None else 0
+    log("model", model_name, "hook", hook, "d_sae", n_feat, "bos", bos, "pad", pad)
+
+    def forward(tokens):
+        logits, cache = model.run_with_cache(tokens, names_filter=[hook]); return cache[hook], logits
+    def forward_acts(tokens):                                                    # tagging needs no logits: stop after the hooked block (same activations)
+        _, cache = model.run_with_cache(tokens, names_filter=[hook], stop_at_layer=LAYER + 1); return cache[hook], None
+    encode = lambda acts: env["encode_sae"](sae, acts)
+    quantize = lambda bits: env["quantize_rtn_per_output_channel_tl"](model, bits=bits)
+    restore = env["restore_model_work"]
+
+    meta = {"corpus": a.corpus, "regime": a.regime, "bits": a.bits, "seed": a.seed, "commit": a.commit, "model": model_name, "sae_release": SAE_RELEASE, "sae_id": SAE_ID,
+            "hook": hook, "bos_id": bos, "pad_id": pad, "batch_size": a.batch_size, "max_tokens": a.max_tokens, "device": DEVICE,
+            "versions": {k: __import__(k).__version__ for k in ("torch", "transformer_lens", "sae_lens")}, "argv": list(argv) if argv is not None else None}
+    if a.corpus == "flores":
+        roster = pd_.load_roster(a.roster)
+        if a.languages:
+            roster = [r for r in roster if r["code"] in set(a.languages)]
+            meta["subset"] = True
+        dev, rep_dev = pd_.build_corpus(a.flores_root, roster, "dev", tok, None if a.languages else 997)
+        devtest, rep_test = pd_.build_corpus(a.flores_root, roster, "devtest", tok, None if a.languages else 1012)
+        if a.max_sentences:
+            dev = {k: v[:a.max_sentences] for k, v in dev.items()}; devtest = {k: v[:a.max_sentences] for k, v in devtest.items()}
+        names = [r["code"] for r in roster]; meta["corpus_report"] = {"dev": rep_dev, "devtest": rep_test}
+    else:
+        toks = env["build_tokens_2d"](tok, a.budget, SEQ_LEN)
+        dev, devtest, names = None, {0: [row.tolist() for row in toks.cpu()]}, ["wikitext"]
+    log("languages:", len(names), "devtest sentences:", sum(len(v) for v in devtest.values()))
+
+    report = None
+    if dev is not None and not a.skip_tagging:
+        tag, offsets, lang_of = run_tagging(forward_acts, encode, dev, a.regime, bos, pad, n_feat, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens)
+        log("tagging pass done; sentences", len(lang_of))
+        report = selectivity_report(tag, lang_of, len(names), n_boot=a.n_boot, n_perm=a.n_perm, seed=a.seed)
+        log("supported", int(report["supported"].sum()), "selective", int(report["selective"].sum()), "controls", len(report["controls"]), "null cutoff", report["null_cutoff"])
+        del tag
+
+    results = run_survival(forward, encode, quantize, restore, devtest, a.regime, bos, pad, n_feat, a.bits, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens)
+    log("survival pass done; peak GPU memory GB:", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
+    meta["seconds"] = time.time() - t0; meta["peak_gpu_gb"] = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
+    save_outputs(a.out, meta, results, a.bits, names, n_feat, FIRING_THRESHOLD, report)
+    log("saved", a.out)
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
