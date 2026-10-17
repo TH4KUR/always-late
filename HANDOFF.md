@@ -88,6 +88,7 @@ Already done and fetched: R2 (`reports/g0/R2_bos_mask/`), R5a/R5b (`reports/g0/r
 | `issues.md` | review of the discarded pipeline and paper |
 | `reports/audit_our_vs_duan.md` | why the old pipeline disagreed with theirs: 12 differences, experiments, pre-committed rules, results (sections 6.1-6.4) |
 | `reports/duan_codebase_audit.md` | audit of Duan's repo, verified Ada facts, closure protocol (section 7) |
+| `reports/artifacts.md`, `scripts/g0/hf_artifacts.py`, `reports/g0/hf_artifact_spec.json`, `hf_dataset_card.md` | where the large artifacts live: private Hugging Face dataset https://huggingface.co/datasets/karma-skz/always-late-artifacts (policy D-012; upload and verify with `hf_artifacts.py`, token only on Ada) |
 | `reports/wandb_schema.md`, `scripts/g0/g0_wandb.py`, `wandb_rebuild.py`, `reports/g0/wandb_manifest.json`, `wandb_backup_pre_schema.json` | the fixed wandb schema, its code and tests, what was rebuilt, and the backup of the old runs' metadata |
 | `reports/g0/` | `baseline_full/`, `baseline_smoke*/`, `R2_bos_mask/`, `r5/` (+ `r5_report.md`), `r5_smoke/`, benchmark, env freeze, runner diffs |
 | `reports/legacy_pipeline/` | Phase-1 results of the discarded pipeline: hypotheses, not findings |

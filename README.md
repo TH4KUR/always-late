@@ -69,6 +69,7 @@ Results are uploaded to the wandb project `anlp-project` (entity `karma-skz-`).
 * **Reference implementation (not ours):** Duan (2026), arXiv:2606.03002, artifact `https://anonymous.4open.science/r/sae-feature-survival-quantization-0141/`.
 * **Extension Models & SAEs (planned, never run):** [`meta-llama/Llama-3.2-1B`](https://huggingface.co/meta-llama/Llama-3.2-1B) and [`seonglae/gemma-2-2b-l12-topk-16k`](https://huggingface.co/seonglae/gemma-2-2b-l12-topk-16k).
 * **Experiment tracking:** wandb project `anlp-project` (entity `karma-skz-`).
+* **Large artifacts:** private Hugging Face dataset [`karma-skz/always-late-artifacts`](https://huggingface.co/datasets/karma-skz/always-late-artifacts) (per-feature tables, bootstrap snapshots, token windows); index and provenance in [`reports/artifacts.md`](reports/artifacts.md).
 
 ---
 

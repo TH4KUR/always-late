@@ -1,0 +1,79 @@
+{
+ "card": "/home2/karma/duan-verify/hf_dataset_card.md",
+ "sources": [
+  {
+   "local": "baseline/full/phase3_gemma_outputs_3b_full_500k_L12",
+   "repo": "baseline/full",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "baseline/smoke/phase3_gemma_outputs_3a_test_20k_L12",
+   "repo": "smoke/generator-runner",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "baseline/smoke2/phase3_gemma_outputs_3a_test_20k_L12",
+   "repo": "smoke/vendored",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/smoke",
+   "repo": "smoke/R0-v3-runner",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/R1",
+   "repo": "runs/R1-nobos-floor",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/R2",
+   "repo": "runs/R2-bos-mask",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "r5/R5a",
+   "repo": "runs/R5a",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "r5/R5b",
+   "repo": "runs/R5b",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*",
+    "tokens_2d.pt"
+   ]
+  },
+  {
+   "local": "r5/R5c",
+   "repo": "runs/R5c",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*",
+    "tokens_2d.pt"
+   ]
+  }
+ ]
+}
