@@ -75,3 +75,29 @@ class Flores(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TextStats(unittest.TestCase):
+    """Characters and whitespace words of the raw FLORES text, the denominators of fertility (Srivastava 2026, arXiv:2607.24276, section 3: word fertility = tokens per
+    whitespace-delimited word, character fertility = tokens per character; V-11)."""
+    def write(self, lines, code="eng_Latn", split="devtest", trailing=True):
+        t = tempfile.TemporaryDirectory(); self.addCleanup(t.cleanup)
+        d = Path(t.name) / "flores200_dataset" / split; d.mkdir(parents=True)
+        (d / f"{code}.{split}").write_text("\n".join(lines) + ("\n" if trailing else ""), encoding="utf-8"); return t.name
+
+    def test_counts_sentences_code_points_and_whitespace_words(self):
+        root = self.write(["ab cd", "e", "  x   y  z "])
+        s = pd_.text_stats(root, "eng_Latn", "devtest")
+        self.assertEqual(s, {"sentences": 3, "chars": 5 + 1 + 11, "words": 2 + 1 + 3})      # the newline is not a character; split() collapses runs of spaces
+
+    def test_characters_are_unicode_code_points_not_bytes(self):
+        root = self.write(["ಕನ್ನಡ", "日本語です"], code="kan_Knda", split="dev")
+        s = pd_.text_stats(root, "kan_Knda", "dev")
+        self.assertEqual(s["chars"], len("ಕನ್ನಡ") + 5); self.assertEqual(s["words"], 2); self.assertTrue(s["chars"] < len("ಕನ್ನಡ".encode()) + len("日本語です".encode()))
+
+    def test_no_trailing_newline_and_the_expected_count_check_agree_with_the_reader(self):
+        root = self.write(["a b", "c"], trailing=False); self.assertEqual(pd_.text_stats(root, "eng_Latn", "devtest")["sentences"], 2)
+        with self.assertRaises(ValueError): pd_.text_stats(root, "eng_Latn", "devtest", expect=1012)
+
+    def test_all_languages_helper_returns_one_entry_per_code_and_split(self):
+        root = self.write(["a b"]); self.assertEqual(pd_.text_stats_all(root, ["eng_Latn"], ("devtest",))["eng_Latn"]["devtest"]["words"], 2)

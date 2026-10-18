@@ -54,14 +54,30 @@ Group sizes in the primary stream: 8,062 selective and 2,843 control features ev
 
 - The analysis ran once per stream with the pre-set defaults (10,000 permutations, 2,000 bootstrap draws, seed 0); a rerun of the primary stream gave a byte-identical `analysis.json`.
 - Group survival rates and counts were recomputed from the raw `survival.pt` / `selectivity.pt` with a separate short script (not the analysis code): INT7 0.9935 vs 0.9982, INT6 0.9145 vs 0.9420, INT5 0.6080 vs 0.6423, INT4 0.1601 vs 0.1463, INT16 0.9994 vs 1.0000 (n 8,062 + 2,843), matching the report.
-- Code at HEAD: 122 torch and 119 stdlib tests pass; the key behaviours were mutation-checked when the code was committed (30 of 30 analysis mutants killed, commit `af3af10`; not repeated today).
+- Code at HEAD (after N1): 147 torch and 123 stdlib tests pass (122 and 119 when the analysis ran); the key behaviours were mutation-checked when the code was committed (30 of 30 analysis mutants killed, commit `af3af10`; not repeated today).
 
 ## 4. Anomalies and open items
 
-A-029 (regime none breaks the model on short sentences), A-030 (sign change between regimes, unexplained), A-031 (INT7 ceiling, small noise-floor asymmetry, rarity half of the raw gap), A-027 (binary split makes most features selective), A-026 (the first launch ignored equal budgets, fixed before any result), A-024 (their bf16 loss quantisation; production loss is the exact float64 sum), A-022 / A-020 (script families and tier boundaries). Open: V-10 (registration frozen?); team decisions on provisional D-entries; threshold sensitivity of the binary split; a test of A-030 hypothesis (a) by running regime none with longer concatenated windows (not planned, would be a labelled diagnostic); optional R3 and their script 06.
+A-032 (behavioural link: rank association, selective damage not separable from overall damage), A-029 (regime none breaks the model on short sentences), A-030 (sign change between regimes, unexplained), A-031 (INT7 ceiling, small noise-floor asymmetry, rarity half of the raw gap), A-027 (binary split makes most features selective), A-026 (the first launch ignored equal budgets, fixed before any result), A-024 (their bf16 loss quantisation; production loss is the exact float64 sum), A-022 / A-020 (script families and tier boundaries). Open: V-10 (registration frozen?); team decisions on provisional D-entries; threshold sensitivity of the binary split; a test of A-030 hypothesis (a) by running regime none with longer concatenated windows (not planned, would be a labelled diagnostic); optional R3 and their script 06.
+
+## 6. Behavioural link (N1, secondary; decision D-018, anomaly A-032, source check V-11)
+
+The team's evaluation-plan table (`paper/main.tex`, row "Behavioral Link") asks whether the selective-feature damage fraction predicts the next-token loss increase per language, with Spearman rho and a multivariable OLS (covariates: overall feature damage and token fertility). Definitions, all taken from sources (D-018): damage = 1 - survival at t_s = 0.9 over the selective features peaking in the language (the proposal's own usage in G0 (b)), 'damaged' (r < 0.5, Duan et al.) as sensitivity; loss increase = per-token mean loss of the quantized minus the full-precision model on the same tokens; fertility = Srivastava's (2026, arXiv:2607.24276) tax multiplier relative to English on parallel FLORES-200 text, in character fertility (their own fallback; five of our scripts have no word spaces; V-11). One observation per language (27). Secondary analysis, outside the Holm family, p-values uncorrected. Full tables: `reports/phase1/<regime>/<stream>/behavior.md`.
+
+Primary stream (BOS masked, equal budget), damage = 1 - survival:
+
+| width | Spearman rho | p (one-sided) | OLS slope of selective damage (p) | OLS slope of overall damage (p) | fertility (p) | VIF selective / overall | R2 |
+|---|---|---|---|---|---|---|---|
+| INT7 | +0.539 | 0.0019 | -0.052 (0.55) | +0.109 (0.050) | -0.00004 (0.93) | 5.5 / 5.6 | 0.36 |
+| INT6 | +0.458 | 0.0082 | +0.056 (0.31) | +0.012 (0.78) | -0.0008 (0.71) | 7.0 / 9.5 | 0.32 |
+| INT5 (descriptive) | +0.692 | 3.2e-5 | +0.111 (0.015) | +0.113 (0.024) | +0.004 (0.46) | 2.3 / 3.4 | 0.76 |
+
+With the stricter 'damaged' definition (r < 0.5): INT7 is undefined (no selective feature is damaged in any language, so the fraction is constant), INT6 rho +0.172 (p 0.20), INT5 rho +0.631 (p 0.0002) with the overall-damage slope carrying it (p 0.0002 against 0.39 for selective damage). The sensitivity stream (all tokens) agrees (INT7 +0.537, INT6 +0.455, INT5 +0.703). The BOS-free regime has the same sign at INT7 and INT6 (rho +0.439 and +0.531, one-sided p 0.011 and 0.002) and none at INT5 (+0.066); its instrument is not valid (A-029).
+
+**Reading.** Languages whose selective features are damaged more also lose more next-token accuracy (a rank association across 27 languages), but the regression cannot attribute this to selective features: selective and overall damage are strongly collinear (VIF up to 9.5), the selective-damage slope is not distinguishable from zero at INT7 and INT6, fertility is never significant, and the association disappears at INT6 under the stricter damage definition. In the table's own terms this is the "partial" branch (dissociation between features and loss), at best weak support for "positive". A shared language-level driver (how well the model handles the language) would produce the same pattern; a causal ablation (proposal Phase 2, an extension, Q8) is the test that could separate them and has not been run. Limits: n = 27, five defined cells in the primary stream are uncorrected (a post-hoc Bonferroni threshold over 5 is 0.01: four pass, INT6 'damaged' does not), INT7 loss increases are tiny (+0.4% perplexity).
 
 ## 5. Where everything is
 
-- Small outputs per run and stream (summary, per-language, metadata, analysis report and JSON): `reports/phase1/{mask,none}/{eq,all}/`.
+- Small outputs per run and stream (summary, per-language, metadata, analysis report and JSON, behavioural link `behavior.md` / `behavior.json`; FLORES text statistics `reports/phase1/flores_text_stats.json`): `reports/phase1/{mask,none}/{eq,all}/`.
 - Large outputs (`survival.pt`, `selectivity.pt`, per-feature data): Hugging Face private dataset `karma-skz/always-late-artifacts`, `runs/phase1/` (index in `reports/artifacts.md`).
 - Reproduce: `bash scripts/g0/fetch_phase1.sh p1-mask <dest>`; `python3 scripts/g0/phase1_analysis.py --run <dest>/p1-mask/eq --out <out> --seed 0` (torch, numpy, scipy, pandas, statsmodels).

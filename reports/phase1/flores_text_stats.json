@@ -1,0 +1,326 @@
+{
+ "amh_Ethi": {
+  "dev": {
+   "chars": 85126,
+   "sentences": 997,
+   "words": 16891
+  },
+  "devtest": {
+   "chars": 87132,
+   "sentences": 1012,
+   "words": 17330
+  }
+ },
+ "ben_Beng": {
+  "dev": {
+   "chars": 123275,
+   "sentences": 997,
+   "words": 18756
+  },
+  "devtest": {
+   "chars": 129042,
+   "sentences": 1012,
+   "words": 19506
+  }
+ },
+ "deu_Latn": {
+  "dev": {
+   "chars": 146558,
+   "sentences": 997,
+   "words": 20903
+  },
+  "devtest": {
+   "chars": 153809,
+   "sentences": 1012,
+   "words": 21760
+  }
+ },
+ "eng_Latn": {
+  "dev": {
+   "chars": 125194,
+   "sentences": 997,
+   "words": 20954
+  },
+  "devtest": {
+   "chars": 131966,
+   "sentences": 1012,
+   "words": 21901
+  }
+ },
+ "fra_Latn": {
+  "dev": {
+   "chars": 148791,
+   "sentences": 997,
+   "words": 24146
+  },
+  "devtest": {
+   "chars": 157688,
+   "sentences": 1012,
+   "words": 25618
+  }
+ },
+ "hau_Latn": {
+  "dev": {
+   "chars": 134586,
+   "sentences": 997,
+   "words": 24217
+  },
+  "devtest": {
+   "chars": 140069,
+   "sentences": 1012,
+   "words": 25156
+  }
+ },
+ "hin_Deva": {
+  "dev": {
+   "chars": 125383,
+   "sentences": 997,
+   "words": 24607
+  },
+  "devtest": {
+   "chars": 131079,
+   "sentences": 1012,
+   "words": 25643
+  }
+ },
+ "ibo_Latn": {
+  "dev": {
+   "chars": 126684,
+   "sentences": 997,
+   "words": 23464
+  },
+  "devtest": {
+   "chars": 134560,
+   "sentences": 1012,
+   "words": 24917
+  }
+ },
+ "ind_Latn": {
+  "dev": {
+   "chars": 136372,
+   "sentences": 997,
+   "words": 19069
+  },
+  "devtest": {
+   "chars": 142406,
+   "sentences": 1012,
+   "words": 19811
+  }
+ },
+ "jpn_Jpan": {
+  "dev": {
+   "chars": 54658,
+   "sentences": 997,
+   "words": 1063
+  },
+  "devtest": {
+   "chars": 56943,
+   "sentences": 1012,
+   "words": 1081
+  }
+ },
+ "kan_Knda": {
+  "dev": {
+   "chars": 131963,
+   "sentences": 997,
+   "words": 15430
+  },
+  "devtest": {
+   "chars": 138140,
+   "sentences": 1012,
+   "words": 16100
+  }
+ },
+ "khm_Khmr": {
+  "dev": {
+   "chars": 150760,
+   "sentences": 997,
+   "words": 5684
+  },
+  "devtest": {
+   "chars": 153214,
+   "sentences": 1012,
+   "words": 5815
+  }
+ },
+ "kor_Hang": {
+  "dev": {
+   "chars": 63011,
+   "sentences": 997,
+   "words": 14764
+  },
+  "devtest": {
+   "chars": 65965,
+   "sentences": 1012,
+   "words": 15430
+  }
+ },
+ "lao_Laoo": {
+  "dev": {
+   "chars": 125263,
+   "sentences": 997,
+   "words": 5968
+  },
+  "devtest": {
+   "chars": 130089,
+   "sentences": 1012,
+   "words": 6058
+  }
+ },
+ "pol_Latn": {
+  "dev": {
+   "chars": 133475,
+   "sentences": 997,
+   "words": 18800
+  },
+  "devtest": {
+   "chars": 139485,
+   "sentences": 1012,
+   "words": 19488
+  }
+ },
+ "por_Latn": {
+  "dev": {
+   "chars": 136091,
+   "sentences": 997,
+   "words": 22409
+  },
+  "devtest": {
+   "chars": 143489,
+   "sentences": 1012,
+   "words": 23413
+  }
+ },
+ "rus_Cyrl": {
+  "dev": {
+   "chars": 138102,
+   "sentences": 997,
+   "words": 19161
+  },
+  "devtest": {
+   "chars": 142096,
+   "sentences": 1012,
+   "words": 19655
+  }
+ },
+ "spa_Latn": {
+  "dev": {
+   "chars": 149233,
+   "sentences": 997,
+   "words": 24819
+  },
+  "devtest": {
+   "chars": 157041,
+   "sentences": 1012,
+   "words": 26081
+  }
+ },
+ "sun_Latn": {
+  "dev": {
+   "chars": 131110,
+   "sentences": 997,
+   "words": 19041
+  },
+  "devtest": {
+   "chars": 136847,
+   "sentences": 1012,
+   "words": 19767
+  }
+ },
+ "tam_Taml": {
+  "dev": {
+   "chars": 146128,
+   "sentences": 997,
+   "words": 16134
+  },
+  "devtest": {
+   "chars": 154133,
+   "sentences": 1012,
+   "words": 16775
+  }
+ },
+ "tel_Telu": {
+  "dev": {
+   "chars": 127201,
+   "sentences": 997,
+   "words": 16388
+  },
+  "devtest": {
+   "chars": 132505,
+   "sentences": 1012,
+   "words": 16938
+  }
+ },
+ "tha_Thai": {
+  "dev": {
+   "chars": 120487,
+   "sentences": 997,
+   "words": 4123
+  },
+  "devtest": {
+   "chars": 126362,
+   "sentences": 1012,
+   "words": 4303
+  }
+ },
+ "tur_Latn": {
+  "dev": {
+   "chars": 128595,
+   "sentences": 997,
+   "words": 16692
+  },
+  "devtest": {
+   "chars": 135778,
+   "sentences": 1012,
+   "words": 17609
+  }
+ },
+ "ukr_Cyrl": {
+  "dev": {
+   "chars": 128896,
+   "sentences": 997,
+   "words": 18385
+  },
+  "devtest": {
+   "chars": 134502,
+   "sentences": 1012,
+   "words": 19181
+  }
+ },
+ "vie_Latn": {
+  "dev": {
+   "chars": 131991,
+   "sentences": 997,
+   "words": 29193
+  },
+  "devtest": {
+   "chars": 138595,
+   "sentences": 1012,
+   "words": 30725
+  }
+ },
+ "yor_Latn": {
+  "dev": {
+   "chars": 122374,
+   "sentences": 997,
+   "words": 24344
+  },
+  "devtest": {
+   "chars": 126848,
+   "sentences": 1012,
+   "words": 25206
+  }
+ },
+ "zho_Hans": {
+  "dev": {
+   "chars": 42184,
+   "sentences": 997,
+   "words": 2041
+  },
+  "devtest": {
+   "chars": 43251,
+   "sentences": 1012,
+   "words": 2069
+  }
+ }
+}

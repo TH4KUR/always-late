@@ -54,7 +54,7 @@ Design (decisions D-001, D-003, D-004, D-006, D-010, D-011 provisional, `reports
 - [x] **S8** (written 2026-10-18; `reports/phase1_results.md`, per-stream files in `reports/phase1/`, D-017, A-029..A-031) results into `reports/phase1_results.md` (tables from the analysis script, every anomaly in `decisions_and_anomalies.md`); the team writes the paper text
 
 ### Next runs (the scheduled routine may queue only what is listed here; sources in `DECISIONS_FOR_REVIEW.md`)
-- **N1** (CPU) behavioural link, per Q3 default (a): `paper/main.tex` evaluation-plan table, row "Behavioral Link"; damage = 1 - survival at t_s = 0.9 (proposal G0(b)), r < 0.5 as sensitivity; Spearman and multivariable OLS. Inputs already on disk (`survival.pt` loss sums, `selectivity.pt`, `meta.json`).
+- **N1 DONE 2026-10-18** (D-018, A-032, V-11; `reports/phase1_results.md` section 6; `scripts/g0/phase1_behavior.py`, 25 tests, 24/25 mutants killed) behavioural link, per Q3 default (a): `paper/main.tex` evaluation-plan table, row "Behavioral Link"; damage = 1 - survival at t_s = 0.9 (proposal G0(b)), r < 0.5 as sensitivity; Spearman and multivariable OLS. Inputs already on disk (`survival.pt` loss sums, `selectivity.pt`, `meta.json`).
 - **N2** (CPU) fixed-threshold sensitivity of the binary selective split (S >= 2, 3, 5), Q6 default (b).
 - **N3** (GPU, about 3 h per regime, one GPU each) windowed-FLORES diagnostic for A-029 / A-030 (their 256-token window shape, both regimes, ladder INT8/7/6 + INT16/12/0): only after Q5 is answered "run it". Labelled diagnostic, never part of the replication.
 - **N4** (GPU, about 1 h) tagging-only rerun with the shuffled-null samples saved, then percentile sensitivity: only after Q6 is answered "(a)".

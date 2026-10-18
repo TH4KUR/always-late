@@ -41,6 +41,17 @@ def read_flores_split(root, code, split, expect=None):
     return lines
 
 
+def text_stats(root, code, split, expect=None):
+    """Sentences, characters (Unicode code points, newline excluded) and whitespace-delimited words of one FLORES-200 file: the denominators of token fertility
+    (Srivastava 2026, arXiv:2607.24276, section 3: word fertility = tokens per whitespace-delimited word, character fertility = tokens per character; V-11)."""
+    lines = read_flores_split(root, code, split, expect)
+    return {"sentences": len(lines), "chars": sum(len(l) for l in lines), "words": sum(len(l.split()) for l in lines)}
+
+
+def text_stats_all(root, codes, splits=("dev", "devtest")):
+    return {c: {sp: text_stats(root, c, sp) for sp in splits} for c in codes}
+
+
 def encode_sentences(tokenizer, sentences):
     """Token ids WITHOUT special tokens (their build_tokens_2d uses add_special_tokens=False; BOS is added by the regime in phase1_lib)."""
     return [list(tokenizer.encode(s, add_special_tokens=False)) for s in sentences]

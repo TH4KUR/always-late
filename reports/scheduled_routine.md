@@ -31,6 +31,6 @@ Defined 2026-10-18 on the user's instruction. This file is the single source of 
 
 ## Environment notes (verified 2026-10-18)
 
-- Local environments are rebuilt when `/tmp` is wiped: `python3 -m venv <scratch>/torchvenv && pip install --index-url https://download.pytorch.org/whl/cpu torch && pip install numpy scipy pandas statsmodels pytest` (suite: 122 torch tests, `python -B -m unittest discover -s scripts/g0/tests_torch`; 119 stdlib tests in `scripts/g0/tests`); wandb needs its own venv (`pip install wandb`; the key is in `~/.netrc`).
+- Local environments are rebuilt when `/tmp` is wiped: `python3 -m venv <scratch>/torchvenv && pip install --index-url https://download.pytorch.org/whl/cpu torch && pip install numpy scipy pandas statsmodels pytest` (suite: 147 torch tests, `python -B -m unittest discover -s scripts/g0/tests_torch`; 123 stdlib tests in `scripts/g0/tests`); wandb needs its own venv (`pip install wandb`; the key is in `~/.netrc`).
 - Ada: `ssh karma@ada-gw1`, project `/home2/karma/duan-verify`, env `env/`, outputs `out/`, Hugging Face token at `hf/token` (never printed or copied), deploy with `bash scripts/g0/deploy_phase1.sh`, submit with `sbatch [-A nlp] run_phase1.sbatch <name> <flores|wikitext> <mask|none> [args]`. Never `cd` inside a backgrounded `&&` chain; never `cat` an upload log (progress-bar spam: filter with `tr "\r" "\n" | sed "s/\x1b\[[0-9;]*[A-Za-z]//g" | grep`).
 - Hugging Face dataset (private): https://huggingface.co/datasets/karma-skz/always-late-artifacts; wandb project `anlp-project`, entity `karma-skz-`.
