@@ -554,3 +554,9 @@ The Phase-1 FLORES stage was not re-run under the audit; INT5/INT4 in the BOS re
 - **Data:** character and word counts of the exact FLORES files the runs read, computed on Ada with the stdlib function (`reports/phase1/flores_text_stats.json`; 27 languages, 997 / 1,012 sentences each).
 - **Result:** `reports/phase1_results.md` section 6, D-018, A-032: positive rank association (rho +0.54 / +0.46 / +0.69 at INT7 / INT6 / INT5, one-sided p 0.002 / 0.008 / 3e-5) but the OLS cannot separate selective from overall damage (VIF up to 9.5; selective slope p 0.55 / 0.31 / 0.015), fertility never significant; 'damaged' definition: INT7 undefined, INT6 n.s. The table's 'partial' branch. Secondary analysis, uncorrected.
 - **Next run's goal** is rewritten at the top of `PROGRESS.md` (N2: fixed-threshold sensitivity of the selective split).
+
+## 2026-10-18 (~12:45 IST) -- mode change: chat-only, handoff after every step; environments moved out of /tmp
+
+- **User instruction:** "do it in this chat only then. after each one create a handoff and use that as the only source of the previous chat. do that instead of autocompacting." So there is no cron job and no second chat; `reports/scheduled_routine.md` was rewritten ("Each step"), `reports/handoffs/TEMPLATE.md` and handoff 001 were written, `HANDOFF.md` starts with a pointer to the newest handoff (section 11 rewritten). `CronList` shows no jobs.
+- **Environment:** the scratchpad (with the torch venv and the fetched run files) was gone again; both were rebuilt outside `/tmp`: `~/.venvs/anlp-torch` and `~/.cache/anlp-always-late/phase1_runs` (20 files, sizes equal to Ada's); 123 stdlib and 147 torch tests pass in the new venv. A nested `&` inside a `run_in_background` command silently produced nothing (found by listing the files, not by trusting the 'completed' notice); the fetch was repeated in the foreground.
+- **Next:** N2, fixed-threshold sensitivity of the selective split (handoff 001 section 4).

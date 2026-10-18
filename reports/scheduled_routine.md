@@ -1,14 +1,12 @@
-# The 2-hourly routine (run it in its own Claude Code chat)
+# The routine (runs in the MAIN chat; one step at a time; a handoff after every step)
 
-Defined 2026-10-18 on the user's instruction. This file is the single source of truth for what each scheduled invocation does; the cron prompt only points here.
+Defined 2026-10-18 on the user's instruction, **changed the same day**: it does NOT run as a cron job and NOT in a new chat. The user said: "do it in this chat only; after each one create a handoff and use that as the only source of the previous chat; do that instead of autocompacting." This file is the single source of truth for what one step does.
 
-**Start it** (in a NEW Claude Code session whose working directory is this repository; cron jobs are session-only, fire only while the session is idle and expire after 7 days):
+**How a step starts.** Read **only** the newest file in `reports/handoffs/` (highest number; `HANDOFF.md` points to it at the top). It is the only record of the previous chat. Do not rely on conversation memory; if the handoff and the repository (`git log`, files) disagree, the repository wins and the handoff is corrected in the next handoff. Then follow "Each step" below.
 
-```
-/loop 2h Follow reports/scheduled_routine.md exactly, from the section "Each invocation".
-```
+**How a step ends.** Commit and push the work, then write the next handoff (`reports/handoffs/NNN-<date>-<slug>.md`, template in `reports/handoffs/TEMPLATE.md`), commit and push it, and tell the user in a few lines what was done, what the next step is, and that the handoff is written. The handoff must be complete enough that a fresh chat with no memory can continue from it and nothing else. After the handoff the chat may be cleared or compacted by the user; never depend on automatic compaction.
 
-**Stop it:** tell that session "stop the scheduled job" (it runs `CronDelete`; `CronList` shows the id) or exit the session. The interactive session that built Phase 1 has **no** scheduled job (the old ones `34efad57` and `2b110f38` are deleted).
+There is no scheduled job (the earlier ones `34efad57` and `2b110f38` are deleted; an in-chat `/loop` or cron is not used because the user asked for chat-only work).
 
 ## The rules (from the user, 2026-10-18)
 
@@ -19,18 +17,19 @@ Defined 2026-10-18 on the user's instruction. This file is the single source of 
 5. **Progress always states the next run's goal.** At the end of every invocation rewrite the block "NEXT RUN'S GOAL" at the top of `PROGRESS.md` (what the next invocation must do, in order, with the source for each step and what "done" looks like).
 6. **Test first, mutation-checked, evidence before claims** (superpowers:test-driven-development, superpowers:verification-before-completion): write the failing test, watch it fail, minimal code, then check key behaviours by mutation (`python3 -B`, clear `__pycache__`, `scripts/g0/mutcheck.py`). Say "verified" only with fresh command output.
 7. **Never:** edit `paper/` (the team writes the prose), edit `third_party/` or the token files, put a secret in a file or a commit (run the secret scan before every commit), queue more than 2 Ada jobs at a time, queue a job that is not listed in `PLAN.md` under "Next runs" with its source, delete anything on wandb or Hugging Face except a run you created and verified as replaced (D-008).
+8. **Handoff after every step** (see above): the handoff is the only source of the previous chat, so it states the mission, the rules, the state, what was done, exactly what to do next with commands, the environment and its pitfalls, and the open questions. Keep `HANDOFF.md`'s first lines pointing at the newest handoff.
 
-## Each invocation
+## Each step
 
-1. `git pull`; read `PROGRESS.md` "NEXT RUN'S GOAL", `DECISIONS_FOR_REVIEW.md`, the last entry of `reports/progress_log.md`.
+1. Read the newest handoff (only source of the previous chat); `git pull`; then read `PROGRESS.md` "NEXT RUN'S GOAL", `DECISIONS_FOR_REVIEW.md`, the last entry of `reports/progress_log.md` as the handoff directs.
 2. **Answers first:** for every item in `DECISIONS_FOR_REVIEW.md` with text after `ANSWER:` and `STATUS: open`, act on it (D-entry in `reports/decisions_and_anomalies.md`, code or analysis change test-first, update the plan), then set `STATUS: APPLIED <date>`. If an answer contradicts an earlier D-entry, supersede it explicitly; never delete history.
 3. **Jobs:** `ssh karma@ada-gw1 'squeue -u karma; sacct -u karma -S <yesterday> -X --format=JobID,JobName%14,State,Elapsed,ExitCode'`. Finished? Do rule 3 of the rules above. Failed? Read the log tail (filter progress bars), record an A-entry with the cause, fix test-first, resubmit only if it is listed in `PLAN.md`.
 4. **Otherwise do the next step** of "NEXT RUN'S GOAL" (CPU-side research and analysis; the Ada environment is on the login node and in Slurm jobs only).
 5. Commit and push after every green step (message ends with the Claude co-author line; run the secret scan first).
-6. Rewrite "NEXT RUN'S GOAL"; add a dated entry to `reports/progress_log.md`. If nothing was due, one line saying so.
+6. Rewrite "NEXT RUN'S GOAL"; add a dated entry to `reports/progress_log.md`; write the next handoff, commit and push it.
 
 ## Environment notes (verified 2026-10-18)
 
-- Local environments are rebuilt when `/tmp` is wiped: `python3 -m venv <scratch>/torchvenv && pip install --index-url https://download.pytorch.org/whl/cpu torch && pip install numpy scipy pandas statsmodels pytest` (suite: 147 torch tests, `python -B -m unittest discover -s scripts/g0/tests_torch`; 123 stdlib tests in `scripts/g0/tests`); wandb needs its own venv (`pip install wandb`; the key is in `~/.netrc`).
+- Local environments live OUTSIDE `/tmp` (it is a 7.7 GB tmpfs that was wiped twice): torch venv `~/.venvs/anlp-torch` (`python3 -m venv ~/.venvs/anlp-torch && ~/.venvs/anlp-torch/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch && ~/.venvs/anlp-torch/bin/pip install numpy scipy pandas statsmodels pytest`), fetched run files in `~/.cache/anlp-always-late/phase1_runs/` (refill with `bash scripts/g0/fetch_phase1.sh p1-mask ~/.cache/anlp-always-late/phase1_runs`) (suite: 147 torch tests, `python -B -m unittest discover -s scripts/g0/tests_torch`; 123 stdlib tests in `scripts/g0/tests`); wandb needs its own venv (`pip install wandb`; the key is in `~/.netrc`).
 - Ada: `ssh karma@ada-gw1`, project `/home2/karma/duan-verify`, env `env/`, outputs `out/`, Hugging Face token at `hf/token` (never printed or copied), deploy with `bash scripts/g0/deploy_phase1.sh`, submit with `sbatch [-A nlp] run_phase1.sbatch <name> <flores|wikitext> <mask|none> [args]`. Never `cd` inside a backgrounded `&&` chain; never `cat` an upload log (progress-bar spam: filter with `tr "\r" "\n" | sed "s/\x1b\[[0-9;]*[A-Za-z]//g" | grep`).
 - Hugging Face dataset (private): https://huggingface.co/datasets/karma-skz/always-late-artifacts; wandb project `anlp-project`, entity `karma-skz-`.

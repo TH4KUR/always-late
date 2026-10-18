@@ -1,5 +1,7 @@
 # HANDOFF: building on Duan (2026)'s OWN code
 
+> **START HERE (since 2026-10-18): read ONLY the newest file in `reports/handoffs/` first** (highest number; template `reports/handoffs/TEMPLATE.md`; the routine is `reports/scheduled_routine.md`). It is the only record of the previous chat; the sections below are reference material.
+
 Written 2026-10-16, rewritten the same night after the audit and the decision to **discard our previous codebase**. For an agent with no memory of the previous sessions. Read this file fully, then the "POST-MORTEM of our previous codebase" entry at the end of `reports/progress_log.md`, `reports/audit_our_vs_duan.md` (what was found), `third_party/duan2026/UPSTREAM.md` (exactly what was removed and edited) and `reports/duan_codebase_audit.md` (Ada facts, closure protocol). Items marked **UNVERIFIED** were not verified.
 
 ## 0. Mission and the rules that matter
@@ -126,11 +128,11 @@ Largest survival gap 0.15 pp; per-feature Spearman at INT6 over 7,121 commonly a
 5. Assign a disposition from audit section 7.3 only if its inputs exist (R3, their TL keep arm, is still missing: say so), fill audit sections 6.3-6.4, add a progress-log entry, update `PLAN.md`/`PROGRESS.md`/this file, run the tests, push.
 6. Report to the user: Gate 1 verdict in their regime, Q4 for the mask regime, what is still open. No paper prose.
 
-## 11. Scheduled routine (rewritten 2026-10-18, user instruction)
+## 11. The routine (rewritten 2026-10-18 twice; latest user instruction)
 
-The hourly jobs (`34efad57`, then `2b110f38`) are **deleted**; the interactive chat has no scheduled job. The new routine runs **every 2 hours in its own Claude Code chat** and is defined in `reports/scheduled_routine.md` (start command, rules, per-invocation steps; stop = tell that chat "stop the scheduled job" or exit it; session-only, 7-day expiry). It does not monitor jobs: it submits, records, and checks once per invocation; when a job is done it records results, uploads large artifacts to Hugging Face, rebuilds wandb under the fixed schema and updates all documents. Open questions for the user live in `DECISIONS_FOR_REVIEW.md` (answers are applied at the start of the next invocation); `PROGRESS.md` starts with "NEXT RUN'S GOAL".
+There is **no scheduled job and no second chat**: the user said "do it in this chat only; after each one create a handoff and use that as the only source of the previous chat; do that instead of autocompacting". Work proceeds one step at a time in the main chat; after each step the next numbered handoff is written in `reports/handoffs/` and pushed. The step definition, rules and environment notes are in `reports/scheduled_routine.md`; open questions for the user live in `DECISIONS_FOR_REVIEW.md`; `PROGRESS.md` starts with "NEXT RUN'S GOAL".
 
-History: the earlier hourly job was session-only and no longer existed on 2026-10-18 after a session restart (nothing fired between about 01:30 and 05:40 IST, S6 finished unseen at 03:58 / 04:03).
+History: hourly cron jobs (`34efad57`, `2b110f38`) were session-only and are deleted; one of them had silently disappeared after a session restart (nothing fired between about 01:30 and 05:40 IST on 2026-10-18; the S6 jobs finished unseen at 03:58 / 04:03).
 
 ## 12. wandb: one fixed schema (since 2026-10-17)
 
