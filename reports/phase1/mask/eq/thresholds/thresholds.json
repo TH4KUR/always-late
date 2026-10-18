@@ -1,0 +1,1367 @@
+{
+ "decision": "D-019",
+ "run": "/home/karma/.cache/anlp-always-late/phase1_runs/p1-mask/eq",
+ "regime": "mask",
+ "stream": "eq",
+ "seed": 0,
+ "n_perm": 10000,
+ "n_boot": 2000,
+ "null_cutoff": 1.8329280364838314,
+ "min_stable_needed": 80,
+ "rows": [
+  {
+   "label": "null",
+   "tau": 1.8329280364838314,
+   "n_selective": 8086,
+   "n_controls": 2860,
+   "control_strata_short": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "tests": {
+    "T1_int7": {
+     "delta": -0.0027781440001627255,
+     "p": 0.25707429257074293,
+     "n_selective": 8062,
+     "n_control": 2843,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.006251299384067659,
+      0.0013099992436281722
+     ],
+     "survival_selective": 0.99354998759613,
+     "survival_control": 0.9982412944073162,
+     "n_dropped_not_evaluable": 41
+    },
+    "T2_int6": {
+     "delta": -0.014370726679040486,
+     "p": 0.042695730426957304,
+     "n_selective": 8062,
+     "n_control": 2843,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.026514672214499112,
+      -0.0013337601722350923
+     ],
+     "survival_selective": 0.9145373356487224,
+     "survival_control": 0.9419627154414351,
+     "n_dropped_not_evaluable": 41
+    },
+    "T3_tier": {
+     "n_languages": 27,
+     "enough_languages": true,
+     "min_features": 10,
+     "min_languages": 20,
+     "slope": -0.004765022781381156,
+     "t": -2.587057650021931,
+     "p": 0.9902009799020098,
+     "n": 27,
+     "n_perm": 10000,
+     "high_minus_low": -0.008215147587988112,
+     "tost_slope": {
+      "interval": [
+       -0.0075458903953486214,
+       -0.0015744111401886918
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "tost_high_minus_low": {
+      "interval": [
+       -0.012866178817219204,
+       -0.003052852137221231
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "survival_rate_gap_sensitivity": {
+      "slope": -0.0009718050599871678,
+      "t": -0.6512844709023476,
+      "p": 0.7370262973702629,
+      "n": 27,
+      "n_perm": 10000,
+      "high_minus_low": -0.0015945145987560018
+     },
+     "joshi_class_sensitivity": {
+      "slope": -0.0033681581982949326,
+      "t": -3.5932996200803995,
+      "p": 0.9988001199880012,
+      "n": 27,
+      "n_perm": 10000,
+      "high_minus_low": null
+     },
+     "languages": [
+      {
+       "code": "eng_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": -0.0050697773694992065,
+       "gap_survival_rate": 0.0,
+       "n_selective": 1711,
+       "used": true
+      },
+      {
+       "code": "deu_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.008311852812767029,
+       "gap_survival_rate": 0.0,
+       "n_selective": 231,
+       "used": true
+      },
+      {
+       "code": "spa_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.0023649483919143677,
+       "gap_survival_rate": 0.0,
+       "n_selective": 214,
+       "used": true
+      },
+      {
+       "code": "fra_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.01087939739227295,
+       "gap_survival_rate": 0.0,
+       "n_selective": 169,
+       "used": true
+      },
+      {
+       "code": "por_Latn",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.0075664222240448,
+       "gap_survival_rate": 0.00148469620831429,
+       "n_selective": 72,
+       "used": true
+      },
+      {
+       "code": "rus_Cyrl",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.0033184587955474854,
+       "gap_survival_rate": 0.0,
+       "n_selective": 82,
+       "used": true
+      },
+      {
+       "code": "zho_Hans",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.0028492212295532227,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 461,
+       "used": true
+      },
+      {
+       "code": "jpn_Jpan",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": -0.0015278905630111694,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 512,
+       "used": true
+      },
+      {
+       "code": "kor_Hang",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.018277496099472046,
+       "gap_survival_rate": 0.010437089534411026,
+       "n_selective": 215,
+       "used": true
+      },
+      {
+       "code": "hin_Deva",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.009547233581542969,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 146,
+       "used": true
+      },
+      {
+       "code": "ben_Beng",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.009790927171707153,
+       "gap_survival_rate": 0.013406481951039606,
+       "n_selective": 108,
+       "used": true
+      },
+      {
+       "code": "tam_Taml",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.0027651339769363403,
+       "gap_survival_rate": 0.013406481951039606,
+       "n_selective": 209,
+       "used": true
+      },
+      {
+       "code": "tur_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": -0.0023131072521209717,
+       "gap_survival_rate": 0.0,
+       "n_selective": 317,
+       "used": true
+      },
+      {
+       "code": "vie_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.008597344160079956,
+       "gap_survival_rate": 0.0038877666061751803,
+       "n_selective": 297,
+       "used": true
+      },
+      {
+       "code": "ind_Latn",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.009911000728607178,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 139,
+       "used": true
+      },
+      {
+       "code": "tha_Thai",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.0036407560110092163,
+       "gap_survival_rate": 0.010437089534411026,
+       "n_selective": 329,
+       "used": true
+      },
+      {
+       "code": "pol_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": -0.0009225606918334961,
+       "gap_survival_rate": 0.0,
+       "n_selective": 137,
+       "used": true
+      },
+      {
+       "code": "ukr_Cyrl",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.0063475072383880615,
+       "gap_survival_rate": 0.013406481951039606,
+       "n_selective": 84,
+       "used": true
+      },
+      {
+       "code": "kan_Knda",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.009940460324287415,
+       "gap_survival_rate": 0.0038877666061751803,
+       "n_selective": 160,
+       "used": true
+      },
+      {
+       "code": "tel_Telu",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.015353292226791382,
+       "gap_survival_rate": 0.0,
+       "n_selective": 135,
+       "used": true
+      },
+      {
+       "code": "yor_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.01797419786453247,
+       "gap_survival_rate": 0.0,
+       "n_selective": 453,
+       "used": true
+      },
+      {
+       "code": "sun_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.01731732487678528,
+       "gap_survival_rate": 0.008451347647327578,
+       "n_selective": 250,
+       "used": true
+      },
+      {
+       "code": "amh_Ethi",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.019618526101112366,
+       "gap_survival_rate": 0.008451347647327578,
+       "n_selective": 188,
+       "used": true
+      },
+      {
+       "code": "ibo_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.01908072829246521,
+       "gap_survival_rate": 0.008451347647327578,
+       "n_selective": 296,
+       "used": true
+      },
+      {
+       "code": "hau_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.0011365413665771484,
+       "gap_survival_rate": 0.0,
+       "n_selective": 239,
+       "used": true
+      },
+      {
+       "code": "khm_Khmr",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.00985690951347351,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 444,
+       "used": true
+      },
+      {
+       "code": "lao_Laoo",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.010628476738929749,
+       "gap_survival_rate": 0.0,
+       "n_selective": 464,
+       "used": true
+      }
+     ]
+    }
+   },
+   "holm": {
+    "T1_int7": 0.5141485851414859,
+    "T2_int6": 0.12808719128087193,
+    "T3_tier": 0.9902009799020098
+   }
+  },
+  {
+   "label": "2.0",
+   "tau": 2.0,
+   "n_selective": 7470,
+   "n_controls": 3476,
+   "control_strata_short": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "tests": {
+    "T1_int7": {
+     "delta": -0.002726633532616121,
+     "p": 0.26847315268473154,
+     "n_selective": 7446,
+     "n_control": 3459,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.006494896440640271,
+      0.0016768684933529702
+     ],
+     "survival_selective": 0.9931506849315068,
+     "survival_control": 0.9982653946227233,
+     "n_dropped_not_evaluable": 41
+    },
+    "T2_int6": {
+     "delta": -0.010192329821211064,
+     "p": 0.15748425157484253,
+     "n_selective": 7446,
+     "n_control": 3459,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.023165758720324996,
+      0.0023980296795770707
+     ],
+     "survival_selective": 0.91324200913242,
+     "survival_control": 0.9398670135877422,
+     "n_dropped_not_evaluable": 41
+    },
+    "T3_tier": {
+     "n_languages": 27,
+     "enough_languages": true,
+     "min_features": 10,
+     "min_languages": 20,
+     "slope": -0.00413186745152001,
+     "t": -2.4718855808437374,
+     "p": 0.9881011898810119,
+     "n": 27,
+     "n_perm": 10000,
+     "high_minus_low": -0.005335031284226311,
+     "tost_slope": {
+      "interval": [
+       -0.006700897992936011,
+       -0.0015243488118603019
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "tost_high_minus_low": {
+      "interval": [
+       -0.010684993614753087,
+       -0.0021355871525075695
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "survival_rate_gap_sensitivity": {
+      "slope": -0.0018459394454181208,
+      "t": -1.0363642456503457,
+      "p": 0.8444155584441556,
+      "n": 27,
+      "n_perm": 10000,
+      "high_minus_low": -0.0021013172153045894
+     },
+     "joshi_class_sensitivity": {
+      "slope": -0.002909493238453928,
+      "t": -3.3731626166308706,
+      "p": 0.9985001499850015,
+      "n": 27,
+      "n_perm": 10000,
+      "high_minus_low": null
+     },
+     "languages": [
+      {
+       "code": "eng_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": -0.004628434777259827,
+       "gap_survival_rate": 0.0,
+       "n_selective": 1549,
+       "used": true
+      },
+      {
+       "code": "deu_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.009157955646514893,
+       "gap_survival_rate": 0.0,
+       "n_selective": 213,
+       "used": true
+      },
+      {
+       "code": "spa_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.0024652481079101562,
+       "gap_survival_rate": 0.0,
+       "n_selective": 194,
+       "used": true
+      },
+      {
+       "code": "fra_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.01122264564037323,
+       "gap_survival_rate": 0.0009183741895466002,
+       "n_selective": 161,
+       "used": true
+      },
+      {
+       "code": "por_Latn",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.008432358503341675,
+       "gap_survival_rate": 0.0,
+       "n_selective": 63,
+       "used": true
+      },
+      {
+       "code": "rus_Cyrl",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.008169829845428467,
+       "gap_survival_rate": 0.0,
+       "n_selective": 69,
+       "used": true
+      },
+      {
+       "code": "zho_Hans",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.004489228129386902,
+       "gap_survival_rate": 0.0038877666061751803,
+       "n_selective": 414,
+       "used": true
+      },
+      {
+       "code": "jpn_Jpan",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.0003623664379119873,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 453,
+       "used": true
+      },
+      {
+       "code": "kor_Hang",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.017831608653068542,
+       "gap_survival_rate": 0.013406481951039606,
+       "n_selective": 204,
+       "used": true
+      },
+      {
+       "code": "hin_Deva",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.01213926076889038,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 138,
+       "used": true
+      },
+      {
+       "code": "ben_Beng",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.012551844120025635,
+       "gap_survival_rate": 0.010437089534411026,
+       "n_selective": 99,
+       "used": true
+      },
+      {
+       "code": "tam_Taml",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.0019043684005737305,
+       "gap_survival_rate": 0.013406481951039606,
+       "n_selective": 197,
+       "used": true
+      },
+      {
+       "code": "tur_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.001069098711013794,
+       "gap_survival_rate": 0.0,
+       "n_selective": 259,
+       "used": true
+      },
+      {
+       "code": "vie_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.011459380388259888,
+       "gap_survival_rate": 0.013406481951039606,
+       "n_selective": 263,
+       "used": true
+      },
+      {
+       "code": "ind_Latn",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.010424032807350159,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 120,
+       "used": true
+      },
+      {
+       "code": "tha_Thai",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.00403498113155365,
+       "gap_survival_rate": 0.010437089534411026,
+       "n_selective": 318,
+       "used": true
+      },
+      {
+       "code": "pol_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.001506507396697998,
+       "gap_survival_rate": 0.0,
+       "n_selective": 115,
+       "used": true
+      },
+      {
+       "code": "ukr_Cyrl",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.007155880331993103,
+       "gap_survival_rate": 0.013406481951039606,
+       "n_selective": 74,
+       "used": true
+      },
+      {
+       "code": "kan_Knda",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.012152701616287231,
+       "gap_survival_rate": 0.0038877666061751803,
+       "n_selective": 153,
+       "used": true
+      },
+      {
+       "code": "tel_Telu",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.015582963824272156,
+       "gap_survival_rate": 0.0004591870947733001,
+       "n_selective": 130,
+       "used": true
+      },
+      {
+       "code": "yor_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.012271106243133545,
+       "gap_survival_rate": -0.004225673823663789,
+       "n_selective": 444,
+       "used": true
+      },
+      {
+       "code": "sun_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.013320684432983398,
+       "gap_survival_rate": 0.008451347647327578,
+       "n_selective": 237,
+       "used": true
+      },
+      {
+       "code": "amh_Ethi",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.0018056631088256836,
+       "gap_survival_rate": 0.008451347647327578,
+       "n_selective": 184,
+       "used": true
+      },
+      {
+       "code": "ibo_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.020718157291412354,
+       "gap_survival_rate": 0.011420740063956158,
+       "n_selective": 285,
+       "used": true
+      },
+      {
+       "code": "hau_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.003526836633682251,
+       "gap_survival_rate": 0.008679762448606687,
+       "n_selective": 223,
+       "used": true
+      },
+      {
+       "code": "khm_Khmr",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.012535527348518372,
+       "gap_survival_rate": 0.00296939241662858,
+       "n_selective": 433,
+       "used": true
+      },
+      {
+       "code": "lao_Laoo",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.01360444724559784,
+       "gap_survival_rate": 0.0,
+       "n_selective": 454,
+       "used": true
+      }
+     ]
+    }
+   },
+   "holm": {
+    "T1_int7": 0.5369463053694631,
+    "T2_int6": 0.4724527547245276,
+    "T3_tier": 0.9881011898810119
+   }
+  },
+  {
+   "label": "3.0",
+   "tau": 3.0,
+   "n_selective": 3922,
+   "n_controls": 3148,
+   "control_strata_short": [
+    0
+   ],
+   "tests": {
+    "T1_int7": {
+     "delta": -0.004160009813188234,
+     "p": 0.1294870512948705,
+     "n_selective": 3917,
+     "n_control": 3114,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.008801747387174026,
+      0.0007481436751071507
+     ],
+     "survival_selective": 0.9895328057186622,
+     "survival_control": 0.99582530507386,
+     "n_dropped_not_evaluable": 39
+    },
+    "T2_int6": {
+     "delta": -0.021385142547255258,
+     "p": 0.005499450054994501,
+     "n_selective": 3917,
+     "n_control": 3114,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.03524940201651679,
+      -0.007438545437009695
+     ],
+     "survival_selective": 0.8892009190707174,
+     "survival_control": 0.9226075786769429,
+     "n_dropped_not_evaluable": 39
+    },
+    "T3_tier": {
+     "n_languages": 27,
+     "enough_languages": true,
+     "min_features": 10,
+     "min_languages": 20,
+     "slope": 0.0019676509325495875,
+     "t": 1.1197923114242871,
+     "p": 0.1436856314368563,
+     "n": 27,
+     "n_perm": 10000,
+     "high_minus_low": 0.00013375778992970842,
+     "tost_slope": {
+      "interval": [
+       -0.001352197380294662,
+       0.0034792294767957304
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "tost_high_minus_low": {
+      "interval": [
+       -0.004591415905290179,
+       0.0033499865896172
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "survival_rate_gap_sensitivity": {
+      "slope": -0.00688119529695369,
+      "t": -3.381082100544098,
+      "p": 0.9981001899810019,
+      "n": 27,
+      "n_perm": 10000,
+      "high_minus_low": -0.01182016682325255
+     },
+     "joshi_class_sensitivity": {
+      "slope": 0.000688986633544961,
+      "t": 0.670441218815085,
+      "p": 0.25247475252474755,
+      "n": 27,
+      "n_perm": 10000,
+      "high_minus_low": null
+     },
+     "languages": [
+      {
+       "code": "eng_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.002864331007003784,
+       "gap_survival_rate": 0.00671868912118978,
+       "n_selective": 437,
+       "used": true
+      },
+      {
+       "code": "deu_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.017099052667617798,
+       "gap_survival_rate": -0.00627595768844974,
+       "n_selective": 101,
+       "used": true
+      },
+      {
+       "code": "spa_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.009446114301681519,
+       "gap_survival_rate": -0.00044273143274004,
+       "n_selective": 68,
+       "used": true
+      },
+      {
+       "code": "fra_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.011566504836082458,
+       "gap_survival_rate": 0.0,
+       "n_selective": 96,
+       "used": true
+      },
+      {
+       "code": "por_Latn",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.014453232288360596,
+       "gap_survival_rate": 0.0,
+       "n_selective": 29,
+       "used": true
+      },
+      {
+       "code": "rus_Cyrl",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.011580035090446472,
+       "gap_survival_rate": -0.00671868912118978,
+       "n_selective": 22,
+       "used": true
+      },
+      {
+       "code": "zho_Hans",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.007749393582344055,
+       "gap_survival_rate": 0.0,
+       "n_selective": 193,
+       "used": true
+      },
+      {
+       "code": "jpn_Jpan",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.007758215069770813,
+       "gap_survival_rate": 0.00671868912118978,
+       "n_selective": 164,
+       "used": true
+      },
+      {
+       "code": "kor_Hang",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.007601499557495117,
+       "gap_survival_rate": 0.0,
+       "n_selective": 111,
+       "used": true
+      },
+      {
+       "code": "hin_Deva",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.013170033693313599,
+       "gap_survival_rate": 0.00627595768844974,
+       "n_selective": 72,
+       "used": true
+      },
+      {
+       "code": "ben_Beng",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.013099610805511475,
+       "gap_survival_rate": 0.00627595768844974,
+       "n_selective": 58,
+       "used": true
+      },
+      {
+       "code": "tam_Taml",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.007082924246788025,
+       "gap_survival_rate": 0.00671868912118978,
+       "n_selective": 128,
+       "used": true
+      },
+      {
+       "code": "tur_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.01079791784286499,
+       "gap_survival_rate": 0.004901132812176162,
+       "n_selective": 78,
+       "used": true
+      },
+      {
+       "code": "vie_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.011930704116821289,
+       "gap_survival_rate": 0.00627595768844974,
+       "n_selective": 135,
+       "used": true
+      },
+      {
+       "code": "ind_Latn",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.011117160320281982,
+       "gap_survival_rate": 0.00671868912118978,
+       "n_selective": 53,
+       "used": true
+      },
+      {
+       "code": "tha_Thai",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.010494500398635864,
+       "gap_survival_rate": 0.0,
+       "n_selective": 191,
+       "used": true
+      },
+      {
+       "code": "pol_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.015102103352546692,
+       "gap_survival_rate": 0.0,
+       "n_selective": 36,
+       "used": true
+      },
+      {
+       "code": "ukr_Cyrl",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.0110856294631958,
+       "gap_survival_rate": 0.0,
+       "n_selective": 36,
+       "used": true
+      },
+      {
+       "code": "kan_Knda",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.014381229877471924,
+       "gap_survival_rate": 0.0,
+       "n_selective": 99,
+       "used": true
+      },
+      {
+       "code": "tel_Telu",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.016105875372886658,
+       "gap_survival_rate": 0.00671868912118978,
+       "n_selective": 86,
+       "used": true
+      },
+      {
+       "code": "yor_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": -0.0027568191289901733,
+       "gap_survival_rate": -0.00044273143274004,
+       "n_selective": 368,
+       "used": true
+      },
+      {
+       "code": "sun_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.0042366087436676025,
+       "gap_survival_rate": 0.019226782752902183,
+       "n_selective": 143,
+       "used": true
+      },
+      {
+       "code": "amh_Ethi",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.016266733407974243,
+       "gap_survival_rate": 0.019669514185642223,
+       "n_selective": 137,
+       "used": true
+      },
+      {
+       "code": "ibo_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.018798068165779114,
+       "gap_survival_rate": 0.02143007756592391,
+       "n_selective": 215,
+       "used": true
+      },
+      {
+       "code": "hau_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": -0.0014705657958984375,
+       "gap_survival_rate": 0.02010965503071266,
+       "n_selective": 130,
+       "used": true
+      },
+      {
+       "code": "khm_Khmr",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.012769833207130432,
+       "gap_survival_rate": 0.0,
+       "n_selective": 352,
+       "used": true
+      },
+      {
+       "code": "lao_Laoo",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.01058359444141388,
+       "gap_survival_rate": 0.019669514185642223,
+       "n_selective": 379,
+       "used": true
+      }
+     ]
+    }
+   },
+   "holm": {
+    "T1_int7": 0.258974102589741,
+    "T2_int6": 0.0164983501649835,
+    "T3_tier": 0.258974102589741
+   }
+  },
+  {
+   "label": "5.0",
+   "tau": 5.0,
+   "n_selective": 1677,
+   "n_controls": 1677,
+   "control_strata_short": [],
+   "tests": {
+    "T1_int7": {
+     "delta": -0.00932122482914039,
+     "p": 0.0188981101889811,
+     "n_selective": 1676,
+     "n_control": 1651,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.017369973972349174,
+      -0.001699427458550152
+     ],
+     "survival_selective": 0.9815035799522673,
+     "survival_control": 0.9909145972138098,
+     "n_dropped_not_evaluable": 27
+    },
+    "T2_int6": {
+     "delta": -0.07158592516695426,
+     "p": 9.999000099990002e-05,
+     "n_selective": 1676,
+     "n_control": 1651,
+     "n_perm": 10000,
+     "n_strata_used": 5,
+     "n_selective_dropped": 0,
+     "ci": [
+      -0.09143792721197765,
+      -0.05204559903750578
+     ],
+     "survival_selective": 0.8412887828162291,
+     "survival_control": 0.9133858267716536,
+     "n_dropped_not_evaluable": 27
+    },
+    "T3_tier": {
+     "n_languages": 24,
+     "enough_languages": true,
+     "min_features": 10,
+     "min_languages": 20,
+     "slope": 0.0032735228296217863,
+     "t": 1.2243495936107,
+     "p": 0.1284871512848715,
+     "n": 24,
+     "n_perm": 10000,
+     "high_minus_low": 0.002695801771349377,
+     "tost_slope": {
+      "interval": [
+       -0.0007762704438310347,
+       0.005960873035880606
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "tost_high_minus_low": {
+      "interval": [
+       -0.0038080846166445147,
+       0.0067209210557242225
+      ],
+      "equivalent": true,
+      "bound": 0.02
+     },
+     "survival_rate_gap_sensitivity": {
+      "slope": -0.004574860451218606,
+      "t": -0.4396324935482413,
+      "p": 0.669033096690331,
+      "n": 24,
+      "n_perm": 10000,
+      "high_minus_low": 0.0034129034851700137
+     },
+     "joshi_class_sensitivity": {
+      "slope": 0.0012857928291543734,
+      "t": 0.8296558626429379,
+      "p": 0.21937806219378062,
+      "n": 24,
+      "n_perm": 10000,
+      "high_minus_low": null
+     },
+     "languages": [
+      {
+       "code": "eng_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.005188152194023132,
+       "gap_survival_rate": 0.07417499999999999,
+       "n_selective": 105,
+       "used": true
+      },
+      {
+       "code": "deu_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.013838440179824829,
+       "gap_survival_rate": 0.0,
+       "n_selective": 37,
+       "used": true
+      },
+      {
+       "code": "spa_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.0004304945468902588,
+       "gap_survival_rate": 0.0,
+       "n_selective": 16,
+       "used": true
+      },
+      {
+       "code": "fra_Latn",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.00902847945690155,
+       "gap_survival_rate": -0.006233254716981107,
+       "n_selective": 42,
+       "used": true
+      },
+      {
+       "code": "por_Latn",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.005644083023071289,
+       "gap_survival_rate": 0.0,
+       "n_selective": 11,
+       "used": true
+      },
+      {
+       "code": "rus_Cyrl",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.006860092282295227,
+       "gap_survival_rate": -0.03737239178690338,
+       "n_selective": 3,
+       "used": false
+      },
+      {
+       "code": "zho_Hans",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.010593444108963013,
+       "gap_survival_rate": 0.06794174528301888,
+       "n_selective": 69,
+       "used": true
+      },
+      {
+       "code": "jpn_Jpan",
+       "tier": "high",
+       "joshi_class": 5,
+       "gap_median_r": 0.013036131858825684,
+       "gap_survival_rate": 0.0,
+       "n_selective": 43,
+       "used": true
+      },
+      {
+       "code": "kor_Hang",
+       "tier": "high",
+       "joshi_class": 4,
+       "gap_median_r": 0.005803972482681274,
+       "gap_survival_rate": 0.0,
+       "n_selective": 35,
+       "used": true
+      },
+      {
+       "code": "hin_Deva",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.004716560244560242,
+       "gap_survival_rate": 0.0,
+       "n_selective": 23,
+       "used": true
+      },
+      {
+       "code": "ben_Beng",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.020761162042617798,
+       "gap_survival_rate": 0.0,
+       "n_selective": 29,
+       "used": true
+      },
+      {
+       "code": "tam_Taml",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.012294754385948181,
+       "gap_survival_rate": 0.0,
+       "n_selective": 52,
+       "used": true
+      },
+      {
+       "code": "tur_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": -0.0013264715671539307,
+       "gap_survival_rate": 0.08098879310344825,
+       "n_selective": 13,
+       "used": true
+      },
+      {
+       "code": "vie_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.00840441882610321,
+       "gap_survival_rate": 0.0,
+       "n_selective": 46,
+       "used": true
+      },
+      {
+       "code": "ind_Latn",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.01080438494682312,
+       "gap_survival_rate": 0.0,
+       "n_selective": 18,
+       "used": true
+      },
+      {
+       "code": "tha_Thai",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.005716755986213684,
+       "gap_survival_rate": -0.07417499999999999,
+       "n_selective": 60,
+       "used": true
+      },
+      {
+       "code": "pol_Latn",
+       "tier": "mid",
+       "joshi_class": 4,
+       "gap_median_r": 0.006989911198616028,
+       "gap_survival_rate": -0.024905882352941167,
+       "n_selective": 5,
+       "used": false
+      },
+      {
+       "code": "ukr_Cyrl",
+       "tier": "mid",
+       "joshi_class": 3,
+       "gap_median_r": 0.007162556052207947,
+       "gap_survival_rate": -0.037087499999999995,
+       "n_selective": 8,
+       "used": false
+      },
+      {
+       "code": "kan_Knda",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.012424245476722717,
+       "gap_survival_rate": 0.07417499999999999,
+       "n_selective": 44,
+       "used": true
+      },
+      {
+       "code": "tel_Telu",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.016293823719024658,
+       "gap_survival_rate": 0.006813793103448262,
+       "n_selective": 35,
+       "used": true
+      },
+      {
+       "code": "yor_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.01528938114643097,
+       "gap_survival_rate": 0.004979823917828308,
+       "n_selective": 191,
+       "used": true
+      },
+      {
+       "code": "sun_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": -0.004333123564720154,
+       "gap_survival_rate": 0.005779823917828331,
+       "n_selective": 67,
+       "used": true
+      },
+      {
+       "code": "amh_Ethi",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.009064927697181702,
+       "gap_survival_rate": 0.01729208924949288,
+       "n_selective": 75,
+       "used": true
+      },
+      {
+       "code": "ibo_Latn",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.0040204524993896484,
+       "gap_survival_rate": 0.0,
+       "n_selective": 115,
+       "used": true
+      },
+      {
+       "code": "hau_Latn",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": -0.02094706892967224,
+       "gap_survival_rate": 0.013266509433962237,
+       "n_selective": 51,
+       "used": true
+      },
+      {
+       "code": "khm_Khmr",
+       "tier": "low",
+       "joshi_class": 1,
+       "gap_median_r": 0.01048174500465393,
+       "gap_survival_rate": 0.0,
+       "n_selective": 227,
+       "used": true
+      },
+      {
+       "code": "lao_Laoo",
+       "tier": "low",
+       "joshi_class": 2,
+       "gap_median_r": 0.004951998591423035,
+       "gap_survival_rate": -0.0001542441022976404,
+       "n_selective": 256,
+       "used": true
+      }
+     ]
+    }
+   },
+   "holm": {
+    "T1_int7": 0.0377962203779622,
+    "T2_int6": 0.00029997000299970003,
+    "T3_tier": 0.1284871512848715
+   }
+  }
+ ]
+}

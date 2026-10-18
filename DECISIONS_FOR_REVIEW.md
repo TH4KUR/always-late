@@ -50,8 +50,9 @@ Current state of the study in one paragraph: Phase 1 ran (2026-10-18). In the pr
 - **Context.** 74% of supported features pass the pre-registered rule at 27 languages (A-027; the shuffled-label 95th percentile of S is only 1.83). The proposal asks to report several percentiles. The runs saved S, the support mask and stability counts but **not** the shuffled-null samples, so other percentiles cannot be recomputed from the files.
 - **Options.** (a) rerun only the tagging pass (about 1 h on one GPU) with the null samples saved, then recompute at the 90th/95th/99th percentile (same code, nothing new); (b) report fixed S thresholds (2, 3, 5) from the saved S values as a labelled deviation (CPU only, no new run); (c) skip.
 - **Default:** (b) now, (a) if you approve.
+- **Result under the default (b), 2026-10-18** (D-019, A-034, `reports/phase1_results.md` section 7): the primary-stream null depends on the threshold. At the pre-registered cutoff and at S > 2 nothing survives Holm; at S > 3 the INT6 contrast does (-2.14 pp, Holm 0.0165) and at S > 5 both widths do (INT6 -7.16 pp, Holm 0.0003; survival 84.1 % vs 91.3 %). The tier test is null at every threshold. The three thresholds (2, 3, 5) are my choice; (a) would replace them by the proposal's percentiles of the null.
 - ANSWER:
-- STATUS: open
+- STATUS: open (default applied)
 
 ## Q7. Confirm or override the other provisional choices  [MEDIUM]
 D-003 (S(f) primary, Deng's nu as robustness), D-004 (Phase 1 as a diff on their script 03), D-010/D-015 (all sentences per language; equal budgets by seeded position sampling), D-011 (tier table with Joshi classes; class 4 sits in both High and Mid, A-020), A-022 (the paper says "nine script families", the roster has 14 ISO scripts; I stored a provisional 9-family grouping as the script covariate). Defaults stay unless you change them.
@@ -70,6 +71,20 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 
 ## Q10. Hugging Face dataset visibility  [LOW]
 `karma-skz/always-late-artifacts` is private (274 files, about 400 MB). Make it public when the paper is submitted? Default: stay private.
+- ANSWER:
+- STATUS: open
+
+## Q11. Add an activation-magnitude-matched control as a documented amendment?  [HIGH, changes how N2 reads]
+- **Context.** The proposal matches universal controls on firing-rate quintile only. Duan's own released per-feature data show survival follows maximum activation (Spearman 0.78) and not firing rate (-0.085) (`issues.md` C6, `PLAN.md` P1-5 "TODO: document the added control as an amendment"). The N2 dose-response (selective features survive up to 7 pp less at S > 5) could be a magnitude effect. The code has no magnitude control yet.
+- **Options.** (a) run the contrast with controls matched on firing-rate stratum x maximum-activation tercile as a labelled sensitivity, using the existing estimators with finer strata (default; planned as N6); (b) make it the primary control (changes the pre-registered design); (c) do not add it.
+- **Default:** (a).
+- ANSWER:
+- STATUS: open
+
+## Q12. How should the threshold dependence be reported?  [HIGH]
+- **Context.** The pre-registered cutoff gives a null (Holm 0.13); my post-hoc fixed thresholds give significant negative gaps from S > 3 (D-019, A-034). Reporting only one of them would mislead.
+- **Options.** (a) the pre-registered cutoff stays the confirmatory result, the thresholds are a sensitivity analysis reported in full with the caveats of A-034 (default); (b) promote a threshold to primary (requires your pre-registration judgement, Q2); (c) report only the continuous S~ dose-response (N6) as the headline.
+- **Default:** (a).
 - ANSWER:
 - STATUS: open
 

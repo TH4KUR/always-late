@@ -183,6 +183,19 @@ class HolmAndTost(unittest.TestCase):
         self.assertTrue(an.tost(inside, 0.02)["equivalent"]); self.assertFalse(an.tost(wide, 0.02)["equivalent"]); self.assertFalse(an.tost(shifted, 0.02)["equivalent"])
         lo, hi = an.tost(inside, 0.02)["interval"]; self.assertAlmostEqual(lo, np.quantile(inside, 0.05)); self.assertAlmostEqual(hi, np.quantile(inside, 0.95))
 
+    def test_tost_without_any_valid_bootstrap_draw_is_undefined_not_a_crash(self):
+        r = an.tost(np.array([]), 0.02)                          # found with fixed S thresholds (N2): few selective features, every tier-slope draw skipped
+        self.assertIsNone(r["interval"]); self.assertIsNone(r["equivalent"]); self.assertEqual(r["n_draws"], 0); self.assertEqual(r["bound"], 0.02)
+
+    def test_tost_of_ordinary_input_keeps_exactly_its_original_keys_so_earlier_outputs_stay_byte_identical(self):
+        self.assertEqual(set(an.tost(np.linspace(-0.01, 0.01, 50), 0.02)), {"interval", "equivalent", "bound"})
+
+    def test_the_tost_sentence_keeps_its_original_wording_and_says_undefined_when_there_is_no_interval(self):
+        ok = {"tost_slope": {"interval": (-0.0075, -0.0016), "equivalent": True, "bound": 0.02}, "tost_high_minus_low": {"interval": (-0.0129, -0.0031), "equivalent": True, "bound": 0.02}}
+        self.assertEqual(an._tost_text(ok), "TOST (90% bootstrap interval vs bound): slope -0.0075..-0.0016, equivalent within +-0.02: True; High minus Low -0.0129..-0.0031, equivalent: True.")
+        bad = {"tost_slope": {"interval": None, "equivalent": None, "bound": 0.02, "n_draws": 0}, "tost_high_minus_low": ok["tost_high_minus_low"]}
+        text = an._tost_text(bad); self.assertIn("slope undefined (no valid bootstrap draw)", text); self.assertIn("equivalent within +-0.02: None", text); self.assertIn("High minus Low -0.0129..-0.0031", text)
+
 
 class MixedLogit(unittest.TestCase):
     """The section-7 random-intercept logistic model, fitted by maximum likelihood with Gauss-Hermite quadrature over the feature effect (statsmodels' variational and

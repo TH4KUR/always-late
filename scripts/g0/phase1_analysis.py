@@ -144,7 +144,11 @@ def holm(pvals):
 
 
 def tost(boot, bound, alpha=0.05):
-    """Equivalence by the confidence-interval approach to TOST: the (1 - 2 alpha) bootstrap interval must lie inside (-bound, bound)."""
+    """Equivalence by the confidence-interval approach to TOST: the (1 - 2 alpha) bootstrap interval must lie inside (-bound, bound). With no valid bootstrap draw (every draw
+    left a language below the population floor, seen with few selective features) the result is undefined (`equivalent` None, not False); ordinary results are unchanged."""
+    boot = np.asarray(boot)
+    if boot.size == 0:
+        return {"interval": None, "equivalent": None, "bound": bound, "n_draws": 0}
     lo, hi = float(np.quantile(boot, alpha)), float(np.quantile(boot, 1 - alpha))
     return {"interval": (lo, hi), "equivalent": bool(lo > -bound and hi < bound), "bound": bound}
 
@@ -305,6 +309,12 @@ def run_analysis(run_dir, roster_path, out_dir, n_perm=10000, n_boot=2000, seed=
     return result
 
 
+def _tost_text(x):
+    iv = lambda t: "undefined (no valid bootstrap draw)" if t["interval"] is None else f"{t['interval'][0]:+.4f}..{t['interval'][1]:+.4f}"
+    return (f"TOST (90% bootstrap interval vs bound): slope {iv(x['tost_slope'])}, equivalent within +-{x['tost_slope']['bound']}: {x['tost_slope']['equivalent']}; "
+            f"High minus Low {iv(x['tost_high_minus_low'])}, equivalent: {x['tost_high_minus_low']['equivalent']}.")
+
+
 def render_markdown(r):
     t = r["tests"]; L = [f"# Phase 1 analysis, regime `{r['regime']}` (decision D-014)", "", f"{r['n_perm']} permutations, {r['n_boot']} bootstrap draws, seed {r['seed']}.", "",
                          "## Confirmatory family (Holm over three tests)", "", "| test | estimate | 95% CI / detail | p | Holm p |", "|---|---|---|---|---|"]
@@ -313,8 +323,7 @@ def render_markdown(r):
     x = t["T3_tier"]
     L.append(f"| language-level tier slope (median-r gap, INT7+INT6, one-sided) | {x['slope'] if x.get('slope') is None else format(x['slope'], '+.4f')} | languages used {x['n_languages']} (need {x['min_languages']}: {'ok' if x['enough_languages'] else 'P2 DEMOTED to exploratory'}); High minus Low {x.get('high_minus_low')} | {x['p']:.4g} | {r['holm']['T3_tier']:.4g} |")
     if "tost_slope" in x:
-        L += ["", "TOST (90% bootstrap interval vs bound): slope " + f"{x['tost_slope']['interval'][0]:+.4f}..{x['tost_slope']['interval'][1]:+.4f}, equivalent within +-{x['tost_slope']['bound']}: {x['tost_slope']['equivalent']}; "
-              f"High minus Low {x['tost_high_minus_low']['interval'][0]:+.4f}..{x['tost_high_minus_low']['interval'][1]:+.4f}, equivalent: {x['tost_high_minus_low']['equivalent']}."]
+        L += ["", _tost_text(x)]
     L += ["", "### Per-language gaps (median r of selective minus matched controls, mean of INT7 and INT6)", "", "| language | tier | Joshi | selective features | gap (median r) | gap (survival rate) | used |", "|---|---|---|---|---|---|---|"]
     for l in x["languages"]:
         f = lambda v: "" if v is None else f"{v:+.4f}"
