@@ -188,22 +188,31 @@ def _fit_random_intercept_logit(X, Y, n_nodes=25):
             "converged": bool(res.success or np.abs(res.jac).max() < 1e-3), "nll": float(res.fun)}
 
 
-def mixed_logit(table, bits_list, max_features=None, seed=0, gee=True):
+def mixed_logit(table, bits_list, max_features=None, seed=0, gee=True, formula=None, extra=None):
     """Section 7 model: logit Pr(survived) = b0 + b_bits * bits + b_q * quintile + b_S * S~ + b_t * tier + b_St * S~ x tier + u_feature (random intercept per
     feature), fitted by quadrature maximum likelihood (above); as a robustness check also as a population-averaged logistic GEE with an exchangeable correlation
     within feature (statsmodels). Non-evaluable features are dropped; with `max_features` a seeded random subset is used. The quintile enters as a categorical,
-    the tier as the ordinal 0 / 1 / 2, bits centred at the mean width."""
+    the tier as the ordinal 0 / 1 / 2, bits centred at the mean width. `formula` (default MIXED_FORMULA, so earlier results are unchanged) and `extra` ({name: array over ALL
+    rows of `table`}, used as covariates by name in the formula; N7, D-021) let the same model be refitted with other terms."""
     import math
     import pandas as pd
     import patsy
     keep = np.flatnonzero(np.asarray(table["evaluable"]))
     if max_features is not None and len(keep) > max_features:
         keep = np.sort(np.random.default_rng(seed).choice(keep, max_features, replace=False))
+    formula = MIXED_FORMULA if formula is None else formula
+    extra = {} if extra is None else {k: np.asarray(v, dtype=float) for k, v in extra.items()}
+    n_rows = len(np.asarray(table["feature"]))
+    for k, v in extra.items():
+        if len(v) != n_rows:
+            raise ValueError(f"covariate {k!r} has {len(v)} values for {n_rows} features")
+        if np.isnan(v[keep]).any():
+            raise ValueError(f"covariate {k!r} has NaN among the features used")
     centre = float(np.mean(bits_list))
     df = pd.concat([pd.DataFrame({"feature": np.asarray(table["feature"])[keep], "y": survived(np.asarray(table["r"][b])[keep]).astype(int), "bits_c": b - centre,
                                   "S_rank": np.asarray(table["S_rank"])[keep], "tier": [tier_score(t) for t in np.asarray(table["tier"])[keep]],
-                                  "stratum": np.asarray(table["stratum"])[keep]}) for b in bits_list], ignore_index=True)
-    X = patsy.dmatrix(MIXED_FORMULA, df, return_type="dataframe"); names = list(X.columns); K, F = len(bits_list), len(keep)
+                                  "stratum": np.asarray(table["stratum"])[keep], **{k: v[keep] for k, v in extra.items()}}) for b in bits_list], ignore_index=True)
+    X = patsy.dmatrix(formula, df, return_type="dataframe"); names = list(X.columns); K, F = len(bits_list), len(keep)
     fit = _fit_random_intercept_logit(X.to_numpy().reshape(K, F, -1), df["y"].to_numpy().reshape(K, F))
     z = fit["beta"] / np.where(fit["se"] > 0, fit["se"], np.nan)
     out = {"mixed": {"names": names, "coef": [float(x) for x in fit["beta"]], "se": [float(x) for x in fit["se"]], "z": [float(x) for x in z],
@@ -212,7 +221,7 @@ def mixed_logit(table, bits_list, max_features=None, seed=0, gee=True):
     if gee:
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
-        g = smf.gee("y ~ " + MIXED_FORMULA, groups="feature", data=df, family=sm.families.Binomial(), cov_struct=sm.cov_struct.Exchangeable()).fit()
+        g = smf.gee("y ~ " + formula, groups="feature", data=df, family=sm.families.Binomial(), cov_struct=sm.cov_struct.Exchangeable()).fit()
         out["gee"] = {"names": list(g.params.index), "coef": [float(x) for x in g.params], "se": [float(x) for x in g.bse], "p": [float(x) for x in g.pvalues]}
     return out
 

@@ -239,6 +239,47 @@ class MixedLogit(unittest.TestCase):
         self.assertEqual(an.mixed_logit(t, [7, 6], gee=False)["n_features"], 250)
 
 
+class MixedLogitExtension(unittest.TestCase):
+    """N7 (D-021): `formula` and `extra` covariates for the SAME model; the default must give exactly the earlier result so that every earlier analysis.json stays byte-identical."""
+    def covariate_table(self, slope=1.2, n=2500, seed=5, junk_rows=50):
+        rng = np.random.default_rng(seed); z = rng.normal(0, 1, n); t = MixedLogit("test_without_a_feature_effect_it_agrees_with_plain_logistic_regression").table(n=n, seed=seed, sigma=0.5)
+        for b, shift in ((7, 1.0), (6, 0.0)):
+            tier_idx = np.array([{"Low": 0, "Mid": 1, "High": 2}[x] for x in t["tier"]])
+            logit = -0.3 + shift + slope * z + 0.4 * tier_idx + rng.normal(0, 0.5, n)
+            t["r"][b] = np.where(rng.random(n) < 1 / (1 + np.exp(-logit)), 0.91, 0.89)
+        t["evaluable"][:junk_rows] = False; z = z.copy(); z[:junk_rows] = 1000.0                     # the covariate of the dropped features is garbage: a misaligned subset would show it
+        return t, z
+
+
+    def test_an_explicit_default_formula_gives_exactly_the_default_result(self):
+        t = MixedLogit("test_without_a_feature_effect_it_agrees_with_plain_logistic_regression").table(n=600)
+        a = an.mixed_logit(t, [7, 6], gee=False); b = an.mixed_logit(t, [7, 6], gee=False, formula=an.MIXED_FORMULA)
+        self.assertEqual(a["mixed"]["names"], b["mixed"]["names"]); self.assertEqual(a["mixed"]["coef"], b["mixed"]["coef"]); self.assertEqual(a["mixed"]["se"], b["mixed"]["se"])
+        self.assertEqual(a["mixed"]["nll"], b["mixed"]["nll"])
+
+    def test_a_different_formula_changes_the_design_and_the_gee_uses_the_same_formula(self):
+        t = MixedLogit("test_without_a_feature_effect_it_agrees_with_plain_logistic_regression").table(n=600)
+        f = an.mixed_logit(t, [7, 6], formula="bits_c + C(stratum) + S_rank")
+        self.assertNotIn("tier", f["mixed"]["names"]); self.assertNotIn("S_rank:tier", f["mixed"]["names"]); self.assertIn("S_rank", f["mixed"]["names"])
+        self.assertEqual(f["gee"]["names"], f["mixed"]["names"])
+
+    def test_an_extra_covariate_enters_the_model_and_a_planted_effect_is_recovered_with_the_subset_aligned(self):
+        t, z = self.covariate_table(); fit = an.mixed_logit(t, [7, 6], gee=False, formula="bits_c + C(stratum) + S_rank + tier + S_rank:tier + z", extra={"z": z})["mixed"]
+        est = dict(zip(fit["names"], fit["coef"])); se = dict(zip(fit["names"], fit["se"]))
+        self.assertLess(abs(est["z"] - 1.2), 3 * se["z"]); self.assertGreater(est["z"], 0.8)
+        # the same fit with a seeded feature cap keeps the covariate aligned to the kept features
+        capped = an.mixed_logit(t, [7, 6], gee=False, max_features=800, seed=2, formula="bits_c + z", extra={"z": z})
+        self.assertEqual(capped["n_features"], 800); self.assertLess(abs(dict(zip(capped["mixed"]["names"], capped["mixed"]["coef"]))["z"] - 1.2), 0.35)
+
+    def test_an_extra_covariate_of_the_wrong_length_or_with_nan_in_used_rows_is_refused(self):
+        t, z = self.covariate_table()
+        with self.assertRaisesRegex(ValueError, "covariate 'z' has 2499 values for 2500 features"): an.mixed_logit(t, [7, 6], gee=False, formula="bits_c + z", extra={"z": z[:-1]})
+        bad = z.copy(); bad[100] = np.nan
+        with self.assertRaisesRegex(ValueError, "covariate 'z' has NaN among the features used"): an.mixed_logit(t, [7, 6], gee=False, formula="bits_c + z", extra={"z": bad})      # without the explicit check patsy drops the row silently and a later reshape fails with an unrelated message
+        nan_dropped = z.copy(); nan_dropped[0] = np.nan                      # feature 0 is not evaluable: its covariate is never used
+        an.mixed_logit(t, [7, 6], gee=False, formula="bits_c + z", extra={"z": nan_dropped})
+
+
 class Cli(unittest.TestCase):
     def test_command_line_runs_the_analysis_on_a_run_directory_and_writes_the_report(self):
         import subprocess

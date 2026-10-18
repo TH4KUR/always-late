@@ -96,5 +96,12 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - ANSWER:
 - STATUS: open
 
+## Q14. Which analysis is the confirmatory RQ2 test: the permutation gap test, or the mixed-model tier terms?  [HIGH, decides the RQ2 headline]
+- **Context.** The proposal's section 6 defines the Holm family as the INT7 and INT6 selective-versus-matched contrasts and the language-level tier test (permutation on the per-language selective-minus-control gap); its section 7 also names "the interaction of continuous S~(f) with resource tier, via mixed-effects logistic regression" as part of the primary endpoint, and the paper's RQ2 row lists both a permutation test and a mixed-effects regression. D-014 follows section 6 and reports the mixed model as a labelled exploratory block. The two disagree (N7, `reports/phase1_results.md` section 9): the gap test is null and equivalent to zero (selective features do not lose more than matched controls in low-resource languages), while the mixed model's tier main effect is large (+1.46, p 9e-13; INT6 survival 80 % for features peaking in low-resource languages against 96 to 97 %, selective and universal alike) and its S~ x tier interaction is +0.94 (p 0.001) but vanishes (-0.007) once activation magnitude is included.
+- **Options.** (a) report both side by side as RQ2's two faces: the tier effect on survival is large and not selectivity-specific; the selectivity penalty does not depend on tier (default); (b) make the mixed-model tier terms the confirmatory RQ2 test (an amendment of the Holm family, relevant to Q2); (c) keep only the gap test as confirmatory and the mixed model exploratory (current).
+- **Default:** (a) in the write-up; the Holm family stays as in D-014.
+- ANSWER:
+- STATUS: open
+
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
