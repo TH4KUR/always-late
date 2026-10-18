@@ -9,3 +9,17 @@ This analysis was pre-specified (handoff 004, written when only the header of th
 | INT5 | 8.1 / 13.1 / 19.3 % | +0.0525 (p 0.0001 (descriptive)) | +11.2 pp | +0.0445 (p 0.0001) | +0.0275 (p 0.0001) | +0.0400 (p 0.0001) |
 
 **Reading (by the rule fixed beforehand): depends on tier; beyond fertility.**
+
+## Activation scale as a covariate (N9, decision D-023)
+
+Does per-language activation scale carry the remaining tier effect? Source: `issues.md` C6 / A-035 (survival follows activation magnitude in Duan et al.'s released data and in ours). Scale of a language = log10 of the median, over its active features (full-precision firing rate in that language above 0.001), of the feature's maximum activation in that language (secondary: mean activation). The same Freedman-Lane test as above with (A) the scale alone and (B) character fertility and the scale together as nuisance covariates. **Reading rule fixed beforehand:** with both covariates the INT6 slope p >= 0.05 (strict, p exactly 0.05 is not significant) -> explained jointly by tokenization cost and activation scale; p < 0.05 -> a tier effect remains beyond fertility and activation scale; the scale alone with p >= 0.05 -> activation scale alone explains it.
+
+Spearman(tier, scale) across languages: +0.798.
+
+| width | slope, no covariate | slope with scale (p) | slope with fertility and scale (p) | Spearman(scale, survival) | secondary (mean activation): with scale (p), with both (p) |
+|---|---|---|---|---|---|
+| INT7 | +0.0534 (p 0.0001) | +0.0321 (p 0.0368) | +0.0207 (p 0.112) | +0.570 | +0.0379 (p 0.0008), +0.0380 (p 0.0012) |
+| INT6 | +0.0661 (p 0.0001) | +0.0290 (p 0.1) | +0.0014 (p 0.451) | +0.883 | +0.0312 (p 0.0003), +0.0311 (p 0.0004) |
+| INT5 | +0.0525 (p 0.0001) | +0.0048 (p 0.322) | -0.0031 (p 0.631) | +0.966 | +0.0423 (p 0.0001), +0.0422 (p 0.0002) |
+
+**Reading (by the rule fixed beforehand): explained jointly by tokenization cost and activation scale; activation scale alone explains it: True.**

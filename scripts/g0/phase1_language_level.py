@@ -49,7 +49,46 @@ def reading_n8(slope_int6, holm_int6, p_fertility_int6, alpha=ALPHA):
     return EXPLAINED if p_fertility_int6 >= alpha else BEYOND
 
 
-def run_language_level(per_language_csv, meta_json, stats_json, roster_path, out_dir, widths=(7, 6, 5), n_perm=10000, seed=0, split="devtest"):
+def language_activation_scale(survival, key="max_activation", threshold=0.001, codes=None):
+    """N9 (D-023): per language, log10 of the MEDIAN (median first) over its active features (full-precision firing rate in that language strictly above `threshold`) of the feature's `key`
+    activation in that language (default maximum activation, Duan's own predictor aggregated per language; secondary key 'mean_activation'), in the order of `codes` (default: the file's)."""
+    langs = list(survival["languages"]); order = langs if codes is None else list(codes)
+    missing = [c for c in order if c not in langs]
+    if missing:
+        raise ValueError(f"languages not in the survival file: {missing[:3]}")
+    fire, vals = np.asarray(survival["firing_rate"]), np.asarray(survival[key], dtype=float); out = []          # the firing rates are compared in their own dtype (float32 in the run files), as everywhere else in the pipeline
+    for c in order:
+        i = langs.index(c); active = fire[i] > threshold
+        if not active.any():
+            raise ValueError(f"no active feature in {c}")
+        out.append(float(np.log10(np.median(vals[i][active]))))
+    return np.array(out)
+
+
+def reading_n9(n8_reading, p_scale_int6, p_both_int6, alpha=ALPHA):
+    """Pre-specified reading: only meaningful if N8 found a tier dependence at INT6; with fertility AND scale as covariates p >= 0.05 (strict) -> explained jointly, else a tier effect remains;
+    scale alone with p >= 0.05 -> activation scale alone explains it."""
+    if n8_reading not in (EXPLAINED, BEYOND):
+        return {"joint": "not applicable: no tier dependence at INT6 to explain", "scale_alone_explains": None}
+    return {"joint": "explained jointly by tokenization cost and activation scale" if p_both_int6 >= alpha else "a tier effect remains beyond fertility and activation scale",
+            "scale_alone_explains": bool(p_scale_int6 >= alpha)}
+
+
+def _activation_scale_block(survival_pt, codes, tier, script, fert, widths, tab, n_perm, seed, n8_reading):
+    import torch
+    from scipy.stats import spearmanr
+    sv = torch.load(survival_pt); surv = {"languages": list(sv["languages"]), "firing_rate": sv["firing_rate"].numpy(), "max_activation": sv["max_activation"].numpy(), "mean_activation": sv["mean_activation"].numpy()}
+    m = language_activation_scale(surv, "max_activation", codes=codes); m2 = language_activation_scale(surv, "mean_activation", codes=codes); W = {}
+    for b in widths:
+        y = tab["survival"][b]
+        A = an.freedman_lane_tier_test(y, tier, script, n_perm, seed, covariates=m); B = an.freedman_lane_tier_test(y, tier, script, n_perm, seed, covariates=np.column_stack([fert, m]))
+        A2 = an.freedman_lane_tier_test(y, tier, script, n_perm, seed, covariates=m2); B2 = an.freedman_lane_tier_test(y, tier, script, n_perm, seed, covariates=np.column_stack([fert, m2]))
+        W[str(b)] = {"slope_scale": A["slope"], "p_scale": A["p"], "slope_both": B["slope"], "p_both": B["p"], "spearman_scale_survival": float(spearmanr(m, y).statistic),
+                     "secondary": {"slope_scale": A2["slope"], "p_scale": A2["p"], "slope_both": B2["slope"], "p_both": B2["p"]}}
+    return {"scale": [float(x) for x in m], "scale_secondary": [float(x) for x in m2], "spearman_tier_scale": float(spearmanr(tier, m).statistic), "widths": W, "reading": reading_n9(n8_reading, W["6"]["p_scale"], W["6"]["p_both"])}
+
+
+def run_language_level(per_language_csv, meta_json, stats_json, roster_path, out_dir, widths=(7, 6, 5), n_perm=10000, seed=0, split="devtest", survival_pt=None):
     if 7 not in widths or 6 not in widths:
         raise ValueError("the confirmatory widths INT7 and INT6 are required")
     out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
@@ -69,6 +108,8 @@ def run_language_level(per_language_csv, meta_json, stats_json, roster_path, out
     adj = an.holm([W["7"]["p"], W["6"]["p"]]); W["7"]["holm_p"], W["6"]["holm_p"] = float(adj[0]), float(adj[1])
     res = {"decision": "D-022", "stream": meta.get("stream"), "regime": meta.get("regime"), "n_languages": len(codes), "n_perm": n_perm, "seed": seed, "languages": codes, "fertility": [float(x) for x in fert],
            "widths": W, "reading": reading_n8(W["6"]["slope"], W["6"]["holm_p"], W["6"]["p_fertility"])}
+    if survival_pt is not None:
+        res["activation_scale"] = _activation_scale_block(survival_pt, codes, tier, script, fert, widths, tab, n_perm, seed, res["reading"])
     (out_dir / "language_level.json").write_text(json.dumps(res, indent=1) + "\n"); (out_dir / "language_level.md").write_text(render_md(res)); return res
 
 
@@ -86,6 +127,20 @@ def render_md(res):
         L.append(f"| INT{b} | {m['0'] * 100:.1f} / {m['1'] * 100:.1f} / {m['2'] * 100:.1f} % | {w['slope']:+.4f} (p {w['p']:.3g}{holm}) | {w['high_minus_low'] * 100:+.1f} pp | {w['slope_fertility']:+.4f} (p {w['p_fertility']:.3g}) | "
                  f"{w['joshi_slope']:+.4f} (p {w['joshi_p']:.3g}) | {w['secondary_median_r']['slope']:+.4f} (p {w['secondary_median_r']['p']:.3g}) |")
     L += ["", f"**Reading (by the rule fixed beforehand): {res['reading']}.**"]
+    if "activation_scale" in res:
+        a = res["activation_scale"]
+        L += ["", "## Activation scale as a covariate (N9, decision D-023)", "",
+              "Does per-language activation scale carry the remaining tier effect? Source: `issues.md` C6 / A-035 (survival follows activation magnitude in Duan et al.'s released data and in ours). "
+              "Scale of a language = log10 of the median, over its active features (full-precision firing rate in that language above 0.001), of the feature's maximum activation in that language (secondary: mean activation). "
+              "The same Freedman-Lane test as above with (A) the scale alone and (B) character fertility and the scale together as nuisance covariates. **Reading rule fixed beforehand:** with both covariates the INT6 slope p >= 0.05 "
+              "(strict, p exactly 0.05 is not significant) -> explained jointly by tokenization cost and activation scale; p < 0.05 -> a tier effect remains beyond fertility and activation scale; the scale alone with p >= 0.05 -> activation scale alone explains it.", "",
+              f"Spearman(tier, scale) across languages: {a['spearman_tier_scale']:+.3f}.", "",
+              "| width | slope, no covariate | slope with scale (p) | slope with fertility and scale (p) | Spearman(scale, survival) | secondary (mean activation): with scale (p), with both (p) |", "|---|---|---|---|---|---|"]
+        for b, w in a["widths"].items():
+            base = res["widths"][b]; s2 = w["secondary"]
+            L.append(f"| INT{b} | {base['slope']:+.4f} (p {base['p']:.3g}) | {w['slope_scale']:+.4f} (p {w['p_scale']:.3g}) | {w['slope_both']:+.4f} (p {w['p_both']:.3g}) | {w['spearman_scale_survival']:+.3f} | "
+                     f"{s2['slope_scale']:+.4f} (p {s2['p_scale']:.3g}), {s2['slope_both']:+.4f} (p {s2['p_both']:.3g}) |")
+        L += ["", f"**Reading (by the rule fixed beforehand): {a['reading']['joint']}; activation scale alone explains it: {a['reading']['scale_alone_explains']}.**"]
     return "\n".join(L) + "\n"
 
 
@@ -94,10 +149,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=run_language_level.__doc__)
     ap.add_argument("--per-language", required=True); ap.add_argument("--meta", required=True); ap.add_argument("--stats", required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--roster", default=str(Path(__file__).resolve().parents[2] / "reports/g0/phase1_languages.json")); ap.add_argument("--n-perm", type=int, default=10000); ap.add_argument("--seed", type=int, default=0)
-    a = ap.parse_args(argv); r = run_language_level(a.per_language, a.meta, a.stats, a.roster, a.out, n_perm=a.n_perm, seed=a.seed)
+    ap.add_argument("--survival-pt", default=None, help="survival.pt of the same stream: adds the activation-scale covariate analysis (N9)")
+    a = ap.parse_args(argv); r = run_language_level(a.per_language, a.meta, a.stats, a.roster, a.out, n_perm=a.n_perm, seed=a.seed, survival_pt=a.survival_pt)
     for b, w in r["widths"].items():
         print(f"INT{b}: slope {w['slope']:+.4f} p {w['p']:.3g}" + (f" Holm {w['holm_p']:.3g}" if "holm_p" in w else "") + f"; with fertility {w['slope_fertility']:+.4f} p {w['p_fertility']:.3g}")
-    print("reading:", r["reading"]); print("wrote", Path(a.out) / "language_level.md")
+    print("reading:", r["reading"])
+    if "activation_scale" in r:
+        for b, w in r["activation_scale"]["widths"].items():
+            print(f"INT{b} with scale: slope {w['slope_scale']:+.4f} p {w['p_scale']:.3g}; with fertility and scale {w['slope_both']:+.4f} p {w['p_both']:.3g}")
+        print("N9 reading:", r["activation_scale"]["reading"])
+    print("wrote", Path(a.out) / "language_level.md")
 
 
 if __name__ == "__main__":
