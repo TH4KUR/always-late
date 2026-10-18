@@ -40,14 +40,17 @@ def _row(label, tau, alt, run_dir, roster_path, out_dir, n_perm, n_boot, seed, *
     row.update(tests=full["tests"], holm=full["holm"]); return row
 
 
-def run_thresholds(run_dir, roster_path, out_dir, taus, n_perm=10000, n_boot=2000, seed=0, **kw):
+def run_thresholds(run_dir, roster_path, out_dir, taus, n_perm=10000, n_boot=2000, seed=0, transform=None, **kw):
     """One row for the run's own null cutoff (it must reproduce the original analysis) and one per fixed tau; undefined rows (no selective or no control feature) are
-    recorded, not raised. Writes thresholds.json / thresholds.md and, per tau, the unchanged analysis report in tau_<label>/."""
+    recorded, not raised. Writes thresholds.json / thresholds.md and, per tau, the unchanged analysis report in tau_<label>/. `transform` (optional) maps the loaded selectivity
+    dict to the one the selection starts from (N6 replaces the strata by firing-rate x magnitude strata); the default leaves it untouched."""
     taus = [float(t) for t in taus]
     if len(set(taus)) != len(taus) or any(t <= 0 for t in taus):
         raise ValueError("thresholds must be positive and unique")
     run_dir, out_dir = Path(run_dir), Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
     selp = torch.load(run_dir / "selectivity.pt"); meta = json.loads((run_dir / "meta.json").read_text())
+    if transform is not None:
+        selp = transform(selp)
     plan = [("null", float(selp["null_cutoff"]))] + [(str(t), t) for t in taus]
     rows = [_row(label, tau, alternative_selection(selp, tau, seed), run_dir, roster_path, out_dir, n_perm, n_boot, seed, **kw) for label, tau in plan]
     res = {"decision": "D-019", "run": str(run_dir), "regime": meta.get("regime"), "stream": meta.get("stream"), "seed": seed, "n_perm": n_perm, "n_boot": n_boot,

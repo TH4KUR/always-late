@@ -78,12 +78,20 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Context.** The proposal matches universal controls on firing-rate quintile only. Duan's own released per-feature data show survival follows maximum activation (Spearman 0.78) and not firing rate (-0.085) (`issues.md` C6, `PLAN.md` P1-5 "TODO: document the added control as an amendment"). The N2 dose-response (selective features survive up to 7 pp less at S > 5) could be a magnitude effect. The code has no magnitude control yet.
 - **Options.** (a) run the contrast with controls matched on firing-rate stratum x maximum-activation tercile as a labelled sensitivity, using the existing estimators with finer strata (default; planned as N6); (b) make it the primary control (changes the pre-registered design); (c) do not add it.
 - **Default:** (a).
+- **Result under the default (a), 2026-10-18** (D-020, A-035, `reports/phase1_results.md` section 8): selective features have lower activations than their controls and magnitude predicts survival; with magnitude matched the INT6 gap is not negative but modestly positive (+3 to +5 pp at 5 and 10 bins, +1 pp and not significant at terciles; INT7 about 0). The rule fixed beforehand reads this as 'the selectivity-specific reading is not supported'.
 - ANSWER:
-- STATUS: open
+- STATUS: open (default applied)
 
 ## Q12. How should the threshold dependence be reported?  [HIGH]
 - **Context.** The pre-registered cutoff gives a null (Holm 0.13); my post-hoc fixed thresholds give significant negative gaps from S > 3 (D-019, A-034). Reporting only one of them would mislead.
 - **Options.** (a) the pre-registered cutoff stays the confirmatory result, the thresholds are a sensitivity analysis reported in full with the caveats of A-034 (default); (b) promote a threshold to primary (requires your pre-registration judgement, Q2); (c) report only the continuous S~ dose-response (N6) as the headline.
+- **Default:** (a).
+- ANSWER:
+- STATUS: open
+
+## Q13. Activation magnitude: confounder (adjust for it) or mediator (report the total effect)?  [HIGH, decides the headline of RQ1]
+- **Context.** Selective features have lower maximum activation (median 9.8 vs 14.2 at S > 5), and low activation predicts low survival (Spearman +0.35 at INT6). If that is just a property of language-selective features, magnitude is a **mediator**: they really do survive less (total effect -7 pp at S > 5), because of their low activations; if it is an incidental difference between our selective and control samples, magnitude is a **confounder** and the magnitude-matched result (+3 to +5 pp, not negative) is the right comparison. The proposal matches on firing rate only; Duan's data motivate magnitude (`issues.md` C6).
+- **Options.** (a) report both side by side with the mediator explanation (default); (b) make the magnitude-matched contrast the primary RQ1 estimate (an amendment of the pre-registered design, relevant to Q2); (c) keep rate-only matching as the headline, magnitude as a sensitivity.
 - **Default:** (a).
 - ANSWER:
 - STATUS: open
