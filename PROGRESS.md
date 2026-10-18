@@ -1,8 +1,10 @@
 # Progress at a Glance
 
-Last updated: **2026-10-16 (night)**, after the audit of why our old pipeline disagreed with Duan's and the decision to **discard that pipeline and build on Duan's codebase**. **New agent? Start with `HANDOFF.md`.** The post-mortem of the old codebase is the last entry of `reports/progress_log.md`; its code is only at the git tag `legacy-pipeline-2026-10-16`; its Phase-1 results are in `reports/legacy_pipeline/` (hypotheses, not findings). Evidence: `reports/progress_log.md`, `reports/audit_our_vs_duan.md`, `issues.md`, `PLAN.md`.
+Last updated: **2026-10-18 (morning)** (Phase 1 results, below); the rest of this file is from **2026-10-16 (night)**, after the audit of why our old pipeline disagreed with Duan's and the decision to **discard that pipeline and build on Duan's codebase**. **New agent? Start with `HANDOFF.md`.** The post-mortem of the old codebase is the last entry of `reports/progress_log.md`; its code is only at the git tag `legacy-pipeline-2026-10-16`; its Phase-1 results are in `reports/legacy_pipeline/` (hypotheses, not findings). Evidence: `reports/progress_log.md`, `reports/audit_our_vs_duan.md`, `issues.md`, `PLAN.md`.
 
 ## Where we really are
+
+- **Phase 1 results exist (2026-10-18, `reports/phase1_results.md`): **in the primary stream (BOS masked, equal token budgets) none of the three pre-registered confirmatory tests rejects after Holm correction** (INT7 selective minus matched universal controls -0.28 pp, Holm 0.51; INT6 -1.44 pp, Holm 0.13; tier slope -0.0048, p 0.99; equivalence within +-0.02 median r holds) and the effect is small next to the width effect (pooled survival 94.9% at INT6, 59% at INT5, 13.7% at INT4); in the BOS-free sensitivity regime the sign reverses (+9 pp) in an instrument that fails its own noise-floor check (A-029, A-030). Numbers cross-checked independently and byte-reproducible (D-017). Provisional: the team's decisions and V-10 are still open.**
 
 - **The pipeline runs and its core machinery looks correct** (JumpReLU encode, layer-12 hook, RTN quantizer, Pearson/classification, dev/devtest split). The paper tables trace back to the JSON in `reports/`.
 - **The headline interpretation is not supported by our own numbers** (see "Corrections" below).

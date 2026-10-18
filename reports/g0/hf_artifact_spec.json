@@ -74,6 +74,54 @@
     "*/wandb/*",
     "tokens_2d.pt"
    ]
+  },
+  {
+   "local": "out/phase1/p1-mask",
+   "repo": "runs/phase1/p1-mask",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/phase1/p1-none",
+   "repo": "runs/phase1/p1-none",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/phase1/anchor",
+   "repo": "runs/phase1/anchor-batch1",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/phase1/anchor-b4",
+   "repo": "runs/phase1/anchor-batch4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/phase1/smoke",
+   "repo": "runs/phase1/smoke-flores-3lang",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "out/phase1/smoke2",
+   "repo": "runs/phase1/smoke2-flores-3lang-eq",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
   }
  ]
 }
