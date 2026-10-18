@@ -3,7 +3,7 @@
 **Hugging Face dataset (private):** https://huggingface.co/datasets/karma-skz/always-late-artifacts  
 Owner `karma-skz`; contents and provenance are in the dataset card (`reports/g0/hf_dataset_card.md`, uploaded as its `README.md`); `MANIFEST.sha256` there lists the SHA-256 of every file. Download (needs a token with read access): `hf download karma-skz/always-late-artifacts --repo-type dataset --local-dir artifacts`.
 
-**Upload status:** started 2026-10-17 from Ada (225 files, 297 MB, one commit via `scripts/g0/hf_artifacts.py`); remote size verification is recorded below when done. **STATUS: UPLOADING / NOT YET VERIFIED** (the link from Ada is slow, about 70 kB/s).
+**Upload status:** uploaded 2026-10-18 02:13 IST from Ada in one commit (225 files, 297 MB, `scripts/g0/hf_artifacts.py`). **STATUS: VERIFIED** by `hf_artifacts.py verify` on the same day: 225 files present, 0 missing, 0 size mismatches (remote sizes compared with local sizes; the log is `hf_upload2.log` on Ada). The Phase 1 outputs of S6 (per-run `survival.pt` / `selectivity.pt`, about 25 MB per stream) are not yet in the dataset: they are added by the S6 upload step.
 
 ## What is where
 
