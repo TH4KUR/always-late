@@ -108,11 +108,18 @@ def _design(script):
     return np.column_stack([np.ones(len(script))] + [(script == c).astype(float) for c in cats[1:]])
 
 
-def freedman_lane_tier_test(gap, tier_score, script, n_perm=10000, seed=0):
+def freedman_lane_tier_test(gap, tier_score, script, n_perm=10000, seed=0, covariates=None):
     """One-sided (positive slope = lower gap for lower tiers) permutation test of the slope of the per-language gap on the ordinal tier, with script-family
-    dummies as nuisance covariates (Freedman and Lane 1983: permute the residuals of the reduced model, refit the full model, compare t statistics)."""
+    dummies as nuisance covariates (Freedman and Lane 1983: permute the residuals of the reduced model, refit the full model, compare t statistics). `covariates` (optional, one row
+    per language, vector or matrix) are further nuisance columns of the reduced model (N8: character fertility); the default leaves every earlier result unchanged."""
     gap, tier, script = np.asarray(gap, dtype=float), np.asarray(tier_score, dtype=float), np.asarray(script)
-    n = len(gap); Z = _design(script); X = np.column_stack([Z, tier])
+    n = len(gap); Z = _design(script)
+    if covariates is not None:
+        C = np.asarray(covariates, dtype=float); C = C[:, None] if C.ndim == 1 else C
+        if C.shape[0] != n:
+            raise ValueError(f"{C.shape[0]} covariate rows for {n} languages")
+        Z = np.column_stack([Z, C])
+    X = np.column_stack([Z, tier])
     Hz = Z @ np.linalg.pinv(Z); tier_r = tier - Hz @ tier; ss = float(tier_r @ tier_r)
     fit_z = Hz @ gap; res_z = gap - fit_z; Hx = X @ np.linalg.pinv(X); dof = n - np.linalg.matrix_rank(X)
 
