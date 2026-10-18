@@ -53,6 +53,13 @@ Design (decisions D-001, D-003, D-004, D-006, D-010, D-011 provisional, `reports
 - [x] **S7** (code done 2026-10-17, revised 2026-10-18 after the first real selection counts: 43 tests on synthetic data with planted effects, rarity-versus-tier confounds and short control pools, 30/30 mutants caught with `scripts/g0/mutcheck.py`; decisions D-014 and D-016 (stratum-standardised contrasts); **still to run on the real S6 outputs**) `phase1_analysis.py`: selective vs firing-rate-quintile-matched universal survival at INT7 / INT6 (within-stratum permutation, cluster bootstrap), language-level tier test (Freedman-Lane permutation with script-family covariate, populated-language rule, High-minus-Low and Joshi-class sensitivities), TOST, Holm over the 3 confirmatory tests, exploratory INT5 / INT4, random-intercept logistic model (quadrature ML; statsmodels' GLMM was intractable), P1, noise-floor instrument check, markdown report
 - [x] **S8** (written 2026-10-18; `reports/phase1_results.md`, per-stream files in `reports/phase1/`, D-017, A-029..A-031) results into `reports/phase1_results.md` (tables from the analysis script, every anomaly in `decisions_and_anomalies.md`); the team writes the paper text
 
+### Next runs (the scheduled routine may queue only what is listed here; sources in `DECISIONS_FOR_REVIEW.md`)
+- **N1** (CPU) behavioural link, per Q3 default (a): `paper/main.tex` evaluation-plan table, row "Behavioral Link"; damage = 1 - survival at t_s = 0.9 (proposal G0(b)), r < 0.5 as sensitivity; Spearman and multivariable OLS. Inputs already on disk (`survival.pt` loss sums, `selectivity.pt`, `meta.json`).
+- **N2** (CPU) fixed-threshold sensitivity of the binary selective split (S >= 2, 3, 5), Q6 default (b).
+- **N3** (GPU, about 3 h per regime, one GPU each) windowed-FLORES diagnostic for A-029 / A-030 (their 256-token window shape, both regimes, ladder INT8/7/6 + INT16/12/0): only after Q5 is answered "run it". Labelled diagnostic, never part of the replication.
+- **N4** (GPU, about 1 h) tagging-only rerun with the shuffled-null samples saved, then percentile sensitivity: only after Q6 is answered "(a)".
+- Not started: extensions (Llama, pruning, ablation; Q8), their script 06 / R3 (Q9).
+
 ### Venue (verified on Ada 2026-10-15/16)
 - **Ada `u22`, 2 x RTX 2080 Ti per job** (`--constraint=2080ti --gres=gpu:2`); `model_ref`+SAE on `cuda:0`, `model_work` on `cuda:1`.
 - **No GPU larger than 11 GB is reachable** from our accounts (3090/3080 Ti partitions closed to `nlp`/`research`).

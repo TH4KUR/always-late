@@ -39,7 +39,7 @@ Group sizes in the primary stream: 8,062 selective and 2,843 control features ev
 
 ### What this supports
 
-1. **In the primary regime none of the three pre-registered confirmatory tests rejects its null after Holm correction.** The INT6 contrast is nominally significant (p 0.043) in the direction "selective features survive slightly less" and is not after correction (0.128); it is at most about 1.4 pp (standardised) and the one-sided tier test points the other way: the selective features of low-resource languages are, if anything, slightly more robust than their matched controls (per-language gaps in `reports/phase1/p1-mask/eq/analysis.md`: the median-r gap is positive for 9 of 9 low-resource, 7 of 9 mid-resource (not tur, pol) and 7 of 9 high-resource languages (not eng, jpn); the gaps are +0.001 to +0.020, largest for the low-resource languages).
+1. **In the primary regime none of the three pre-registered confirmatory tests rejects its null after Holm correction.** The INT6 contrast is nominally significant (p 0.043) in the direction "selective features survive slightly less" and is not after correction (0.128); it is at most about 1.4 pp (standardised) and the one-sided tier test points the other way: the selective features of low-resource languages are, if anything, slightly more robust than their matched controls (per-language gaps in `reports/phase1/mask/eq/analysis.md`: the median-r gap is positive for 9 of 9 low-resource, 7 of 9 mid-resource (not tur, pol) and 7 of 9 high-resource languages (not eng, jpn); the gaps are +0.001 to +0.020, largest for the low-resource languages).
 2. **Any effect is small next to the effect of width**: pooled survival goes from 94.9 % at INT6 to 59 % at INT5 and 13.7 % at INT4, while the selective-versus-control difference stays within a few points at every width (INT5 -2.26 pp, uncorrected p 0.045, exploratory; INT4 +0.42 pp, p 0.63).
 3. **The equivalence tests support "no tier effect larger than 0.02 in median r"** in the primary stream (the proposal's own interpretation branch for a null on RQ2).
 
@@ -62,6 +62,6 @@ A-029 (regime none breaks the model on short sentences), A-030 (sign change betw
 
 ## 5. Where everything is
 
-- Small outputs per run and stream (summary, per-language, metadata, analysis report and JSON): `reports/phase1/{p1-mask,p1-none}/{eq,all}/`.
+- Small outputs per run and stream (summary, per-language, metadata, analysis report and JSON): `reports/phase1/{mask,none}/{eq,all}/`.
 - Large outputs (`survival.pt`, `selectivity.pt`, per-feature data): Hugging Face private dataset `karma-skz/always-late-artifacts`, `runs/phase1/` (index in `reports/artifacts.md`).
 - Reproduce: `bash scripts/g0/fetch_phase1.sh p1-mask <dest>`; `python3 scripts/g0/phase1_analysis.py --run <dest>/p1-mask/eq --out <out> --seed 0` (torch, numpy, scipy, pandas, statsmodels).

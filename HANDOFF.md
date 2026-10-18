@@ -126,9 +126,11 @@ Largest survival gap 0.15 pp; per-feature Spearman at INT6 over 7,121 commonly a
 5. Assign a disposition from audit section 7.3 only if its inputs exist (R3, their TL keep arm, is still missing: say so), fill audit sections 6.3-6.4, add a progress-log entry, update `PLAN.md`/`PROGRESS.md`/this file, run the tests, push.
 6. Report to the user: Gate 1 verdict in their regime, Q4 for the mask regime, what is still open. No paper prose.
 
-## 11. Scheduled hourly job (history)
+## 11. Scheduled routine (rewritten 2026-10-18, user instruction)
 
-The hourly job (`34efad57`) was **session-only and no longer exists**: `CronList` showed no scheduled jobs on 2026-10-18 after the session was restarted, so nothing fired between about 01:30 and 05:40 IST (the S6 jobs finished at 03:58 / 04:03 unseen). It is recreated at the end of the 2026-10-18 morning session (job id `2b110f38`, hourly at :23, CPU-side work only). To stop it: tell Claude "stop the scheduled job" (`CronDelete <id>`; `CronList` lists them) or exit the session. It auto-expires after 7 days and only fires while the session is idle.
+The hourly jobs (`34efad57`, then `2b110f38`) are **deleted**; the interactive chat has no scheduled job. The new routine runs **every 2 hours in its own Claude Code chat** and is defined in `reports/scheduled_routine.md` (start command, rules, per-invocation steps; stop = tell that chat "stop the scheduled job" or exit it; session-only, 7-day expiry). It does not monitor jobs: it submits, records, and checks once per invocation; when a job is done it records results, uploads large artifacts to Hugging Face, rebuilds wandb under the fixed schema and updates all documents. Open questions for the user live in `DECISIONS_FOR_REVIEW.md` (answers are applied at the start of the next invocation); `PROGRESS.md` starts with "NEXT RUN'S GOAL".
+
+History: the earlier hourly job was session-only and no longer existed on 2026-10-18 after a session restart (nothing fired between about 01:30 and 05:40 IST, S6 finished unseen at 03:58 / 04:03).
 
 ## 12. wandb: one fixed schema (since 2026-10-17)
 

@@ -2,6 +2,17 @@
 
 Last updated: **2026-10-18 (morning)** (Phase 1 results, below); the rest of this file is from **2026-10-16 (night)**, after the audit of why our old pipeline disagreed with Duan's and the decision to **discard that pipeline and build on Duan's codebase**. **New agent? Start with `HANDOFF.md`.** The post-mortem of the old codebase is the last entry of `reports/progress_log.md`; its code is only at the git tag `legacy-pipeline-2026-10-16`; its Phase-1 results are in `reports/legacy_pipeline/` (hypotheses, not findings). Evidence: `reports/progress_log.md`, `reports/audit_our_vs_duan.md`, `issues.md`, `PLAN.md`.
 
+## NEXT RUN'S GOAL (rewritten at the end of every scheduled invocation; the routine is `reports/scheduled_routine.md`, run in its own chat every 2 hours)
+
+State at 2026-10-18 ~07:00 IST: Phase 1 (S1-S8) is done and published (results `reports/phase1_results.md`, HF dataset verified with 274 files, wandb 19 runs conforming to the fixed schema, no job running). The user's open questions are in `DECISIONS_FOR_REVIEW.md` (Q1-Q10, defaults in use).
+
+The next invocation does, in this order:
+1. `git pull`; apply every answered item of `DECISIONS_FOR_REVIEW.md` (D-entry, code/analysis change test-first, mark `APPLIED`).
+2. **N1, behavioural link** (CPU only; source: the team's evaluation-plan table in `paper/main.tex`, row "Behavioral Link"; damage definition = proposal G0(b) "damaged fraction = 1 - survival" at t_s = 0.9 with Duan's t_d = 0.5 as sensitivity; Spearman and multivariable OLS from scipy / statsmodels): per-language selective-feature damage fraction at INT6 and INT7 against the per-language next-token loss increase from `survival.pt` (`loss_sum`, `loss_n`), covariates overall feature damage and token fertility (tokens per sentence on the parallel FLORES sentences, relative to English). Test first on synthetic data with planted effects, mutation-checked; run on the four streams once; add to `reports/phase1_results.md` with its own D-/A-entries; the primary stream is mask / equal budget. Done = tests green, results written, pushed.
+3. **N2** (CPU): sensitivity of the binary selective split to fixed S thresholds (2, 3, 5) from the saved `S`, `supported`, `stable_count` (Q6 default (b), labelled deviation because the null samples were not saved).
+4. Check Ada read-only; nothing is queued. N3 / N4 (GPU) wait for the answers to Q5 / Q6 (`PLAN.md`, "Next runs").
+5. Rewrite this block; update the progress log; commit and push.
+
 ## Where we really are
 
 - **Phase 1 results exist (2026-10-18, `reports/phase1_results.md`): **in the primary stream (BOS masked, equal token budgets) none of the three pre-registered confirmatory tests rejects after Holm correction** (INT7 selective minus matched universal controls -0.28 pp, Holm 0.51; INT6 -1.44 pp, Holm 0.13; tier slope -0.0048, p 0.99; equivalence within +-0.02 median r holds) and the effect is small next to the width effect (pooled survival 94.9% at INT6, 59% at INT5, 13.7% at INT4); in the BOS-free sensitivity regime the sign reverses (+9 pp) in an instrument that fails its own noise-floor check (A-029, A-030). Numbers cross-checked independently and byte-reproducible (D-017). Provisional: the team's decisions and V-10 are still open.**

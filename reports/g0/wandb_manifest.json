@@ -558,6 +558,110 @@
    "accepted_missing": [
     "tokens_2d.pt"
    ]
+  },
+  {
+   "name": "phase1/mask/eq",
+   "config": {
+    "experiment": "phase1",
+    "cell": "p1-mask-eq",
+    "stack": "TL",
+    "bos_regime": "mask",
+    "n_tokens": 729972,
+    "slurm_job": "25745",
+    "code_ref": "phase1_run.py@618496f",
+    "stream": "eq",
+    "budget_rule": "tokens per language: minimum over languages (D-015)"
+   },
+   "summary_csv": "reports/phase1/mask/eq/summary.csv",
+   "files": [
+    "reports/phase1/mask/eq/per_language.csv",
+    "reports/phase1/mask/eq/meta.json",
+    "reports/phase1/mask/eq/analysis.json",
+    "reports/phase1/mask/eq/analysis.md"
+   ],
+   "tags": [
+    "phase1",
+    "mask",
+    "eq"
+   ]
+  },
+  {
+   "name": "phase1/mask/all",
+   "config": {
+    "experiment": "phase1",
+    "cell": "p1-mask-all",
+    "stack": "TL",
+    "bos_regime": "mask",
+    "n_tokens": 1474322,
+    "slurm_job": "25745",
+    "code_ref": "phase1_run.py@618496f",
+    "stream": "all",
+    "budget_rule": "all content tokens of every language"
+   },
+   "summary_csv": "reports/phase1/mask/all/summary.csv",
+   "files": [
+    "reports/phase1/mask/all/per_language.csv",
+    "reports/phase1/mask/all/meta.json",
+    "reports/phase1/mask/all/analysis.json",
+    "reports/phase1/mask/all/analysis.md"
+   ],
+   "tags": [
+    "phase1",
+    "mask",
+    "all"
+   ]
+  },
+  {
+   "name": "phase1/none/eq",
+   "config": {
+    "experiment": "phase1",
+    "cell": "p1-none-eq",
+    "stack": "TL",
+    "bos_regime": "none",
+    "n_tokens": 729972,
+    "slurm_job": "25746",
+    "code_ref": "phase1_run.py@618496f",
+    "stream": "eq",
+    "budget_rule": "tokens per language: minimum over languages (D-015)"
+   },
+   "summary_csv": "reports/phase1/none/eq/summary.csv",
+   "files": [
+    "reports/phase1/none/eq/per_language.csv",
+    "reports/phase1/none/eq/meta.json",
+    "reports/phase1/none/eq/analysis.json",
+    "reports/phase1/none/eq/analysis.md"
+   ],
+   "tags": [
+    "phase1",
+    "none",
+    "eq"
+   ]
+  },
+  {
+   "name": "phase1/none/all",
+   "config": {
+    "experiment": "phase1",
+    "cell": "p1-none-all",
+    "stack": "TL",
+    "bos_regime": "none",
+    "n_tokens": 1474322,
+    "slurm_job": "25746",
+    "code_ref": "phase1_run.py@618496f",
+    "stream": "all",
+    "budget_rule": "all content tokens of every language"
+   },
+   "summary_csv": "reports/phase1/none/all/summary.csv",
+   "files": [
+    "reports/phase1/none/all/per_language.csv",
+    "reports/phase1/none/all/meta.json",
+    "reports/phase1/none/all/analysis.json",
+    "reports/phase1/none/all/analysis.md"
+   ],
+   "tags": [
+    "phase1",
+    "none",
+    "all"
+   ]
   }
  ]
 }
