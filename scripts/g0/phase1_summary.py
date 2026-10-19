@@ -34,7 +34,7 @@ Reading notes (qualitative; read with the caveats in the register):
 
 LABELS = {"conf": "confirmatory (proposal section 6; D-014)", "N1": "planned in the team's table, definitions provisional (D-018)", "N2": "additional, post hoc thresholds (D-019)",
           "N6": "additional, pre-specified before running (D-020)", "N7": "exploratory (D-014); variants pre-specified (D-021)",
-          "N8": "additional, motivated post hoc and pre-specified before running (D-022)", "N9": "additional, pre-specified before running (D-023)"}
+          "N8": "additional, motivated post hoc and pre-specified before running (D-022)", "N9": "additional, pre-specified before running (D-023)", "N11": "additional, pre-specified before running (D-025)"}
 LEGEND = [("confirmatory", "the proposal's pre-registered family (section 6): the INT7 and INT6 selective-versus-matched contrasts and the language-level tier test, Holm over three"),
           ("planned in the team's table", "named in the team's evaluation-plan table but with undefined terms; definitions are provisional choices"),
           ("additional, pre-specified before running", "not in the proposal's family; the analysis and its reading rule were written down before it was run"),
@@ -168,12 +168,18 @@ def _n9(s, primary=True):
     return f"INT6 slope with activation scale {x * 100:+.1f} pp (p {p:.3g}); Spearman(scale, survival) {rho:+.2f}; {joint}"
 
 
+def _n11(s, primary=True):
+    f = "margin/margin_summary.json"; d, h = s.g(f, "feature_level/by_bins/10/matched_delta"), s.g(f, "feature_level/by_bins/10/matched_holm")
+    return f"INT6 at S > 5, controls matched on firing rate x 10 margin bins: {d * 100:+.2f} pp (Holm {h:.3g}); (i) {s.g(f, 'readings/i')}; (ii) {s.g(f, 'readings/ii')}"
+
+
 ROWS = [("N1", "Behavioural link: per-language selective damage against loss increase", _n1, "D-018, A-032, V-11; reports/phase1/mask/eq/behavior.json"),
         ("N2", "Fixed S thresholds for the selective split (deviation from the proposal's null percentiles)", _n2, "D-019, A-034; reports/phase1/mask/eq/thresholds/thresholds.json"),
         ("N6", "Activation-magnitude-matched controls", _n6, "D-020, A-035; reports/phase1/mask/eq/magnitude/magnitude.json"),
         ("N7", "Exploratory mixed model refitted in variants", _n7, "D-021, A-034, A-036, A-037; reports/phase1/mask/eq/mixed_variants/mixed_variants.json"),
         ("N8", "Language-level survival by resource tier", _n8, "D-022, A-037, A-038; reports/phase1/mask/eq/language_level/language_level.json"),
-        ("N9", "Activation scale as a covariate of the language-level tier test", _n9, "D-023, A-039; reports/phase1/mask/eq/language_level/language_level.json")]
+        ("N9", "Activation scale as a covariate of the language-level tier test", _n9, "D-023, A-039; reports/phase1/mask/eq/language_level/language_level.json"),
+        ("N11", "JumpReLU threshold margin (activation over the SAE's learned threshold) as a matching variable and covariate", _n11, "D-025, A-040; reports/phase1/mask/eq/margin/margin_summary.json")]
 
 
 def table_additional(a, b):

@@ -17,7 +17,7 @@ def test(delta, p, ci=(-0.02, 0.01), n=100):
 
 def write_stream(root, regime, k, with_mixed=True):
     """k shifts every distinctive value so that the two streams differ."""
-    d = Path(root) / regime / "eq"; (d / "thresholds").mkdir(parents=True); (d / "magnitude").mkdir(); (d / "language_level").mkdir(); (d / "mixed_variants").mkdir()
+    d = Path(root) / regime / "eq"; (d / "thresholds").mkdir(parents=True); (d / "magnitude").mkdir(); (d / "language_level").mkdir(); (d / "mixed_variants").mkdir(); (d / "margin").mkdir()
     rows = [("FP16 baseline", 32, 20.0, 0.0, 9000, 1.0, 1.0, 100.0), ("RTN INT8", 8, 20.1, 0.08 + k, 9000, 0.99, 0.9906 + k / 1000, 99.99 - k), ("RTN INT7", 7, 20.2, 0.4 + k, 9000, 0.98, 0.9829 + k / 1000, 99.97 - k),
             ("RTN INT6", 6, 20.5, 2.67 + k, 9000, 0.96, 0.9629 + k / 1000, 94.94 - k), ("RTN INT5", 5, 21.7, 11.5 + k, 9000, 0.9, 0.9143 + k / 1000, 59.0 - k), ("RTN INT4", 4, 39.7, 103.9 + k, 9000, 0.7, 0.7495 + k / 1000, 13.75 - k),
             ("RTN INT16", 16, 20.0, 0.003, 9000, 0.99, 0.9957, 100.0), ("RTN INT12", 12, 20.0, 0.035, 9000, 0.99, 0.9957, 100.0), ("restore-only control (INT0)", 0, 20.0, 0.0, 9000, 1.0, 1.0, 100.0)]
@@ -36,6 +36,8 @@ def write_stream(root, regime, k, with_mixed=True):
     by = lambda dl, h, r: {"reading": r, "retained": 1.0, "rate_only_delta": -0.0716, "matched_delta": dl, "matched_holm": h}
     (d / "magnitude" / "magnitude.json").write_text(json.dumps({"readings": {"5.0": {"by_bins": {"3": by(0.008, 1.0, "explained by magnitude"), "5": by(0.0413, 0.0048, "reversed"), "10": by(0.0458 + k / 100, 0.0012, "reversed")},
                                                                           "final": {"bins": 10, "reading": "reversed", "retained": 1.0, "all_agree": False, "note": ""}}}}))
+    mb = lambda dl, h: {"matched_delta": dl, "matched_holm": h, "retained": 1.0, "reading": "reversed"}
+    (d / "margin" / "margin_summary.json").write_text(json.dumps({"feature_level": {"by_bins": {"3": mb(0.0095, 1.0), "10": mb(0.0532 + k / 100, 0.0006 + k / 1000)}}, "readings": {"i": "remains", "ii": "no more than raw activation" if k == 0 else "margin carries more than raw magnitude"}}))
     if with_mixed:
         v = lambda c, p: {"S_rank": {"coef": c, "se": 0.3, "p": p}}
         (d / "mixed_variants" / "mixed_variants.json").write_text(json.dumps({"variants": {"full_all": v(1.194, 0.00043), "no_tier_all": v(-0.812, 0.0044)}, "reading": {"label": "explained by the tier terms", "terms": ["no_tier_all"]}}))
@@ -76,15 +78,17 @@ class Cells(unittest.TestCase):
         self.has("N7", "-0.81", "+1.19", "explained by the tier terms")                                 # S~ without the tier terms and in the full model
         self.has("N8", "69.4 / 90.6 / 95.1", "+12.3 pp", "Holm 0.0002", "+6.3 pp")                      # INT6 mean survival by tier and the slopes
         self.has("N9", "-0.8 pp", "p 0.667", "+0.97", "explained jointly by tokenization cost and activation scale")
+        self.has("N11", "+5.32 pp", "Holm 0.0006", "(i) remains", "(ii) no more than raw activation")                                   # margin-matched INT6 contrast at S > 5 (10 bins) and the two readings
 
     def test_the_bos_free_column_uses_that_streams_values_and_a_stream_without_a_file_says_not_run(self):
-        self.has("-8.16 pp", "+5.58 pp", "+11.3 pp", "not run")                                         # none stream (k = 1): N2 -8.16, N6 +5.58, N8 slope 0.1134 -> +11.3, N7 absent
+        self.has("-8.16 pp", "+5.58 pp", "+11.3 pp", "not run", "+6.32 pp", "(ii) margin carries more than raw magnitude")                   # none stream (k = 1): N11 +6.32 pp and the other reading                                         # none stream (k = 1): N2 -8.16, N6 +5.58, N8 slope 0.1134 -> +11.3, N7 absent
 
     def test_status_labels_ids_and_the_legend_are_present_and_the_confirmatory_family_is_exactly_t1_t2_t3(self):
         self.has("confirmatory (proposal section 6; D-014)", "additional, post hoc thresholds (D-019)", "additional, pre-specified before running (D-020)", "exploratory (D-014); variants pre-specified (D-021)",
-                 "additional, motivated post hoc and pre-specified before running (D-022)", "additional, pre-specified before running (D-023)", "planned in the team's table, definitions provisional (D-018)")
+                 "additional, motivated post hoc and pre-specified before running (D-022)", "additional, pre-specified before running (D-023)", "planned in the team's table, definitions provisional (D-018)",
+                 "additional, pre-specified before running (D-025)")
         self.assertEqual(len(re.findall(r"\| T[123] ", self.out.split("Additional analyses")[0])), 3)
-        self.has("reports/phase1/mask/eq/language_level/language_level.json", "A-038", "A-039", "A-035", "A-037")
+        self.has("reports/phase1/mask/eq/language_level/language_level.json", "A-038", "A-039", "A-035", "A-037", "A-040", "reports/phase1/mask/eq/margin/margin_summary.json")
 
 
 class Errors(unittest.TestCase):
