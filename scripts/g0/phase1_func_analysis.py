@@ -94,15 +94,57 @@ def _ci(samples):
     return float(lo), float(hi)
 
 
+def _classify(lo, hi, bands):
+    return "preserved" if bands[0] <= lo and hi <= bands[1] else "attenuated" if hi < bands[0] else "amplified" if lo > bands[1] else "inconclusive"
+
+
 def retention(eb, efp, bands=BANDS):
     """Retention ratio E(b) / E(FP) with its percentile interval and class: preserved (interval inside the bands), attenuated (entirely below), amplified (entirely above),
     inconclusive otherwise; `undefined` when the full-precision interval does not lie above zero."""
     if _ci(efp["samples"])[0] <= 0 or efp["point"] <= 0:
         return {"ratio": None, "lo": None, "hi": None, "class": "undefined"}
     lo, hi = _ci(eb["samples"] / efp["samples"])
-    ratio = eb["point"] / efp["point"]
-    cls = "preserved" if bands[0] <= lo and hi <= bands[1] else "attenuated" if hi < bands[0] else "amplified" if lo > bands[1] else "inconclusive"
-    return {"ratio": float(ratio), "lo": lo, "hi": hi, "class": cls}
+    return {"ratio": float(eb["point"] / efp["point"]), "lo": lo, "hi": hi, "class": _classify(lo, hi, bands)}
+
+
+def retention_macro(eb_by_lang, efp_by_lang, covered, bands=BANDS):
+    """Macro retention = the MEAN OF THE PER-LANGUAGE RATIOS E_l(b) / E_l(FP) over the covered languages whose full-precision interval lies above zero (amendment D-041, written after the
+    full-precision pilot showed effects from 0.005 to 7 nats per token: a ratio of mean effects would be the retention of the largest language). Each language counts once; the interval comes
+    from the same bootstrap draws applied to every language."""
+    langs = [c for c in covered if _ci(efp_by_lang[c]["samples"])[0] > 0 and efp_by_lang[c]["point"] > 0]
+    if not langs:
+        return {"ratio": None, "lo": None, "hi": None, "class": "undefined", "n_languages": 0, "languages": []}
+    samples = np.mean([eb_by_lang[c]["samples"] / efp_by_lang[c]["samples"] for c in langs], axis=0)
+    lo, hi = _ci(samples)
+    return {"ratio": float(np.mean([eb_by_lang[c]["point"] / efp_by_lang[c]["point"] for c in langs])), "lo": lo, "hi": hi, "class": _classify(lo, hi, bands), "n_languages": len(langs), "languages": langs}
+
+
+def family_table(run, D):
+    """Harm (nats per token, with a bootstrap interval) of every configuration family on the language's own text: the zero ablations of each group size, the mean of the control draws of each size,
+    sham, doses, mean and resample ablation; plus E_<size> = zero minus controls for each size. Rescue configurations are handled by rescue_effect."""
+    rows = []
+
+    def add(code, family, d, nt):
+        pt, sm = pooled(d, nt), _boot(d, nt, D)
+        lo, hi = _ci(sm)
+        rows.append({"language": code, "family": family, "harm": pt, "lo": lo, "hi": hi})
+
+    for code in run.languages:
+        names = [n for n in run.configs_on(code) if n.endswith(f"@{code}") and not n.startswith("rescue")]
+        ctrl = {}
+        for n in names:
+            fam = n[:-len(f"@{code}")]
+            m = re.fullmatch(r"ctrl\d+_(.+)", fam)
+            if m:
+                ctrl.setdefault(m.group(1), []).append(n)
+            else:
+                d, nt = run.delta(code, n); add(code, fam, d, nt)
+        for size, ns in sorted(ctrl.items()):
+            d = np.mean([run.delta(code, n)[0] for n in ns], axis=0); nt = run.ntok(code)
+            add(code, f"ctrl_{size}", d, nt)
+            if run.has(code, f"zero_{size}@{code}"):
+                dz, _ = run.delta(code, f"zero_{size}@{code}"); add(code, f"E_{size}", dz - d, nt)
+    return rows
 
 
 def sham_check(run, code, K, D):
@@ -187,12 +229,13 @@ def analyse(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=BAN
     for lab in runs:
         res["effects"][lab] = {c: {**_row(eff[lab][c]["point"], eff[lab][c]["samples"]), "harm_group": eff[lab][c]["harm_group"], "harm_control": eff[lab][c]["harm_control"],
                                    "norm_ratio_group": eff[lab][c]["norm_ratio_group"], "norm_ratio_control": eff[lab][c]["norm_ratio_control"]} for c in langs}
-        res["macro"][lab] = _row(mac[lab]["point"], mac[lab]["samples"])
+        res["macro"][lab] = {**_row(mac[lab]["point"], mac[lab]["samples"]), "median": float(np.median([eff[lab][c]["point"] for c in cov])), "n_positive": int(sum(eff[lab][c]["point"] > 0 for c in cov))}
         sh = {c: sham_check(runs[lab], c, K, D) for c in langs if runs[lab].has(c, f"sham_{K}@{c}")}
         res["sham"][lab] = {c: _row(s["point"], s["samples"]) for c, s in sh.items()}
         res["off_target"][lab] = {c: {t: _row(o["point"], o["samples"]) for t, o in off_target(runs[lab], c, K, D).items()} for c in langs}
         if lab != "FP":
-            res["retention"][lab] = {"macro": retention(mac[lab], mac["FP"], bands), "languages": {c: retention(eff[lab][c], eff["FP"][c], bands) for c in langs}}
+            res["retention"][lab] = {"macro": retention_macro(eff[lab], eff["FP"], cov, bands), "pooled": retention(mac[lab], mac["FP"], bands),
+                                     "languages": {c: retention(eff[lab][c], eff["FP"][c], bands) for c in langs}}
     res["rescue"] = {}
     for lab, r in runs.items():
         if lab == "FP":
@@ -217,6 +260,14 @@ def analyse(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=BAN
                     for part, v in x["recovered"].items():
                         fr_ = x["fraction"].get(part)
                         w.writerow([lab, c, x["gap"]["point"], part, v["point"], v["lo"], v["hi"], fr_["point"] if fr_ else "", fr_["lo"] if fr_ else "", fr_["hi"] if fr_ else ""])
+    fam = {lab: family_table(r, D) for lab, r in runs.items()}
+    res["families"] = {lab: {"median_by_family": {f: float(np.median([x["harm"] for x in rows if x["family"] == f])) for f in sorted({x["family"] for x in rows})},
+                             "n_languages_positive_E": {f: int(sum(x["lo"] > 0 for x in rows if x["family"] == f)) for f in sorted({x["family"] for x in rows}) if f.startswith("E_")}} for lab, rows in fam.items()}
+    with open(out / "families.csv", "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["precision", "language", "family", "harm", "lo", "hi"])
+        for lab, rows in fam.items():
+            for x in rows:
+                w.writerow([lab, x["language"], x["family"], x["harm"], x["lo"], x["hi"]])
     fid = fidelity_table(runs)
     res["fidelity"] = fid
     (out / "analysis.json").write_text(json.dumps(res, indent=1) + "\n")
@@ -228,7 +279,7 @@ def analyse(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=BAN
     with open(out / "retention.csv", "w", newline="") as f:
         w = csv.writer(f); w.writerow(["precision", "language", "ratio", "lo", "hi", "class"])
         for lab, r in res["retention"].items():
-            for c, v in [("MACRO", r["macro"])] + list(r["languages"].items()):
+            for c, v in [("MACRO_MEAN_OF_RATIOS", r["macro"]), ("POOLED_RATIO", r["pooled"])] + list(r["languages"].items()):
                 w.writerow([lab, c, v["ratio"], v["lo"], v["hi"], v["class"]])
     with open(out / "fidelity.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["precision", "language", "fvu", "l0", "rms_norm", "rows"]); w.writeheader(); w.writerows(fid)
@@ -242,13 +293,24 @@ def report_text(res, runs):
          "**Exploratory on already examined data** (FLORES devtest sentences; the features were selected on dev). Next-token loss only; no claim about task accuracy or meaning. "
          "E is the harm (nats per token, NLL after the edit minus NLL before it, same precision, same sentences) of zero-ablating the language's selective group beyond the mean harm of its "
          f"activity-matched controls on the language's own text; positive = the selective group matters more than equally active non-selective features. Intervals: {B} paired cluster-bootstrap draws "
-         "over sentence ids (percentile, descriptive; the observed value is the estimate). The retention ratio is E at a precision over E in full precision, classified preserved / attenuated / amplified "
+         "over sentence ids (percentile, descriptive; the observed value is the estimate). Macro retention is the mean over languages of the per-language ratio E at a precision over E in full precision (D-041; languages whose full-precision interval lies above zero), classified preserved / attenuated / amplified "
          f"against the bands [{res['bands'][0]}, {res['bands'][1]}], inconclusive otherwise, undefined when the full-precision interval does not lie above zero.", "",
          f"Languages in the macro average: {len(res['covered'])} ({', '.join(res['covered'])}). Positions (sentences per language): {res['n_positions']}.", "", "## Macro effect and retention", "",
-         "| precision | E (macro) | 95 % interval | ratio to FP | interval | class |", "|---|---|---|---|---|---|"]
+         "| precision | mean E | 95 % interval | median E | languages with E > 0 | retention (mean of per-language ratios) | interval | class (languages) | pooled ratio (dominated by large effects) |", "|---|---|---|---|---|---|---|---|---|"]
     for lab in res["macro"]:
-        m = res["macro"][lab]; r = res["retention"].get(lab, {}).get("macro")
-        L.append(f"| {lab} | {m['point']:.4f} | [{m['lo']:.4f}, {m['hi']:.4f}] | " + (f"{r['ratio']:.2f} | [{r['lo']:.2f}, {r['hi']:.2f}] | {r['class']} |" if r and r["ratio"] is not None else f"- | - | {r['class'] if r else 'reference'} |"))
+        m = res["macro"][lab]; r = res["retention"].get(lab, {}).get("macro"); pl = res["retention"].get(lab, {}).get("pooled")
+        head = f"| {lab} | {m['point']:.4f} | [{m['lo']:.4f}, {m['hi']:.4f}] | {m['median']:.4f} | {m['n_positive']} of {len(res['covered'])} | "
+        if r and r["ratio"] is not None:
+            L.append(head + f"{r['ratio']:.2f} | [{r['lo']:.2f}, {r['hi']:.2f}] | {r['class']} ({r['n_languages']}) | " + (f"{pl['ratio']:.2f} |" if pl and pl["ratio"] is not None else "- |"))
+        else:
+            L.append(head + f"- | - | {r['class'] if r else 'reference'} | - |")
+    if res.get("families"):
+        L += ["", "## Dose, size and replacement (median over languages of the harm in nats per token on the language's own text)", ""]
+        fams = sorted({f for d in res["families"].values() for f in d["median_by_family"]})
+        L += ["| family | " + " | ".join(res["families"]) + " |", "|---|" + "---|" * len(res["families"])]
+        for f in fams:
+            L.append(f"| {f} | " + " | ".join(f"{d['median_by_family'].get(f, float('nan')):.4f}" for d in res["families"].values()) + " |")
+        L += ["", "Languages whose E (zero ablation beyond controls) has a 95 % lower bound above 0: " + "; ".join(f"{lab}: " + ", ".join(f"{k} {v}" for k, v in d["n_languages_positive_E"].items()) for lab, d in res["families"].items()), ""]
     L += ["", "## Sham check (the edit path with no intended change; must be about 0 nats per token)", "", "| precision | language | harm | interval |", "|---|---|---|---|"]
     for lab, d in res["sham"].items():
         for c, s in d.items():

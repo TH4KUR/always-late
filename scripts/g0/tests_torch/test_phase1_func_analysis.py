@@ -268,6 +268,86 @@ class RescueAnalysis(unittest.TestCase):
         self.assertIn("rescue", (out / "report.md").read_text().lower())
 
 
+def two_language_runs(h_fp, h_b, n=300, noise=0.02):
+    """FP and quantized runs with per-language planted group harm (controls 0.0): h_fp / h_b map language -> nats per token."""
+    def mk(label, harm, seed):
+        g = np.random.default_rng(seed); items = {}
+        for code, h in harm.items():
+            ntok = g.integers(8, 30, n); base = ntok * g.uniform(2.0, 3.0, n)
+            items[f"{code}|none"] = {"nll": torch.tensor(base), "ntok": torch.tensor(ntok)}
+            items[f"{code}|zero_K64@{code}"] = {"nll": torch.tensor(base + ntok * (h + g.normal(0, noise, n))), "ntok": torch.tensor(ntok)}
+            for r in range(2):
+                items[f"{code}|ctrl{r}_K64@{code}"] = {"nll": torch.tensor(base + ntok * g.normal(0, noise, n)), "ntok": torch.tensor(ntok)}
+        return fa.Run(label, items, {}, {}, list(harm), {c: list(range(n)) for c in harm})
+    return mk("FP", h_fp, 1), mk("INT6", h_b, 1)
+
+
+class MacroRetention(unittest.TestCase):
+    def test_macro_is_the_mean_of_per_language_ratios_not_the_ratio_of_means(self):
+        # amendment D-041: a language with a huge effect must not dominate the macro retention
+        fp, b = two_language_runs({"aa": 0.4, "bb": 4.0}, {"aa": 0.2, "bb": 4.0})
+        D = fa.draws(300, 400, seed=0)
+        eff = {lab: {c: fa.functional_effect(r, c, "K64", D) for c in ("aa", "bb")} for lab, r in (("FP", fp), ("INT6", b))}
+        m = fa.retention_macro(eff["INT6"], eff["FP"], ["aa", "bb"])
+        self.assertAlmostEqual(m["ratio"], 0.75, delta=0.03)                              # (0.5 + 1.0) / 2
+        self.assertEqual(m["n_languages"], 2)
+        self.assertLess(m["lo"], 0.75); self.assertGreater(m["hi"], 0.75); self.assertLess(m["hi"], 0.9)             # the interval is that of the mean ratio (the pooled one would sit near 0.95)
+        pooled = fa.retention(fa.macro(eff["INT6"], ["aa", "bb"]), fa.macro(eff["FP"], ["aa", "bb"]))
+        self.assertAlmostEqual(pooled["ratio"], 0.95, delta=0.03)                           # the pooled ratio is dominated by the large language
+
+    def test_languages_without_a_clearly_positive_full_precision_effect_are_left_out(self):
+        fp, b = two_language_runs({"aa": 0.4, "bb": 0.0}, {"aa": 0.4, "bb": 0.3})
+        D = fa.draws(300, 400, seed=0)
+        eff = {lab: {c: fa.functional_effect(r, c, "K64", D) for c in ("aa", "bb")} for lab, r in (("FP", fp), ("INT6", b))}
+        m = fa.retention_macro(eff["INT6"], eff["FP"], ["aa", "bb"])
+        self.assertEqual(m["languages"], ["aa"]); self.assertAlmostEqual(m["ratio"], 1.0, delta=0.05)
+
+    def test_undefined_when_no_language_qualifies(self):
+        fp, b = two_language_runs({"aa": 0.0, "bb": 0.0}, {"aa": 0.3, "bb": 0.3})
+        D = fa.draws(300, 400, seed=0)
+        eff = {lab: {c: fa.functional_effect(r, c, "K64", D) for c in ("aa", "bb")} for lab, r in (("FP", fp), ("INT6", b))}
+        m = fa.retention_macro(eff["INT6"], eff["FP"], ["aa", "bb"])
+        self.assertEqual(m["class"], "undefined"); self.assertIsNone(m["ratio"]); self.assertEqual(m["languages"], [])
+
+    def test_classification_uses_the_interval_of_the_mean_ratio(self):
+        fp, b = two_language_runs({"aa": 0.4, "bb": 0.4}, {"aa": 0.1, "bb": 0.12})
+        D = fa.draws(300, 400, seed=0)
+        eff = {lab: {c: fa.functional_effect(r, c, "K64", D) for c in ("aa", "bb")} for lab, r in (("FP", fp), ("INT6", b))}
+        self.assertEqual(fa.retention_macro(eff["INT6"], eff["FP"], ["aa", "bb"])["class"], "attenuated")
+
+
+class MacroSummary(unittest.TestCase):
+    def test_mean_and_median_of_the_per_language_effects(self):
+        fp, b = two_language_runs({"aa": 0.1, "bb": 0.2, "cc": 3.0}, {"aa": 0.1, "bb": 0.2, "cc": 3.0})
+        res = fa.analyse({"FP": fp, "INT6": b}, Path(tempfile.mkdtemp()), K="K64", n_boot=50, seed=0)
+        self.assertAlmostEqual(res["macro"]["FP"]["median"], 0.2, delta=0.02); self.assertAlmostEqual(res["macro"]["FP"]["point"], 1.1, delta=0.05)
+        self.assertEqual(res["macro"]["FP"]["n_positive"], 3)
+
+
+class FamilyTable(unittest.TestCase):
+    def test_harm_of_every_family_and_dose_effects_per_language(self):
+        run = make_run("FP", harm_group=0.5, harm_ctrl=0.1, n=200, langs=("aa",), seed=2, noise=0.01)
+        base, nt = run._items[("aa", "none")]
+        run._items[("aa", "ctrl1_K64@aa")] = (base + nt * 0.3, nt)                                    # draws of 0.1 and 0.3: the family is their mean, 0.2
+        run._items[("aa", "rescue_K64@aa")] = (base - nt * 0.05, nt); run._items[("aa", "rescuectrl0_K64@aa")] = (base - nt * 0.01, nt)
+        for extra, h in (("scale0.5_K64@aa", 0.05), ("scale2_K64@aa", 0.08), ("mean_K64@aa", 0.45), ("res_K64@aa", 0.47), ("zero_K16@aa", 0.3), ("ctrl0_K16@aa", 0.1), ("zero_all@aa", 0.9), ("ctrl0_all@aa", 0.2)):
+            base, nt = run._items[("aa", "none")]
+            run._items[("aa", extra)] = (base + nt * h, nt)
+        rows = fa.family_table(run, fa.draws(200, 200, seed=0))
+        by = {(r["language"], r["family"]): r for r in rows}
+        self.assertAlmostEqual(by[("aa", "scale0.5_K64")]["harm"], 0.05, places=6)
+        self.assertAlmostEqual(by[("aa", "mean_K64")]["harm"], 0.45, places=6)
+        self.assertAlmostEqual(by[("aa", "res_K64")]["harm"], 0.47, places=6)
+        self.assertAlmostEqual(by[("aa", "sham_K64")]["harm"], 0.0, delta=0.01)
+        self.assertAlmostEqual(by[("aa", "E_K16")]["harm"], 0.2, places=6)                  # zero 0.3 minus control 0.1
+        self.assertAlmostEqual(by[("aa", "E_all")]["harm"], 0.7, places=6)
+        self.assertAlmostEqual(by[("aa", "ctrl_K64")]["harm"], 0.2, delta=0.01)
+        self.assertAlmostEqual(by[("aa", "E_K64")]["harm"], 0.3, delta=0.01)
+        self.assertFalse([r for r in rows if r["family"].startswith("rescue")])                     # the rescue configurations belong to rescue_effect
+        for r in rows:
+            self.assertLessEqual(r["lo"], r["harm"] + 1e-9); self.assertGreaterEqual(r["hi"], r["harm"] - 1e-9)
+
+
 class Checks(unittest.TestCase):
     def test_sham_and_off_target_and_fidelity(self):
         run = make_run("FP", sham=0.0, noise=0.05)
