@@ -1,4 +1,4 @@
-# Prompt of the self-rescheduling job (one-shot cron, every 50 minutes; replaces recurring cron `5e64064d` on 2026-10-21, D-037)
+# Prompt of the self-rescheduling job (one-shot cron, every 50 minutes; replaces recurring cron `5e64064d` on 2026-10-21, D-037). **ENDED 2026-10-21 19:20 at the user's request; kept only so that it can be restarted if the user asks.**
 
 A five-field cron cannot express an exact 50-minute interval, so each firing creates its successor (item 6 of the prompt). If the chain is broken (no pending job in `CronList`, or the session restarted), create the next job by hand with `CronCreate` (recurring false, local time "M H DoM Mon *") and the text of the code block below. Jobs run only while the REPL is idle and live only in the session.
 
