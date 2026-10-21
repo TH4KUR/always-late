@@ -346,6 +346,29 @@ class McEngine(unittest.TestCase):
                 self.assertEqual(int(out["items"][(0, "none")]["ntok"][4 * i + j]), len(o))
 
 
+class McItems(unittest.TestCase):
+    ORIGIN = {"p0": "dev", "p1": "dev", "p2": "devtest", "p3": "devtest", "p4": "mixed"}
+
+    def items(self, order=None):
+        its = [{"passage_key": f"p{i % 5}", "question_number": i // 5 + 1, "options": ["a", "b", "c", "d"], "answer": 0, "passage": "x", "question": "q"} for i in range(20)]
+        return its if order is None else [its[i] for i in order]
+
+    def keys(self, items):
+        return [(i["passage_key"], i["question_number"]) for i in items]
+
+    def test_split_membership_and_cap(self):
+        cal = fr.mc_items_for(self.items(), self.ORIGIN, "cal", 0, seed=0)
+        ev = fr.mc_items_for(self.items(), self.ORIGIN, "eval", 0, seed=0)
+        self.assertEqual({k[0] for k in self.keys(cal)}, {"p0", "p1"}); self.assertEqual({k[0] for k in self.keys(ev)}, {"p2", "p3"})
+        self.assertEqual(len(cal), 8); self.assertEqual(len(fr.mc_items_for(self.items(), self.ORIGIN, "cal", 3, seed=0)), 3)
+
+    def test_the_subset_does_not_depend_on_the_file_order_and_changes_with_the_seed(self):
+        a = fr.mc_items_for(self.items(), self.ORIGIN, "eval", 3, seed=0)
+        b = fr.mc_items_for(self.items(order=list(range(19, -1, -1))), self.ORIGIN, "eval", 3, seed=0)
+        self.assertEqual(self.keys(a), self.keys(b))
+        self.assertNotEqual(self.keys(a), self.keys(fr.mc_items_for(self.items(), self.ORIGIN, "eval", 3, seed=1)))
+
+
 class Gates(unittest.TestCase):
     def setUp(self):
         self.model, self.sae = ToyModel(), ToySAE(d=D, F=F)

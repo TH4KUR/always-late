@@ -8,6 +8,7 @@ import hashlib
 import torch
 
 import phase1_func_intervene as fi
+import phase1_func_tasks as ft
 import phase1_lib as p1
 
 
@@ -294,7 +295,6 @@ def main(argv=None):
     from sae_lens import SAE
     import their_code as tc
     import phase1_data as pd_
-    import phase1_func_tasks as ft
     import phase1_func_groups as fg
     torch.set_grad_enabled(False)
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -379,6 +379,125 @@ def main(argv=None):
     log("saved", a.out)
 
 
+MC_PRESETS = {"none": {}, "mc": {"zero": ["K64"], "controls": ["K64"], "sham": ["K64"], "mean": ["K64"], "resample": ["K64"]}}
+
+
+def mc_items_for(items, origin, split, n_items, seed):
+    """The items of a language for the calibration (dev-origin passages) or evaluation (devtest-origin) split, in an order that depends only on (seed, passage key, question number), so
+    that every language takes the same subset; at most n_items of them."""
+    sel = ft.split_items(items, origin)["cal" if split == "cal" else "eval"]
+    order = sorted(sel, key=lambda it: (hashlib.sha256(f"{seed}:{it['passage_key']}:{it['question_number']}".encode()).hexdigest(), it["passage_key"], it["question_number"]))
+    return order[:n_items] if n_items else order
+
+
+def main_mc(argv=None):
+    """Task T-MC: Belebele multiple choice (design section 3). Same model, SAE, quantizer and edit path as `main`; items split by the FLORES origin of the passage (calibration = dev, evaluation =
+    devtest); letter and/or cloze scoring; optional edit configurations (preset `mc`). Setup lines mirror `main` on purpose (that function was already exercised on the cluster)."""
+    import argparse, gc, json, time
+    from pathlib import Path
+    ROOT = Path(__file__).resolve().parents[2]
+    ap = argparse.ArgumentParser(description="Functional validation, task T-MC (Belebele) in FP and RTN-quantized precisions (D-040).")
+    ap.add_argument("--out", required=True); ap.add_argument("--precisions", nargs="*", default=["FP"])
+    ap.add_argument("--belebele-root", required=True); ap.add_argument("--origin-file", required=True); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
+    ap.add_argument("--manifest", default=str(ROOT / "reports/functional_validation/groups_manifest.json")); ap.add_argument("--selectivity", required=True); ap.add_argument("--flores-root", required=True)
+    ap.add_argument("--split", choices=["cal", "eval"], default="cal"); ap.add_argument("--formats", nargs="*", default=["letter"], choices=["letter", "cloze"])
+    ap.add_argument("--n-items", type=int, default=0, help="cap per language (0 = all)"); ap.add_argument("--n-items-cloze", type=int, default=0, help="cap per language for the cloze format (0 = same as --n-items)")
+    ap.add_argument("--item-seed", type=int, default=0); ap.add_argument("--languages", nargs="*"); ap.add_argument("--max-len", type=int, default=1024); ap.add_argument("--max-tokens", type=int, default=1024)
+    ap.add_argument("--batch-size", type=int, default=16); ap.add_argument("--preset", choices=sorted(MC_PRESETS), default="none")
+    ap.add_argument("--pool-sentences", type=int, default=120); ap.add_argument("--pool-rows", type=int, default=300); ap.add_argument("--commit", default="unknown")
+    a = ap.parse_args(argv)
+    t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
+
+    import numpy as np
+    from tqdm.auto import tqdm
+    from transformer_lens import HookedTransformer
+    from sae_lens import SAE
+    import their_code as tc
+    import phase1_data as pd_
+    import phase1_func_groups as fg
+    torch.set_grad_enabled(False)
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    env = {"torch": torch, "np": np, "tqdm": tqdm, "gc": gc, "HookedTransformer": HookedTransformer, "SAE": SAE, "DEVICE": DEVICE, "WORK_DEVICE": DEVICE, "BATCH_SIZE": 1, "FIRING_THRESHOLD": 0.001}
+    ex = tc.extract_functions(tc.PRISTINE, tc.THEIR_FUNCTIONS); tc.verify_hashes(ex, json.loads(tc.MANIFEST.read_text())["functions"]); tc.build_namespace(ex, env)
+    import phase1_run as pr
+    model, model_name = env["load_gemma_tl_model"](pr.MODEL_CANDIDATES)
+    sae = env["load_sae_compat"](pr.SAE_RELEASE, pr.SAE_ID, DEVICE)
+    assert getattr(sae.cfg, "hook_name", None) in (None, f"blocks.{LAYER}.hook_resid_post") and sae.cfg.d_in == model.cfg.d_model
+    env["model_work"] = model; env["original_state_cpu"] = env["clone_state_to_cpu"](model)
+    tok = model.tokenizer; bos = tok.bos_token_id; pad = tok.pad_token_id if tok.pad_token_id is not None else 0
+    lower = lambda tokens: model(tokens, stop_at_layer=LAYER + 1)
+    upper = lambda resid: model(resid, start_at_layer=LAYER + 1)
+    full = lambda tokens: model(tokens)
+    encode = lambda x: env["encode_sae"](sae, x)
+    W_dec = sae.W_dec
+    enc = lambda s: tok.encode(s, add_special_tokens=False)
+
+    roster = pd_.load_roster(a.roster)
+    names = [r["code"] for r in roster]
+    run_names = [c for c in names if not a.languages or c in set(a.languages)]
+    origin = json.loads(Path(a.origin_file).read_text())["origin"]
+    per_lang = {}
+    for code in run_names:
+        items = ft.load_belebele(a.belebele_root, code, expect=900)
+        per_lang[code] = mc_items_for(items, origin, a.split, a.n_items, a.item_seed)
+    log("items per language:", {c: len(v) for c, v in per_lang.items()})
+    man = sel = None
+    families = MC_PRESETS[a.preset]
+    if families:
+        man = json.loads(Path(a.manifest).read_text()); assert man["languages"] == names
+        sel = fg.dev_view(torch.load(a.selectivity, weights_only=False))
+    restore = env["restore_model_work"]
+    Path(a.out).mkdir(parents=True, exist_ok=True)
+    summary, gates = {}, None
+    for fmt in a.formats:
+        cap = (a.n_items_cloze or a.n_items) if fmt == "cloze" else a.n_items
+        data, kept, dropped = {}, {}, {}
+        for i, code in enumerate(run_names):
+            encs, nd = ft.build_mc_items(enc, per_lang[code][:cap] if cap else per_lang[code], fmt, a.max_len)
+            data[i] = encs; dropped[code] = nd
+            kept[code] = [(e["passage_key"], e["question_number"]) for e in encs]
+        batches = make_mc_batches(data, fmt, bos, pad, a.max_tokens, a.batch_size)
+        n_rows = mc_n_rows(data, fmt)
+        log(fmt, "batches", len(batches), "kept", {c: len(kept[c]) for c in run_names}, "dropped (too long)", dropped)
+        if gates is None:
+            probe = batches[0]
+            idx0 = torch.tensor((man["groups"][run_names[0]]["all"] if man else list(range(8)))[:64])
+            gates = run_gates(full, lower, upper, encode, W_dec, probe["tokens"].to(DEVICE), probe["valid"].to(DEVICE), idx0)
+            log("gates passed:", gates)
+        pool_batches = None
+        if "resample" in families:
+            dev = {}
+            for i, code in enumerate(run_names):
+                dev[i] = pd_.encode_sentences(tok, pd_.read_flores_split(a.flores_root, code, "dev", 997)[:a.pool_sentences])
+            pool_batches = p1.make_batches(dev, bos, "mask", pad, 256, 32, a.max_tokens)
+        for prec in [_precision_key(x) for x in a.precisions]:
+            restore()
+            if prec not in ("FP", 0):
+                env["quantize_rtn_per_output_channel_tl"](model, bits=prec)
+            configs = []
+            if families:
+                pool_fn = None
+                if pool_batches is not None:
+                    pool, pool_lang = collect_pool(lower, encode, pool_batches, a.pool_rows, 0, device=DEVICE)
+                    pool_fn = lambda code, idx: pool[pool_lang != run_names.index(code)][:, idx].float().to(DEVICE)
+                configs = build_configs(man, run_names, run_names, [], families, "NONE", mean_vals_fn=lambda code, idx: other_language_means(sel, names.index(code), idx).to(DEVICE), pool_fn=pool_fn)
+            ts = time.time()
+            out = evaluate_precision(lower, upper, encode, W_dec, batches, n_rows, configs, device=DEVICE, readout=letter_readout if fmt == "letter" else None)
+            key = f"INT{prec}" if prec != "FP" else "FP"
+            torch.save({"precision": key, "split": a.split, "format": fmt, "languages": run_names, "preset": a.preset, "keys": kept, "dropped": dropped,
+                        "answers": {run_names[l]: [e["answer"] for e in data[l]] for l in data},
+                        "items": {f"{run_names[l]}|{n}": v for (l, n), v in out["items"].items()}, "stats": {f"{run_names[l]}|{n}": v for (l, n), v in out["stats"].items()}},
+                       Path(a.out) / f"func_mc_{a.split}_{fmt}_{key}.pt")
+            summary[f"{fmt}/{key}"] = {"seconds": time.time() - ts, "configs": len(configs)}
+            log(fmt, key, "done:", summary[f"{fmt}/{key}"], "peak GPU GB", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
+            del out; gc.collect()
+    restore()
+    (Path(a.out) / f"meta_mc_{a.split}.json").write_text(json.dumps({"task": "mc", "split": a.split, "formats": a.formats, "preset": a.preset, "precisions": a.precisions, "languages": run_names,
+        "n_items": a.n_items, "n_items_cloze": a.n_items_cloze, "item_seed": a.item_seed, "max_len": a.max_len, "commit": a.commit, "model": model_name, "gates": gates, "summary": summary,
+        "argv": list(argv) if argv is not None else None, "versions": p1_package_versions(), "seconds": time.time() - t0}, indent=1, default=str) + "\n")
+    log("saved", a.out)
+
+
 def p1_package_versions():
     import phase1_run as pr
     return pr.package_versions(["torch", "transformer-lens", "sae-lens", "transformers", "datasets"])
@@ -386,4 +505,9 @@ def p1_package_versions():
 
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1:])
+    argv = sys.argv[1:]
+    if "--task" in argv:                                # `--task lm` (default) or `--task mc`
+        i = argv.index("--task"); task = argv[i + 1]; argv = argv[:i] + argv[i + 2:]
+    else:
+        task = "lm"
+    {"lm": main, "mc": main_mc}[task](argv)
