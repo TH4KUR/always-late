@@ -1,0 +1,265 @@
+{
+ "cohort": {
+  "controls": 2860,
+  "selective": 8086,
+  "selective_per_language": {
+   "amh_Ethi": 189,
+   "ben_Beng": 108,
+   "deu_Latn": 234,
+   "eng_Latn": 1719,
+   "fra_Latn": 169,
+   "hau_Latn": 239,
+   "hin_Deva": 148,
+   "ibo_Latn": 296,
+   "ind_Latn": 139,
+   "jpn_Jpan": 514,
+   "kan_Knda": 160,
+   "khm_Khmr": 444,
+   "kor_Hang": 216,
+   "lao_Laoo": 464,
+   "pol_Latn": 137,
+   "por_Latn": 73,
+   "rus_Cyrl": 83,
+   "spa_Latn": 214,
+   "sun_Latn": 250,
+   "tam_Taml": 209,
+   "tel_Telu": 135,
+   "tha_Thai": 329,
+   "tur_Latn": 317,
+   "ukr_Cyrl": 84,
+   "vie_Latn": 298,
+   "yor_Latn": 453,
+   "zho_Hans": 465
+  },
+  "supported": 10946,
+  "union": 10946
+ },
+ "dev_peak_ties_among_selective": 0,
+ "devtest_tokens_per_language": {
+  "amh_Ethi": 27036,
+  "ben_Beng": 27036,
+  "deu_Latn": 27036,
+  "eng_Latn": 27036,
+  "fra_Latn": 27036,
+  "hau_Latn": 27036,
+  "hin_Deva": 27036,
+  "ibo_Latn": 27036,
+  "ind_Latn": 27036,
+  "jpn_Jpan": 27036,
+  "kan_Knda": 27036,
+  "khm_Khmr": 27036,
+  "kor_Hang": 27036,
+  "lao_Laoo": 27036,
+  "pol_Latn": 27036,
+  "por_Latn": 27036,
+  "rus_Cyrl": 27036,
+  "spa_Latn": 27036,
+  "sun_Latn": 27036,
+  "tam_Taml": 27036,
+  "tel_Telu": 27036,
+  "tha_Thai": 27036,
+  "tur_Latn": 27036,
+  "ukr_Cyrl": 27036,
+  "vie_Latn": 27036,
+  "yor_Latn": 27036,
+  "zho_Hans": 27036
+ },
+ "files": {
+  "meta.json": {
+   "sha256": "d0da49281f012419a44317aacf49c563e883414859c2ea3116307fe4368ddadf",
+   "size": 9868
+  },
+  "selectivity.pt": {
+   "sha256": "2f0422c2c4c4fdeae9024b8afa9c0b68a2baca926f0df5a16aac838e5a0db3f6",
+   "size": 5893126
+  },
+  "survival.pt": {
+   "sha256": "fa8cc119b61b9c798e952a26668416c82194f2d075252b7ae24e22e2fa325a92",
+   "size": 20064193
+  }
+ },
+ "fp_baseline_on_devtest": {
+  "established": 6663,
+  "min_panel_rate": 1e-05,
+  "min_positives": 50,
+  "panel_rate_ge_floor": 8086,
+  "per_language": {
+   "amh_Ethi": [
+    174,
+    189
+   ],
+   "ben_Beng": [
+    88,
+    108
+   ],
+   "deu_Latn": [
+    164,
+    234
+   ],
+   "eng_Latn": [
+    1447,
+    1719
+   ],
+   "fra_Latn": [
+    127,
+    169
+   ],
+   "hau_Latn": [
+    214,
+    239
+   ],
+   "hin_Deva": [
+    123,
+    148
+   ],
+   "ibo_Latn": [
+    257,
+    296
+   ],
+   "ind_Latn": [
+    98,
+    139
+   ],
+   "jpn_Jpan": [
+    407,
+    514
+   ],
+   "kan_Knda": [
+    138,
+    160
+   ],
+   "khm_Khmr": [
+    404,
+    444
+   ],
+   "kor_Hang": [
+    174,
+    216
+   ],
+   "lao_Laoo": [
+    426,
+    464
+   ],
+   "pol_Latn": [
+    87,
+    137
+   ],
+   "por_Latn": [
+    39,
+    73
+   ],
+   "rus_Cyrl": [
+    46,
+    83
+   ],
+   "spa_Latn": [
+    139,
+    214
+   ],
+   "sun_Latn": [
+    217,
+    250
+   ],
+   "tam_Taml": [
+    179,
+    209
+   ],
+   "tel_Telu": [
+    118,
+    135
+   ],
+   "tha_Thai": [
+    270,
+    329
+   ],
+   "tur_Latn": [
+    244,
+    317
+   ],
+   "ukr_Cyrl": [
+    61,
+    84
+   ],
+   "vie_Latn": [
+    233,
+    298
+   ],
+   "yor_Latn": [
+    424,
+    453
+   ],
+   "zho_Hans": [
+    365,
+    465
+   ]
+  },
+  "positives_at_dev_language_ge_min": 7876,
+  "selective": 8086,
+  "tied_at_maximum": 89,
+  "unique_peak_at_dev_language": 6756
+ },
+ "languages": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tam_Taml",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda",
+  "tel_Telu",
+  "yor_Latn",
+  "sun_Latn",
+  "amh_Ethi",
+  "ibo_Latn",
+  "hau_Latn",
+  "khm_Khmr",
+  "lao_Laoo"
+ ],
+ "n_features": 16384,
+ "provenance": {
+  "batch_size": 32,
+  "bits": [
+   8,
+   7,
+   6,
+   5,
+   4,
+   16,
+   12,
+   0
+  ],
+  "bos_id": 2,
+  "commit": "618496f9e67837767c1459876f4965c0bad9dd59",
+  "corpus": "flores",
+  "equal_budget": {
+   "dev_tokens_per_language": 25820,
+   "devtest_tokens_per_language": 27036,
+   "rule": "minimum over languages of the content tokens (D-015)",
+   "seed": 0
+  },
+  "hook": "blocks.12.hook_resid_post",
+  "max_tokens": 1024,
+  "model": "gemma-2-2b",
+  "n_feat": 16384,
+  "pad_id": 0,
+  "regime": "mask",
+  "sae_id": "layer_12/width_16k/canonical",
+  "sae_release": "gemma-scope-2b-pt-res-canonical",
+  "seed": 0,
+  "stream": "eq"
+ },
+ "run_dir": "/home/karma/.cache/anlp-always-late/phase1_runs/p1-mask/eq",
+ "schema_version": 1
+}
