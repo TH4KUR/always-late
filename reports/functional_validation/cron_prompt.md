@@ -1,5 +1,7 @@
 # Prompt of the 40-minute recurring job (functional-validation study, D-039/D-040)
 
+**ENDED 2026-10-22 02:06: the user cancelled the cron entries and asked for the loop to be run by hand in a new chat (see [handoff 025](../handoffs/025-2026-10-22-chat-end-functional-study-midrun.md), Appendix A). This file is kept only so that the cron can be recreated if the user asks.**
+
 **Rescheduled 2026-10-22 02:02 at the user's request ("start from 3:11am in the same cadence").** Three session-only recurring entries, each with the SHORT pointer prompt below (the fenced block further down is the full instruction set and is read at every firing, so it can be edited without recreating the jobs):
 
 | id | cron expression | listed times | actual firing times |
