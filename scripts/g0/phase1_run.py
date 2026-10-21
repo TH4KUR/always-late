@@ -59,12 +59,14 @@ def _pack(lp, loss, lp_eq=None):
     return out
 
 
-def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_id, n_feat, bits_list, device="cpu", batch_size=32, max_tokens=None, max_len=256, nll_fn=None, keep=None):
+def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_id, n_feat, bits_list, device="cpu", batch_size=32, max_tokens=None, max_len=256, nll_fn=None, keep=None, profile_sink=None):
     """Devtest pass: the full-precision features of every batch are cached sparsely on the host, then each rung quantizes the single model in place,
     recomputes the features and updates the per-language streaming Pearson against the cached ones; bits == 0 is the restore-only control (INT0).
     Returns {"FP": result, bits: result, ...}; every result holds per-language corr / firing_rate / mean_activation / max_activation [n_lang, n_feat],
     token counts n and loss sums / counts per language. With `keep` (keep_masks, decision D-015) every result also holds ["eq"]: the same statistics over the
-    equal-budget positions only (the primary, pre-registered stream); the all-token statistics and the loss are unchanged."""
+    equal-budget positions only (the primary, pre-registered stream); the all-token statistics and the loss are unchanged.
+    With `profile_sink` (D-035, phase1_association_collect.ProfileSink) the encoder outputs of EVERY condition (FP, INTb, INT0) are also handed to the sink, which saves each
+    condition's own language-response profiles; nothing else changes and the returned results are identical with and without a sink."""
     n_lang = len(data)
     batches = p1.make_batches(data, bos_id, regime, pad_id, max_len, batch_size, max_tokens, keep)
     cache, results = p1.SparseRows(), {}
@@ -73,6 +75,8 @@ def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_i
     with torch.no_grad():
         restore()
         lp, loss, lp_eq = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn), new_eq()
+        if profile_sink is not None:
+            profile_sink.start_condition("FP")
         for b in batches:
             resid, logits = forward(b["tokens"].to(device))
             feats = encode(resid.reshape(-1, resid.shape[-1]))
@@ -80,12 +84,18 @@ def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_i
             cache.add(x); lp.update(b["lang"], x, x); loss.add(b, logits)
             if keep is not None:
                 xe = x[sel(b).to(x.device)]; lp_eq.update(b["lang"], xe, xe)
+            if profile_sink is not None:
+                profile_sink.update(b, feats.reshape(*b["valid"].shape, -1))
+        if profile_sink is not None:
+            profile_sink.finish_condition()
         results["FP"] = _pack(lp, loss, lp_eq)
         for bits in bits_list:
             restore()
             if bits != 0:
                 quantize(bits)
             lp, loss, lp_eq = p1.LangPearson(n_lang, n_feat, device), _Loss(n_lang, nll_fn), new_eq()
+            if profile_sink is not None:
+                profile_sink.start_condition(f"INT{bits}")
             for i, b in enumerate(batches):
                 resid, logits = forward(b["tokens"].to(device))
                 feats = encode(resid.reshape(-1, resid.shape[-1]))
@@ -94,6 +104,10 @@ def run_survival(forward, encode, quantize, restore, data, regime, bos_id, pad_i
                 lp.update(b["lang"], x, y); loss.add(b, logits)
                 if keep is not None:
                     m = sel(b).to(x.device); lp_eq.update(b["lang"], x[m], y[m])
+                if profile_sink is not None:
+                    profile_sink.update(b, feats.reshape(*b["valid"].shape, -1))
+            if profile_sink is not None:
+                profile_sink.finish_condition()
             results[bits] = _pack(lp, loss, lp_eq)
         restore()
     return results
@@ -246,7 +260,22 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=0); ap.add_argument("--commit", default="unknown")
     ap.add_argument("--no-equal-budget", action="store_true", help="flores only: skip the equal-token-budget stream (D-015); default computes both streams in one pass")
     ap.add_argument("--loss", choices=["exact", "tl"], default="exact", help="exact: float32 log-softmax, float64 token sums (default); tl: their per-window TransformerLens loss (anchor only: equal-length windows, no padding)")
+    ap.add_argument("--association-profiles", action="store_true", help="D-035: also save each condition's own language-response profiles and per-sentence totals (sidecar `association/`); mask regime and FLORES only")
+    ap.add_argument("--association-sentence-streams", default="eq,all", help="D-035: streams that also get per-sentence shards (eq, all or eq,all); the aggregate profiles of both streams are always saved. Fewer streams save disk")
+    ap.add_argument("--association-sums-dtype", choices=["float64", "float32"], default="float64", help="D-035: dtype of the per-sentence sums (aggregates stay float64)")
+    ap.add_argument("--association-baseline", help="D-035: the ORIGINAL mask/eq run directory (its selectivity.pt supplies the frozen feature union); required with --association-profiles")
     a = ap.parse_args(argv)
+    if a.association_baseline and not a.association_profiles:
+        ap.error("--association-baseline needs --association-profiles")
+    if a.association_profiles:
+        if a.regime != "mask":
+            ap.error("association collection is defined for the mask regime only (D-028)")
+        if a.corpus != "flores":
+            ap.error("association collection needs --corpus flores")
+        if not a.association_baseline:
+            ap.error("--association-baseline is required with --association-profiles")
+        if a.association_sentence_streams not in ("eq", "all", "eq,all"):
+            ap.error("--association-sentence-streams must be eq, all or eq,all")
     t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
 
     import gc
@@ -320,9 +349,20 @@ def main(argv=None):
             log("[equal budget] supported", int(report_eq["supported"].sum()), "selective", int(report_eq["selective"].sum()), "controls", len(report_eq["controls"]), "null cutoff", report_eq["null_cutoff"])
         del tag
 
+    sink = None
+    if a.association_profiles:
+        import phase1_association_collect as ac
+        sink = ac.make_sink(Path(a.out), a.regime, names, n_feat, a.bits, a.association_baseline, equal_budget=keep_test is not None, subset=bool(a.languages),
+                            sentence_streams=a.association_sentence_streams.split(","), sums_dtype=a.association_sums_dtype)
+        log("association collection on: conditions", sink.conditions, "streams", sink.streams, "sentence features", int(sink.sentence_features.numel()))
     results = run_survival(forward, encode, quantize, restore, devtest, a.regime, bos, pad, n_feat, a.bits, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens,
-                           nll_fn=tl_window_nll(lambda lg, tk: model.loss_fn(lg, tk)) if a.loss == "tl" else None, keep=keep_test)
+                           nll_fn=tl_window_nll(lambda lg, tk: model.loss_fn(lg, tk)) if a.loss == "tl" else None, keep=keep_test, profile_sink=sink)
     log("survival pass done; peak GPU memory GB:", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
+    if sink is not None:
+        manifest = sink.finalize()
+        meta["association"] = {"complete": manifest["complete"], "bytes_total": manifest["bytes_total"], "conditions": manifest["conditions"], "streams": manifest["streams"],
+                               "sentence_features": manifest["sentence_features"], "subset": bool(a.languages), "baseline": a.association_baseline}
+        log("association sidecar written: complete", manifest["complete"], "bytes", manifest["bytes_total"], "peak GPU memory GB:", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
     meta["seconds"] = time.time() - t0; meta["peak_gpu_gb"] = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
     res_all, res_eq = split_streams(results)
     if res_eq is None:
