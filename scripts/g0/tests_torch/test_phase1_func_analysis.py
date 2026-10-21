@@ -184,6 +184,90 @@ class Retention(unittest.TestCase):
         self.assertEqual(fa.retention(eb, efp, bands=(0.5, 1.5))["class"], "preserved")
 
 
+def make_rescue_runs(gap=0.2, rec=None, n=300, langs=("aa", "bb"), seed=3, noise=0.01, K="K64", ctrl_second=None, exact_gap=False):
+    """FP run and a quantized run whose baseline is `gap` nats per token worse; the quantized run also holds rescue configurations with planted recovered amounts (nats per token)."""
+    rec = rec or {"group": 0.05, "ctrl": 0.01, "all": 0.15, "error": 0.04, "full": 0.19}
+    g = np.random.default_rng(seed)
+    fp_items, q_items = {}, {}
+    for code in langs:
+        ntok = g.integers(8, 30, n); base = ntok * g.uniform(2.0, 3.0, n)
+        fp_items[f"{code}|none"] = {"nll": torch.tensor(base), "ntok": torch.tensor(ntok)}
+        e = g.normal(0, noise, n)
+        if exact_gap:
+            e = e - (e * ntok).sum() / ntok.sum()                                     # the pooled gap is exactly `gap`, whatever the noise
+        qb = base + ntok * (gap + e)
+        q_items[f"{code}|none"] = {"nll": torch.tensor(qb), "ntok": torch.tensor(ntok)}
+        def add(name, r):
+            q_items[f"{code}|{name}"] = {"nll": torch.tensor(qb - ntok * (r + g.normal(0, noise, n))), "ntok": torch.tensor(ntok)}
+        add(f"rescue_{K}@{code}", rec["group"]); add(f"rescuectrl0_{K}@{code}", rec["ctrl"]); add(f"rescuectrl1_{K}@{code}", rec["ctrl"] if ctrl_second is None else ctrl_second)
+        add("rescue_all", rec["all"]); add("rescue_error", rec["error"]); add("rescue_full", rec["full"])
+    mk = lambda lab, items: fa.Run(lab, items, {}, {}, list(langs), {c: list(range(n)) for c in langs})
+    return mk("FP", fp_items), mk("INT4", q_items)
+
+
+class RescueAnalysis(unittest.TestCase):
+    def setUp(self):
+        self.D = fa.draws(300, 400, seed=0)
+
+    def test_fractions_and_bounds_are_recovered(self):
+        fp, q = make_rescue_runs()
+        r = fa.rescue_effect(q, fp, "aa", "K64", self.D)
+        self.assertAlmostEqual(r["gap"]["point"], 0.2, delta=0.01)
+        for name, want in (("group", 0.05), ("control", 0.01), ("all", 0.15), ("error", 0.04), ("full", 0.19)):
+            self.assertAlmostEqual(r["recovered"][name]["point"], want, delta=0.01)
+        self.assertAlmostEqual(r["fraction"]["group"]["point"], 0.25, delta=0.02)
+        self.assertAlmostEqual(r["fraction"]["group_minus_control"]["point"], 0.20, delta=0.02)
+        self.assertAlmostEqual(r["fraction"]["full"]["point"], 0.95, delta=0.02)
+        lo, hi = r["fraction"]["group"]["lo"], r["fraction"]["group"]["hi"]
+        self.assertLess(lo, 0.25); self.assertGreater(hi, 0.25)
+
+    def test_all_control_draws_are_averaged(self):
+        fp, q = make_rescue_runs(rec={"group": 0.05, "ctrl": 0.00, "all": 0.15, "error": 0.04, "full": 0.19}, ctrl_second=0.04)
+        r = fa.rescue_effect(q, fp, "aa", "K64", self.D)
+        self.assertAlmostEqual(r["recovered"]["control"]["point"], 0.02, delta=0.003)                   # mean of 0.00 and 0.04, not the first draw alone
+
+    def test_a_positive_but_uncertain_gap_gives_no_fraction(self):
+        fp, q = make_rescue_runs(gap=0.03, noise=0.6, exact_gap=True)
+        r = fa.rescue_effect(q, fp, "aa", "K64", self.D, min_gap=0.02)
+        self.assertAlmostEqual(r["gap"]["point"], 0.03, places=9)
+        self.assertLessEqual(np.percentile(r["gap"]["samples"], 2.5), 0.02)                             # the point estimate clears the threshold, its interval does not
+        self.assertIsNone(r["fraction"]["group"])
+
+    def test_no_fraction_when_the_quantization_gap_is_negligible(self):
+        fp, q = make_rescue_runs(gap=0.005)
+        r = fa.rescue_effect(q, fp, "aa", "K64", self.D, min_gap=0.02)
+        self.assertIsNone(r["fraction"]["group"]); self.assertIn("point", r["recovered"]["group"])        # the raw recovery is still reported
+
+    def test_negative_recovery_is_kept(self):
+        fp, q = make_rescue_runs(rec={"group": -0.03, "ctrl": 0.0, "all": 0.1, "error": 0.0, "full": 0.2})
+        r = fa.rescue_effect(q, fp, "aa", "K64", self.D)
+        self.assertAlmostEqual(r["recovered"]["group"]["point"], -0.03, delta=0.01)
+        self.assertLess(r["fraction"]["group"]["point"], 0)
+
+    def test_missing_bounds_are_skipped_not_invented(self):
+        fp, q = make_rescue_runs()
+        for k in [k for k in list(q._items) if k[1] in ("rescue_all", "rescue_error", "rescue_full")]:
+            del q._items[k]
+        r = fa.rescue_effect(q, fp, "aa", "K64", self.D)
+        self.assertNotIn("all", r["recovered"]); self.assertIn("group", r["recovered"])
+
+    def test_analyse_writes_the_rescue_table_when_rescue_configs_exist(self):
+        fp, q = make_rescue_runs()
+        for run in (fp, q):                                                                          # the primary configurations are needed by analyse()
+            for code in run.languages:
+                base, nt = run._items[(code, "none")]
+                for name, h in ((f"zero_K64@{code}", 0.5), (f"ctrl0_K64@{code}", 0.1), (f"ctrl1_K64@{code}", 0.1)):
+                    run._items[(code, name)] = (base + nt * h, nt)
+        for code in fp.languages:                                                                    # even if full precision holds rescue configurations, it is the reference, not a recipient
+            fp._items[(code, "rescue_K64@" + code)] = fp._items[(code, "none")]
+            fp._items[(code, "rescuectrl0_K64@" + code)] = fp._items[(code, "none")]
+        out = Path(tempfile.mkdtemp())
+        res = fa.analyse({"FP": fp, "INT4": q}, out, K="K64", n_boot=100, seed=0)
+        self.assertTrue((out / "rescue.csv").exists())
+        self.assertIn("INT4", res["rescue"]); self.assertNotIn("FP", res["rescue"])
+        self.assertIn("rescue", (out / "report.md").read_text().lower())
+
+
 class Checks(unittest.TestCase):
     def test_sham_and_off_target_and_fidelity(self):
         run = make_run("FP", sham=0.0, noise=0.05)

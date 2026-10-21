@@ -137,6 +137,48 @@ class Edits(unittest.TestCase):
         expect = self.resid[self.valid] + 10.0 * self.sae.W_dec[self.idx].sum(0)
         self.assertTrue(torch.allclose(out[self.valid], expect, atol=1e-4))
 
+    def donor_setup(self):
+        g = torch.Generator().manual_seed(11)
+        x_d = self.resid[self.valid] + torch.randn(int(self.valid.sum()), 8, generator=g) * 0.7          # the donor model's residual at the same positions
+        a_d = self.sae.encode(x_d)
+        return x_d, a_d
+
+    def test_full_residual_patch_replaces_the_valid_rows_and_leaves_the_rest(self):
+        x_d, a_d = self.donor_setup()
+        out, st = fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, torch.arange(32), "donor_resid", x_donor=x_d)
+        self.assertTrue(torch.allclose(out[self.valid], x_d))
+        self.assertTrue(torch.equal(out[~self.valid], self.resid[~self.valid]))
+        self.assertGreater(st["sum_norm_ratio"], 0)
+
+    def test_error_term_patch_keeps_the_recipients_reconstruction(self):
+        x_d, a_d = self.donor_setup()
+        allidx = torch.arange(32)
+        out, _ = fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, allidx, "donor_error", a_donor=a_d, x_donor=x_d)
+        x = self.resid[self.valid]
+        xhat_b, xhat_d = self.sae.decode(self.a), self.sae.decode(a_d)
+        err_d = x_d - xhat_d
+        self.assertTrue(torch.allclose(out[self.valid], xhat_b + err_d, atol=1e-4))      # recipient reconstruction + donor error term
+
+    def test_all_features_patch_plus_error_patch_adds_up_to_the_donor_residual(self):
+        x_d, a_d = self.donor_setup()
+        allidx = torch.arange(32)
+        o_all, _ = fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, allidx, "donor", a_donor=a_d)
+        o_err, _ = fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, allidx, "donor_error", a_donor=a_d, x_donor=x_d)
+        x = self.resid[self.valid]
+        # x_all = x_b + (xhat_d - xhat_b); x_err = xhat_b + err_d; their combination x_all + x_err - x_b = x_d
+        self.assertTrue(torch.allclose(o_all[self.valid] + o_err[self.valid] - x, x_d, atol=1e-4))
+
+    def test_donor_kinds_need_their_arguments_and_matching_shapes(self):
+        x_d, a_d = self.donor_setup()
+        with self.assertRaises(ValueError):
+            fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, self.idx, "donor_resid")
+        with self.assertRaises(ValueError):
+            fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, self.idx, "donor_resid", x_donor=x_d[:-1])
+        with self.assertRaises(ValueError):
+            fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, self.idx, "donor_error", a_donor=a_d)
+        with self.assertRaises(ValueError):
+            fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, self.idx, "donor_error", x_donor=x_d)
+
     def test_sham_is_bitwise_in_bf16_and_tiny_in_float32(self):
         resid, valid = make_batch(dtype=torch.bfloat16)
         a = fi.encode_valid(resid, valid, self.sae.encode)

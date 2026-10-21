@@ -267,6 +267,109 @@ def enc_cloze(tokens, options, answer=0):
     return {"tokens": list(tokens), "option_ids": [list(o) for o in options], "answer": answer, "format": "cloze"}
 
 
+class QuantizedToy(ToyModel):
+    """The 'quantized recipient': the same toy architecture with perturbed weights in both halves."""
+    def __init__(self, seed=0, eps=0.15):
+        super().__init__(seed)
+        g = torch.Generator().manual_seed(99)
+        self.E = self.E + eps * torch.randn_like(self.E, generator=g); self.M1 = self.M1 + eps * torch.randn_like(self.M1, generator=g)
+        self.M2 = self.M2 + eps * torch.randn_like(self.M2, generator=g); self.U = self.U + eps * torch.randn_like(self.U, generator=g)
+
+
+class Rescue(unittest.TestCase):
+    def setUp(self):
+        self.fp, self.q, self.sae = ToyModel(), QuantizedToy(), ToySAE(d=D, F=F)
+        self.data = corpus()
+        self.batches = p1.make_batches(self.data, BOS, "mask", 0, 256, batch_size=3)
+        self.n_sent = {l: len(v) for l, v in self.data.items()}
+        self.idx = torch.tensor([2, 5, 9, 17])
+        self.cache = fr.build_donor_cache(self.fp.lower, self.sae.encode, self.batches)
+
+    def run_q(self, configs):
+        return fr.evaluate_precision(self.q.lower, self.q.upper, self.sae.encode, self.sae.W_dec, self.batches, self.n_sent, configs, donors=self.cache)
+
+    def brute(self, sent, kind, idx=None):
+        tokens = torch.tensor([[BOS] + sent]); valid = torch.zeros_like(tokens, dtype=torch.bool); valid[:, 1:] = True
+        xq, xf = self.q.lower(tokens), self.fp.lower(tokens)
+        aq, af = fi.encode_valid(xq, valid, self.sae.encode), fi.encode_valid(xf, valid, self.sae.encode)
+        W = self.sae.W_dec
+        if kind == "group":
+            x2 = xq.clone(); x2[valid] = xq[valid] + (af[:, idx] - aq[:, idx]) @ W[idx]
+        elif kind == "all":
+            x2 = xq.clone(); x2[valid] = xq[valid] + (af - aq) @ W
+        elif kind == "error":
+            x2 = xq.clone(); x2[valid] = xf[valid] - (af - aq) @ W
+        else:
+            x2 = xq.clone(); x2[valid] = xf[valid]                      # BOS (position 0) is never patched
+        s, n = p1.chunked_nll(self.q.upper(x2), tokens, valid)
+        return float(s[0])
+
+    def test_group_patch_equals_brute_force_and_differs_from_the_recipient(self):
+        out = self.run_q([{"name": "rg", "kind": "donor", "idx": self.idx, "langs": {0, 1, 2}}])
+        moved = 0
+        for l, sents in self.data.items():
+            for i, s in enumerate(sents):
+                self.assertAlmostEqual(float(out["items"][(l, "rg")]["nll"][i]), self.brute(s, "group", self.idx), places=3)
+                moved += abs(float(out["items"][(l, "rg")]["nll"][i]) - float(out["items"][(l, "none")]["nll"][i])) > 1e-6
+        self.assertGreater(moved, 0)
+
+    def test_bounds_equal_brute_force(self):
+        allidx = torch.arange(F)
+        cfgs = [{"name": "r_all", "kind": "donor", "idx": allidx, "langs": {0, 1, 2}}, {"name": "r_err", "kind": "donor_error", "idx": allidx, "langs": {0, 1, 2}},
+                {"name": "r_full", "kind": "donor_resid", "idx": allidx, "langs": {0, 1, 2}}]
+        out = self.run_q(cfgs)
+        for l, sents in self.data.items():
+            for i, s in enumerate(sents):
+                for name, kind in (("r_all", "all"), ("r_err", "error"), ("r_full", "full")):
+                    self.assertAlmostEqual(float(out["items"][(l, name)]["nll"][i]), self.brute(s, kind), places=3)
+
+    def test_the_full_residual_patch_restores_the_donor_loss_when_the_upper_halves_agree(self):
+        same_upper = QuantizedToy(eps=0.0)                              # recipient identical to the donor: every rescue is a no-op
+        out = fr.evaluate_precision(same_upper.lower, same_upper.upper, self.sae.encode, self.sae.W_dec, self.batches, self.n_sent,
+                                    [{"name": "r_full", "kind": "donor_resid", "idx": torch.arange(F), "langs": {0}}, {"name": "r_err", "kind": "donor_error", "idx": torch.arange(F), "langs": {0}},
+                                     {"name": "r_g", "kind": "donor", "idx": self.idx, "langs": {0}}], donors=self.cache)
+        for name in ("r_full", "r_err", "r_g"):
+            self.assertTrue(torch.allclose(out["items"][(0, name)]["nll"], out["items"][(0, "none")]["nll"], atol=1e-4))
+
+    def run_with(self, cache):
+        return fr.evaluate_precision(self.q.lower, self.q.upper, self.sae.encode, self.sae.W_dec, self.batches, self.n_sent,
+                                     [{"name": "rg", "kind": "donor", "idx": self.idx, "langs": {0, 1, 2}}], donors=cache)
+
+    def test_a_cache_with_another_number_of_batches_is_rejected(self):
+        other = p1.make_batches(corpus(seed=5, sizes=(2, 2, 2)), BOS, "mask", 0, 256, batch_size=2)
+        with self.assertRaisesRegex(ValueError, "donor cache holds"):
+            self.run_with(fr.build_donor_cache(self.fp.lower, self.sae.encode, other))
+        extra = fr.build_donor_cache(self.fp.lower, self.sae.encode, self.batches + [self.batches[0]])           # the first batches agree: only the count differs
+        with self.assertRaisesRegex(ValueError, "donor cache holds"):
+            self.run_with(extra)
+
+    def test_a_cache_with_another_number_of_rows_in_a_batch_is_rejected(self):
+        altered = [dict(b) for b in self.batches]
+        altered[0]["valid"] = self.batches[0]["valid"].clone(); altered[0]["valid"][0, 1] = False
+        with self.assertRaisesRegex(ValueError, "does not match batch 0"):
+            self.run_with(fr.build_donor_cache(self.fp.lower, self.sae.encode, altered))
+
+    def test_the_donor_cache_returns_rows_and_sparse_activations_per_batch(self):
+        b0 = self.batches[0]
+        resid = self.fp.lower(b0["tokens"])
+        self.assertTrue(torch.equal(self.cache.get_x(0, "cpu"), resid[b0["valid"]]))
+        self.assertTrue(torch.allclose(self.cache.get_a(0, "cpu"), self.sae.encode(resid[b0["valid"]])))
+
+
+class RescueConfigs(unittest.TestCase):
+    def test_group_controls_and_bounds(self):
+        man = toy_manifest()
+        cfgs = {c["name"]: c for c in fr.build_configs(man, ["aa", "bb", "cc"], ["aa", "bb"], [], {"rescue": ["K2"], "rescue_bounds": [True]}, n_features=F)}
+        self.assertEqual(cfgs["rescue_K2@aa"]["kind"], "donor"); self.assertEqual(cfgs["rescue_K2@aa"]["idx"].tolist(), [9, 8]); self.assertEqual(cfgs["rescue_K2@aa"]["langs"], {0})
+        self.assertEqual(cfgs["rescuectrl0_K2@bb"]["idx"].tolist(), [30, 31]); self.assertEqual(cfgs["rescuectrl1_K2@bb"]["idx"].tolist(), [32, 33])
+        self.assertEqual(cfgs["rescue_all"]["idx"].numel(), F); self.assertEqual(cfgs["rescue_all"]["kind"], "donor")
+        self.assertEqual(cfgs["rescue_error"]["kind"], "donor_error"); self.assertEqual(cfgs["rescue_full"]["kind"], "donor_resid")
+        for n in ("rescue_all", "rescue_error", "rescue_full"):
+            self.assertEqual(cfgs[n]["langs"], {0, 1, 2})
+        with self.assertRaises(ValueError):
+            fr.build_configs(man, ["aa", "bb", "cc"], ["aa"], [], {"rescue_bounds": [True]})                          # needs n_features
+
+
 class McBatches(unittest.TestCase):
     def test_letter_batches_are_sorted_padded_and_carry_last_positions_and_candidates(self):
         data = {0: [enc_letter([4, 5, 6], [3, 5, 7, 9]), enc_letter([4], [3, 5, 7, 9]), enc_letter([4, 5, 6, 7, 8], [2, 4, 6, 8])]}

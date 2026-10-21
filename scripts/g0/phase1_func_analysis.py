@@ -38,6 +38,10 @@ class Run:
         nll, ntok = self._items[(text, name)]
         return nll - self._items[(text, "none")][0], ntok
 
+    def base(self, text):
+        """(NLL per sentence of the unintervened run on `text`, token counts)."""
+        return self._items[(text, "none")]
+
     def ntok(self, text):
         return self._items[(text, "none")][1]
 
@@ -116,6 +120,41 @@ def off_target(run, code, K, D):
     return out
 
 
+RESCUE_PARTS = (("all", "rescue_all"), ("error", "rescue_error"), ("full", "rescue_full"))
+
+
+def rescue_effect(run_b, run_fp, code, K, D, min_gap=0.02):
+    """FP-donor patching on a language's own text: how much of the quantization-induced loss (NLL of the quantized run minus NLL of the full-precision run, per token) is recovered by patching
+    the language's group (`group`), its activity-matched controls (`control`, mean over draws), the difference (`group_minus_control`), all SAE features (`all`), the SAE error term (`error`)
+    and the whole residual (`full`). Recovered amounts are nats per token (raw quantities, always reported); a fraction (recovered over the gap) is given only when the 95 % lower bound of the gap
+    exceeds min_gap nats per token (a quantized run that is not clearly worse has nothing to recover); negative recovery is kept."""
+    nll_b, nt = run_b.base(code)
+    gap_i = nll_b - run_fp.base(code)[0]
+    gap = {"point": pooled(gap_i, nt), "samples": _boot(gap_i, nt, D)}
+    arr = {}
+    gname = f"rescue_{K}@{code}"
+    if run_b.has(code, gname):
+        arr["group"] = -run_b.delta(code, gname)[0]
+    ctrl = [n for n in run_b.configs_on(code) if re.fullmatch(rf"rescuectrl\d+_{re.escape(K)}@{re.escape(code)}", n)]
+    if ctrl:
+        arr["control"] = np.mean([-run_b.delta(code, n)[0] for n in ctrl], axis=0)
+    if "group" in arr and "control" in arr:
+        arr["group_minus_control"] = arr["group"] - arr["control"]
+    for key, name in RESCUE_PARTS:
+        if run_b.has(code, name):
+            arr[key] = -run_b.delta(code, name)[0]
+    rec = {k: {"point": pooled(v, nt), "samples": _boot(v, nt, D)} for k, v in arr.items()}
+    ok = _ci(gap["samples"])[0] > min_gap
+    frac = {}
+    for k, v in rec.items():
+        if not ok:
+            frac[k] = None
+            continue
+        lo, hi = _ci(v["samples"] / gap["samples"])
+        frac[k] = {"point": v["point"] / gap["point"], "lo": lo, "hi": hi, "samples": v["samples"] / gap["samples"]}
+    return {"gap": gap, "recovered": rec, "fraction": frac}
+
+
 def fidelity_table(runs):
     """Per precision and language: fraction of residual energy not reconstructed by the SAE (sum of squared error over sum of squared norm), mean number of active features, rms norm."""
     rows = []
@@ -154,6 +193,30 @@ def analyse(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=BAN
         res["off_target"][lab] = {c: {t: _row(o["point"], o["samples"]) for t, o in off_target(runs[lab], c, K, D).items()} for c in langs}
         if lab != "FP":
             res["retention"][lab] = {"macro": retention(mac[lab], mac["FP"], bands), "languages": {c: retention(eff[lab][c], eff["FP"][c], bands) for c in langs}}
+    res["rescue"] = {}
+    for lab, r in runs.items():
+        if lab == "FP":
+            continue
+        per = {c: rescue_effect(r, fp, c, K, D) for c in langs if r.has(c, f"rescue_{K}@{c}")}
+        if per:
+            def pack(x):
+                return {"gap": _row(x["gap"]["point"], x["gap"]["samples"]), "recovered": {k: _row(v["point"], v["samples"]) for k, v in x["recovered"].items()},
+                        "fraction": {k: (None if v is None else {"point": float(v["point"]), "lo": v["lo"], "hi": v["hi"]}) for k, v in x["fraction"].items()}}
+            macro_frac = {}
+            for k in ("group", "control", "group_minus_control", "all", "error", "full"):
+                have = [c for c in per if per[c]["fraction"].get(k)]
+                if have:
+                    s = np.mean([per[c]["fraction"][k]["samples"] for c in have], axis=0)
+                    macro_frac[k] = {**_row(np.mean([per[c]["fraction"][k]["point"] for c in have]), s), "n_languages": len(have)}
+            res["rescue"][lab] = {"languages": {c: pack(x) for c, x in per.items()}, "macro_fraction": macro_frac}
+    if res["rescue"]:
+        with open(out / "rescue.csv", "w", newline="") as f:
+            w = csv.writer(f); w.writerow(["precision", "language", "gap", "part", "recovered", "recovered_lo", "recovered_hi", "fraction", "fraction_lo", "fraction_hi"])
+            for lab, d in res["rescue"].items():
+                for c, x in d["languages"].items():
+                    for part, v in x["recovered"].items():
+                        fr_ = x["fraction"].get(part)
+                        w.writerow([lab, c, x["gap"]["point"], part, v["point"], v["lo"], v["hi"], fr_["point"] if fr_ else "", fr_["lo"] if fr_ else "", fr_["hi"] if fr_ else ""])
     fid = fidelity_table(runs)
     res["fidelity"] = fid
     (out / "analysis.json").write_text(json.dumps(res, indent=1) + "\n")
@@ -195,6 +258,14 @@ def report_text(res, runs):
         for c, e in d.items():
             ng = f"{e['norm_ratio_group']:.3f} / {e['norm_ratio_control']:.3f}" if e["norm_ratio_group"] is not None and e["norm_ratio_control"] is not None else "-"
             L.append(f"| {lab} | {c} | {e['point']:.4f} | [{e['lo']:.4f}, {e['hi']:.4f}] | {e['harm_group']:.4f} | {e['harm_control']:.4f} | {ng} |")
+    if res.get("rescue"):
+        L += ["", "## Rescue: share of the quantization-induced loss recovered by patching full-precision activations (same tokens) into the quantized model", "",
+              "Fractions are given only where the gap (quantized minus full-precision NLL per token) is clearly above 0.02 nats; raw recovered amounts are in `rescue.csv`. This is a different question from the effects above: "
+              "it says where the damage sits at layer 12, not that the quantized model natively kept the function.", "",
+              "| precision | part | macro fraction | 95 % interval | languages |", "|---|---|---|---|---|"]
+        for lab, d in res["rescue"].items():
+            for k, v in d["macro_fraction"].items():
+                L.append(f"| {lab} | {k} | {v['point']:.3f} | [{v['lo']:.3f}, {v['hi']:.3f}] | {v['n_languages']} |")
     L += ["", "## Off-target harm of the group's zero-ablation on other languages' text (manipulation check)", "", "| precision | group | text | harm | interval |", "|---|---|---|---|---|"]
     for lab, d in res["off_target"].items():
         for c, tx in d.items():

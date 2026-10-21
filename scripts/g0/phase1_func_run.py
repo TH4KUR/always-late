@@ -33,6 +33,53 @@ def validate_configs(configs):
         seen.add(c["name"])
 
 
+class DonorCache:
+    """The full-precision model's layer-12 residual rows (bf16, host) and SAE activations (sparse, host) of every batch, for FP-donor patching of a quantized recipient run on the SAME batches."""
+    def __init__(self):
+        self._x, self._a = [], p1.SparseRows()
+
+    def add(self, x_rows, a_rows):
+        self._x.append(x_rows.detach().cpu()); self._a.add(a_rows.detach().cpu())
+
+    def __len__(self):
+        return len(self._x)
+
+    def rows(self, bi):
+        return self._x[bi].shape[0]
+
+    def get_x(self, bi, device):
+        return self._x[bi].to(device)
+
+    def get_a(self, bi, device):
+        return self._a.get(bi, device)
+
+
+def build_donor_cache(lower, encode, batches, device=None):
+    """Run the (full-precision) model over the batches once and cache residual rows and activations of the valid positions."""
+    cache = DonorCache()
+    with torch.no_grad():
+        for b in batches:
+            tokens, valid = (b["tokens"], b["valid"]) if device is None else (b["tokens"].to(device), b["valid"].to(device))
+            x = lower(tokens)[valid]
+            cache.add(x, encode(x).float())
+    return cache
+
+
+def _donor_kwargs(donors, bi, kind, valid, device):
+    if donors is None:
+        raise ValueError("a donor configuration needs the donor activations")
+    if isinstance(donors, dict):                                                        # plain activations per batch (kind donor only)
+        return {"a_donor": donors[bi]}
+    if donors.rows(bi) != int(valid.sum()):
+        raise ValueError(f"the donor cache does not match batch {bi} ({donors.rows(bi)} rows against {int(valid.sum())} valid positions)")
+    kw = {}
+    if kind in ("donor", "donor_error"):
+        kw["a_donor"] = donors.get_a(bi, device)
+    if kind in ("donor_error", "donor_resid"):
+        kw["x_donor"] = donors.get_x(bi, device)
+    return kw
+
+
 def lm_readout(chunk=4):
     """Per-row next-token NLL (float64 sum over the batch's `score` positions, default the valid positions) and the number of scored tokens: {"nll", "ntok"}."""
     def read(logits, b, tokens, valid):
@@ -56,6 +103,8 @@ def evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, de
     Returns {"items": {(lang, name): {key: array [n_rows, ...]}}, "stats": {(lang, name): sums of the perturbation norm ratio, active group features, rows}, "fidelity": {lang: sums of
     reconstruction error, residual norm, L0, rows}} (fidelity only when `decode` is given)."""
     validate_configs(configs)
+    if isinstance(donors, DonorCache) and len(donors) != len(batches):
+        raise ValueError(f"the donor cache holds {len(donors)} batches, the run has {len(batches)}")
     readout = readout or lm_readout(nll_chunk)
     items, stats, fid = {}, {}, {}
 
@@ -86,10 +135,8 @@ def evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, de
                 if l not in c["langs"]:
                     continue
                 kw = dict(c.get("kw", {}))
-                if c["kind"] == "donor":
-                    if donors is None:
-                        raise ValueError("a donor configuration needs the donor activations")
-                    kw["a_donor"] = donors[bi]
+                if c["kind"] in ("donor", "donor_error", "donor_resid"):
+                    kw.update(_donor_kwargs(donors, bi, c["kind"], valid, resid.device))
                 if c["kind"] == "resample":
                     kw["generator"] = torch.Generator().manual_seed(_seed(kw.pop("seed", 0), l, bi))
                 resid2, st = fi.apply_edit(resid, valid, a, W_dec, c["idx"], c["kind"], **kw)
@@ -171,17 +218,18 @@ def run_gates(full, lower, upper, encode, W_dec, tokens, valid, idx):
     return res
 
 
-FAMILIES = ("zero", "controls", "sham", "scale", "mean", "resample")
+FAMILIES = ("zero", "controls", "sham", "scale", "mean", "resample", "rescue", "rescue_bounds")
 
 
 def _size(label):
     return None if label == "all" else int(label[1:])
 
 
-def build_configs(man, run_langs, targets, panel, families, off_target_label="K64", mean_vals_fn=None, pool_fn=None):
+def build_configs(man, run_langs, targets, panel, families, off_target_label="K64", mean_vals_fn=None, pool_fn=None, n_features=None):
     """Edit configurations from the frozen groups manifest. run_langs: language codes of the run in batch-index order; targets: codes to build for; panel: codes whose text is used for the
     off-target check (limited to run_langs); families: {"zero": [labels], "controls": [labels] (every draw of the manifest), "sham": [labels], "scale": {label: [alphas]}, "mean": [labels],
-    "resample": [labels]} with labels as in the manifest (K16, K64, all). Names are `<family>[draw]_<label>@<target>`. Only the zero-ablation of `off_target_label` also runs on the panel text
+    "resample": [labels], "rescue": [labels] (FP-donor patch of the group and of every control draw), "rescue_bounds": [True] (donor patches of all features, of the SAE error term and of the whole
+    residual, on every language of the run; needs n_features)} with labels as in the manifest (K16, K64, all). Names are `<family>[draw]_<label>@<target>`. Only the zero-ablation of `off_target_label` also runs on the panel text
     (target excluded); every other configuration runs on its target language's text only. mean_vals_fn(code, idx) and pool_fn(code, idx) supply the mean-ablation values and the resample pool."""
     bad = [f for f in families if f not in FAMILIES]
     if bad:
@@ -218,11 +266,21 @@ def build_configs(man, run_langs, targets, panel, families, off_target_label="K6
                 raise ValueError("the mean family needs mean_vals_fn")
             idx = ids(code, label)
             cfgs.append({"name": f"mean_{label}@{code}", "kind": "mean", "idx": idx, "langs": {i}, "kw": {"mean_vals": mean_vals_fn(code, idx)}})
+        for label in families.get("rescue", []):
+            cfgs.append({"name": f"rescue_{label}@{code}", "kind": "donor", "idx": ids(code, label), "langs": {i}})
+            for r, s in enumerate(man["controls"][code][label]):
+                cfgs.append({"name": f"rescuectrl{r}_{label}@{code}", "kind": "donor", "idx": torch.tensor(s, dtype=torch.long), "langs": {i}})
         for label in families.get("resample", []):
             if pool_fn is None:
                 raise ValueError("the resample family needs pool_fn")
             idx = ids(code, label)
             cfgs.append({"name": f"res_{label}@{code}", "kind": "resample", "idx": idx, "langs": {i}, "kw": {"pool": pool_fn(code, idx), "seed": 0}})
+    if families.get("rescue_bounds"):
+        if n_features is None:
+            raise ValueError("rescue_bounds needs n_features")
+        every, langs = torch.arange(n_features, dtype=torch.long), set(range(len(run_langs)))
+        for name, kind in (("rescue_all", "donor"), ("rescue_error", "donor_error"), ("rescue_full", "donor_resid")):
+            cfgs.append({"name": name, "kind": kind, "idx": every, "langs": set(langs)})
     return cfgs
 
 
@@ -262,6 +320,7 @@ def collect_pool(lower, encode, batches, rows_per_lang, seed, device=None):
 # --------------------------------------------------------------------------------------------- real-model wiring (exercised by the smoke job, not by unit tests)
 PANEL = ("eng_Latn", "rus_Cyrl", "zho_Hans", "hin_Deva")
 PRESETS = {
+    "none": {},
     "smoke": {"zero": ["K64"], "controls": ["K64"], "sham": ["K64"], "scale": {"K64": [0.5, 2.0]}, "mean": ["K64"], "resample": ["K64"]},
     "primary": {"zero": ["K16", "K64", "all"], "controls": ["K16", "K64", "all"], "sham": ["K64"], "scale": {"K64": [0.5, 2.0]}, "mean": ["K64"], "resample": ["K64"]},
 }
@@ -284,6 +343,7 @@ def main(argv=None):
     ap.add_argument("--split", choices=["pilot", "eval"], default="pilot"); ap.add_argument("--n-pilot", type=int, default=150); ap.add_argument("--n-eval", type=int, default=450)
     ap.add_argument("--lm-seed", type=int, default=0); ap.add_argument("--languages", nargs="*"); ap.add_argument("--max-sentences", type=int)
     ap.add_argument("--preset", choices=sorted(PRESETS), default="smoke"); ap.add_argument("--off-target-label", default="K64")
+    ap.add_argument("--rescue", help="group size label (K16, K64, all): add FP-donor patch configurations of that group, its controls and the bounds (all features, error term, whole residual) for every quantized precision")
     ap.add_argument("--max-tokens", type=int, default=1024); ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--pool-sentences", type=int, default=120); ap.add_argument("--pool-rows", type=int, default=300); ap.add_argument("--commit", default="unknown")
     a = ap.parse_args(argv)
@@ -348,6 +408,11 @@ def main(argv=None):
         pool_batches = p1.make_batches(dev, bos, "mask", pad, 256, a.batch_size, a.max_tokens)
     restore = env["restore_model_work"]
     Path(a.out).mkdir(parents=True, exist_ok=True)
+    donors = None
+    if a.rescue:
+        restore()                                                           # full-precision weights: the donor of every quantized run
+        donors = build_donor_cache(lower, encode, batches, device=DEVICE)
+        log("donor cache built:", len(donors), "batches")
     summary = {}
     for prec in [_precision_key(x) for x in a.precisions]:
         restore()
@@ -358,10 +423,13 @@ def main(argv=None):
             pool, pool_lang = collect_pool(lower, encode, pool_batches, a.pool_rows, 0, device=DEVICE)
             pool_fn = lambda code, idx: pool[pool_lang != run_names.index(code)][:, idx].float().to(DEVICE)
         mean_fn = lambda code, idx: other_language_means(sel, names.index(code), idx).to(DEVICE)
-        configs = build_configs(man, run_names, run_names, list(PANEL), families, a.off_target_label, mean_vals_fn=mean_fn, pool_fn=pool_fn)
+        fams = dict(families)
+        if a.rescue and prec != "FP":
+            fams["rescue"] = [a.rescue]; fams["rescue_bounds"] = [True]
+        configs = build_configs(man, run_names, run_names, list(PANEL), fams, a.off_target_label, mean_vals_fn=mean_fn, pool_fn=pool_fn, n_features=int(sae.cfg.d_sae))
         passes = sum((1 + sum(1 for c in configs if b["lang"] in c["langs"])) * int(b["valid"].sum()) for b in batches)
         ts = time.time()
-        out = evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, decode=decode, device=DEVICE)
+        out = evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, decode=decode, donors=donors, device=DEVICE)
         dt = time.time() - ts
         key = f"INT{prec}" if prec != "FP" else "FP"
         torch.save({"precision": key, "split": a.split, "ids": lang_ids, "languages": run_names, "preset": a.preset,
