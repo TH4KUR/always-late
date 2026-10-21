@@ -6,13 +6,24 @@ tags:
 - quantization
 - gemma-2
 - interpretability
+- multilingual
 ---
 
 # always-late: large run artifacts
 
-Large artifacts of the ANLP project "Does compression forget language?" (team Always Late, IIIT-H). Code, documentation and small summaries live in the GitHub repository `TH4KUR/always-late` (see `reports/artifacts.md` there for the index and `reports/audit_our_vs_duan.md` for what the runs mean). This dataset holds what is too large for git: per-feature tables, bootstrap snapshots and token windows.
+Large artifacts of the ANLP course project "Does compression forget language?" (team Always Late, IIIT-H). Code, documentation and small summaries live in the project repository `TH4KUR/always-late` (private at the time of writing; its `reports/artifacts.md` indexes this dataset and `reports/audit_our_vs_duan.md` explains the baseline runs). This dataset holds what is too large for git: per-feature tables, per-language statistics, bootstrap snapshots and token windows. Everything here is a result of a course project and is provisional; read the status notes below before reusing a number.
 
-**Contents are derived statistics only** (per-feature correlations, firing rates and activation summaries of the Gemma Scope layer-12 16k SAE, perplexities, token ids of WikiText-2 windows). No model weights, no SAE weights and no generated text. Gemma and Gemma Scope remain under their own terms; WikiText-2 is CC BY-SA. The repository is private; check licences before making anything public.
+**Contents are derived statistics only** (per-feature correlations, firing rates and activation summaries of the Gemma Scope layer-12 16k SAE, perplexities, token ids of WikiText-2 windows). No model weights, no SAE weights, no generated text and no FLORES-200 sentences or token ids.
+
+## Licences and attribution
+
+- **Our own statistics:** the team has not chosen a licence for them (`license: other`). Cite the project repository and this dataset; the terms of the sources below still apply.
+- **Gemma-2-2B and Gemma Scope** (`google/gemma-2-2b`, `google/gemma-scope-2b-pt-res`) were used under their own terms; none of their weights are redistributed here.
+- **WikiText-2** (Merity et al., 2016; text from Wikipedia, CC BY-SA): the `tokens_2d.pt` files hold token ids of WikiText-2 test text and are therefore an adaptation of it. Use those files under CC BY-SA with attribution to the WikiText-2 authors and Wikipedia contributors.
+- **FLORES-200** (NLLB Team, CC BY-SA 4.0): the Phase 1 folders contain statistics computed from its `dev` and `devtest` splits, not its text.
+- **Duan (2026)** (arXiv 2606.03002, MIT-licensed code): `baseline/`, `smoke/`, `runs/R1-*` and `runs/R2-*` were produced by running their vendored script on WikiText-2. Their paper is a preprint (submitted to TMLR when last checked).
+
+## Contents
 
 | folder | what | Slurm job | code |
 |---|---|---|---|
@@ -21,7 +32,18 @@ Large artifacts of the ANLP project "Does compression forget language?" (team Al
 | `runs/R1-nobos-floor` | their code, **no BOS**, INT0 / INT16 / INT12 (noise floor) | 24451 | `scripts/g0/make_duan_runners_v3.py`, runner hash `2c34fecaee1d2e32` |
 | `runs/R2-bos-mask` | their code with **BOS prepended and masked**, INT0 / 16 / 12 / 8 / 7 / 6 | 23643 | same generator |
 | `runs/R5a`, `runs/R5b`, `runs/R5c` | the discarded HF harness (git tag `legacy-pipeline-2026-10-16`) on their tokens, one factor flipped per cell: R5a = T, O, T_sdpa, T_bf16sae; R5b = T_rowquant, T_mask, T_keep, O_keep; R5c = O_mask | 23649, 23660, 24452 | `scripts/g0/r5_run.py` (tag), hashes in each `code.sha256` |
+| `runs/phase1/p1-mask`, `runs/phase1/p1-none` | Phase 1 multilingual run: 27 FLORES-200 languages (dev split for feature tagging, devtest split for survival), Gemma-2-2B layer-12 16k SAE, RTN INT8/7/6/5/4 plus INT16/12 and the restore-only control INT0. `p1-mask` prepends BOS and excludes its position from every statistic (the SAE's own convention; the primary regime). `p1-none` has no BOS and is a **historical** regime that failed its noise-floor check. Each holds `eq/` (equal token budget per language) and `all/` (all tokens) | 25745, 25746 | `scripts/g0/phase1_run.py` at commit `618496f` |
+| `runs/phase1/anchor-batch1`, `anchor-batch4` | code-regression check of the Phase 1 runner against the vendored smoke run | see repository | `scripts/g0/phase1_anchor.py` |
+| `runs/phase1/smoke-flores-3lang`, `smoke2-flores-3lang-eq` | 3-language smokes of the Phase 1 runner | see repository | `scripts/g0/phase1_run.py` |
 
 File types: `*_per_feature.csv` (feature_id, condition, layer, corr, firing_rate, mean_activation, max_activation, active, survived, damaged: Duan's schema), `*_summary.csv` / `phase3_summary_final.csv`, `weight_perturbation_INT*.json`, `snap_*.pt` (block-bootstrap snapshots written by the diagnostic generator, `snap_every`), `tokens_2d.pt` (token windows: `runs/R5a/tokens_2d.pt` is 1953 x 256 int64 without BOS, SHA-256 `23b44fad30303c6a...`; `runs/R2-bos-mask/tokens_2d.pt` has a BOS column; `runs/R2-bos-mask/tokens_2d.pt[:, 1:]` equals the R5 windows), `selfcheck.json`, `code.sha256`, `gpu_mem.log`, plots. `MANIFEST.sha256` lists the SHA-256 of every file.
 
-Download (private repo, needs a token with read access): `hf download karma-skz/always-late-artifacts --repo-type dataset --local-dir artifacts`.
+Phase 1 file types: `survival.pt`, `selectivity.pt`, `per_language.csv`, `summary.csv`, `meta.json`, `gpu_mem.log`.
+- `survival.pt` keys: `languages`, `bits`, `n` (tokens per language), `corr` (per rung, shape `[27, 16384]`: Pearson correlation between the full-precision and the quantized SAE activations of each feature in each language), `firing_rate`, `mean_activation`, `max_activation` (shape `[27, 16384]`), `loss_sum`, `loss_n`, `pooled_corr`, `pooled_firing_rate`. **`firing_rate`, `mean_activation` and `max_activation` describe the full-precision features only; the quantized side's firing rates, means and maxima were not saved.** `corr` is a correlation of activation patterns: it does not show that a feature keeps its language association.
+- `selectivity.pt` keys include `rates`, `mean_activation`, `S`, `S_rank`, `nu`, `peak`, `supported`, `selective`, `controls`, `stable_count`, `strata` (tagging on the dev split, full precision).
+
+## Status notes
+
+Phase 1 results and their reading are in the repository (`reports/phase1_results.md`, `reports/phase1_summary.md`). The pre-registered selective-versus-control comparisons were null in the primary (`p1-mask`, `eq`) stream; later analyses are exploratory and correlational (27 languages). The project later restricted itself to the `mask` regime and no longer compares numerically with Duan (2026); the `none` and baseline folders are kept as historical records.
+
+Download: `hf download karma-skz/always-late-artifacts --repo-type dataset --local-dir artifacts`.
