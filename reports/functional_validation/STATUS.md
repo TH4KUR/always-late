@@ -2,19 +2,26 @@
 
 Owner: Claude. Design: [`docs/superpowers/specs/2026-10-21-functional-validation-design.md`](../../docs/superpowers/specs/2026-10-21-functional-validation-design.md). Plan: [`docs/superpowers/plans/2026-10-21-functional-validation.md`](../../docs/superpowers/plans/2026-10-21-functional-validation.md). Cadence: a 40-minute recurring job (prompt and cron expressions in [`cron_prompt.md`](cron_prompt.md); created 2026-10-21, expires after 7 days). Questions for the user: Q17 (and the older Q6, Q7, Q8, Q11, Q12) in `DECISIONS_FOR_REVIEW.md`; none blocks.
 
-Updated: 2026-10-21 22:50 IST.
+Updated: 2026-10-21 23:35 IST.
 
 ## State
 
-- D-035 (association retention) is complete and documented; D-039/D-040 select and design the functional study. No GPU job of this study has been queued; nothing runs on Ada (`squeue -u karma` empty at 22:10).
-- Spec and plan written and committed (see Log). Belebele (revision `7899cdfa...`, 27 roster languages) is on Ada under `phase1/data/belebele` with a manifest; a local copy is being fetched into `data/belebele/` (ignored by git).
-- A dated prior-art check of the exact combination (cross-precision feature-level causal effects; FP-donor patching to localise quantization damage by language) was started in the background; its result goes to `prior_art.md` and the register before G1.
+- D-035 complete; D-039/D-040 design and plan committed. Code done and committed (tests first, mutation-checked): Task 1 task layer (`phase1_func_tasks.py`), Task 2 intervention library (`phase1_func_intervene.py`), Task 3 groups and controls (`phase1_func_groups.py`, frozen `groups_manifest.json`, `groups_matching.md`), Task 4 partial: engine, gates, config builder, resample pool, real-model `main` for T-LM, launcher `run_functional.sbatch` (`phase1_func_run.py`). Suites: stdlib 205, torch 459, all green.
+- Prior-art check done (`prior_art.md`, register P30 to P38): no paper combines all elements; scoop risk from Duan 2606.03002 (causal validation named as future work).
+- **Ada: job 33771 `func-smoke` submitted 2026-10-21 23:30** (deployed commit `1dbe7a1`; `-t 01:00:00`; FP and INT6, languages eng_Latn hin_Deva khm_Khmr, 40 pilot sentences, preset smoke; output `/home2/karma/duan-verify/out/phase1/func-smoke/`, log `/home2/karma/duan-verify/logs/func-smoke-33771.out`). It is the first real-model test of the edit path: gates (split equals full forward bit for bit, identity edits), throughput, first effect sizes.
+- Belebele: 27 language files on Ada (`phase1/data/belebele`, manifest with sha256) and a partial local copy in `data/belebele/` (ignored by git). English check: 488 passages, 267 dev origin, 220 devtest origin, 1 neither.
 
 ## NEXT STEP
 
-1. **Task 0 remainder:** when the prior-art report arrives, write `reports/functional_validation/prior_art.md`, add register entries (P30 and later, each with verified venue or "unverified"), amend the design's section 9 and any claim that is not novel. Run the Belebele passage-to-FLORES overlap check on Ada (FLORES is there) and write `belebele_flores_overlap.md`.
-2. **Task 1 (task layer)**, then Task 2 (intervention library), Task 3 (groups and controls): each test first, mutation-checked, per the plan. No GPU job before gate G1 (plan, Global constraints).
-3. Do not start the pilot (Task 5) before Tasks 0 to 4 are complete.
+1. **Check job 33771** (`squeue`, `sacct -j 33771`, the log). If it failed: read the traceback, write the failing test first, fix, redeploy only when `squeue` is empty, resubmit the same command. If it completed: validate (`meta_lm_pilot.json`: gates all true, `summary` tokens per second per precision and peak GPU memory; `func_lm_pilot_FP.pt` and `func_lm_pilot_INT6.pt` item arrays complete, `ntok` identical across configurations), record in the Log, and write a throwaway first look (per language: mean harm of `zero_K64`, controls and sham in nats per token) to decide whether the full-precision effect exists and whether sham is about 0. Result goes to the Log; not a finding.
+2. **Plan Task 6 (analysis module, CPU, tests first)** can start while the job runs: paired cluster bootstrap over sentence ids across languages, harm, `E_l`, retention ratio and its classification, matching diagnostics. Needs only the item-level file format written by `main` (see `phase1_func_run.main`, keys `<code>|<config>` with `nll` and `ntok`, `ids`, `stats`, `fidelity`).
+3. **Plan Task 4c/4d (T-MC readout):** `evaluate_mc` for the letter and cloze formats over Belebele items (encode with `phase1_func_tasks.build_mc_items`; first verify on Ada that ` A` .. ` D` are single distinct Gemma tokens and that prompt tokenisation is prefix-consistent), then the FP calibration job on the dev-origin items (both formats, all 27 languages, no intervention) to decide format and coverage. Belebele passage origin must be computed on Ada with `passage_origin` against FLORES (English passages) and keyed by link; check that links are identical across languages.
+4. Rescue (FP donor cache plus bounds), the freeze file and evaluation jobs follow the plan's job queue order.
+
+## Gates
+
+- **G1** (before any GPU job): MET 2026-10-21 (Tasks 0 to 3 done with tests and mutants; prior-art file; Q17). The T-LM engine of Task 4 was added before the smoke job; the smoke job is itself a gate test.
+- **G2** (before any evaluation run on a quantized model or any T-MC scoring): NOT MET (pilot results and the freeze file pending).
 
 ## Gates
 
@@ -24,3 +31,4 @@ Updated: 2026-10-21 22:50 IST.
 ## Log
 
 - 2026-10-21 22:50 IST: design spec, plan, D-040, Q17, this status file and the cron prompt written; Q16/D-039 documentation (Codex's, uncommitted) committed as `ff1522f` after a link and whitespace check. Facts established while designing: the non-selective supported pool of the frozen cohort has only 2,860 features (equal to the saved controls), group sizes of the 8,086 selective features range from 73 (por_Latn) to 1,719 (eng_Latn); TransformerLens 3.9.0 `forward(..., start_at_layer=...)` exists (edit path); Ada env has matplotlib 3.10.9, local venv has none; `/home2` has 5.6 GB free; Belebele has all 27 roster languages (899 or 900 lines each).
+- 2026-10-21 23:35 IST: Tasks 1 to 3 and the T-LM part of Task 4 committed (`db8f04c`, `eecb653`, `0f94dd7`, `fffd487`, `1dbe7a1`). Decisions made while implementing, all before any outcome existed: (1) controls are matched by nearest neighbour on dev (log mean activation, log rate) instead of equal-count cells, because the cells left groups up to 4.6 times more active than their controls (75 of 81 language-and-size cases now within [0.8, 1.25]; tha_Thai, yor_Latn and lao_Laoo are flagged; D-040 amended); (2) the Belebele split follows the FLORES origin of the passage (calibration = dev, evaluation = devtest) instead of a seeded third; (3) a mean-ablation kind was added next to zero, scale, resample, donor and sham (prior-art suggestion); (4) a difference-in-means direction baseline is recorded as an optional sensitivity, not built. Deploy script now ships `reports/functional_validation/groups_manifest.json`. Smoke job 33771 submitted.

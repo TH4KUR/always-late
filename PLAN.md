@@ -1,5 +1,7 @@
 # Team Plan
 
+**Current work, 2026-10-21 (D-040):** the functional-validation study (Q16/D-039) follows [its plan](docs/superpowers/plans/2026-10-21-functional-validation.md); live state in [`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md).
+
 **Next work selected, 2026-10-21 (Q16, D-039):** analyse existing findings more closely; assess SAE fidelity; test whether original language-associated features make language-targeted contributions to multilingual tasks using activation patching/complementary disruptive interventions across FP and INT8/7/6/5/4; prepare figures/tables. [Direction, comparison rules and source-grounded controls](reports/association_retention/next_steps.md#selected-functional-study-direction-d-039). C is selected, not merely conditional on spare time. Detailed task/language coverage, feature groups, doses, held-out evaluation and pilot cost precede implementation. The completed D-035 study is preserved; no new job or schedule is started by recording this answer. This supersedes older “no follow-up selected” notices below.
 
 ## Current scope -- 2026-10-21 (Q1, D-028)
