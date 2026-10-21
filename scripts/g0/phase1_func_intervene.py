@@ -1,11 +1,11 @@
 """Feature-group interventions at one residual-stream layer through a frozen SAE (functional-validation study, D-039/D-040; design section 5). Pure torch, tested on CPU.
 
 Every edit changes ONLY the decoder span of the chosen feature group and keeps the SAE reconstruction error of the recipient: with a = encode(x) (the recipient's own activations),
-x' = x + sum_{f in G} (a'_f - a_f) d_f. `a'` is zero (ablation), alpha * a (scaling), a random pool row (resampling), the donor's activations (patching, e.g. from the full-precision
+x' = x + sum_{f in G} (a'_f - a_f) d_f. `a'` is zero (ablation), alpha * a (scaling), a random pool row (resampling), fixed per-feature values (mean ablation), the donor's activations (patching, e.g. from the full-precision
 model at the same tokens) or a itself (sham: the same arithmetic with no intended change). Edits apply to the VALID positions only (content tokens; never BOS, never padding)."""
 import torch
 
-KINDS = ("ablate", "scale", "resample", "donor", "sham")
+KINDS = ("ablate", "scale", "resample", "mean", "donor", "sham")
 
 
 def encode_valid(resid, valid, encode):
@@ -33,7 +33,7 @@ def _check(resid, valid, a, W_dec, idx):
     return idx
 
 
-def apply_edit(resid, valid, a, W_dec, idx, kind, alpha=None, pool=None, generator=None, a_donor=None):
+def apply_edit(resid, valid, a, W_dec, idx, kind, alpha=None, pool=None, generator=None, a_donor=None, mean_vals=None):
     """-> (resid', stats). resid [B, L, d] (any float dtype, returned in the same dtype, never modified in place), valid [B, L] bool, a [N, F] = encode_valid(...), W_dec [F, d], idx group.
     stats: sum_norm_ratio (sum over edited rows of ||x' - x|| / ||x||), sum_active (group features active before the edit, summed over rows), rows (N): sums, so that batches aggregate exactly."""
     if kind not in KINDS:
@@ -59,6 +59,10 @@ def apply_edit(resid, valid, a, W_dec, idx, kind, alpha=None, pool=None, generat
             if pool.shape[1] != idx.numel():
                 raise ValueError("pool columns must equal the group size")
             a_new = resample_values(pool.float(), ag.shape[0], generator).to(ag.device)
+        elif kind == "mean":
+            if mean_vals is None or mean_vals.shape != (idx.numel(),):
+                raise ValueError("mean needs one value per group feature")
+            a_new = mean_vals.float().to(ag.device)[None, :].expand_as(ag)
         else:
             if a_donor is None:
                 raise ValueError("donor needs the donor activations")

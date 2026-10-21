@@ -18,7 +18,7 @@
 
 ## Task 0: prior art, data feasibility, documents
 
-- [ ] Prior-art result of the background search written to `reports/functional_validation/prior_art.md` and register entries (P30 and later, each with verified venue/status or "unverified"); the spec's novelty paragraph (section 9) updated; any claim the plan makes that turns out not to be novel is reworded.
+- [x] Prior-art result written to `reports/functional_validation/prior_art.md` and register entries P30 to P38 (2026-10-21: two central claims re-read by me, the rest agent-reported); the spec's section 9 and the sections 2, 4, 5 updated; non-novel claims reworded; scoop risk (Duan 2606.03002 names causal validation as future work) recorded.
 - [ ] Belebele: files present locally in `data/belebele/` (ignored by git) and on Ada (`phase1/data/belebele/`, `MANIFEST.json` with sha256); the number of items per language and the field names recorded; mapping of each Belebele passage to FLORES dev/devtest by exact sentence match (Ada has FLORES) recorded in `reports/functional_validation/belebele_flores_overlap.md`.
 - [ ] D-040 (register), Q17 (review file), handoff 023, README of `reports/functional_validation/`, STATUS.md, `cron_prompt.md`.
 
@@ -30,7 +30,7 @@
 
 ## Task 2: intervention library `scripts/g0/phase1_func_intervene.py` (+ `tests_torch/test_phase1_func_intervene.py`)
 
-**Interfaces.** `group_edit(x, a, W_dec, idx, a_new)`: `x' = x + (a_new - a[:, idx]) @ W_dec[idx]` in float32; `ablate`, `scale(alpha)`, `resample(pool, generator)` (whole group vectors of random pool rows), `donor(a_donor)`; `apply_edit(resid [B, L, d], valid [B, L], encode, W_dec, idx, kind, **kw) -> (resid', stats)` that edits valid positions only (never BOS, never padding), returns the input dtype, and `stats` = mean `||Delta x|| / ||x||` over edited positions and mean number of active group features. A toy SAE (random decoder, JumpReLU thresholds) in the tests.
+**Interfaces.** `apply_edit(...)`: `x' = x + (a_new - a[:, idx]) @ W_dec[idx]` in float32 with kinds `ablate`, `scale(alpha)`, `resample(pool, generator)` (whole group vectors of random pool rows), `mean(mean_vals)`, `donor(a_donor)`, `sham`; `apply_edit(resid [B, L, d], valid [B, L], encode, W_dec, idx, kind, **kw) -> (resid', stats)` that edits valid positions only (never BOS, never padding), returns the input dtype, and `stats` = mean `||Delta x|| / ||x||` over edited positions and mean number of active group features. A toy SAE (random decoder, JumpReLU thresholds) in the tests.
 **Tests first.** identity (`a' = a`) returns `x` exactly; ablating all features leaves exactly `x - (x_hat - b_dec)` (the error term preserved); the change is confined to the decoder span of the group; edits at invalid positions are zero; BOS and padding rows bit-identical; `scale(1)` is identity and `scale(0)` equals `ablate`; `resample` draws rows of the pool only and is seeded; `donor` with `a_donor = a` is identity and with the other model's activations moves the residual by exactly `(a_donor - a) @ W_dec[idx]`; sham numerically near zero in bf16; norm statistic correct on a hand case.
 **Mutants.** error term dropped (decode-and-replace instead of delta), BOS not excluded, alpha applied to the wrong side, pool index off by one, wrong decoder rows, float32 cast removed, edits applied to padding.
 

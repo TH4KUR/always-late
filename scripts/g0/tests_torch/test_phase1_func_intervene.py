@@ -113,6 +113,16 @@ class Edits(unittest.TestCase):
         expect = self.resid[self.valid] + (pool - self.a[:, self.idx]) @ self.sae.W_dec[self.idx]
         self.assertTrue(torch.allclose(out[self.valid], expect, atol=1e-5))
 
+    def test_mean_ablation_sets_the_group_to_the_given_values(self):
+        mean_vals = torch.tensor([0.5, 0.0, 2.0])
+        out, _ = self.edit("mean", mean_vals=mean_vals)
+        expect = self.resid[self.valid] + (mean_vals[None, :] - self.a[:, self.idx]) @ self.sae.W_dec[self.idx]
+        self.assertTrue(torch.allclose(out[self.valid], expect, atol=1e-5))
+        with self.assertRaises(ValueError):
+            self.edit("mean")
+        with self.assertRaises(ValueError):
+            self.edit("mean", mean_vals=torch.zeros(2))
+
     def test_donor_equal_to_recipient_is_identity_and_other_donor_moves_by_the_difference(self):
         out, _ = fi.apply_edit(self.resid, self.valid, self.a, self.sae.W_dec, self.idx, "donor", a_donor=self.a)
         self.assertTrue(torch.equal(out, self.resid))
