@@ -75,39 +75,64 @@ class LoadBelebele(unittest.TestCase):
 
 
 class Origin(unittest.TestCase):
+    """Belebele passages are built from FLORES sentences but may skip sentences and carry CSV-doubled quotation marks, so the origin is decided by which sentences of which file the passage CONTAINS."""
     def test_dev_devtest_none_and_mixed(self):
-        items = [item("a", 1, " ".join(DEV[0:2])), item("b", 1, " ".join(DEVTEST[1:4])), item("c", 1, "Some other text entirely."),
+        items = [item("a", 1, " ".join(DEV[0:2])), item("b", 1, " ".join(DEVTEST[1:4])), item("c", 1, "Some other text entirely, with no FLORES sentence in it."),
                  item("d", 1, DEV[3])]
-        origin = ft.passage_origin(items, DEV, DEVTEST)
+        origin = ft.passage_origin(items, DEV, DEVTEST, min_chars=5)
         self.assertEqual(origin, {"a": "dev", "b": "devtest", "c": "none", "d": "dev"})
-        origin2 = ft.passage_origin([item("e", 1, "Same line.")], ["Same line."], ["Same line."])
-        self.assertEqual(origin2, {"e": "mixed"})
+        self.assertEqual(ft.passage_origin([item("e", 1, DEV[0] + " " + DEVTEST[0])], DEV, DEVTEST, min_chars=5), {"e": "mixed"})
+        self.assertEqual(ft.passage_origin([item("e", 1, "Same line here.")], ["Same line here."], ["Same line here."], min_chars=5), {"e": "mixed"})
 
-    def test_whitespace_is_normalised(self):
-        origin = ft.passage_origin([item("a", 1, "Alpha  one.\n Beta two is here.")], DEV, DEVTEST)
-        self.assertEqual(origin["a"], "dev")
+    def test_skipped_sentences_and_extra_text_are_tolerated(self):
+        origin = ft.passage_origin([item("a", 1, DEV[0] + " " + DEV[2]), item("b", 1, "Prefix " + DEV[0] + " and some suffix")], DEV, DEVTEST, min_chars=5)
+        self.assertEqual(origin, {"a": "dev", "b": "dev"})
 
-    def test_a_passage_that_only_contains_a_sentence_is_not_a_run(self):
-        origin = ft.passage_origin([item("a", 1, "Prefix " + DEV[0])], DEV, DEVTEST)
-        self.assertEqual(origin["a"], "none")           # exact consecutive run, not substring matching
+    def test_whitespace_and_quotation_marks_are_normalised(self):
+        dev = ['He said "Alpha one is here" and left.', "Beta two is here."]
+        passage = '"He said ""Alpha one is here"" and left.\n Beta  two is here."'
+        self.assertEqual(ft.passage_origin([item("a", 1, passage)], dev, DEVTEST, min_chars=5)["a"], "dev")
+        self.assertEqual(ft.passage_origin([item("a", 1, "He said \u201cAlpha one is here\u201d and left.")], dev, DEVTEST, min_chars=5)["a"], "dev")
 
-    def test_a_passage_longer_than_the_last_run_is_not_a_run(self):
-        origin = ft.passage_origin([item("a", 1, DEV[3] + " trailing words that are not a FLORES line")], DEV, DEVTEST)
-        self.assertEqual(origin["a"], "none")
+    def test_a_passage_that_only_matches_after_whitespace_normalisation(self):
+        self.assertEqual(ft.passage_origin([item("a", 1, "Beta  two\n is   here.")], DEV, DEVTEST, min_chars=5), {"a": "dev"})
 
-    def test_non_consecutive_sentences_are_not_a_run(self):
-        origin = ft.passage_origin([item("a", 1, DEV[0] + " " + DEV[2])], DEV, DEVTEST)
-        self.assertEqual(origin["a"], "none")
+    def test_short_lines_do_not_decide_the_origin(self):
+        self.assertEqual(ft.passage_origin([item("a", 1, "Yes. It was the best one.")], ["Yes."], ["It was the best one."], min_chars=10), {"a": "devtest"})
+        self.assertEqual(ft.passage_origin([item("a", 1, "Yes. Something else.")], ["Yes."], DEVTEST, min_chars=10), {"a": "none"})
+
+    def test_a_line_of_exactly_min_chars_counts(self):
+        self.assertEqual(ft.passage_origin([item("a", 1, "xx abcdefghij yy")], ["abcdefghij"], DEVTEST, min_chars=10), {"a": "dev"})
+        self.assertEqual(ft.passage_origin([item("a", 1, "xx abcdefghij yy")], ["abcdefghij"], DEVTEST, min_chars=11), {"a": "none"})
+
+    def test_hit_counts_are_reported(self):
+        origin, hits = ft.passage_origin_detail([item("a", 1, DEV[0] + " " + DEV[1] + " " + DEVTEST[2])], DEV, DEVTEST, min_chars=5)
+        self.assertEqual(origin["a"], "mixed")
+        self.assertEqual(hits["a"], {"dev": 2, "devtest": 1})
 
     def test_inconsistent_items_of_one_passage_are_an_error(self):
         with self.assertRaises(ValueError):
-            ft.passage_origin([item("a", 1, DEV[0]), item("a", 2, DEV[1])], DEV, DEVTEST)
+            ft.passage_origin([item("a", 1, DEV[0]), item("a", 2, DEV[1])], DEV, DEVTEST, min_chars=5)
+
+
+class CrossLanguage(unittest.TestCase):
+    def test_agreement_across_languages_and_alignment_by_key(self):
+        en = [item("a", 1, "x"), item("b", 1, "y"), item("c", 1, "z")]
+        hi = [item("c", 1, "zz"), item("a", 1, "xx"), item("b", 1, "yy")]             # another order, same keys
+        ok, bad = ft.agree_origin({"eng": {"a": "dev", "b": "devtest", "c": "none"}, "hin": {"a": "dev", "b": "devtest", "c": "none"}})
+        self.assertEqual((ok, bad), ({"a": "dev", "b": "devtest", "c": "none"}, []))
+        ok, bad = ft.agree_origin({"eng": {"a": "dev", "b": "devtest"}, "hin": {"a": "dev", "b": "dev"}})
+        self.assertEqual(ok["b"], "excluded"); self.assertEqual(bad, ["b"])
+        self.assertEqual(ok["a"], "dev")
+        self.assertEqual([i["link"] for i in ft.align_by_key(hi, [("a", 1), ("b", 1), ("c", 1)])], ["a", "b", "c"])
+        with self.assertRaises(KeyError):
+            ft.align_by_key(hi, [("a", 1), ("zzz", 1)])
 
 
 class Split(unittest.TestCase):
     def test_split_by_origin(self):
         items = [item("a", 1, "x"), item("a", 2, "x"), item("b", 1, "y"), item("c", 1, "z"), item("d", 1, "w")]
-        origin = {"a": "dev", "b": "devtest", "c": "mixed", "d": "none"}
+        origin = {"a": "dev", "b": "devtest", "c": "mixed", "d": "none"}   # "excluded" (cross-language disagreement) is handled like mixed and none
         s = ft.split_items(items, origin)
         self.assertEqual([i["question_number"] for i in s["cal"]], [1, 2])
         self.assertEqual([i["passage_key"] if "passage_key" in i else i["link"] for i in s["eval"]], ["b"])

@@ -52,36 +52,54 @@ def _passage(it):
     return norm(it["passage"] if "passage" in it else it["flores_passage"])
 
 
-def passage_origin(items, dev_lines, devtest_lines):
-    """{passage_key: "dev" | "devtest" | "mixed" | "none"}: where the passage text occurs as an exact run of consecutive FLORES lines (joined by one space after whitespace normalisation).
-    "mixed" = an exact run exists in both files; "none" = in neither (excluded downstream and counted). Items of one passage must agree on its text."""
+_QUOTES = '"\u201c\u201d\u201e\u201f'
+
+
+def squash(s):
+    """Text for matching: whitespace-normalised with every double quotation mark removed (Belebele's CSV-style doubled quotes and FLORES' curly or straight ones then agree)."""
+    return norm("".join(ch for ch in str(s) if ch not in _QUOTES))
+
+
+def passage_origin_detail(items, dev_lines, devtest_lines, min_chars=20):
+    """({passage_key: "dev" | "devtest" | "mixed" | "none"}, {passage_key: {"dev": n, "devtest": n}}): which FLORES file(s) supply the sentences that the passage CONTAINS (a FLORES line counts when
+    it has at least min_chars characters after squashing and occurs inside the squashed passage). Belebele passages may skip FLORES sentences and carry doubled quotation marks, so an exact run of
+    consecutive lines is not required. mixed = sentences of both files, none = of neither. Items of one passage must agree on its text."""
     texts = {}
     for it in items:
-        k, p = _key(it), _passage(it)
+        k, p = _key(it), squash(_passage(it))
         if texts.setdefault(k, p) != p:
             raise ValueError(f"passage {k!r}: items disagree on the passage text")
-    out = {}
-    for name, lines in (("dev", dev_lines), ("devtest", devtest_lines)):
-        L = [norm(x) for x in lines]
-        starts = {}
-        for i, s in enumerate(L):
-            if s:
-                starts.setdefault(s, []).append(i)
-        found = set()
-        for k, p in texts.items():
-            for first, idxs in starts.items():
-                if not p.startswith(first):
-                    continue
-                for i in idxs:
-                    cur, j = first, i
-                    while cur != p and p.startswith(cur + " ") and j + 1 < len(L) and L[j + 1]:
-                        j += 1; cur = cur + " " + L[j]
-                    if cur == p:
-                        found.add(k); break
-                if k in found:
-                    break
-        out[name] = found
-    return {k: ("mixed" if k in out["dev"] and k in out["devtest"] else "dev" if k in out["dev"] else "devtest" if k in out["devtest"] else "none") for k in texts}
+    lines = {name: sorted({squash(x) for x in L if len(squash(x)) >= min_chars}) for name, L in (("dev", dev_lines), ("devtest", devtest_lines))}
+    origin, hits = {}, {}
+    for k, p in texts.items():
+        h = {name: sum(1 for x in L if x in p) for name, L in lines.items()}
+        hits[k] = h
+        origin[k] = "mixed" if h["dev"] and h["devtest"] else "dev" if h["dev"] else "devtest" if h["devtest"] else "none"
+    return origin, hits
+
+
+def passage_origin(items, dev_lines, devtest_lines, min_chars=20):
+    return passage_origin_detail(items, dev_lines, devtest_lines, min_chars)[0]
+
+
+def agree_origin(by_language):
+    """({passage_key: origin}, disagreeing keys): the origin each language's FLORES files give must be the same; a key whose languages disagree, or that is missing in one, becomes
+    "excluded" (and is listed)."""
+    keys = set().union(*[set(o) for o in by_language.values()])
+    final, bad = {}, []
+    for k in sorted(keys):
+        vals = {o.get(k) for o in by_language.values()}
+        if len(vals) == 1:                                      # a key missing in some language puts None next to the others, so it cannot agree
+            final[k] = vals.pop()
+        else:
+            final[k] = "excluded"; bad.append(k)
+    return final, bad
+
+
+def align_by_key(items, keys):
+    """The items in the order of `keys` ((passage_key, question_number) pairs); Belebele files of different languages order their items differently, so rows are never aligned by position."""
+    index = {(_key(it), it["question_number"]): it for it in items}
+    return [index[k] for k in keys]
 
 
 def split_items(items, origin):
