@@ -263,30 +263,36 @@ class SetupHelpers(Base):
             ac.make_sink(self.tmp / "b3", regime="mask", languages=CODES, n_feat=F, bits=[8], baseline_dir=base, equal_budget=True)
 
 
+# the hand-made model of the Planted test, importable by other test modules
+def make_planted():
+    """(forward, encode, quantize, restore) of the planted model: see class Planted."""
+    state = {"q": False}
+    rng = {0: range(3, 10), 1: range(10, 17), 2: range(17, 24)}
+    def forward(tokens):
+        return torch.nn.functional.one_hot(tokens, 40).float(), torch.zeros(*tokens.shape, 40)
+    def encode(acts):
+        tok = acts.argmax(-1); out = torch.zeros(acts.shape[0], F); inl = lambda l: torch.tensor([int(x) in rng[l] for x in tok])
+        if not state["q"]:
+            out[:, 0] = inl(0).float(); out[:, 1] = inl(1).float() * 2; out[:, 2] = inl(2).float() * 3
+        else:
+            out[:, 0] = (inl(0) | inl(1)).float(); out[:, 2] = inl(0).float() * 3
+        return out
+    return forward, encode, (lambda bits: state.__setitem__("q", True)), (lambda: state.__setitem__("q", False))
+
+
+
 class Planted(Base):
     """A hand-made model where quantization changes WHICH languages a feature responds to (the plan's planted cases), so the saved quantized counts can be written down by hand.
     Language 0 uses tokens 3-9, language 1 tokens 10-16, language 2 tokens 17-23. Full precision: f0 fires only on language 0, f1 only on language 1, f2 only on language 2.
     Quantized: f0 also fires on language 1 (broadening), f1 never fires (inactive), f2 fires on language 0 instead of language 2 (switch)."""
-    def make(self):
-        state = {"q": False}
-        rng = {0: range(3, 10), 1: range(10, 17), 2: range(17, 24)}
-        def forward(tokens):
-            return torch.nn.functional.one_hot(tokens, 40).float(), torch.zeros(*tokens.shape, 40)
-        def encode(acts):
-            tok = acts.argmax(-1); out = torch.zeros(acts.shape[0], F); inl = lambda l: torch.tensor([int(x) in rng[l] for x in tok])
-            if not state["q"]:
-                out[:, 0] = inl(0).float(); out[:, 1] = inl(1).float() * 2; out[:, 2] = inl(2).float() * 3
-            else:
-                out[:, 0] = (inl(0) | inl(1)).float(); out[:, 2] = inl(0).float() * 3
-            return out
-        return forward, encode, (lambda bits: state.__setitem__("q", True)), (lambda: state.__setitem__("q", False))
+    make = staticmethod(lambda: make_planted())
 
     def test_saved_quantized_counts_show_broadening_inactivity_and_a_switch(self):
         g = torch.Generator().manual_seed(3)
         data = {l: [torch.randint(3 + 7 * l, 10 + 7 * l, (n,), generator=g).tolist() for n in (4, 6, 5)] for l in range(3)}
         n_tok = [sum(len(s) for s in data[l]) for l in range(3)]
         sink = ac.ProfileSink(self.tmp / "p", CODES, F, conditions=["FP", "INT4"], sentence_features=torch.tensor([0, 1, 2]), streams=("all",))
-        fwd, enc, qz, rs = self.make(); run.run_survival(fwd, enc, qz, rs, data, "mask", BOS, PAD, F, [4], profile_sink=sink); sink.finalize()
+        fwd, enc, qz, rs = make_planted(); run.run_survival(fwd, enc, qz, rs, data, "mask", BOS, PAD, F, [4], profile_sink=sink); sink.finalize()
         c = ac.read_profiles(self.tmp / "p", "all")["conditions"]
         self.assertEqual(c["FP"]["positive_counts"][:, :3].tolist(), [[n_tok[0], 0, 0], [0, n_tok[1], 0], [0, 0, n_tok[2]]])
         self.assertEqual(c["INT4"]["positive_counts"][:, :3].tolist(), [[n_tok[0], 0, n_tok[0]], [n_tok[1], 0, 0], [0, 0, 0]])
