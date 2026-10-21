@@ -158,7 +158,7 @@ def statistics_for_weights(side, coh, W, min_positives=am.MIN_POSITIVES, min_pan
     out = {}
     for cond in (conditions if conditions is not None else [c for c in side.conditions if c != "FP"]):
         q_cnt, _, q_nt = side.totals(cond, W)                                                  # token counts equal FP's (checked at loading), so FP's emptiness check covers every condition
-        rows = {k: [] for k in ("n_selective", "fp_established", "retained_of_established", "retention_fraction", "conditional_fraction", "fp_establishment_fraction", "median_tv", "n_tv_undefined",
+        rows = {k: [] for k in ("n_selective", "fp_established", "retained_of_established", "lost_of_established", "loss_fraction", "retention_fraction", "conditional_fraction", "fp_establishment_fraction", "median_tv", "n_tv_undefined",
                                 "median_delta_share", "median_delta_margin")}
         sc, fsc, bl_n, bl_e, bl_r = [], [], [], [], []
         for i in range(nb):
@@ -170,6 +170,7 @@ def statistics_for_weights(side, coh, W, min_positives=am.MIN_POSITIVES, min_pan
             dm = np.where(e, qm["margin_rate"] - fp_met[i]["margin_rate"], np.nan)
             nanmed = lambda v: float(np.nanmedian(v)) if np.isfinite(v).any() else float("nan")
             rows["n_selective"].append(n_sel); rows["fp_established"].append(n_e); rows["retained_of_established"].append(n_ret)
+            rows["lost_of_established"].append(n_e - n_ret); rows["loss_fraction"].append((n_e - n_ret) / n_sel if n_sel else float("nan"))
             rows["retention_fraction"].append(n_ret / n_sel if n_sel else float("nan")); rows["conditional_fraction"].append(n_ret / n_e if n_e else float("nan"))
             rows["fp_establishment_fraction"].append(n_e / n_sel if n_sel else float("nan"))
             rows["median_tv"].append(nanmed(np.where(defined, cmp["tv_distance"], np.nan))); rows["n_tv_undefined"].append(int((e & ~cmp["defined"]).sum()))
@@ -213,7 +214,7 @@ def bootstrap(side, coh, n_boot=1000, seed=0, min_positives=am.MIN_POSITIVES, mi
 
 
 # ---------------------------------------------------------------- outputs
-SCALARS = ("retention_fraction", "conditional_fraction", "fp_establishment_fraction", "median_tv", "median_delta_share", "median_delta_margin")
+SCALARS = ("retention_fraction", "loss_fraction", "conditional_fraction", "fp_establishment_fraction", "median_tv", "median_delta_share", "median_delta_margin")
 CONDITION_ORDER_NOTE = "conditions are listed in the order of the sidecar manifest"
 
 
@@ -247,15 +248,20 @@ def _summarise(side, point, boot):
         b = boot[cond]
         iv = {k: list(percentile_interval(b[k])) for k in SCALARS}
         iv["status_counts"] = {s: list(percentile_interval(b["status_counts"][:, j])) for j, s in enumerate(STATUSES)}
+        diag = {}
+        for k in SCALARS:
+            x = b[k][~np.isnan(b[k])]; lo, hi = iv[k]
+            diag[k] = {"bootstrap_mean": float(x.mean()) if x.size else float("nan"), "point_in_interval": bool(np.isfinite(pt[k]) and np.isfinite(lo) and lo <= pt[k] <= hi)}
         n_l = np.array([pt["by_language"][c]["n_selective"] for c in side.languages], dtype=np.float64)
         frac = np.where(n_l > 0, b["by_language_retained"] / np.where(n_l > 0, n_l, 1), np.nan)
         by = {}
+        lossfrac = np.where(n_l > 0, (b["by_language_established"] - b["by_language_retained"]) / np.where(n_l > 0, n_l, 1), np.nan)
         for l, code in enumerate(side.languages):
-            by[code] = {**pt["by_language"][code], "interval": list(percentile_interval(frac[:, l]))}
+            by[code] = {**pt["by_language"][code], "interval": list(percentile_interval(frac[:, l])), "loss_interval": list(percentile_interval(lossfrac[:, l]))}
         used = n_l > 0
         macro_draws = np.nanmean(frac[:, used], axis=1) if used.any() else np.full(len(frac), np.nan)
         pf = np.array([pt["by_language"][c]["retention_fraction"] for c in side.languages], dtype=np.float64)
-        out[cond] = {"point": {k: v for k, v in pt.items() if k != "by_language"}, "interval": iv, "by_language": by,
+        out[cond] = {"point": {k: v for k, v in pt.items() if k != "by_language"}, "interval": iv, "diagnostics": diag, "by_language": by,
                      "macro": {"retention_fraction": float(np.mean(pf[used])) if used.any() else float("nan"), "n_languages": int(used.sum()), "interval": list(percentile_interval(macro_draws))}}
     return out
 
@@ -289,14 +295,16 @@ def _language_rows(side, summaries):
     rows = []
     for group, per_cond in summaries.items():
         for cond, s in per_cond.items():
-            def row(lang, n, e, r, frac, iv, cond_frac, n_lang=""):
-                return {"group": group, "condition": cond, "language": lang, "n_selective": n, "fp_established": e, "retained": r, "retention_fraction": _fmt(frac),
-                        "retention_lo": _fmt(iv[0]) if iv else "", "retention_hi": _fmt(iv[1]) if iv else "", "conditional_fraction": _fmt(cond_frac), "n_languages": n_lang}
+            def row(lang, n, e, r, frac, iv, cond_frac, n_lang="", loss_iv=None):
+                lost = e - r if e != "" else ""
+                return {"group": group, "condition": cond, "language": lang, "n_selective": n, "fp_established": e, "retained": r, "lost": lost, "retention_fraction": _fmt(frac),
+                        "retention_lo": _fmt(iv[0]) if iv else "", "retention_hi": _fmt(iv[1]) if iv else "", "loss_fraction": _fmt(lost / n) if (n not in ("", 0) and lost != "") else "",
+                        "loss_lo": _fmt(loss_iv[0]) if loss_iv else "", "loss_hi": _fmt(loss_iv[1]) if loss_iv else "", "conditional_fraction": _fmt(cond_frac), "n_languages": n_lang}
             for code in side.languages:
                 b = s["by_language"][code]
-                rows.append(row(code, b["n_selective"], b["fp_established"], b["retained"], b["retention_fraction"], b["interval"], b["retained"] / b["fp_established"] if b["fp_established"] else None))
+                rows.append(row(code, b["n_selective"], b["fp_established"], b["retained"], b["retention_fraction"], b["interval"], b["retained"] / b["fp_established"] if b["fp_established"] else None, "", b["loss_interval"]))
             pt, iv = s["point"], s["interval"]
-            rows.append(row("POOLED", pt["n_selective"], pt["fp_established"], pt["retained_of_established"], pt["retention_fraction"], iv["retention_fraction"], pt["conditional_fraction"]))
+            rows.append(row("POOLED", pt["n_selective"], pt["fp_established"], pt["retained_of_established"], pt["retention_fraction"], iv["retention_fraction"], pt["conditional_fraction"], "", iv["loss_fraction"]))
             rows.append(row("MACRO_LANGUAGE_MEAN", "", "", "", s["macro"]["retention_fraction"], s["macro"]["interval"], None, s["macro"]["n_languages"]))
     return rows
 
@@ -313,13 +321,13 @@ def _report(config, prov, side, coh, summaries):
               f"- Sidecar manifest sha256 `{prov['run_manifest_sha256'][:12]}`; baseline selectivity sha256 `{prov['baseline_selectivity_sha256'][:12]}`.", "",
               "## Original selective features: headline per condition", "",
               "Every original selective feature is in the fixed denominator whatever its status. Intervals are pointwise percentile intervals over sentence resamples, conditional on this corpus, these sampled positions and the frozen cohort.", "",
-              "| condition | selective | FP baseline established | retained, fixed denominator | retained among established | median change of target share | median change of margin | median total variation | undefined distances |",
-              "|---|---|---|---|---|---|---|---|---|"]
+              "| condition | selective | FP baseline established | retained, fixed denominator | lost (established in FP, not retained), fixed denominator | retained among established | median change of target share | median change of margin | median total variation | undefined distances |",
+              "|---|---|---|---|---|---|---|---|---|---|"]
     cell = lambda p, iv: f"{_md(p)} [{_md(iv[0])}, {_md(iv[1])}]"
     for cond, s in sel.items():
         pt, iv = s["point"], s["interval"]
         lines.append(f"| {cond} | {pt['n_selective']} | {pt['fp_established']} ({cell(pt['fp_establishment_fraction'], iv['fp_establishment_fraction'])}) | {pt['retained_of_established']} ({cell(pt['retention_fraction'], iv['retention_fraction'])}) | "
-                     f"{cell(pt['conditional_fraction'], iv['conditional_fraction'])} | {cell(pt['median_delta_share'], iv['median_delta_share'])} | {cell(pt['median_delta_margin'], iv['median_delta_margin'])} | "
+                     f"{pt['lost_of_established']} ({cell(pt['loss_fraction'], iv['loss_fraction'])}) | {cell(pt['conditional_fraction'], iv['conditional_fraction'])} | {cell(pt['median_delta_share'], iv['median_delta_share'])} | {cell(pt['median_delta_margin'], iv['median_delta_margin'])} | "
                      f"{cell(pt['median_tv'], iv['median_tv'])} | {pt['n_tv_undefined']} |")
     lines += ["", "## Status of the features established in full precision", "", "| condition | " + " | ".join(STATUSES) + " |", "|---|" + "---|" * len(STATUSES)]
     for cond, s in sel.items():
@@ -335,6 +343,7 @@ def _report(config, prov, side, coh, summaries):
     lines += ["", "## How to read this", "",
               "- A retained peak is not unchanged specificity: the target share, the margin and the total variation are reported next to it, and a common rescaling leaves shares and distances unchanged while amplitudes change.",
               "- The restore-only control and the high-precision controls characterise the numerical and sampling floor; they are measured, not assumed to preserve every association.",
+              "- Percentile intervals of fractions that depend on thresholds and on the uniqueness of a maximum are pulled toward the middle by resampling, so the observed value can lie outside its interval (`analysis.json` records the bootstrap mean and whether the observed value is inside). The loss fraction (features established in full precision that a condition does not retain) is paired draw by draw, so it is less affected by the threshold noise of the baseline and is the statistic to read for the effect of a condition, but it can also fall outside its interval; the restore-only control has zero loss in every draw by construction.",
               "- Intervals describe sentence-sampling variation only. They do not cover other corpora, other dictionaries or the choice of thresholds, and an interval that includes no change is not evidence that function or meaning is unchanged.",
               "- Per-feature rows are in `feature_status.csv`, per-language rows with intervals in `language_summary.csv`, everything numeric in `analysis.json`; no hypothesis test is run.", ""]
     return "\n".join(lines)
@@ -361,7 +370,7 @@ def analyse_association(run_dir, baseline_dir, out_dir, stream="eq", n_boot=1000
     fields = ["feature_id", "group", "original_language", "condition", "fp_status", "status", "peak_set", "peak_count", "positives_at_peak", "positives_at_target", "target_rate", "target_share",
               "margin", "tv_distance", "target_mean", "nu_target", "historical_corr"]
     (out / "feature_status.csv").write_text(_csv_text(_feature_rows(side, coh, bl_surv, min_positives, min_panel_rate), fields))
-    lf = ["group", "condition", "language", "n_selective", "fp_established", "retained", "retention_fraction", "retention_lo", "retention_hi", "conditional_fraction", "n_languages"]
+    lf = ["group", "condition", "language", "n_selective", "fp_established", "retained", "lost", "retention_fraction", "retention_lo", "retention_hi", "loss_fraction", "loss_lo", "loss_hi", "conditional_fraction", "n_languages"]
     (out / "language_summary.csv").write_text(_csv_text(_language_rows(side, summaries), lf))
     (out / "association_retention.md").write_text(_report(config, prov, side, coh, summaries))
     return {"config": config, "provenance": prov, "groups": summaries}

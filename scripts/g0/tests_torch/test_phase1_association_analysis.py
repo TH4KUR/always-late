@@ -157,6 +157,7 @@ class PointEstimates(Base):
         self.assertGreater(r["fp_established"], 0)                                                                                    # non-vacuous
         self.assertEqual(r["n_selective"], int(coh.selective.sum()))
         self.assertEqual(sum(r["status_counts"].values()), r["fp_established"]); self.assertEqual(sum(r["fp_status_counts"].values()), r["n_selective"])        # fixed denominators
+        self.assertEqual(r["lost_of_established"], 0); self.assertEqual(r["loss_fraction"], 0.0)
         self.assertLess(r["fp_established"], r["n_selective"])                                                                                                  # some selective features are not established in FP
 
     def test_planted_broadening_inactivity_and_switch_are_counted_with_fixed_denominators(self):
@@ -172,9 +173,19 @@ class PointEstimates(Base):
         self.assertEqual(r["status_counts"], {"retained": 0, "ambiguous_peak": 1, "different_peak": 1, "low_support": 0, "inactive": 1})      # f0 broadened (tie), f2 switched, f1 inactive
         self.assertEqual(sum(r["status_counts"].values()), r["fp_established"])
         self.assertEqual(r["retention_fraction"], 0.0); self.assertEqual(r["fp_establishment_fraction"], 1.0)
+        self.assertEqual(r["lost_of_established"], 3); self.assertEqual(r["loss_fraction"], 1.0)                                  # established in FP and not retained, over the fixed denominator
         self.assertEqual(r["by_language"]["l0_Latn"], {"n_selective": 1, "fp_established": 1, "retained": 0, "retention_fraction": 0.0})
         self.assertAlmostEqual(r["median_delta_share"], -0.75)       # f0: 1.0 -> 0.5; f2: 1.0 -> 0; f1 has no share after quantization (all-zero profile) and is left out
         self.assertAlmostEqual(r["median_delta_margin"], -1.0)      # margins 1 -> 0 (f0), 1 -> 0 (f1, margin 0 when silent), 1 -> -1 (f2): changes -1, -1, -2
+
+    def test_loss_fraction_uses_the_fixed_denominator_including_features_never_established(self):
+        g = torch.Generator().manual_seed(3)
+        data = {l: [torch.randint(3 + 7 * l, 10 + 7 * l, (n,), generator=g).tolist() for n in (4, 6, 5)] for l in range(3)}
+        sink = ac.ProfileSink(self.tmp / "fd", CODES, F, conditions=["FP", "INT4"], sentence_features=torch.arange(F), streams=("all",))
+        fwd, enc, qz, rs = make_planted(); run.run_survival(fwd, enc, qz, rs, data, "mask", BOS, PAD, F, [4], profile_sink=sink); sink.finalize()
+        side = an.load_sidecar(self.tmp / "fd", "all"); sel = np.zeros(F, dtype=bool); sel[[0, 1, 2, 5]] = True; peak = np.zeros(F, dtype=int); peak[:3] = [0, 1, 2]       # feature 5 never fires
+        r = an.point_estimate(side, an.load_cohort(write_baseline(self.tmp / "fdb", peak, sel, []), side), min_positives=5)["INT4"]
+        self.assertEqual((r["n_selective"], r["fp_established"], r["lost_of_established"]), (4, 3, 3)); self.assertEqual(r["loss_fraction"], 0.75); self.assertAlmostEqual(r["fp_establishment_fraction"], 0.75)
 
     def test_languages_without_selective_features_have_no_fraction_not_zero(self):
         d = self.make_run(); side = an.load_sidecar(d, "all"); prof = ac.read_profiles(d, "all")["conditions"]["FP"]
@@ -217,6 +228,7 @@ class Bootstrap(Base):
         r0 = res["INT0"]
         self.assertTrue(np.array_equal(r0["retained_of_established"], r0["fp_established"]))                                           # INT0 == FP in every draw (paired)
         self.assertTrue(np.all(r0["median_tv"] == 0.0)); self.assertGreater(float(np.std(r0["fp_established"])), 0.0)                  # ... while the baseline itself varies across draws
+        self.assertTrue(np.all(r0["loss_fraction"] == 0.0)); self.assertGreater(float(np.std(r0["retention_fraction"])), 0.0)           # the paired loss does not inherit the threshold noise of the baseline
 
     def test_results_are_reproducible_for_a_seed_and_differ_between_seeds(self):
         a = an.bootstrap(self.side, self.coh, 30, 0, min_positives=MINPOS); b = an.bootstrap(self.side, self.coh, 30, 0, min_positives=MINPOS); c = an.bootstrap(self.side, self.coh, 30, 1, min_positives=MINPOS)
@@ -263,6 +275,7 @@ class Outputs(Base):
         j = json.loads((out / "analysis.json").read_text())                                                  # strict JSON: no NaN literals
         self.assertEqual(j["config"]["n_boot"], 20); self.assertEqual(j["config"]["seed"], 0); self.assertIn("percentile", j["config"]["interval"])
         c = j["groups"]["selective"]["INT4"]; self.assertEqual(c["point"]["n_selective"], 3); lo, hi = c["interval"]["retention_fraction"]; self.assertLessEqual(lo, hi)
+        self.assertEqual(c["interval"]["loss_fraction"], [1.0, 1.0]); self.assertEqual(c["diagnostics"]["loss_fraction"], {"bootstrap_mean": 1.0, "point_in_interval": True})
         self.assertEqual(c["point"]["status_counts"]["ambiguous_peak"], 1)
         self.assertEqual(sorted(j["groups"]), ["controls", "selective"]); self.assertEqual(j["provenance"]["languages"], CODES)
         self.assertIsNone(j["groups"]["controls"]["INT4"]["point"]["median_tv"])                       # undefined stays null in the JSON, never 0
@@ -314,13 +327,16 @@ class Outputs(Base):
         rows = [r for r in read_csv(self.tmp / "o3" / "language_summary.csv") if r["group"] == "selective" and r["condition"] == "INT4"]
         by = {r["language"]: r for r in rows}
         self.assertEqual(by["l2_Latn"]["n_selective"], "0"); self.assertEqual(by["l2_Latn"]["retention_fraction"], ""); self.assertEqual((by["l2_Latn"]["retention_lo"], by["l2_Latn"]["retention_hi"]), ("", "")); self.assertEqual(by["l0_Latn"]["n_selective"], "1")
+        self.assertEqual((by["l0_Latn"]["lost"], by["l0_Latn"]["loss_fraction"]), ("1", "1")); self.assertEqual((by["POOLED"]["lost"], by["POOLED"]["loss_fraction"]), ("2", "1"))
+        self.assertEqual((by["l2_Latn"]["lost"], by["l2_Latn"]["loss_fraction"], by["l2_Latn"]["loss_lo"]), ("0", "", ""))
+        self.assertEqual((by["l0_Latn"]["loss_lo"], by["l0_Latn"]["loss_hi"]), ("1", "1")); self.assertEqual((by["POOLED"]["loss_lo"], by["POOLED"]["loss_hi"]), ("1", "1"))
         self.assertEqual(sum(int(by[c]["n_selective"]) for c in CODES), 2); self.assertEqual(by["POOLED"]["n_selective"], "2"); self.assertEqual(by["MACRO_LANGUAGE_MEAN"]["n_languages"], "2")
 
     def test_the_markdown_report_lists_every_condition_and_states_its_limits(self):
         self.analyse(); md = (self.tmp / "out" / "association_retention.md").read_text()
         for c in ("INT4", "INT8"):
             self.assertIn(c, md)
-        self.assertIn("pointwise", md); self.assertIn("exploratory", md.lower()); self.assertIsNone(__import__("re").search(r"\bnan\b", md.lower())); self.assertIn("fixed denominator", md.lower())
+        self.assertIn("pulled toward the middle", md); self.assertIn("loss", md.lower()); self.assertIn("pointwise", md); self.assertIn("exploratory", md.lower()); self.assertIsNone(__import__("re").search(r"\bnan\b", md.lower())); self.assertIn("fixed denominator", md.lower())
 
     def test_the_cli_runs_and_refuses_a_missing_baseline(self):
         d, b = self.planted()
