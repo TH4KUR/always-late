@@ -130,7 +130,8 @@
     "wandb/*",
     "*/wandb/*",
     "analysis-eq-rerun/*",
-    "analysis-all-rerun/*"
+    "analysis-all-rerun/*",
+    "association/*/sentences/*"
    ]
   }
  ]
