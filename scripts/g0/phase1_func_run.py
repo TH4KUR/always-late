@@ -335,6 +335,48 @@ PRESETS = {
 LAYER = 12
 
 
+def parse_slurm_time(s):
+    """Seconds from a Slurm time string (`D-HH:MM:SS`, `HH:MM:SS`, `MM:SS`); None for UNLIMITED, INVALID, NOT_SET, empty or unparsable input."""
+    if not s or not isinstance(s, str):
+        return None
+    s = s.strip()
+    try:
+        days, rest = (s.split("-", 1) if "-" in s else ("0", s))
+        parts = [int(x) for x in rest.split(":")]
+        if not 2 <= len(parts) <= 3:
+            return None
+        sec = 0
+        for x in parts:
+            sec = sec * 60 + x
+        return int(days) * 86400 + sec
+    except ValueError:
+        return None
+
+
+def slurm_remaining_seconds(env=None, runner=None):
+    """Seconds left of the current Slurm job (`squeue -h -j <id> -o %L`), or None when this is not a Slurm job or the query fails (the run is never stopped by a failing query)."""
+    import os
+    env = os.environ if env is None else env
+    job = env.get("SLURM_JOB_ID")
+    if not job:
+        return None
+    try:
+        if runner is None:
+            import subprocess
+            runner = lambda args: subprocess.run(args, capture_output=True, text=True, timeout=30).stdout
+        return parse_slurm_time(runner(["squeue", "-h", "-j", str(job), "-o", "%L"]))
+    except Exception:
+        return None
+
+
+def next_precision_fits(remaining, durations, margin=1.1):
+    """Whether another precision should be started: always when no limit is known or nothing has been measured yet, otherwise only if the remaining time covers `margin` times the slowest precision so far
+    (a precision cut off by the time limit is lost: results are saved per precision, not inside one)."""
+    if remaining is None or not durations:
+        return True
+    return remaining >= margin * max(durations)
+
+
 def _precision_key(s):
     s = str(s)
     return "FP" if s.upper() == "FP" else int(s)
@@ -421,8 +463,22 @@ def main(argv=None):
         restore()                                                           # full-precision weights: the donor of every quantized run
         donors = build_donor_cache(lower, encode, batches, device=DEVICE)
         log("donor cache built:", len(donors), "batches")
-    summary = {}
+    summary, skipped = {}, []
+    meta = {"task": "lm", "split": a.split, "preset": a.preset, "precisions": a.precisions, "languages": run_names, "n_sentences": len(ids), "lm_seed": a.lm_seed, "commit": a.commit,
+            "model": model_name, "hook": hook, "gates": gates, "manifest_source_sha256": man["source"]["sha256"], "argv": list(argv) if argv is not None else None,
+            "versions": p1_package_versions()}
+
+    def write_meta(final):
+        meta.update({"summary": summary, "skipped_for_time": skipped, "complete": final, "seconds": time.time() - t0,
+                     "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0})
+        (Path(a.out) / f"meta_lm_{a.split}.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
+
     for prec in [_precision_key(x) for x in a.precisions]:
+        rem = slurm_remaining_seconds()
+        if not next_precision_fits(rem, [v["seconds"] for v in summary.values()]):
+            skipped.append("FP" if prec == "FP" else f"INT{prec}")
+            log("not starting", skipped[-1], ": remaining", rem, "s is less than 1.1 times the slowest finished precision (a precision cut off by the time limit is lost)")
+            continue
         restore()
         if prec not in ("FP", 0):
             env["quantize_rtn_per_output_channel_tl"](model, bits=prec)
@@ -446,13 +502,11 @@ def main(argv=None):
                     "fidelity": {run_names[l]: v for l, v in out["fidelity"].items()}}, Path(a.out) / f"func_lm_{a.split}_{key}.pt")
         summary[key] = {"seconds": dt, "token_passes": passes, "tokens_per_second": passes / dt, "configs": len(configs)}
         log(key, "done:", summary[key], "peak GPU GB", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
+        write_meta(False)                                              # results and metadata of every finished precision are on disk before the next one starts
         del out; gc.collect()
     restore()
-    meta = {"task": "lm", "split": a.split, "preset": a.preset, "precisions": a.precisions, "languages": run_names, "n_sentences": len(ids), "lm_seed": a.lm_seed, "commit": a.commit,
-            "model": model_name, "hook": hook, "gates": gates, "summary": summary, "manifest_source_sha256": man["source"]["sha256"], "argv": list(argv) if argv is not None else None,
-            "versions": p1_package_versions(), "seconds": time.time() - t0, "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0}
-    (Path(a.out) / f"meta_lm_{a.split}.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
-    log("saved", a.out)
+    write_meta(True)
+    log("saved", a.out, "skipped for time:", skipped)
 
 
 MC_PRESETS = {"none": {}, "mc": {"zero": ["K64"], "controls": ["K64"], "sham": ["K64"], "mean": ["K64"], "resample": ["K64"]}}
@@ -524,7 +578,13 @@ def main_mc(argv=None):
         sel = fg.dev_view(torch.load(a.selectivity, weights_only=False))
     restore = env["restore_model_work"]
     Path(a.out).mkdir(parents=True, exist_ok=True)
-    summary, gates = {}, None
+    summary, gates, skipped = {}, None, []
+
+    def write_meta(final):
+        (Path(a.out) / f"meta_mc_{a.split}.json").write_text(json.dumps({"task": "mc", "split": a.split, "formats": a.formats, "preset": a.preset, "precisions": a.precisions, "languages": run_names,
+            "n_items": a.n_items, "n_items_cloze": a.n_items_cloze, "item_seed": a.item_seed, "max_len": a.max_len, "commit": a.commit, "model": model_name, "gates": gates, "summary": summary,
+            "skipped_for_time": skipped, "complete": final, "argv": list(argv) if argv is not None else None, "versions": p1_package_versions(), "seconds": time.time() - t0}, indent=1, default=str) + "\n")
+
     for fmt in a.formats:
         cap = (a.n_items_cloze or a.n_items) if fmt == "cloze" else a.n_items
         data, kept, dropped = {}, {}, {}
@@ -547,6 +607,11 @@ def main_mc(argv=None):
                 dev[i] = pd_.encode_sentences(tok, pd_.read_flores_split(a.flores_root, code, "dev", 997)[:a.pool_sentences])
             pool_batches = p1.make_batches(dev, bos, "mask", pad, 256, 32, a.max_tokens)
         for prec in [_precision_key(x) for x in a.precisions]:
+            rem = slurm_remaining_seconds()
+            if not next_precision_fits(rem, [v["seconds"] for v in summary.values()]):
+                skipped.append(f"{fmt}/" + ("FP" if prec == "FP" else f"INT{prec}"))
+                log("not starting", skipped[-1], ": remaining", rem, "s is less than 1.1 times the slowest finished run")
+                continue
             restore()
             if prec not in ("FP", 0):
                 env["quantize_rtn_per_output_channel_tl"](model, bits=prec)
@@ -566,12 +631,11 @@ def main_mc(argv=None):
                        Path(a.out) / f"func_mc_{a.split}_{fmt}_{key}.pt")
             summary[f"{fmt}/{key}"] = {"seconds": time.time() - ts, "configs": len(configs)}
             log(fmt, key, "done:", summary[f"{fmt}/{key}"], "peak GPU GB", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
+            write_meta(False)
             del out; gc.collect()
     restore()
-    (Path(a.out) / f"meta_mc_{a.split}.json").write_text(json.dumps({"task": "mc", "split": a.split, "formats": a.formats, "preset": a.preset, "precisions": a.precisions, "languages": run_names,
-        "n_items": a.n_items, "n_items_cloze": a.n_items_cloze, "item_seed": a.item_seed, "max_len": a.max_len, "commit": a.commit, "model": model_name, "gates": gates, "summary": summary,
-        "argv": list(argv) if argv is not None else None, "versions": p1_package_versions(), "seconds": time.time() - t0}, indent=1, default=str) + "\n")
-    log("saved", a.out)
+    write_meta(True)
+    log("saved", a.out, "skipped for time:", skipped)
 
 
 def p1_package_versions():

@@ -480,6 +480,36 @@ class McItems(unittest.TestCase):
         self.assertNotEqual(self.keys(a), self.keys(fr.mc_items_for(self.items(), self.ORIGIN, "eval", 3, seed=1)))
 
 
+class TimeBudget(unittest.TestCase):
+    def test_slurm_time_formats(self):
+        self.assertEqual(fr.parse_slurm_time("3:12"), 192)
+        self.assertEqual(fr.parse_slurm_time("1:02:03"), 3723)
+        self.assertEqual(fr.parse_slurm_time("1-02:03:04"), 86400 + 7384)
+        self.assertEqual(fr.parse_slurm_time("00:45"), 45)
+        for bad in ("UNLIMITED", "INVALID", "NOT_SET", "", "abc", None, "45", "1:2:3:4"):
+            self.assertIsNone(fr.parse_slurm_time(bad))
+
+    def test_remaining_seconds_from_squeue_with_an_injected_runner(self):
+        calls = []
+        def runner(args):
+            calls.append(args); return "2:30:00\n"
+        self.assertEqual(fr.slurm_remaining_seconds({"SLURM_JOB_ID": "4242"}, runner), 9000)
+        self.assertEqual(calls[0][:3], ["squeue", "-h", "-j"]); self.assertIn("4242", calls[0])
+        self.assertIsNone(fr.slurm_remaining_seconds({}, runner))                                      # not a Slurm job: no limit known
+        def boom(args):
+            raise OSError("no squeue")
+        self.assertIsNone(fr.slurm_remaining_seconds({"SLURM_JOB_ID": "4242"}, boom))                  # never fails the run
+
+    def test_the_next_precision_starts_only_if_it_fits(self):
+        self.assertTrue(fr.next_precision_fits(None, [3500]))                                          # no limit known
+        self.assertTrue(fr.next_precision_fits(100, []))                                               # nothing measured yet: the first precision always starts
+        self.assertTrue(fr.next_precision_fits(4000, [3500], margin=1.1))                              # 3850 needed
+        self.assertFalse(fr.next_precision_fits(3800, [3500], margin=1.1))
+        self.assertFalse(fr.next_precision_fits(3600, [3000, 3500], margin=1.1))                       # the slowest precision so far counts
+        self.assertTrue(fr.next_precision_fits(3500, [3500], margin=1.0))                              # exactly enough
+        self.assertFalse(fr.next_precision_fits(3499, [3500], margin=1.0))
+
+
 class Gates(unittest.TestCase):
     def setUp(self):
         self.model, self.sae = ToyModel(), ToySAE(d=D, F=F)
