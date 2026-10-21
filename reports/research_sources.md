@@ -68,6 +68,15 @@ Sources for the statistical choices of the association-retention study ([plan](.
 
 Total variation distance between two normalised language profiles, the target share and the margin are elementary definitions given in the design (section 7); no external claim depends on them.
 
+### Functional-intervention methods added for Q16 (D-039, 2026-10-21)
+
+| ID | Source and status | Checked/read in this step | Supported use and limits |
+|---|---|---|---|
+| M06 | Zhang and Nanda, *Towards Best Practices of Activation Patching in Language Models: Metrics and Methods*. **ICLR 2024.** [Official proceedings](https://proceedings.iclr.cc/paper_files/paper/2024/hash/06a52a54c8ee03cd86771136bc91eb1f-Abstract-Conference.html); [published PDF](https://proceedings.iclr.cc/paper_files/paper/2024/file/06a52a54c8ee03cd86771136bc91eb1f-Paper-Conference.pdf) | Official proceedings abstract/venue checked; abstract read. Full paper not re-audited here. | Corruption and metric choices can change patching conclusions; motivates specifying them before evaluation. Does not validate our task, six-precision SAE experiment, causal-language claim or novelty. |
+| M07 | Heimersheim and Nanda, *How to use and interpret activation patching*, **2024 preprint**, arXiv 2404.15255. [Primary full text](https://arxiv.org/html/2404.15255v1) | Read sections 2.5-2.6, 3.2 and 4 via primary full text; no publication venue verified. | Disruptive/recovery patching tests different properties; redundancy can mask ablation effects; outcomes depend on the prompt distribution and score. Motivates clean/corrupt pairs and language/task controls. This is methodological guidance, not new multilingual quantization evidence. |
+
+P02 (Deng, ACL 2025) and P08 (Makelov, ICLR 2025) remain the existing language-feature intervention and task-grounded evaluation references. Q16 selects applying those ideas to a controlled cross-precision functional study; it does not claim ablation or language steering is novel.
+
 ## Official sources and research-practice guidance
 
 | ID | Source | Supported use / limitation |

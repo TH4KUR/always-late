@@ -1,5 +1,7 @@
 # Team Plan
 
+**Next work selected, 2026-10-21 (Q16, D-039):** analyse existing findings more closely; assess SAE fidelity; test whether original language-associated features make language-targeted contributions to multilingual tasks using activation patching/complementary disruptive interventions across FP and INT8/7/6/5/4; prepare figures/tables. [Direction, comparison rules and source-grounded controls](reports/association_retention/next_steps.md#selected-functional-study-direction-d-039). C is selected, not merely conditional on spare time. Detailed task/language coverage, feature groups, doses, held-out evaluation and pilot cost precede implementation. The completed D-035 study is preserved; no new job or schedule is started by recording this answer. This supersedes older “no follow-up selected” notices below.
+
 ## Current scope -- 2026-10-21 (Q1, D-028)
 
 **Q13-Q15 update (D-032/D-033/D-034):** both matching contrasts remain associations; investigate magnitude's causal role only with a defined causal question. Distinguish overall-tier disparity from an extra selectivity-specific disparity using the completed tests. Q15 selects an expanded investigation of confidence, activity counts/concentration/magnitude, normalization and SAE fidelity, not the old N12 job unchanged. [Sources, dated search and saved-result synthesis](reports/research_sources.md). Begin with artifact feasibility before specifying new measurements across mask INT8/7/6/5/4; exact implementation, cost and unseen evaluation remain to be designed.
