@@ -1,5 +1,7 @@
 # HANDOFF: building on Duan (2026)'s OWN code
 
+> **Current handoff: [014 -- language-association plan](reports/handoffs/014-2026-10-21-language-association-plan.md) (2026-10-21).** The user selected checking original language association across all 27 languages and requested a documented plan (D-035). [Implementation tasks and gates](docs/superpowers/plans/2026-10-21-language-association-retention.md); [measurement design](reports/survival_method_reassessment.md#7-selected-next-study-language-association-retention-d-035). Planning is recorded; implementation/new measurements are pending. Q13-Q15 decisions remain in force but their broader work is separate. Mask-only, no new Duan numerical comparison, full INT8/7/6/5/4 ladder and honest exploratory status remain required. This supersedes older directions below.
+
 > **START HERE (since 2026-10-18): read ONLY the newest file in `reports/handoffs/` first** (highest number; template `reports/handoffs/TEMPLATE.md`; the routine is `reports/scheduled_routine.md`). It is the only record of the previous chat; the sections below are reference material.
 
 Written 2026-10-16, rewritten the same night after the audit and the decision to **discard our previous codebase**. For an agent with no memory of the previous sessions. Read this file fully, then the "POST-MORTEM of our previous codebase" entry at the end of `reports/progress_log.md`, `reports/audit_our_vs_duan.md` (what was found), `third_party/duan2026/UPSTREAM.md` (exactly what was removed and edited) and `reports/duan_codebase_audit.md` (Ada facts, closure protocol). Items marked **UNVERIFIED** were not verified.
@@ -154,4 +156,3 @@ Every run, live or rebuilt, uses the vocabulary in `reports/wandb_schema.md` (15
 (The step-by-step history is in `reports/progress_log.md`; the newest handoff in `reports/handoffs/` is the only source of the previous chat.)
 
 (Earlier status line, kept for the record:)  S1-S5 and S7 done (the anchor reproduces their smoke run bit-identically); **S6 running: Slurm 25745 `p1-mask`, 25746 `p1-none`** (commit 618496f; outputs `/home2/karma/duan-verify/out/phase1/<name>/{eq,all}/`, 4-6 h each; `eq` = the pre-registered equal-token-budget stream = primary, `all` = all tokens = sensitivity, D-015). Then `phase1_analysis.run_analysis` on each directory, HF upload, wandb rebuild, S8 `reports/phase1_results.md`. Anchor command: `run_phase1.sbatch anchor wikitext none --budget 20000 --bits 8 6 --batch-size 1 --loss tl`; compare with `python3 scripts/g0/phase1_anchor.py <summary.csv>`.
-

@@ -1,5 +1,28 @@
 # Audit: why our pipeline disagrees with Duan et al. (2026)
 
+## Current disposition -- closed 2026-10-21 (Q1, D-028)
+
+**The multilingual study proceeds with `mask` only:** one BOS is prepended to each input and its position is excluded from feature statistics. The `none` regime is retired from ongoing work, including sensitivity analyses and future diagnostics. Our methodology has diverged from Duan's evaluation setup, so their published numbers are no longer a quantitative comparison, validation target or acceptance gate for our study. Their work remains prior work and a source of reused code; the completed replication and this audit remain historical evidence. This does not require abandoning the functions we have already verified or changing saved results.
+
+### Evidence supporting the choice
+
+| Evaluation setting | BOS handling | Unquantized perplexity | INT7 survival | INT6 survival |
+|---|---|---:|---:|---:|
+| WikiText-2, reproduced baseline | `none` | 458.4 | 81.19 % | 51.15 % |
+| WikiText-2, same 256 content-token windows | `mask` | 16.1 | 99.97 % | 97.52 % |
+| FLORES-200, 27-language sentence evaluation | `none` | 48,864 | 64.18 % | 38.60 % |
+| FLORES-200, 27-language sentence evaluation | `mask` | 19.46 | 99.97 % | 94.94 % |
+
+Direct result files: [WikiText `none` baseline and published-table comparison](g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/baseline_report.md), [WikiText `none` CSV](g0/baseline_full/phase3_gemma_outputs_3b_full_500k_L12/phase3_summary_final.csv), [WikiText `mask` CSV](g0/R2_bos_mask/phase3_summary_final.csv), [FLORES `none` CSV](phase1/none/eq/summary.csv), and [FLORES `mask` CSV](phase1/mask/eq/summary.csv). The [Phase 1 results, section 1](phase1_results.md#1-pooled-survival-their-metric-all-27-languages-pooled-equal-budget) also report the reliability controls: median r at INT16/INT12 is 0.9957 with `mask` and 0.9823 with `none`, against the project's 0.99 gate. The detailed WikiText controls are retained in section 6.7 below.
+
+The baseline prediction gap exists before quantization. The WikiText diagnostic controls the text windows while changing BOS handling; FLORES uses a different corpus and short-sentence format. Survival is evaluated over each regime's own active-feature set, so the percentages do not follow an identical population across regimes. These comparisons justify the protocol choice; they are not evidence that the BOS setup has no remaining measurement limitations.
+
+The general Gemma BOS dependence is known: [Owen et al. (2025), section 4.2](https://arxiv.org/pdf/2503.22329), directly report worse perplexity and changed activation patterns without BOS in Gemma-2-2B; [Barbero et al. (2025), sections 3.2 and 5](https://arxiv.org/html/2504.02732v1), study the role of BOS attention sinks in Gemma 7B and controlled training experiments. These sources do not establish the exact mechanism behind our FLORES magnitude. The [2026-10-21 analysis log](progress_log.md#2026-10-21----analysis-bos-dependence-in-the-gemma-experiments-q1-confirmed-d-027) records the training-source qualifications and the scope of the criticism of Duan's Gemma experiment. The present decision supersedes that entry's initial plan to retain `none` as a sensitivity.
+
+**Forward scope:** no additional `none` runs or analyses; no new Duan replication or numerical comparison; Q5's two-regime window diagnostic and Q9's optional Duan diagnostics are closed without execution. Any future language-level diagnostic is scoped to `mask` and still needs its own decision. Appending EOS is not part of this change. Existing result files and reproduction tooling remain available for provenance, not as a request to continue the retired work. The dated sections below describe the completed investigation; their older optional runs and baseline requirements are superseded by this disposition.
+
+## Historical audit record
+
 Status: **written 2026-10-16; R2 and all R5 cells finished the same day (section 6).** Sections 1-3 are established (code reading, unit tests, or the finished baseline job). Section 5 is the reading guide fixed before the experiments. Section 6 holds the results, section 6.4 the status of the closure protocol.
 
 ## 1. The disagreement

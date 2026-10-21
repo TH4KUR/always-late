@@ -2,6 +2,8 @@
 
 This file is a results summary for the team. It is **not paper prose** (course policy: the team writes the prose). Every number below sits in the generated block and is produced from the committed result files by `scripts/g0/phase1_summary.py`; a test fails if the committed file and the files disagree. The text around the block states no results.
 
+**Current interpretation:** survival detection is under reassessment. The generated results describe fixed-SAE activation correlations for a cohort selected before quantization, not demonstrated retention of language identity or causal function. Completed BOS-free results are historical; ongoing work uses the BOS-masked regime only. See [accepted evidence and proposed validation](survival_method_reassessment.md) and [current decisions](../DECISIONS_FOR_REVIEW.md). The generated block is preserved.
+
 Setting: Gemma-2-2B, layer-12 residual stream, Gemma Scope 16k SAE, round-to-nearest weight quantization with Duan et al.'s own functions, 27 FLORES-200 languages in three resource tiers. The primary stream masks the BOS token and uses equal token budgets per language; the BOS-free stream is a sensitivity analysis whose instrument fails its own noise-floor check (A-029).
 
 Where the details are: the full account is `reports/phase1_results.md`, the decisions and anomalies are in `reports/decisions_and_anomalies.md`, the questions that change how the evidence is headlined are in `DECISIONS_FOR_REVIEW.md` (Q1, Q2, Q13, Q14, Q15).
