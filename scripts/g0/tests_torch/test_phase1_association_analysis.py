@@ -346,5 +346,35 @@ class Outputs(Base):
             an.main(["--run", str(d), "--out", str(self.tmp / "cli2")])
 
 
+class AggregateOnlyStream(Base):
+    """The all-token stream of the full run has aggregate profiles but no sentence shards: its point estimates come from the aggregates, without intervals."""
+    def make_both(self):
+        data = corpus_sym(); sink = ac.ProfileSink(self.tmp / "agg", CODES, F, conditions=["FP", "INT8", "INT4", "INT0"], sentence_features=torch.arange(F), streams=("eq", "all"), sentence_streams=("eq",))
+        keep = __import__("phase1_lib").keep_masks(data, __import__("phase1_lib").budget_for(data) - 2, 0, split_offset=2)
+        run.run_survival(Fake().forward, Fake().encode, Fake().quantize, Fake().restore, data, "mask", BOS, PAD, F, [8, 4, 0], profile_sink=sink, keep=keep, batch_size=4); sink.finalize()
+        full = ac.ProfileSink(self.tmp / "agg_full", CODES, F, conditions=["FP", "INT8", "INT4", "INT0"], sentence_features=torch.arange(F), streams=("all",))
+        run.run_survival(Fake().forward, Fake().encode, Fake().quantize, Fake().restore, data, "mask", BOS, PAD, F, [8, 4, 0], profile_sink=full, batch_size=4); full.finalize()
+        return self.tmp / "agg", self.tmp / "agg_full"
+
+    def test_aggregate_sidecar_point_estimates_equal_those_from_sentence_shards(self):
+        d, full = self.make_both(); agg = an.load_aggregate_sidecar(d, "all"); shards = an.load_sidecar(full, "all")
+        base = self.baseline_from_fp(full); a = an.point_estimate(agg, an.load_cohort(base, agg), min_positives=MINPOS); b = an.point_estimate(shards, an.load_cohort(base, shards), min_positives=MINPOS)
+        self.assertEqual(a.keys(), b.keys())
+        for cond in a:
+            for k in ("n_selective", "fp_established", "retained_of_established", "lost_of_established", "status_counts", "by_language"):
+                self.assertEqual(a[cond][k], b[cond][k], (cond, k))
+            for k in ("retention_fraction", "median_tv", "median_delta_share", "median_delta_margin"):
+                self.assertTrue(np.allclose(a[cond][k], b[cond][k], equal_nan=True), (cond, k))
+
+    def test_analyse_association_handles_a_stream_without_sentence_shards_and_reports_no_intervals(self):
+        d, _ = self.make_both(); base = self.baseline_from_fp(d, stream="all")
+        out = an.analyse_association(d, base, self.tmp / "oagg", stream="all", n_boot=50, seed=0, min_positives=MINPOS)
+        j = json.loads((self.tmp / "oagg" / "analysis.json").read_text())
+        self.assertEqual(j["config"]["n_boot"], 0); self.assertTrue(j["config"]["aggregate_only"]); c = j["groups"]["selective"]["INT4"]
+        self.assertIsNone(c["interval"]["retention_fraction"][0]); self.assertIsNotNone(c["point"]["retention_fraction"])
+        md = (self.tmp / "oagg" / "association_retention.md").read_text(); self.assertIn("no sentence-level shards", md.lower()); self.assertNotIn("paired bootstrap draws", md)
+        self.assertTrue((self.tmp / "oagg" / "feature_status.csv").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()
