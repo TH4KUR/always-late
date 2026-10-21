@@ -122,6 +122,16 @@
     "wandb/*",
     "*/wandb/*"
    ]
+  },
+  {
+   "local": "out/phase1/association-full",
+   "repo": "runs/phase1/association-full",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*",
+    "analysis-eq-rerun/*",
+    "analysis-all-rerun/*"
+   ]
   }
  ]
 }

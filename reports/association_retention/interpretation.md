@@ -46,8 +46,17 @@ The earlier measure (Pearson correlation at the peak language above 0.9, all act
 - **What is not shown.** That a retained feature keeps its meaning or causal effect, that a lost feature has lost its function, that the SAE remains a good measurement basis under quantization (a language peak that moves may reflect the frozen dictionary rather than the model), or anything about other models, quantizers (RTN only) or languages.
 - **Baseline ceiling.** Only 82.4 % of the original selective features reproduce their dev association on devtest in full precision, so the headline retained fraction cannot exceed that; both fractions are reported.
 
-## Checks still pending
+## Agreement of the firing-rate status with the activation-mean view and with the historical correlation
 
-1. Reproducibility: the reruns `31919` and `31920` must give byte-identical analysis files (plan Task 4); Ada was unreachable at 12:19 IST.
-2. Agreement between the firing-rate view (used for status) and the activation-mean view (target mean, nu in `feature_status.csv`) and the historical correlation at the original language (column `historical_corr`): needs `feature_status.csv`, which is on Ada (16 MB per stream) and not yet copied.
-3. Optional: sensitivity of the lost fraction to the 50-positives support rule.
+From [`results/crosscheck-eq/crosscheck.md`](results/crosscheck-eq/crosscheck.md) (aggregate profile of the equal-budget stream, the 6,663 established features; produced by `scripts/g0/phase1_association_crosscheck.py`).
+
+- **Firing-rate peak against mean-activation peak.** In full precision the original language is also the unique mean-activation peak for 5,832 of the 6,663 established features (87.5 %); for the other 831 the two views already disagree at the baseline (the status uses firing rates, Deng et al.'s nu uses mean activations, as the register records). Among the 5,832 features on which the views agree at the baseline, the mean view retains 99.6 % at INT8, 96.9 % at INT6 and 74.6 % at INT4, against 98.1 %, 94.7 % and 70.8 % for the firing-rate view on all established features. The two views therefore give the same retention curve; they disagree on individual features (mean only 48 to 197, rate only mostly the 831 baseline disagreements), not on the picture.
+- **Status against the correlation criterion of the earlier analysis.** The correlation at the original language and the association status are different quantities and each fails to predict the other. At INT8, 97.6 % of the lost features still have r above 0.9 (their peak moved while their activation pattern stayed almost identical); at INT6 75.8 % of the lost (270 of 356) still have r above 0.9; 7.3 % of the retained (458 of 6,307) have r not above 0.9. At INT5 and INT4 the direction reverses: 36 % (2,136 of 5,937) and 79 % (3,733 of 4,718) of the retained features have r not above 0.9, i.e. they keep their language peak while their activation pattern is no longer highly correlated, and only 6.3 % of the 1,945 INT4-lost features have r above 0.9. Median r is 0.967 (retained) against 0.946 (lost) at INT6 and 0.792 against 0.642 at INT4. Reading the earlier correlation survival as retention of language identity is therefore wrong in both directions, which is the point D-030 made without data.
+
+## Reproducibility
+
+The analysis was run twice from the same sidecar with the same seed (Slurm `31807` and `31808`, then `31919` and `31920`): all four files of each stream (`analysis.json`, `feature_status.csv`, `language_summary.csv`, `association_retention.md`) are byte-identical (sha256 equal, 2026-10-21). The full-precision evaluation of the new run equals the original Phase 1 run exactly (see `STATUS.md`).
+
+## Remaining
+
+Optional: sensitivity of the lost fraction to the 50-positives support rule; the all-token stream has no sentence-level intervals (sentence shards were saved for the equal-budget stream only, D-038).
