@@ -1,0 +1,8067 @@
+{
+ "config": {
+  "aggregate_only": true,
+  "batch": 50,
+  "interval": "percentile 2.5 / 97.5 (pointwise, descriptive)",
+  "min_panel_rate": 1e-05,
+  "min_positives": 50,
+  "n_boot": 0,
+  "resampling": "paired bootstrap of aligned sentence ids, same multiplicities for every language and condition",
+  "seed": 0,
+  "stream": "all",
+  "subset": false
+ },
+ "groups": {
+  "controls": {
+   "INT0": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 11,
+      "retention_fraction": 0.5238095238095238
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 15,
+      "retention_fraction": 0.46875
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 48,
+      "retention_fraction": 0.3096774193548387
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 318,
+      "retention_fraction": 0.5335570469798657
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 26,
+      "retention_fraction": 0.24528301886792453
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 22,
+      "retention_fraction": 0.4888888888888889
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 14,
+      "retention_fraction": 0.3783783783783784
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 19,
+      "retention_fraction": 0.5
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 31,
+      "retention_fraction": 0.31
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 106,
+      "retention_fraction": 0.4380165289256198
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 17,
+      "retention_fraction": 0.5862068965517241
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 18,
+      "retention_fraction": 0.5142857142857142
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 35,
+      "retention_fraction": 0.4166666666666667
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 18,
+      "retention_fraction": 0.5806451612903226
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 40,
+      "retention_fraction": 0.38095238095238093
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 32,
+      "retention_fraction": 0.3076923076923077
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 32,
+      "retention_fraction": 0.25806451612903225
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 45,
+      "retention_fraction": 0.38461538461538464
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 27,
+      "retention_fraction": 0.627906976744186
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 29,
+      "retention_fraction": 0.5
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 18,
+      "retention_fraction": 0.6
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 36,
+      "retention_fraction": 0.3829787234042553
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 97,
+      "retention_fraction": 0.48258706467661694
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 12,
+      "retention_fraction": 0.2857142857142857
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 58,
+      "retention_fraction": 0.37662337662337664
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 15,
+      "retention_fraction": 0.4838709677419355
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 75,
+      "retention_fraction": 0.3640776699029126
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.43441662585911633
+    },
+    "point": {
+     "conditional_fraction": 1.0,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.0,
+     "lost_of_established": 0,
+     "median_delta_margin": 0.0,
+     "median_delta_share": 0.0,
+     "median_tv": 0.0,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 1214,
+     "retention_fraction": 0.4244755244755245,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 0,
+      "inactive": 0,
+      "low_support": 0,
+      "retained": 1214
+     }
+    }
+   },
+   "INT12": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 10,
+      "retention_fraction": 0.47619047619047616
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 14,
+      "retention_fraction": 0.4375
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 46,
+      "retention_fraction": 0.2967741935483871
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 306,
+      "retention_fraction": 0.5134228187919463
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 26,
+      "retention_fraction": 0.24528301886792453
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 21,
+      "retention_fraction": 0.4666666666666667
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 13,
+      "retention_fraction": 0.35135135135135137
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 18,
+      "retention_fraction": 0.47368421052631576
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 31,
+      "retention_fraction": 0.31
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 104,
+      "retention_fraction": 0.4297520661157025
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 17,
+      "retention_fraction": 0.5862068965517241
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 16,
+      "retention_fraction": 0.45714285714285713
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 35,
+      "retention_fraction": 0.4166666666666667
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 17,
+      "retention_fraction": 0.5483870967741935
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 40,
+      "retention_fraction": 0.38095238095238093
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 30,
+      "retention_fraction": 0.28846153846153844
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 31,
+      "retention_fraction": 0.25
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 45,
+      "retention_fraction": 0.38461538461538464
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 27,
+      "retention_fraction": 0.627906976744186
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 28,
+      "retention_fraction": 0.4827586206896552
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 17,
+      "retention_fraction": 0.5666666666666667
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 35,
+      "retention_fraction": 0.3723404255319149
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 95,
+      "retention_fraction": 0.472636815920398
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 12,
+      "retention_fraction": 0.2857142857142857
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 55,
+      "retention_fraction": 0.35714285714285715
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 15,
+      "retention_fraction": 0.4838709677419355
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 73,
+      "retention_fraction": 0.35436893203883496
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.4191283026449723
+    },
+    "point": {
+     "conditional_fraction": 0.9695222405271828,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.012937062937062937,
+     "lost_of_established": 37,
+     "median_delta_margin": -1.4077165981585607e-06,
+     "median_delta_share": -4.6235446702874716e-05,
+     "median_tv": 0.003991060960457626,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 1177,
+     "retention_fraction": 0.4115384615384615,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 37,
+      "inactive": 0,
+      "low_support": 0,
+      "retained": 1177
+     }
+    }
+   },
+   "INT16": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 11,
+      "retention_fraction": 0.5238095238095238
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 14,
+      "retention_fraction": 0.4375
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 45,
+      "retention_fraction": 0.2903225806451613
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 311,
+      "retention_fraction": 0.5218120805369127
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 25,
+      "retention_fraction": 0.2358490566037736
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 21,
+      "retention_fraction": 0.4666666666666667
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 13,
+      "retention_fraction": 0.35135135135135137
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 17,
+      "retention_fraction": 0.4473684210526316
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 30,
+      "retention_fraction": 0.3
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 103,
+      "retention_fraction": 0.4256198347107438
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 17,
+      "retention_fraction": 0.5862068965517241
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 17,
+      "retention_fraction": 0.4857142857142857
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 35,
+      "retention_fraction": 0.4166666666666667
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 17,
+      "retention_fraction": 0.5483870967741935
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 40,
+      "retention_fraction": 0.38095238095238093
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 32,
+      "retention_fraction": 0.3076923076923077
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 32,
+      "retention_fraction": 0.25806451612903225
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 45,
+      "retention_fraction": 0.38461538461538464
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 27,
+      "retention_fraction": 0.627906976744186
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 28,
+      "retention_fraction": 0.4827586206896552
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 17,
+      "retention_fraction": 0.5666666666666667
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 34,
+      "retention_fraction": 0.3617021276595745
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 95,
+      "retention_fraction": 0.472636815920398
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 11,
+      "retention_fraction": 0.2619047619047619
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 55,
+      "retention_fraction": 0.35714285714285715
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 15,
+      "retention_fraction": 0.4838709677419355
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 74,
+      "retention_fraction": 0.3592233009708738
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.4200893387375426
+    },
+    "point": {
+     "conditional_fraction": 0.9728171334431631,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.011538461538461539,
+     "lost_of_established": 33,
+     "median_delta_margin": -6.264688800683123e-06,
+     "median_delta_share": -4.110539937666677e-05,
+     "median_tv": 0.003982154202093276,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 1181,
+     "retention_fraction": 0.41293706293706295,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 32,
+      "inactive": 0,
+      "low_support": 1,
+      "retained": 1181
+     }
+    }
+   },
+   "INT4": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 4,
+      "retention_fraction": 0.19047619047619047
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 4,
+      "retention_fraction": 0.125
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 18,
+      "retention_fraction": 0.11612903225806452
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 240,
+      "retention_fraction": 0.40268456375838924
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 16,
+      "retention_fraction": 0.1509433962264151
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 6,
+      "retention_fraction": 0.13333333333333333
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 5,
+      "retention_fraction": 0.13513513513513514
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 4,
+      "retention_fraction": 0.10526315789473684
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 9,
+      "retention_fraction": 0.09
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 56,
+      "retention_fraction": 0.23140495867768596
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 7,
+      "retention_fraction": 0.2413793103448276
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 6,
+      "retention_fraction": 0.17142857142857143
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 13,
+      "retention_fraction": 0.15476190476190477
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 4,
+      "retention_fraction": 0.12903225806451613
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 18,
+      "retention_fraction": 0.17142857142857143
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 17,
+      "retention_fraction": 0.16346153846153846
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 18,
+      "retention_fraction": 0.14516129032258066
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 23,
+      "retention_fraction": 0.19658119658119658
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 8,
+      "retention_fraction": 0.18604651162790697
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 11,
+      "retention_fraction": 0.1896551724137931
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 8,
+      "retention_fraction": 0.26666666666666666
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 17,
+      "retention_fraction": 0.18085106382978725
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 43,
+      "retention_fraction": 0.21393034825870647
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 3,
+      "retention_fraction": 0.07142857142857142
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 27,
+      "retention_fraction": 0.17532467532467533
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 4,
+      "retention_fraction": 0.12903225806451613
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 40,
+      "retention_fraction": 0.1941747572815534
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.17261905311295683
+    },
+    "point": {
+     "conditional_fraction": 0.5181219110378913,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.20454545454545456,
+     "lost_of_established": 585,
+     "median_delta_margin": -0.0005908693184908429,
+     "median_delta_share": 0.002174687289979927,
+     "median_tv": 0.07963502583104176,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 629,
+     "retention_fraction": 0.21993006993006994,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 547,
+      "inactive": 0,
+      "low_support": 38,
+      "retained": 629
+     }
+    }
+   },
+   "INT5": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 8,
+      "retention_fraction": 0.38095238095238093
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 12,
+      "retention_fraction": 0.375
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 31,
+      "retention_fraction": 0.2
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 247,
+      "retention_fraction": 0.41442953020134227
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 20,
+      "retention_fraction": 0.18867924528301888
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 19,
+      "retention_fraction": 0.4222222222222222
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 8,
+      "retention_fraction": 0.21621621621621623
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 14,
+      "retention_fraction": 0.3684210526315789
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 25,
+      "retention_fraction": 0.25
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 75,
+      "retention_fraction": 0.30991735537190085
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 11,
+      "retention_fraction": 0.3793103448275862
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 9,
+      "retention_fraction": 0.2571428571428571
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 19,
+      "retention_fraction": 0.2261904761904762
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 12,
+      "retention_fraction": 0.3870967741935484
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 33,
+      "retention_fraction": 0.3142857142857143
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 19,
+      "retention_fraction": 0.18269230769230768
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 22,
+      "retention_fraction": 0.1774193548387097
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 37,
+      "retention_fraction": 0.3162393162393162
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 19,
+      "retention_fraction": 0.4418604651162791
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 19,
+      "retention_fraction": 0.3275862068965517
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 12,
+      "retention_fraction": 0.4
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 20,
+      "retention_fraction": 0.2127659574468085
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 67,
+      "retention_fraction": 0.3333333333333333
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 9,
+      "retention_fraction": 0.21428571428571427
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 39,
+      "retention_fraction": 0.2532467532467532
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 12,
+      "retention_fraction": 0.3870967741935484
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 60,
+      "retention_fraction": 0.2912621359223301
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.3047278699529813
+    },
+    "point": {
+     "conditional_fraction": 0.7232289950576606,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.11748251748251748,
+     "lost_of_established": 336,
+     "median_delta_margin": -0.00020315246076295498,
+     "median_delta_share": -0.0014225139022481792,
+     "median_tv": 0.03124467146820476,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 878,
+     "retention_fraction": 0.30699300699300697,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 333,
+      "inactive": 0,
+      "low_support": 3,
+      "retained": 878
+     }
+    }
+   },
+   "INT6": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 10,
+      "retention_fraction": 0.47619047619047616
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 11,
+      "retention_fraction": 0.34375
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 40,
+      "retention_fraction": 0.25806451612903225
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 278,
+      "retention_fraction": 0.4664429530201342
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 22,
+      "retention_fraction": 0.20754716981132076
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 19,
+      "retention_fraction": 0.4222222222222222
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 9,
+      "retention_fraction": 0.24324324324324326
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 15,
+      "retention_fraction": 0.39473684210526316
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 26,
+      "retention_fraction": 0.26
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 92,
+      "retention_fraction": 0.38016528925619836
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 15,
+      "retention_fraction": 0.5172413793103449
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 14,
+      "retention_fraction": 0.4
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 25,
+      "retention_fraction": 0.2976190476190476
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 15,
+      "retention_fraction": 0.4838709677419355
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 36,
+      "retention_fraction": 0.34285714285714286
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 27,
+      "retention_fraction": 0.25961538461538464
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 26,
+      "retention_fraction": 0.20967741935483872
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 41,
+      "retention_fraction": 0.3504273504273504
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 22,
+      "retention_fraction": 0.5116279069767442
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 26,
+      "retention_fraction": 0.4482758620689655
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 16,
+      "retention_fraction": 0.5333333333333333
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 29,
+      "retention_fraction": 0.30851063829787234
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 81,
+      "retention_fraction": 0.40298507462686567
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 7,
+      "retention_fraction": 0.16666666666666666
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 47,
+      "retention_fraction": 0.3051948051948052
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 11,
+      "retention_fraction": 0.3548387096774194
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 64,
+      "retention_fraction": 0.3106796116504854
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.35762163008878123
+    },
+    "point": {
+     "conditional_fraction": 0.8434925864909391,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.06643356643356643,
+     "lost_of_established": 190,
+     "median_delta_margin": -9.9353714194027e-05,
+     "median_delta_share": -0.00011727575930447695,
+     "median_tv": 0.017857673515898474,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 1024,
+     "retention_fraction": 0.35804195804195804,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 184,
+      "inactive": 0,
+      "low_support": 6,
+      "retained": 1024
+     }
+    }
+   },
+   "INT7": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 10,
+      "retention_fraction": 0.47619047619047616
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 14,
+      "retention_fraction": 0.4375
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 44,
+      "retention_fraction": 0.2838709677419355
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 303,
+      "retention_fraction": 0.5083892617449665
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 24,
+      "retention_fraction": 0.22641509433962265
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 22,
+      "retention_fraction": 0.4888888888888889
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 13,
+      "retention_fraction": 0.35135135135135137
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 14,
+      "retention_fraction": 0.3684210526315789
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 28,
+      "retention_fraction": 0.28
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 102,
+      "retention_fraction": 0.4214876033057851
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 14,
+      "retention_fraction": 0.4827586206896552
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 16,
+      "retention_fraction": 0.45714285714285713
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 32,
+      "retention_fraction": 0.38095238095238093
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 17,
+      "retention_fraction": 0.5483870967741935
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 36,
+      "retention_fraction": 0.34285714285714286
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 29,
+      "retention_fraction": 0.27884615384615385
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 30,
+      "retention_fraction": 0.24193548387096775
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 44,
+      "retention_fraction": 0.37606837606837606
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 25,
+      "retention_fraction": 0.5813953488372093
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 27,
+      "retention_fraction": 0.46551724137931033
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 16,
+      "retention_fraction": 0.5333333333333333
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 31,
+      "retention_fraction": 0.32978723404255317
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 90,
+      "retention_fraction": 0.44776119402985076
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 11,
+      "retention_fraction": 0.2619047619047619
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 51,
+      "retention_fraction": 0.33116883116883117
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 14,
+      "retention_fraction": 0.45161290322580644
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 69,
+      "retention_fraction": 0.33495145631067963
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.3958850041714322
+    },
+    "point": {
+     "conditional_fraction": 0.9275123558484349,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.03076923076923077,
+     "lost_of_established": 88,
+     "median_delta_margin": -1.3313924307184217e-05,
+     "median_delta_share": -0.00012118379692374268,
+     "median_tv": 0.010277312205024014,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 1126,
+     "retention_fraction": 0.39370629370629373,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 86,
+      "inactive": 0,
+      "low_support": 2,
+      "retained": 1126
+     }
+    }
+   },
+   "INT8": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 11,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 21,
+      "retained": 11,
+      "retention_fraction": 0.5238095238095238
+     },
+     "ben_Beng": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 32,
+      "retained": 14,
+      "retention_fraction": 0.4375
+     },
+     "deu_Latn": {
+      "fp_established": 48,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 155,
+      "retained": 45,
+      "retention_fraction": 0.2903225806451613
+     },
+     "eng_Latn": {
+      "fp_established": 318,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 596,
+      "retained": 306,
+      "retention_fraction": 0.5134228187919463
+     },
+     "fra_Latn": {
+      "fp_established": 26,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 106,
+      "retained": 26,
+      "retention_fraction": 0.24528301886792453
+     },
+     "hau_Latn": {
+      "fp_established": 22,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 45,
+      "retained": 21,
+      "retention_fraction": 0.4666666666666667
+     },
+     "hin_Deva": {
+      "fp_established": 14,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 37,
+      "retained": 12,
+      "retention_fraction": 0.32432432432432434
+     },
+     "ibo_Latn": {
+      "fp_established": 19,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 38,
+      "retained": 16,
+      "retention_fraction": 0.42105263157894735
+     },
+     "ind_Latn": {
+      "fp_established": 31,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 100,
+      "retained": 28,
+      "retention_fraction": 0.28
+     },
+     "jpn_Jpan": {
+      "fp_established": 106,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 242,
+      "retained": 104,
+      "retention_fraction": 0.4297520661157025
+     },
+     "kan_Knda": {
+      "fp_established": 17,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 29,
+      "retained": 17,
+      "retention_fraction": 0.5862068965517241
+     },
+     "khm_Khmr": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 35,
+      "retained": 16,
+      "retention_fraction": 0.45714285714285713
+     },
+     "kor_Hang": {
+      "fp_established": 35,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 34,
+      "retention_fraction": 0.40476190476190477
+     },
+     "lao_Laoo": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 17,
+      "retention_fraction": 0.5483870967741935
+     },
+     "pol_Latn": {
+      "fp_established": 40,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 105,
+      "retained": 39,
+      "retention_fraction": 0.37142857142857144
+     },
+     "por_Latn": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 104,
+      "retained": 29,
+      "retention_fraction": 0.27884615384615385
+     },
+     "rus_Cyrl": {
+      "fp_established": 32,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 124,
+      "retained": 31,
+      "retention_fraction": 0.25
+     },
+     "spa_Latn": {
+      "fp_established": 45,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 117,
+      "retained": 43,
+      "retention_fraction": 0.36752136752136755
+     },
+     "sun_Latn": {
+      "fp_established": 27,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 43,
+      "retained": 27,
+      "retention_fraction": 0.627906976744186
+     },
+     "tam_Taml": {
+      "fp_established": 29,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 58,
+      "retained": 28,
+      "retention_fraction": 0.4827586206896552
+     },
+     "tel_Telu": {
+      "fp_established": 18,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 30,
+      "retained": 16,
+      "retention_fraction": 0.5333333333333333
+     },
+     "tha_Thai": {
+      "fp_established": 36,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 94,
+      "retained": 33,
+      "retention_fraction": 0.35106382978723405
+     },
+     "tur_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 201,
+      "retained": 94,
+      "retention_fraction": 0.46766169154228854
+     },
+     "ukr_Cyrl": {
+      "fp_established": 12,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 42,
+      "retained": 10,
+      "retention_fraction": 0.23809523809523808
+     },
+     "vie_Latn": {
+      "fp_established": 58,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 154,
+      "retained": 52,
+      "retention_fraction": 0.33766233766233766
+     },
+     "yor_Latn": {
+      "fp_established": 15,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 31,
+      "retained": 13,
+      "retention_fraction": 0.41935483870967744
+     },
+     "zho_Hans": {
+      "fp_established": 75,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 206,
+      "retained": 67,
+      "retention_fraction": 0.32524271844660196
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.40664844680879714
+    },
+    "point": {
+     "conditional_fraction": 0.9464579901153213,
+     "fp_established": 1214,
+     "fp_establishment_fraction": 0.4244755244755245,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1616,
+      "inactive": 0,
+      "low_support": 30,
+      "retained": 1214
+     },
+     "loss_fraction": 0.022727272727272728,
+     "lost_of_established": 65,
+     "median_delta_margin": -9.301213227524583e-06,
+     "median_delta_share": 1.0916751166222677e-05,
+     "median_tv": 0.006916321403722625,
+     "n_selective": 2860,
+     "n_tv_undefined": 0,
+     "retained_of_established": 1149,
+     "retention_fraction": 0.40174825174825174,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 63,
+      "inactive": 0,
+      "low_support": 2,
+      "retained": 1149
+     }
+    }
+   }
+  },
+  "selective": {
+   "INT0": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 176,
+      "retention_fraction": 0.9312169312169312
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 92,
+      "retention_fraction": 0.8518518518518519
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 164,
+      "retention_fraction": 0.7008547008547008
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1475,
+      "retention_fraction": 0.8580570098894706
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 128,
+      "retention_fraction": 0.757396449704142
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 218,
+      "retention_fraction": 0.9121338912133892
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 123,
+      "retention_fraction": 0.831081081081081
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 266,
+      "retention_fraction": 0.8986486486486487
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 102,
+      "retention_fraction": 0.7338129496402878
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 415,
+      "retention_fraction": 0.8073929961089494
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 148,
+      "retention_fraction": 0.925
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 411,
+      "retention_fraction": 0.9256756756756757
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 180,
+      "retention_fraction": 0.8333333333333334
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 445,
+      "retention_fraction": 0.959051724137931
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 97,
+      "retention_fraction": 0.708029197080292
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 41,
+      "retention_fraction": 0.5616438356164384
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 51,
+      "retention_fraction": 0.6144578313253012
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 142,
+      "retention_fraction": 0.6635514018691588
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 226,
+      "retention_fraction": 0.904
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 181,
+      "retention_fraction": 0.8660287081339713
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 120,
+      "retention_fraction": 0.8888888888888888
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 286,
+      "retention_fraction": 0.8693009118541033
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 253,
+      "retention_fraction": 0.7981072555205048
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 65,
+      "retention_fraction": 0.7738095238095238
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 243,
+      "retention_fraction": 0.8154362416107382
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 429,
+      "retention_fraction": 0.9470198675496688
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 364,
+      "retention_fraction": 0.7827956989247312
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.8192065409459154
+    },
+    "point": {
+     "conditional_fraction": 1.0,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.0,
+     "lost_of_established": 0,
+     "median_delta_margin": 0.0,
+     "median_delta_share": 0.0,
+     "median_tv": 0.0,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 6841,
+     "retention_fraction": 0.8460301756121692,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 0,
+      "inactive": 0,
+      "low_support": 0,
+      "retained": 6841
+     }
+    }
+   },
+   "INT12": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 174,
+      "retention_fraction": 0.9206349206349206
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 90,
+      "retention_fraction": 0.8333333333333334
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 163,
+      "retention_fraction": 0.6965811965811965
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1458,
+      "retention_fraction": 0.8481675392670157
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 126,
+      "retention_fraction": 0.7455621301775148
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 217,
+      "retention_fraction": 0.9079497907949791
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 123,
+      "retention_fraction": 0.831081081081081
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 263,
+      "retention_fraction": 0.8885135135135135
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 102,
+      "retention_fraction": 0.7338129496402878
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 409,
+      "retention_fraction": 0.7957198443579766
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 147,
+      "retention_fraction": 0.91875
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 411,
+      "retention_fraction": 0.9256756756756757
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 180,
+      "retention_fraction": 0.8333333333333334
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 444,
+      "retention_fraction": 0.9568965517241379
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 96,
+      "retention_fraction": 0.7007299270072993
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 39,
+      "retention_fraction": 0.5342465753424658
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 50,
+      "retention_fraction": 0.6024096385542169
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 140,
+      "retention_fraction": 0.6542056074766355
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 225,
+      "retention_fraction": 0.9
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 179,
+      "retention_fraction": 0.8564593301435407
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 120,
+      "retention_fraction": 0.8888888888888888
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 284,
+      "retention_fraction": 0.8632218844984803
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 249,
+      "retention_fraction": 0.7854889589905363
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 64,
+      "retention_fraction": 0.7619047619047619
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 242,
+      "retention_fraction": 0.8120805369127517
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 426,
+      "retention_fraction": 0.9403973509933775
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 360,
+      "retention_fraction": 0.7741935483870968
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.8114903284894451
+    },
+    "point": {
+     "conditional_fraction": 0.9912293524338547,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.007420232500618353,
+     "lost_of_established": 60,
+     "median_delta_margin": 0.0,
+     "median_delta_share": -1.7066777651605913e-05,
+     "median_tv": 0.004743040830083461,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 6781,
+     "retention_fraction": 0.8386099431115508,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 59,
+      "inactive": 0,
+      "low_support": 1,
+      "retained": 6781
+     }
+    }
+   },
+   "INT16": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 175,
+      "retention_fraction": 0.9259259259259259
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 90,
+      "retention_fraction": 0.8333333333333334
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 163,
+      "retention_fraction": 0.6965811965811965
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1461,
+      "retention_fraction": 0.849912739965096
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 126,
+      "retention_fraction": 0.7455621301775148
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 217,
+      "retention_fraction": 0.9079497907949791
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 123,
+      "retention_fraction": 0.831081081081081
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 266,
+      "retention_fraction": 0.8986486486486487
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 99,
+      "retention_fraction": 0.7122302158273381
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 406,
+      "retention_fraction": 0.7898832684824902
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 147,
+      "retention_fraction": 0.91875
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 409,
+      "retention_fraction": 0.9211711711711712
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 179,
+      "retention_fraction": 0.8287037037037037
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 444,
+      "retention_fraction": 0.9568965517241379
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 97,
+      "retention_fraction": 0.708029197080292
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 40,
+      "retention_fraction": 0.547945205479452
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 51,
+      "retention_fraction": 0.6144578313253012
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 139,
+      "retention_fraction": 0.6495327102803738
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 226,
+      "retention_fraction": 0.904
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 180,
+      "retention_fraction": 0.861244019138756
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 120,
+      "retention_fraction": 0.8888888888888888
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 284,
+      "retention_fraction": 0.8632218844984803
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 249,
+      "retention_fraction": 0.7854889589905363
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 65,
+      "retention_fraction": 0.7738095238095238
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 240,
+      "retention_fraction": 0.8053691275167785
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 425,
+      "retention_fraction": 0.9381898454746137
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 363,
+      "retention_fraction": 0.7806451612903226
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.8124982263403681
+    },
+    "point": {
+     "conditional_fraction": 0.991667884812162,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.007049220875587435,
+     "lost_of_established": 57,
+     "median_delta_margin": 0.0,
+     "median_delta_share": -1.1985667587380289e-05,
+     "median_tv": 0.004714946680953184,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 6784,
+     "retention_fraction": 0.8389809547365817,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 55,
+      "inactive": 0,
+      "low_support": 2,
+      "retained": 6784
+     }
+    }
+   },
+   "INT4": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 110,
+      "retention_fraction": 0.582010582010582
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 61,
+      "retention_fraction": 0.5648148148148148
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 126,
+      "retention_fraction": 0.5384615384615384
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1307,
+      "retention_fraction": 0.7603257707969749
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 103,
+      "retention_fraction": 0.6094674556213018
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 115,
+      "retention_fraction": 0.4811715481171548
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 87,
+      "retention_fraction": 0.5878378378378378
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 178,
+      "retention_fraction": 0.6013513513513513
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 75,
+      "retention_fraction": 0.539568345323741
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 273,
+      "retention_fraction": 0.5311284046692607
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 80,
+      "retention_fraction": 0.5
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 276,
+      "retention_fraction": 0.6216216216216216
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 126,
+      "retention_fraction": 0.5833333333333334
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 283,
+      "retention_fraction": 0.6099137931034483
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 65,
+      "retention_fraction": 0.4744525547445255
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 31,
+      "retention_fraction": 0.4246575342465753
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 34,
+      "retention_fraction": 0.40963855421686746
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 93,
+      "retention_fraction": 0.43457943925233644
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 162,
+      "retention_fraction": 0.648
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 123,
+      "retention_fraction": 0.5885167464114832
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 85,
+      "retention_fraction": 0.6296296296296297
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 215,
+      "retention_fraction": 0.6534954407294833
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 153,
+      "retention_fraction": 0.48264984227129337
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 51,
+      "retention_fraction": 0.6071428571428571
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 184,
+      "retention_fraction": 0.6174496644295302
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 299,
+      "retention_fraction": 0.6600441501103753
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 286,
+      "retention_fraction": 0.6150537634408603
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.568752465692177
+    },
+    "point": {
+     "conditional_fraction": 0.7281099254494957,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.23002720751916894,
+     "lost_of_established": 1860,
+     "median_delta_margin": -0.0008041484318356672,
+     "median_delta_share": 0.0002089654071473629,
+     "median_tv": 0.09116335566441555,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 4981,
+     "retention_fraction": 0.6160029680930003,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1592,
+      "inactive": 0,
+      "low_support": 268,
+      "retained": 4981
+     }
+    }
+   },
+   "INT5": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 163,
+      "retention_fraction": 0.8624338624338624
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 84,
+      "retention_fraction": 0.7777777777777778
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 142,
+      "retention_fraction": 0.6068376068376068
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1327,
+      "retention_fraction": 0.7719604421175101
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 119,
+      "retention_fraction": 0.7041420118343196
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 200,
+      "retention_fraction": 0.8368200836820083
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 103,
+      "retention_fraction": 0.6959459459459459
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 240,
+      "retention_fraction": 0.8108108108108109
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 93,
+      "retention_fraction": 0.6690647482014388
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 379,
+      "retention_fraction": 0.7373540856031129
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 132,
+      "retention_fraction": 0.825
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 373,
+      "retention_fraction": 0.8400900900900901
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 162,
+      "retention_fraction": 0.75
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 399,
+      "retention_fraction": 0.8599137931034483
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 89,
+      "retention_fraction": 0.6496350364963503
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 36,
+      "retention_fraction": 0.4931506849315068
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 43,
+      "retention_fraction": 0.5180722891566265
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 127,
+      "retention_fraction": 0.5934579439252337
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 203,
+      "retention_fraction": 0.812
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 162,
+      "retention_fraction": 0.7751196172248804
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 109,
+      "retention_fraction": 0.8074074074074075
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 251,
+      "retention_fraction": 0.7629179331306991
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 230,
+      "retention_fraction": 0.7255520504731862
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 58,
+      "retention_fraction": 0.6904761904761905
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 222,
+      "retention_fraction": 0.7449664429530202
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 397,
+      "retention_fraction": 0.8763796909492274
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 331,
+      "retention_fraction": 0.7118279569892473
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.7373746112056115
+    },
+    "point": {
+     "conditional_fraction": 0.9024996345563514,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.08248825129854069,
+     "lost_of_established": 667,
+     "median_delta_margin": -0.00013155856346170735,
+     "median_delta_share": -0.0023111222553435923,
+     "median_tv": 0.03912023767251236,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 6174,
+     "retention_fraction": 0.7635419243136284,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 643,
+      "inactive": 0,
+      "low_support": 24,
+      "retained": 6174
+     }
+    }
+   },
+   "INT6": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 165,
+      "retention_fraction": 0.873015873015873
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 81,
+      "retention_fraction": 0.75
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 154,
+      "retention_fraction": 0.6581196581196581
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1406,
+      "retention_fraction": 0.8179173938336242
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 119,
+      "retention_fraction": 0.7041420118343196
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 201,
+      "retention_fraction": 0.8410041841004184
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 120,
+      "retention_fraction": 0.8108108108108109
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 257,
+      "retention_fraction": 0.8682432432432432
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 95,
+      "retention_fraction": 0.6834532374100719
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 380,
+      "retention_fraction": 0.7392996108949417
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 134,
+      "retention_fraction": 0.8375
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 398,
+      "retention_fraction": 0.8963963963963963
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 173,
+      "retention_fraction": 0.8009259259259259
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 414,
+      "retention_fraction": 0.8922413793103449
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 90,
+      "retention_fraction": 0.656934306569343
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 39,
+      "retention_fraction": 0.5342465753424658
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 48,
+      "retention_fraction": 0.5783132530120482
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 130,
+      "retention_fraction": 0.6074766355140186
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 219,
+      "retention_fraction": 0.876
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 174,
+      "retention_fraction": 0.8325358851674641
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 118,
+      "retention_fraction": 0.8740740740740741
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 275,
+      "retention_fraction": 0.8358662613981763
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 242,
+      "retention_fraction": 0.7634069400630915
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 61,
+      "retention_fraction": 0.7261904761904762
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 227,
+      "retention_fraction": 0.761744966442953
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 413,
+      "retention_fraction": 0.9116997792494481
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 350,
+      "retention_fraction": 0.7526881720430108
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.7734906314800816
+    },
+    "point": {
+     "conditional_fraction": 0.9476684695219997,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.044274053920356174,
+     "lost_of_established": 358,
+     "median_delta_margin": -6.766464008513143e-05,
+     "median_delta_share": -0.00012564292804115307,
+     "median_tv": 0.021561480574690116,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 6483,
+     "retention_fraction": 0.801756121691813,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 350,
+      "inactive": 0,
+      "low_support": 8,
+      "retained": 6483
+     }
+    }
+   },
+   "INT7": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 173,
+      "retention_fraction": 0.9153439153439153
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 89,
+      "retention_fraction": 0.8240740740740741
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 162,
+      "retention_fraction": 0.6923076923076923
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1452,
+      "retention_fraction": 0.8446771378708552
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 126,
+      "retention_fraction": 0.7455621301775148
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 211,
+      "retention_fraction": 0.8828451882845189
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 121,
+      "retention_fraction": 0.8175675675675675
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 260,
+      "retention_fraction": 0.8783783783783784
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 100,
+      "retention_fraction": 0.7194244604316546
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 403,
+      "retention_fraction": 0.7840466926070039
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 143,
+      "retention_fraction": 0.89375
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 405,
+      "retention_fraction": 0.9121621621621622
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 172,
+      "retention_fraction": 0.7962962962962963
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 435,
+      "retention_fraction": 0.9375
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 94,
+      "retention_fraction": 0.6861313868613139
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 37,
+      "retention_fraction": 0.5068493150684932
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 48,
+      "retention_fraction": 0.5783132530120482
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 134,
+      "retention_fraction": 0.6261682242990654
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 219,
+      "retention_fraction": 0.876
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 176,
+      "retention_fraction": 0.8421052631578947
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 119,
+      "retention_fraction": 0.8814814814814815
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 277,
+      "retention_fraction": 0.8419452887537994
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 248,
+      "retention_fraction": 0.7823343848580442
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 64,
+      "retention_fraction": 0.7619047619047619
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 236,
+      "retention_fraction": 0.7919463087248322
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 424,
+      "retention_fraction": 0.9359823399558499
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 356,
+      "retention_fraction": 0.7655913978494624
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.7970625593121733
+    },
+    "point": {
+     "conditional_fraction": 0.9770501388685865,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.01941627504328469,
+     "lost_of_established": 157,
+     "median_delta_margin": -5.348227470766687e-06,
+     "median_delta_share": -0.0001153647001275876,
+     "median_tv": 0.012777641238810693,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 6684,
+     "retention_fraction": 0.8266139005688845,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 157,
+      "inactive": 0,
+      "low_support": 0,
+      "retained": 6684
+     }
+    }
+   },
+   "INT8": {
+    "by_language": {
+     "amh_Ethi": {
+      "fp_established": 176,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 189,
+      "retained": 173,
+      "retention_fraction": 0.9153439153439153
+     },
+     "ben_Beng": {
+      "fp_established": 92,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 108,
+      "retained": 89,
+      "retention_fraction": 0.8240740740740741
+     },
+     "deu_Latn": {
+      "fp_established": 164,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 234,
+      "retained": 164,
+      "retention_fraction": 0.7008547008547008
+     },
+     "eng_Latn": {
+      "fp_established": 1475,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 1719,
+      "retained": 1453,
+      "retention_fraction": 0.8452588714368819
+     },
+     "fra_Latn": {
+      "fp_established": 128,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 169,
+      "retained": 128,
+      "retention_fraction": 0.757396449704142
+     },
+     "hau_Latn": {
+      "fp_established": 218,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 239,
+      "retained": 216,
+      "retention_fraction": 0.9037656903765691
+     },
+     "hin_Deva": {
+      "fp_established": 123,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 148,
+      "retained": 121,
+      "retention_fraction": 0.8175675675675675
+     },
+     "ibo_Latn": {
+      "fp_established": 266,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 296,
+      "retained": 262,
+      "retention_fraction": 0.8851351351351351
+     },
+     "ind_Latn": {
+      "fp_established": 102,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 139,
+      "retained": 101,
+      "retention_fraction": 0.7266187050359713
+     },
+     "jpn_Jpan": {
+      "fp_established": 415,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 514,
+      "retained": 400,
+      "retention_fraction": 0.7782101167315175
+     },
+     "kan_Knda": {
+      "fp_established": 148,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 160,
+      "retained": 146,
+      "retention_fraction": 0.9125
+     },
+     "khm_Khmr": {
+      "fp_established": 411,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 444,
+      "retained": 408,
+      "retention_fraction": 0.918918918918919
+     },
+     "kor_Hang": {
+      "fp_established": 180,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 216,
+      "retained": 178,
+      "retention_fraction": 0.8240740740740741
+     },
+     "lao_Laoo": {
+      "fp_established": 445,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 464,
+      "retained": 438,
+      "retention_fraction": 0.9439655172413793
+     },
+     "pol_Latn": {
+      "fp_established": 97,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 137,
+      "retained": 96,
+      "retention_fraction": 0.7007299270072993
+     },
+     "por_Latn": {
+      "fp_established": 41,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 73,
+      "retained": 38,
+      "retention_fraction": 0.5205479452054794
+     },
+     "rus_Cyrl": {
+      "fp_established": 51,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 83,
+      "retained": 51,
+      "retention_fraction": 0.6144578313253012
+     },
+     "spa_Latn": {
+      "fp_established": 142,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 214,
+      "retained": 136,
+      "retention_fraction": 0.6355140186915887
+     },
+     "sun_Latn": {
+      "fp_established": 226,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 250,
+      "retained": 223,
+      "retention_fraction": 0.892
+     },
+     "tam_Taml": {
+      "fp_established": 181,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 209,
+      "retained": 178,
+      "retention_fraction": 0.8516746411483254
+     },
+     "tel_Telu": {
+      "fp_established": 120,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 135,
+      "retained": 120,
+      "retention_fraction": 0.8888888888888888
+     },
+     "tha_Thai": {
+      "fp_established": 286,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 329,
+      "retained": 283,
+      "retention_fraction": 0.8601823708206687
+     },
+     "tur_Latn": {
+      "fp_established": 253,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 317,
+      "retained": 249,
+      "retention_fraction": 0.7854889589905363
+     },
+     "ukr_Cyrl": {
+      "fp_established": 65,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 84,
+      "retained": 64,
+      "retention_fraction": 0.7619047619047619
+     },
+     "vie_Latn": {
+      "fp_established": 243,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 298,
+      "retained": 239,
+      "retention_fraction": 0.802013422818792
+     },
+     "yor_Latn": {
+      "fp_established": 429,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 453,
+      "retained": 424,
+      "retention_fraction": 0.9359823399558499
+     },
+     "zho_Hans": {
+      "fp_established": 364,
+      "interval": [
+       null,
+       null
+      ],
+      "loss_interval": [
+       null,
+       null
+      ],
+      "n_selective": 465,
+      "retained": 360,
+      "retention_fraction": 0.7741935483870968
+     }
+    },
+    "diagnostics": {
+     "conditional_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "fp_establishment_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "loss_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_margin": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_delta_share": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "median_tv": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     },
+     "retention_fraction": {
+      "bootstrap_mean": null,
+      "point_in_interval": false
+     }
+    },
+    "interval": {
+     "conditional_fraction": [
+      null,
+      null
+     ],
+     "fp_establishment_fraction": [
+      null,
+      null
+     ],
+     "loss_fraction": [
+      null,
+      null
+     ],
+     "median_delta_margin": [
+      null,
+      null
+     ],
+     "median_delta_share": [
+      null,
+      null
+     ],
+     "median_tv": [
+      null,
+      null
+     ],
+     "retention_fraction": [
+      null,
+      null
+     ],
+     "status_counts": {
+      "ambiguous_peak": [
+       null,
+       null
+      ],
+      "different_peak": [
+       null,
+       null
+      ],
+      "inactive": [
+       null,
+       null
+      ],
+      "low_support": [
+       null,
+       null
+      ],
+      "retained": [
+       null,
+       null
+      ]
+     }
+    },
+    "macro": {
+     "interval": [
+      null,
+      null
+     ],
+     "n_languages": 27,
+     "retention_fraction": 0.8065652737644237
+    },
+    "point": {
+     "conditional_fraction": 0.9849437216781173,
+     "fp_established": 6841,
+     "fp_establishment_fraction": 0.8460301756121692,
+     "fp_status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 1174,
+      "inactive": 0,
+      "low_support": 71,
+      "retained": 6841
+     },
+     "loss_fraction": 0.012738065792728173,
+     "lost_of_established": 103,
+     "median_delta_margin": -7.044730989573013e-06,
+     "median_delta_share": 8.666245968382003e-05,
+     "median_tv": 0.008404688574950074,
+     "n_selective": 8086,
+     "n_tv_undefined": 0,
+     "retained_of_established": 6738,
+     "retention_fraction": 0.833292109819441,
+     "status_counts": {
+      "ambiguous_peak": 0,
+      "different_peak": 100,
+      "inactive": 0,
+      "low_support": 3,
+      "retained": 6738
+     }
+    }
+   }
+  }
+ },
+ "provenance": {
+  "baseline_selectivity_sha256": "2f0422c2c4c4fdeae9024b8afa9c0b68a2baca926f0df5a16aac838e5a0db3f6",
+  "conditions": [
+   "FP",
+   "INT8",
+   "INT7",
+   "INT6",
+   "INT5",
+   "INT4",
+   "INT16",
+   "INT12",
+   "INT0"
+  ],
+  "languages": [
+   "eng_Latn",
+   "deu_Latn",
+   "spa_Latn",
+   "fra_Latn",
+   "por_Latn",
+   "rus_Cyrl",
+   "zho_Hans",
+   "jpn_Jpan",
+   "kor_Hang",
+   "hin_Deva",
+   "ben_Beng",
+   "tam_Taml",
+   "tur_Latn",
+   "vie_Latn",
+   "ind_Latn",
+   "tha_Thai",
+   "pol_Latn",
+   "ukr_Cyrl",
+   "kan_Knda",
+   "tel_Telu",
+   "yor_Latn",
+   "sun_Latn",
+   "amh_Ethi",
+   "ibo_Latn",
+   "hau_Latn",
+   "khm_Khmr",
+   "lao_Laoo"
+  ],
+  "n_features_with_rows": 16384,
+  "n_sentences": 1,
+  "run_manifest_sha256": "310b0d4d86525e407cf5eeb88b477f15011b324a709c08d118d68a0f9ee4ba55"
+ },
+ "schema_version": 1
+}
