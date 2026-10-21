@@ -1,6 +1,8 @@
 # Decisions for your review (the questions I would have asked you)
 
-**New, 2026-10-21 (D-040): Q17** asks you to confirm or change the defaults of the functional-study design (tasks, group size, decision rule, compute, cadence). Not blocking: work proceeds on the defaults. [Design](docs/superpowers/specs/2026-10-21-functional-validation-design.md), [plan](docs/superpowers/plans/2026-10-21-functional-validation.md), [status](reports/functional_validation/STATUS.md).
+**New, 2026-10-21 (D-040): Q17 and Q18** (Q18: the scoop risk from Duan's announced causal follow-up; also not blocking)
+
+**Q17** asks you to confirm or change the defaults of the functional-study design (tasks, group size, decision rule, compute, cadence). Not blocking: work proceeds on the defaults. [Design](docs/superpowers/specs/2026-10-21-functional-validation-design.md), [plan](docs/superpowers/plans/2026-10-21-functional-validation.md), [status](reports/functional_validation/STATUS.md).
 
 **Q16 answered, 2026-10-21 (D-039):** the user selected closer analysis of existing results, SAE fidelity, multilingual functional interventions, and figures/tables (A/B/C/F). The functional question is now explicit across FP and INT8/7/6/5/4: do the originally associated features help task performance in their language, and how does the intervention effect change with quantization? [Selected direction and controls](reports/association_retention/next_steps.md#selected-functional-study-direction-d-039). Decision applied; exact task/dose/evaluation design and implementation are pending. D/E remain unselected and the ended schedule stays ended.
 
@@ -150,6 +152,13 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
   4. *Compute.* About 55 million token passes for the loss task and about 45 million for Belebele over six precisions (hours of GPU time on 2080 Ti nodes, at most two jobs at a time); reduction order fixed in the design (section 8).
   5. *Cadence.* A 40-minute recurring job (two session-only cron entries, 7-day expiry, so it must be recreated after 2026-10-28) doing one bounded step per firing.
 - **Default:** all five as written.
+- ANSWER:
+- STATUS: open (default applied)
+
+## Q18. Scoop risk: how much should the publication plan react to Duan's announced causal follow-up?  [MEDIUM, not blocking]
+- **Context.** The paper we replicate (Duan, arXiv 2606.03002, "submitted to TMLR") uses exactly our model, SAE layer and quantizer and lists causal validation of the damaged features as future work ([prior-art check](reports/functional_validation/prior_art.md)). A follow-up on the same setup could appear before our submission (2026-10-31). What is not in that paper and is ours: the language dimension (27 languages), association retention (D-035), activity-matched controls per language, per-language localisation of the damage and the association-versus-function test. Nearby published work already does FP-donor patching (Chang et al., EMNLP 2025) and SAE-feature restoration under activation quantisation (Sathyanarayanan, arXiv 2609.23125), so only the language-group framing is new.
+- **Options.** (a) continue as planned and make the language framing the claim (default); (b) put the D-035 result and the first functional results into a short public preprint as soon as the full-precision effect is established, to timestamp the language framing; (c) narrow the paper to D-035 plus the full-precision functional effect and drop the rescue experiment (F3) if compute runs short.
+- **Default:** (a); the recurring job re-checks arXiv for Duan's follow-up once per day in its literature step and records any hit in `prior_art.md`.
 - ANSWER:
 - STATUS: open (default applied)
 
