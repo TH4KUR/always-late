@@ -162,6 +162,103 @@ class Engine(unittest.TestCase):
             self.run_engine([{"name": "none", "kind": "ablate", "idx": self.idx, "langs": {0}}])
 
 
+def toy_manifest():
+    return {"languages": ["aa", "bb", "cc"], "Ks": [2, None], "Rs": [2, 1],
+            "groups": {"aa": {"all": [9, 8, 7, 6]}, "bb": {"all": [5, 4]}, "cc": {"all": [3, 2, 1]}},
+            "sizes": {"aa": {"K2": 2, "all": 4}, "bb": {"K2": 2, "all": 2}, "cc": {"K2": 2, "all": 3}},
+            "controls": {"aa": {"K2": [[20, 21], [22, 23]], "all": [[24, 25, 26, 27]]}, "bb": {"K2": [[30, 31], [32, 33]], "all": [[34, 35]]},
+                         "cc": {"K2": [[40, 41], [42, 43]], "all": [[44, 45, 46]]}}}
+
+
+class BuildConfigs(unittest.TestCase):
+    def build(self, targets=("aa", "bb"), families=None, run_langs=("aa", "bb", "cc"), panel=("aa", "cc"), off_target_label="K2", **kw):
+        fam = families or {"zero": ["K2", "all"], "controls": ["K2"], "sham": ["K2"], "scale": {"K2": [0.5, 2.0]}}
+        return fr.build_configs(toy_manifest(), list(run_langs), list(targets), list(panel), fam, off_target_label=off_target_label, **kw)
+
+    def names(self, cfgs):
+        return [c["name"] for c in cfgs]
+
+    def test_names_groups_and_controls_come_from_the_manifest(self):
+        cfgs = {c["name"]: c for c in self.build()}
+        self.assertEqual(cfgs["zero_K2@aa"]["idx"].tolist(), [9, 8])
+        self.assertEqual(cfgs["zero_all@aa"]["idx"].tolist(), [9, 8, 7, 6])
+        self.assertEqual(cfgs["ctrl0_K2@aa"]["idx"].tolist(), [20, 21])
+        self.assertEqual(cfgs["ctrl1_K2@aa"]["idx"].tolist(), [22, 23])
+        self.assertEqual(cfgs["sham_K2@bb"]["idx"].tolist(), [5, 4])
+        self.assertEqual(cfgs["scale0.5_K2@aa"]["kw"], {"alpha": 0.5})
+        self.assertEqual(cfgs["scale2_K2@aa"]["kw"], {"alpha": 2.0})
+        self.assertEqual(len(self.names(self.build())), len(set(self.names(self.build()))))
+
+    def test_text_languages_target_for_all_and_panel_for_the_primary_zero_only(self):
+        cfgs = {c["name"]: c for c in self.build(families={"zero": ["K2", "all"], "controls": ["K2"]})}
+        self.assertEqual(cfgs["zero_K2@aa"]["langs"], {0, 2})                  # target aa (0) and panel {aa, cc} minus nothing off-target except cc: aa itself is the target
+        self.assertEqual(cfgs["zero_K2@bb"]["langs"], {1, 0, 2})              # target bb plus panel aa and cc
+        self.assertEqual(cfgs["zero_all@bb"]["langs"], {1})
+        self.assertEqual(cfgs["ctrl0_K2@bb"]["langs"], {1})
+
+    def test_panel_is_limited_to_the_languages_of_the_run(self):
+        cfgs = {c["name"]: c for c in self.build(run_langs=("aa", "bb"), targets=("bb",), panel=("aa", "cc"))}
+        self.assertEqual(cfgs["zero_K2@bb"]["langs"], {1, 0})
+
+    def test_mean_and_resample_get_their_arguments_from_the_callables(self):
+        calls = []
+        def mean_fn(code, idx):
+            calls.append(("mean", code)); return torch.full((idx.numel(),), 0.25)
+        def pool_fn(code, idx):
+            calls.append(("pool", code)); return torch.ones(3, idx.numel())
+        cfgs = {c["name"]: c for c in self.build(targets=("cc",), families={"mean": ["K2"], "resample": ["K2"]}, mean_vals_fn=mean_fn, pool_fn=pool_fn)}
+        self.assertTrue(torch.equal(cfgs["mean_K2@cc"]["kw"]["mean_vals"], torch.full((2,), 0.25)))
+        self.assertEqual(cfgs["res_K2@cc"]["kw"]["pool"].shape, (3, 2))
+        self.assertEqual(calls, [("mean", "cc"), ("pool", "cc")])
+        with self.assertRaises(ValueError):
+            self.build(targets=("cc",), families={"mean": ["K2"]})
+
+    def test_unknown_label_target_or_family_is_an_error(self):
+        for fam in ({"zero": ["K9"]}, {"bogus": ["K2"]}):
+            with self.assertRaises(ValueError):
+                self.build(families=fam)
+        with self.assertRaises(ValueError):
+            self.build(targets=("zz",))
+
+
+class OtherLanguageMeans(unittest.TestCase):
+    def test_mean_over_the_other_languages(self):
+        mu = torch.tensor([[1.0, 2.0, 3.0], [3.0, 2.0, 1.0], [5.0, 0.0, 2.0]])      # [language, feature]
+        got = fr.other_language_means({"mean_activation": mu}, 0, torch.tensor([0, 2]))
+        self.assertTrue(torch.allclose(got, torch.tensor([(3.0 + 5.0) / 2, (1.0 + 2.0) / 2])))
+
+
+class CollectPool(unittest.TestCase):
+    def test_pool_rows_come_from_valid_positions_with_language_labels(self):
+        model, sae = ToyModel(), ToySAE(d=D, F=F)
+        data = corpus(sizes=(6, 5, 4))
+        batches = p1.make_batches(data, BOS, "mask", 0, 256, batch_size=3)
+        pool, lang = fr.collect_pool(model.lower, sae.encode, batches, rows_per_lang=7, seed=0)
+        self.assertEqual(pool.shape, (21, F))
+        self.assertEqual(lang.tolist(), [0] * 7 + [1] * 7 + [2] * 7)
+        allrows = {}
+        for l, sents in data.items():
+            rows = []
+            for s in sents:
+                x = model.lower(torch.tensor([[BOS] + s]))[0, 1:]
+                rows.append(sae.encode(x))
+            allrows[l] = torch.cat(rows)
+        for l in range(3):
+            for r in pool[lang == l]:
+                self.assertTrue(bool((torch.isclose(allrows[l], r[None, :].float(), rtol=1e-3, atol=1e-3).all(1)).any()))
+        pool2, _ = fr.collect_pool(model.lower, sae.encode, batches, rows_per_lang=7, seed=0)
+        self.assertTrue(torch.equal(pool, pool2))
+        pool3, _ = fr.collect_pool(model.lower, sae.encode, batches, rows_per_lang=7, seed=1)
+        self.assertFalse(torch.equal(pool, pool3))
+
+    def test_a_language_with_too_few_positions_gives_all_of_them(self):
+        model, sae = ToyModel(), ToySAE(d=D, F=F)
+        data = {0: [[3, 4]], 1: corpus(sizes=(0, 5))[1]}
+        batches = p1.make_batches(data, BOS, "mask", 0, 256, batch_size=3)
+        pool, lang = fr.collect_pool(model.lower, sae.encode, batches, rows_per_lang=50, seed=0)
+        self.assertEqual(int((lang == 0).sum()), 2)
+
+
 class Gates(unittest.TestCase):
     def setUp(self):
         self.model, self.sae = ToyModel(), ToySAE(d=D, F=F)

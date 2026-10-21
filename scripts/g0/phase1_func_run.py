@@ -100,3 +100,222 @@ def run_gates(full, lower, upper, encode, W_dec, tokens, valid, idx):
     if bad:
         raise GateError("gate(s) failed: " + ", ".join(bad))
     return res
+
+
+FAMILIES = ("zero", "controls", "sham", "scale", "mean", "resample")
+
+
+def _size(label):
+    return None if label == "all" else int(label[1:])
+
+
+def build_configs(man, run_langs, targets, panel, families, off_target_label="K64", mean_vals_fn=None, pool_fn=None):
+    """Edit configurations from the frozen groups manifest. run_langs: language codes of the run in batch-index order; targets: codes to build for; panel: codes whose text is used for the
+    off-target check (limited to run_langs); families: {"zero": [labels], "controls": [labels] (every draw of the manifest), "sham": [labels], "scale": {label: [alphas]}, "mean": [labels],
+    "resample": [labels]} with labels as in the manifest (K16, K64, all). Names are `<family>[draw]_<label>@<target>`. Only the zero-ablation of `off_target_label` also runs on the panel text
+    (target excluded); every other configuration runs on its target language's text only. mean_vals_fn(code, idx) and pool_fn(code, idx) supply the mean-ablation values and the resample pool."""
+    bad = [f for f in families if f not in FAMILIES]
+    if bad:
+        raise ValueError(f"unknown configuration families {bad}; choose from {FAMILIES}")
+    index = {c: i for i, c in enumerate(run_langs)}
+    missing = [t for t in targets if t not in index or t not in man["groups"]]
+    if missing:
+        raise ValueError(f"targets {missing} are not in the run or in the manifest")
+    panel_idx = {index[c] for c in panel if c in index}
+    cfgs = []
+
+    def ids(code, label):
+        if label not in man["sizes"][code]:
+            raise ValueError(f"unknown group size {label!r} for {code}")
+        return torch.tensor(man["groups"][code]["all"][:man["sizes"][code][label]], dtype=torch.long)
+
+    for code in targets:
+        i = index[code]
+        for label in families.get("zero", []):
+            langs = {i} | ({j for j in panel_idx if j != i} if label == off_target_label else set())
+            cfgs.append({"name": f"zero_{label}@{code}", "kind": "ablate", "idx": ids(code, label), "langs": langs})
+        for label in families.get("controls", []):
+            if label not in man["controls"][code]:
+                raise ValueError(f"no control draws of size {label!r} for {code}")
+            for r, s in enumerate(man["controls"][code][label]):
+                cfgs.append({"name": f"ctrl{r}_{label}@{code}", "kind": "ablate", "idx": torch.tensor(s, dtype=torch.long), "langs": {i}})
+        for label in families.get("sham", []):
+            cfgs.append({"name": f"sham_{label}@{code}", "kind": "sham", "idx": ids(code, label), "langs": {i}})
+        for label, alphas in families.get("scale", {}).items():
+            for alpha in alphas:
+                cfgs.append({"name": f"scale{alpha:g}_{label}@{code}", "kind": "scale", "idx": ids(code, label), "langs": {i}, "kw": {"alpha": float(alpha)}})
+        for label in families.get("mean", []):
+            if mean_vals_fn is None:
+                raise ValueError("the mean family needs mean_vals_fn")
+            idx = ids(code, label)
+            cfgs.append({"name": f"mean_{label}@{code}", "kind": "mean", "idx": idx, "langs": {i}, "kw": {"mean_vals": mean_vals_fn(code, idx)}})
+        for label in families.get("resample", []):
+            if pool_fn is None:
+                raise ValueError("the resample family needs pool_fn")
+            idx = ids(code, label)
+            cfgs.append({"name": f"res_{label}@{code}", "kind": "resample", "idx": idx, "langs": {i}, "kw": {"pool": pool_fn(code, idx), "seed": 0}})
+    return cfgs
+
+
+def other_language_means(sel, l, idx):
+    """Dev mean activation (zeros included) of the features `idx`, averaged over all languages except l: the fixed replacement value of the mean ablation."""
+    mu = sel["mean_activation"].double()
+    return ((mu.sum(0) - mu[l]) / (mu.shape[0] - 1))[idx].float()
+
+
+def collect_pool(lower, encode, batches, rows_per_lang, seed, device=None):
+    """SAE activations (float16, host) of `rows_per_lang` random content positions of every language of `batches`, for resample ablation: ([P, F], language of each row [P]).
+    The positions are drawn per language from a generator seeded by (seed, language) before the model runs; a language with fewer positions contributes all of them."""
+    counts = {}
+    for b in batches:
+        counts[b["lang"]] = counts.get(b["lang"], 0) + int(b["valid"].sum())
+    chosen = {}
+    for l, n in counts.items():
+        g = torch.Generator().manual_seed(_seed(seed, l))
+        chosen[l] = set(torch.randperm(n, generator=g)[:min(rows_per_lang, n)].tolist())
+    seen, rows, langs = {l: 0 for l in counts}, [], []
+    with torch.no_grad():
+        for b in batches:
+            l = b["lang"]
+            tokens, valid = (b["tokens"], b["valid"]) if device is None else (b["tokens"].to(device), b["valid"].to(device))
+            n = int(valid.sum())
+            take = [k - seen[l] for k in range(seen[l], seen[l] + n) if k in chosen[l]]
+            seen[l] += n
+            if not take:
+                continue
+            a = fi.encode_valid(lower(tokens), valid, encode)
+            rows.append(a[torch.tensor(take, dtype=torch.long, device=a.device)].half().cpu()); langs += [l] * len(take)
+    order = sorted(range(len(langs)), key=lambda i: langs[i])                       # stable: language ascending, stream order inside a language
+    pool = torch.cat(rows)[torch.tensor(order, dtype=torch.long)] if rows else torch.zeros(0)
+    return pool, torch.tensor([langs[i] for i in order], dtype=torch.long)
+
+
+# --------------------------------------------------------------------------------------------- real-model wiring (exercised by the smoke job, not by unit tests)
+PANEL = ("eng_Latn", "rus_Cyrl", "zho_Hans", "hin_Deva")
+PRESETS = {
+    "smoke": {"zero": ["K64"], "controls": ["K64"], "sham": ["K64"], "scale": {"K64": [0.5, 2.0]}, "mean": ["K64"], "resample": ["K64"]},
+    "primary": {"zero": ["K16", "K64", "all"], "controls": ["K16", "K64", "all"], "sham": ["K64"], "scale": {"K64": [0.5, 2.0]}, "mean": ["K64"], "resample": ["K64"]},
+}
+LAYER = 12
+
+
+def _precision_key(s):
+    s = str(s)
+    return "FP" if s.upper() == "FP" else int(s)
+
+
+def main(argv=None):
+    import argparse, gc, json, time
+    from pathlib import Path
+    ROOT = Path(__file__).resolve().parents[2]
+    ap = argparse.ArgumentParser(description="Functional validation, task T-LM: feature-group interventions at the layer-12 residual of Gemma-2-2B in FP and RTN-quantized precisions (D-040).")
+    ap.add_argument("--out", required=True); ap.add_argument("--precisions", nargs="*", default=["FP", "8", "7", "6", "5", "4", "16", "12", "0"])
+    ap.add_argument("--flores-root", required=True); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
+    ap.add_argument("--manifest", default=str(ROOT / "reports/functional_validation/groups_manifest.json")); ap.add_argument("--selectivity", required=True)
+    ap.add_argument("--split", choices=["pilot", "eval"], default="pilot"); ap.add_argument("--n-pilot", type=int, default=150); ap.add_argument("--n-eval", type=int, default=450)
+    ap.add_argument("--lm-seed", type=int, default=0); ap.add_argument("--languages", nargs="*"); ap.add_argument("--max-sentences", type=int)
+    ap.add_argument("--preset", choices=sorted(PRESETS), default="smoke"); ap.add_argument("--off-target-label", default="K64")
+    ap.add_argument("--max-tokens", type=int, default=1024); ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--pool-sentences", type=int, default=120); ap.add_argument("--pool-rows", type=int, default=300); ap.add_argument("--commit", default="unknown")
+    a = ap.parse_args(argv)
+    t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
+
+    import numpy as np
+    from tqdm.auto import tqdm
+    from transformer_lens import HookedTransformer
+    from sae_lens import SAE
+    import their_code as tc
+    import phase1_data as pd_
+    import phase1_func_tasks as ft
+    import phase1_func_groups as fg
+    torch.set_grad_enabled(False)
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    env = {"torch": torch, "np": np, "tqdm": tqdm, "gc": gc, "HookedTransformer": HookedTransformer, "SAE": SAE, "DEVICE": DEVICE, "WORK_DEVICE": DEVICE, "BATCH_SIZE": 1, "FIRING_THRESHOLD": 0.001}
+    ex = tc.extract_functions(tc.PRISTINE, tc.THEIR_FUNCTIONS); tc.verify_hashes(ex, json.loads(tc.MANIFEST.read_text())["functions"]); tc.build_namespace(ex, env)
+    log("their functions verified against the frozen manifest")
+    import phase1_run as pr                                                  # SAE release/id, model candidates and package_versions as in the Phase 1 runs
+    model, model_name = env["load_gemma_tl_model"](pr.MODEL_CANDIDATES)
+    sae = env["load_sae_compat"](pr.SAE_RELEASE, pr.SAE_ID, DEVICE)
+    hook = getattr(sae.cfg, "hook_name", None) or f"blocks.{LAYER}.hook_resid_post"
+    assert hook == f"blocks.{LAYER}.hook_resid_post", f"unexpected SAE hook {hook}"
+    assert sae.cfg.d_in == model.cfg.d_model
+    env["model_work"] = model; env["original_state_cpu"] = env["clone_state_to_cpu"](model)
+    tok = model.tokenizer; bos = tok.bos_token_id; pad = tok.pad_token_id if tok.pad_token_id is not None else 0
+    lower = lambda tokens: model(tokens, stop_at_layer=LAYER + 1)
+    upper = lambda resid: model(resid, start_at_layer=LAYER + 1)
+    full = lambda tokens: model(tokens)
+    encode = lambda x: env["encode_sae"](sae, x)
+    decode = lambda act: sae.decode(act)
+    W_dec = sae.W_dec
+    log("model", model_name, "hook", hook, "d_sae", int(sae.cfg.d_sae), "bos", bos, "pad", pad)
+
+    roster = pd_.load_roster(a.roster)
+    names = [r["code"] for r in roster]
+    run_names = [c for c in names if not a.languages or c in set(a.languages)]
+    man = json.loads(Path(a.manifest).read_text())
+    assert man["languages"] == names, "the groups manifest was built for another language order"
+    sel = fg.dev_view(torch.load(a.selectivity, weights_only=False)); assert list(sel["languages"]) == names
+    ids = ft.lm_ids(1012, a.n_pilot, a.n_eval, a.lm_seed)[a.split]
+    if a.max_sentences:
+        ids = ids[:a.max_sentences]
+    data, lang_ids = {}, {}
+    for i, code in enumerate(run_names):
+        lines = pd_.read_flores_split(a.flores_root, code, "devtest", 1012)
+        data[i] = pd_.encode_sentences(tok, [lines[j] for j in ids]); lang_ids[code] = list(ids)
+    batches = p1.make_batches(data, bos, "mask", pad, 256, a.batch_size, a.max_tokens)
+    n_sent = {i: len(v) for i, v in data.items()}
+    log("split", a.split, "sentences per language", len(ids), "languages", len(run_names), "batches", len(batches))
+
+    probe = batches[0]
+    gates = run_gates(full, lower, upper, encode, W_dec, probe["tokens"].to(DEVICE), probe["valid"].to(DEVICE), torch.tensor(man["groups"][run_names[0]]["all"][:64]))
+    log("gates passed:", gates)
+
+    families = PRESETS[a.preset]
+    pool_batches = None
+    if "resample" in families:
+        dev = {}
+        for i, code in enumerate(run_names):
+            lines = pd_.read_flores_split(a.flores_root, code, "dev", 997)
+            dev[i] = pd_.encode_sentences(tok, lines[:a.pool_sentences])
+        pool_batches = p1.make_batches(dev, bos, "mask", pad, 256, a.batch_size, a.max_tokens)
+    restore = env["restore_model_work"]
+    Path(a.out).mkdir(parents=True, exist_ok=True)
+    summary = {}
+    for prec in [_precision_key(x) for x in a.precisions]:
+        restore()
+        if prec not in ("FP", 0):
+            env["quantize_rtn_per_output_channel_tl"](model, bits=prec)
+        pool_fn = None
+        if pool_batches is not None:
+            pool, pool_lang = collect_pool(lower, encode, pool_batches, a.pool_rows, 0, device=DEVICE)
+            pool_fn = lambda code, idx: pool[pool_lang != run_names.index(code)][:, idx].float().to(DEVICE)
+        mean_fn = lambda code, idx: other_language_means(sel, names.index(code), idx).to(DEVICE)
+        configs = build_configs(man, run_names, run_names, list(PANEL), families, a.off_target_label, mean_vals_fn=mean_fn, pool_fn=pool_fn)
+        passes = sum((1 + sum(1 for c in configs if b["lang"] in c["langs"])) * int(b["valid"].sum()) for b in batches)
+        ts = time.time()
+        out = evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, decode=decode, device=DEVICE)
+        dt = time.time() - ts
+        key = f"INT{prec}" if prec != "FP" else "FP"
+        torch.save({"precision": key, "split": a.split, "ids": lang_ids, "languages": run_names, "preset": a.preset,
+                    "items": {f"{run_names[l]}|{n}": v for (l, n), v in out["items"].items()},
+                    "stats": {f"{run_names[l]}|{n}": v for (l, n), v in out["stats"].items()},
+                    "fidelity": {run_names[l]: v for l, v in out["fidelity"].items()}}, Path(a.out) / f"func_lm_{a.split}_{key}.pt")
+        summary[key] = {"seconds": dt, "token_passes": passes, "tokens_per_second": passes / dt, "configs": len(configs)}
+        log(key, "done:", summary[key], "peak GPU GB", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0)
+        del out; gc.collect()
+    restore()
+    meta = {"task": "lm", "split": a.split, "preset": a.preset, "precisions": a.precisions, "languages": run_names, "n_sentences": len(ids), "lm_seed": a.lm_seed, "commit": a.commit,
+            "model": model_name, "hook": hook, "gates": gates, "summary": summary, "manifest_source_sha256": man["source"]["sha256"], "argv": list(argv) if argv is not None else None,
+            "versions": p1_package_versions(), "seconds": time.time() - t0, "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0}
+    (Path(a.out) / f"meta_lm_{a.split}.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
+    log("saved", a.out)
+
+
+def p1_package_versions():
+    import phase1_run as pr
+    return pr.package_versions(["torch", "transformer-lens", "sae-lens", "transformers", "datasets"])
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
