@@ -32,18 +32,39 @@ def validate_configs(configs):
         seen.add(c["name"])
 
 
-def evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, decode=None, donors=None, nll_chunk=4, device=None):
+def lm_readout(chunk=4):
+    """Per-row next-token NLL (float64 sum over the batch's `score` positions, default the valid positions) and the number of scored tokens: {"nll", "ntok"}."""
+    def read(logits, b, tokens, valid):
+        s, n = p1.chunked_nll(logits, tokens, b["score"].to(valid.device) if "score" in b else valid, chunk=chunk)
+        return {"nll": s.double(), "ntok": n.long()}
+    return read
+
+
+def letter_readout(logits, b, tokens, valid):
+    """Log-probabilities (over the whole vocabulary) of the four option-letter tokens at the last prompt position of every row: {"cand_logp": [B, 4]}."""
+    rows = torch.arange(logits.shape[0], device=logits.device)
+    lp = torch.log_softmax(logits[rows, b["last"].to(logits.device)].float(), dim=-1)
+    return {"cand_logp": lp.gather(1, b["cand"].to(logits.device)).double()}
+
+
+def evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, decode=None, donors=None, nll_chunk=4, device=None, readout=None):
     """Run every configuration over the batches of the languages it applies to (`c["langs"]`), plus the unintervened baseline `none` on every batch.
-    batches: p1.make_batches output (single-language, right-padded, `valid` = content positions); n_sent: {language: number of sentences}; configs: dicts with name, kind, idx (feature group),
-    langs (text languages evaluated), optional kw (alpha, pool and seed for resample, mean_vals); donors: {batch index: donor activations [N, F]} for kind `donor`.
-    Returns {"items": {(lang, name): {"nll" float64 [n], "ntok" int64 [n]}}, "stats": {(lang, name): sums of the perturbation norm ratio, active group features, rows}, "fidelity": {lang: sums of
+    batches: p1.make_batches / make_mc_batches output (single-language, right-padded, `valid` = content positions); n_sent: {language: number of rows}; configs: dicts with name, kind, idx (feature
+    group), langs (text languages evaluated), optional kw (alpha, pool and seed for resample, mean_vals); donors: {batch index: donor activations [N, F]} for kind `donor`; readout(logits, batch,
+    tokens, valid) -> {key: tensor [B, ...]} (default: next-token NLL; letter_readout for multiple choice).
+    Returns {"items": {(lang, name): {key: array [n_rows, ...]}}, "stats": {(lang, name): sums of the perturbation norm ratio, active group features, rows}, "fidelity": {lang: sums of
     reconstruction error, residual norm, L0, rows}} (fidelity only when `decode` is given)."""
     validate_configs(configs)
+    readout = readout or lm_readout(nll_chunk)
     items, stats, fid = {}, {}, {}
 
-    def record(l, name, sent, s, n):
-        slot = items.setdefault((l, name), {"nll": torch.zeros(n_sent[l], dtype=torch.float64), "ntok": torch.zeros(n_sent[l], dtype=torch.long)})
-        slot["nll"][sent] = s.double().cpu(); slot["ntok"][sent] = n.long().cpu()
+    def record(l, name, sent, out):
+        slot = items.setdefault((l, name), {})
+        for key, v in out.items():
+            v = v.cpu()
+            if key not in slot:
+                slot[key] = torch.zeros((n_sent[l],) + tuple(v.shape[1:]), dtype=torch.float64 if v.is_floating_point() else torch.long)
+            slot[key][sent] = v.to(slot[key].dtype)
 
     with torch.no_grad():
         for bi, b in enumerate(batches):
@@ -53,8 +74,7 @@ def evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, de
                 tokens, valid = tokens.to(device), valid.to(device)
             resid = lower(tokens)
             a = fi.encode_valid(resid, valid, encode)
-            s, n = p1.chunked_nll(upper(resid), tokens, valid, chunk=nll_chunk)
-            record(l, "none", b["sent"], s, n)
+            record(l, "none", b["sent"], readout(upper(resid), b, tokens, valid))
             if decode is not None:
                 x = resid[valid].float()
                 err = x - decode(a)
@@ -72,12 +92,60 @@ def evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, de
                 if c["kind"] == "resample":
                     kw["generator"] = torch.Generator().manual_seed(_seed(kw.pop("seed", 0), l, bi))
                 resid2, st = fi.apply_edit(resid, valid, a, W_dec, c["idx"], c["kind"], **kw)
-                s2, n2 = p1.chunked_nll(upper(resid2), tokens, valid, chunk=nll_chunk)
-                record(l, c["name"], b["sent"], s2, n2)
+                record(l, c["name"], b["sent"], readout(upper(resid2), b, tokens, valid))
                 acc = stats.setdefault((l, c["name"]), {"sum_norm_ratio": 0.0, "sum_active": 0.0, "rows": 0})
                 for k in acc:
                     acc[k] += st[k]
     return {"items": items, "stats": stats, "fidelity": fid}
+
+
+def mc_n_rows(data, fmt):
+    """Rows per language of the multiple-choice batches: one per item (letter) or four per item (cloze: one row per option)."""
+    return {l: len(v) * (1 if fmt == "letter" else 4) for l, v in data.items()}
+
+
+def make_mc_batches(data, fmt, bos_id, pad_id=0, max_tokens=1024, batch_size=32):
+    """Batches of multiple-choice rows from {language: [encode_mc output]}: single-language, length-sorted, right-padded after one BOS; `valid` = content positions (never BOS or padding, the
+    positions that are edited). letter: one row per item with `last` (index of the last prompt token) and `cand` (the four option-letter ids); `sent` = item index. cloze: four rows per item
+    (context plus option j, row id 4 * item + j) with `score` marking the option's token positions. A row longer than max_tokens gets a batch of its own (the loader drops overlong prompts)."""
+    if fmt not in ("letter", "cloze"):
+        raise ValueError(f"unknown format {fmt!r}")
+    batches = []
+    for lang in sorted(data):
+        rows = []
+        for i, e in enumerate(data[lang]):
+            if fmt == "letter":
+                rows.append((i, list(e["tokens"]), None, e["cand_ids"]))
+            else:
+                rows += [(4 * i + j, list(e["tokens"]) + list(o), len(e["tokens"]), None) for j, o in enumerate(e["option_ids"])]
+        order = sorted(range(len(rows)), key=lambda k: (len(rows[k][1]), rows[k][0]))
+        groups, cur = [], []
+        for k in order:
+            L = len(rows[k][1]) + 1
+            if cur and (len(cur) + 1 > batch_size or (len(cur) + 1) * L > max_tokens):
+                groups.append(cur); cur = []
+            cur.append(k)
+        if cur:
+            groups.append(cur)
+        for g in groups:
+            L = max(len(rows[k][1]) for k in g) + 1
+            tokens = torch.full((len(g), L), pad_id, dtype=torch.long)
+            valid = torch.zeros((len(g), L), dtype=torch.bool); score = torch.zeros((len(g), L), dtype=torch.bool)
+            last, cand = [], []
+            for r, k in enumerate(g):
+                rid, toks, ctx_len, cands = rows[k]
+                tokens[r, 0] = bos_id; tokens[r, 1:1 + len(toks)] = torch.tensor(toks, dtype=torch.long); valid[r, 1:1 + len(toks)] = True
+                if fmt == "letter":
+                    last.append(len(toks)); cand.append(list(cands))
+                else:
+                    score[r, 1 + ctx_len:1 + len(toks)] = True
+            b = {"lang": lang, "tokens": tokens, "valid": valid, "sent": torch.tensor([rows[k][0] for k in g], dtype=torch.long)}
+            if fmt == "letter":
+                b["last"] = torch.tensor(last, dtype=torch.long); b["cand"] = torch.tensor(cand, dtype=torch.long)
+            else:
+                b["score"] = score
+            batches.append(b)
+    return batches
 
 
 def run_gates(full, lower, upper, encode, W_dec, tokens, valid, idx):

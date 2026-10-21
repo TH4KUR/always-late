@@ -259,6 +259,93 @@ class CollectPool(unittest.TestCase):
         self.assertEqual(int((lang == 0).sum()), 2)
 
 
+def enc_letter(tokens, cand, answer=0):
+    return {"tokens": list(tokens), "cand_ids": list(cand), "answer": answer, "format": "letter"}
+
+
+def enc_cloze(tokens, options, answer=0):
+    return {"tokens": list(tokens), "option_ids": [list(o) for o in options], "answer": answer, "format": "cloze"}
+
+
+class McBatches(unittest.TestCase):
+    def test_letter_batches_are_sorted_padded_and_carry_last_positions_and_candidates(self):
+        data = {0: [enc_letter([4, 5, 6], [3, 5, 7, 9]), enc_letter([4], [3, 5, 7, 9]), enc_letter([4, 5, 6, 7, 8], [2, 4, 6, 8])]}
+        bs = fr.make_mc_batches(data, "letter", BOS, 0, max_tokens=64)
+        self.assertEqual(len(bs), 1)
+        b = bs[0]
+        self.assertEqual(b["sent"].tolist(), [1, 0, 2])                                  # by length: 1, 3, 5 tokens
+        self.assertEqual(b["tokens"].shape, (3, 6))
+        self.assertEqual(b["last"].tolist(), [1, 3, 5])                                  # index of the last prompt token (BOS at 0)
+        self.assertEqual(b["cand"].tolist(), [[3, 5, 7, 9], [3, 5, 7, 9], [2, 4, 6, 8]])
+        self.assertTrue(bool((b["tokens"][:, 0] == BOS).all()))
+        self.assertEqual(b["valid"].sum(1).tolist(), [1, 3, 5])                          # content positions only: no BOS, no padding
+        self.assertFalse(bool(b["valid"][:, 0].any()))
+
+    def test_max_tokens_splits_batches_and_an_oversized_item_gets_its_own(self):
+        data = {0: [enc_letter([4] * 5, [3, 5, 7, 9]) for _ in range(4)] + [enc_letter([4] * 20, [3, 5, 7, 9])]}
+        bs = fr.make_mc_batches(data, "letter", BOS, 0, max_tokens=14)                   # each padded row is 6 or 21 long
+        self.assertEqual(sorted(len(b["sent"]) for b in bs), [1, 2, 2])
+        self.assertEqual(sorted(i for b in bs for i in b["sent"].tolist()), [0, 1, 2, 3, 4])
+
+    def test_cloze_rows_are_item_times_four_with_a_score_mask_on_the_option(self):
+        data = {0: [enc_cloze([4, 5], [[6], [6, 7], [8], [9, 9, 9]]), enc_cloze([5], [[2], [3], [4], [5, 6]])]}
+        bs = fr.make_mc_batches(data, "cloze", BOS, 0, max_tokens=64)
+        self.assertEqual(fr.mc_n_rows(data, "cloze"), {0: 8})
+        rows = {}
+        for b in bs:
+            for r, s in enumerate(b["sent"].tolist()):
+                L = int(b["valid"][r].sum())
+                rows[s] = (b["tokens"][r, 1:1 + L].tolist(), [int(i) for i in b["score"][r].nonzero().squeeze(1)])
+        self.assertEqual(rows[0], ([4, 5, 6], [3]))                                      # item 0, option 0: score the single option token at position 3
+        self.assertEqual(rows[1], ([4, 5, 6, 7], [3, 4]))
+        self.assertEqual(rows[7], ([5, 5, 6], [2, 3]))
+        self.assertTrue(all(len(v[1]) > 0 for v in rows.values()))
+
+
+class McEngine(unittest.TestCase):
+    def setUp(self):
+        self.model, self.sae = ToyModel(), ToySAE(d=D, F=F)
+        g = torch.Generator().manual_seed(3)
+        self.letter = {0: [enc_letter(torch.randint(2, V, (int(torch.randint(3, 9, (1,), generator=g)),), generator=g).tolist(), [3, 5, 7, 9], answer=i % 4) for i in range(5)],
+                       1: [enc_letter(torch.randint(2, V, (int(torch.randint(3, 9, (1,), generator=g)),), generator=g).tolist(), [2, 4, 6, 8], answer=1) for i in range(4)]}
+        self.idx = torch.tensor([2, 5, 9, 17])
+
+    def run_letter(self, configs):
+        bs = fr.make_mc_batches(self.letter, "letter", BOS, 0, max_tokens=40)
+        n = {l: len(v) for l, v in self.letter.items()}
+        return fr.evaluate_precision(self.model.lower, self.model.upper, self.sae.encode, self.sae.W_dec, bs, n, configs, readout=fr.letter_readout)
+
+    def brute_letter(self, enc, idx=None, kind=None):
+        tokens = torch.tensor([[BOS] + enc["tokens"]]); valid = torch.zeros_like(tokens, dtype=torch.bool); valid[:, 1:] = True
+        resid = self.model.lower(tokens)
+        if kind:
+            a = fi.encode_valid(resid, valid, self.sae.encode)
+            resid, _ = fi.apply_edit(resid, valid, a, self.sae.W_dec, idx, kind)
+        lp = torch.log_softmax(self.model.upper(resid)[0, -1].float(), -1)
+        return lp[enc["cand_ids"]]
+
+    def test_letter_baseline_and_edit_match_brute_force_per_item(self):
+        out = self.run_letter([{"name": "zero", "kind": "ablate", "idx": self.idx, "langs": {0, 1}}])
+        for l, items in self.letter.items():
+            for i, e in enumerate(items):
+                self.assertTrue(torch.allclose(out["items"][(l, "none")]["cand_logp"][i].float(), self.brute_letter(e), atol=1e-4))
+                self.assertTrue(torch.allclose(out["items"][(l, "zero")]["cand_logp"][i].float(), self.brute_letter(e, self.idx, "ablate"), atol=1e-4))
+        self.assertEqual(out["items"][(0, "none")]["cand_logp"].shape, (5, 4))
+
+    def test_cloze_rows_score_the_option_tokens_only(self):
+        g = torch.Generator().manual_seed(4)
+        data = {0: [enc_cloze(torch.randint(2, V, (4,), generator=g).tolist(), [torch.randint(2, V, (int(torch.randint(1, 4, (1,), generator=g)),), generator=g).tolist() for _ in range(4)], answer=2) for _ in range(3)]}
+        bs = fr.make_mc_batches(data, "cloze", BOS, 0, max_tokens=64)
+        out = fr.evaluate_precision(self.model.lower, self.model.upper, self.sae.encode, self.sae.W_dec, bs, fr.mc_n_rows(data, "cloze"), [])
+        for i, e in enumerate(data[0]):
+            for j, o in enumerate(e["option_ids"]):
+                tokens = torch.tensor([[BOS] + e["tokens"] + o])
+                lp = torch.log_softmax(self.model.full(tokens)[0].float(), -1)
+                want = -sum(float(lp[len(e["tokens"]) + k, o[k]]) for k in range(len(o)))
+                self.assertAlmostEqual(float(out["items"][(0, "none")]["nll"][4 * i + j]), want, places=4)
+                self.assertEqual(int(out["items"][(0, "none")]["ntok"][4 * i + j]), len(o))
+
+
 class Gates(unittest.TestCase):
     def setUp(self):
         self.model, self.sae = ToyModel(), ToySAE(d=D, F=F)
