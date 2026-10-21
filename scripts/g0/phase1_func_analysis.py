@@ -1,0 +1,220 @@
+"""Analysis of the functional-validation item files (D-039/D-040; design section 6). CPU only, numpy.
+
+Harm of an edit on a sentence = NLL(edit) - NLL(none) at the SAME precision; effects are pooled as a ratio of sums (nats per token). The functional effect E of a language is the harm of
+zero-ablating its selective group beyond the mean harm of its activity-matched controls on the language's own text. Uncertainty: a paired cluster bootstrap over sentence positions (the
+same FLORES sentence id is the same position in every language, so a draw resamples whole translations; the same draws serve every precision, so differences between precisions are paired).
+Retention ratio = E at a precision over E in full precision, classified against fixed bands. The observed value is the estimate; intervals are descriptive percentile intervals."""
+import csv
+import json
+import re
+from pathlib import Path
+
+import numpy as np
+
+BANDS = (0.75, 1.33)
+
+
+class Run:
+    """The item-level results of one precision: items {"<code>|<config>": {"nll", "ntok"}}, stats, fidelity, languages, ids (the same ids in the same order for every language)."""
+    def __init__(self, label, items, stats, fidelity, languages, ids):
+        self.label, self.languages, self.stats, self.fidelity, self.ids = label, list(languages), stats, fidelity, ids
+        self._items = {}
+        for key, v in items.items():
+            text, name = key.split("|", 1)
+            self._items[(text, name)] = (np.asarray(v["nll"], dtype=np.float64), np.asarray(v["ntok"], dtype=np.int64))
+        for (text, name), (nll, ntok) in self._items.items():
+            if name != "none" and not np.array_equal(ntok, self._items[(text, "none")][1]):
+                raise ValueError(f"{label}: configuration {name} on {text} is not paired with the baseline (token counts differ)")
+
+    @classmethod
+    def from_file(cls, path):
+        import torch
+        d = torch.load(path, weights_only=False)
+        items = {k: {"nll": v["nll"].numpy(), "ntok": v["ntok"].numpy()} for k, v in d["items"].items()}
+        return cls(d["precision"], items, d["stats"], d["fidelity"], d["languages"], d["ids"])
+
+    def delta(self, text, name):
+        """(per-sentence NLL change of `name` against the unintervened baseline on `text`, token counts)."""
+        nll, ntok = self._items[(text, name)]
+        return nll - self._items[(text, "none")][0], ntok
+
+    def ntok(self, text):
+        return self._items[(text, "none")][1]
+
+    def configs_on(self, text):
+        return sorted(n for (t, n) in self._items if t == text and n != "none")
+
+    def has(self, text, name):
+        return (text, name) in self._items
+
+
+def pooled(delta, ntok, idx=None):
+    """Sum of the sentence NLL changes over the sum of tokens (nats per token), optionally over resampled positions."""
+    if idx is None:
+        return float(np.sum(delta) / np.sum(ntok))
+    return float(np.sum(delta[idx]) / np.sum(ntok[idx]))
+
+
+def draws(n, B, seed):
+    """B bootstrap draws of n sentence positions with replacement, seeded."""
+    return np.random.default_rng(seed).integers(0, n, size=(B, n))
+
+
+def _boot(delta, ntok, D):
+    return delta[D].sum(1) / ntok[D].sum(1)
+
+
+def functional_effect(run, code, K, D):
+    """E for a language on its own text: harm of `zero_<K>@<code>` minus the mean harm of its controls `ctrl<r>_<K>@<code>`, with bootstrap samples over the draws D."""
+    name = f"zero_{K}@{code}"
+    ctrl = [n for n in run.configs_on(code) if re.fullmatch(rf"ctrl\d+_{re.escape(K)}@{re.escape(code)}", n)]
+    if not run.has(code, name) or not ctrl:
+        raise KeyError(f"{run.label}: {code} lacks {name} or its controls")
+    dG, nt = run.delta(code, name)
+    dC = np.mean([run.delta(code, c)[0] for c in ctrl], axis=0)
+    diff = dG - dC
+    st_g = run.stats.get(f"{code}|{name}")
+    st_c = [run.stats[f"{code}|{c}"] for c in ctrl if f"{code}|{c}" in run.stats]
+    return {"point": pooled(diff, nt), "samples": _boot(diff, nt, D), "harm_group": pooled(dG, nt), "harm_control": pooled(dC, nt), "n_controls": len(ctrl),
+            "norm_ratio_group": st_g["sum_norm_ratio"] / st_g["rows"] if st_g else None,
+            "norm_ratio_control": sum(s["sum_norm_ratio"] for s in st_c) / sum(s["rows"] for s in st_c) if st_c else None}
+
+
+def macro(per_language, covered):
+    """Unweighted mean over the covered languages of the effects (point and bootstrap samples)."""
+    return {"point": float(np.mean([per_language[c]["point"] for c in covered])), "samples": np.mean([per_language[c]["samples"] for c in covered], axis=0), "languages": list(covered)}
+
+
+def _ci(samples):
+    lo, hi = np.percentile(samples, [2.5, 97.5])
+    return float(lo), float(hi)
+
+
+def retention(eb, efp, bands=BANDS):
+    """Retention ratio E(b) / E(FP) with its percentile interval and class: preserved (interval inside the bands), attenuated (entirely below), amplified (entirely above),
+    inconclusive otherwise; `undefined` when the full-precision interval does not lie above zero."""
+    if _ci(efp["samples"])[0] <= 0 or efp["point"] <= 0:
+        return {"ratio": None, "lo": None, "hi": None, "class": "undefined"}
+    lo, hi = _ci(eb["samples"] / efp["samples"])
+    ratio = eb["point"] / efp["point"]
+    cls = "preserved" if bands[0] <= lo and hi <= bands[1] else "attenuated" if hi < bands[0] else "amplified" if lo > bands[1] else "inconclusive"
+    return {"ratio": float(ratio), "lo": lo, "hi": hi, "class": cls}
+
+
+def sham_check(run, code, K, D):
+    d, nt = run.delta(code, f"sham_{K}@{code}")
+    return {"point": pooled(d, nt), "samples": _boot(d, nt, D)}
+
+
+def off_target(run, code, K, D):
+    """Raw harm (nats per token) of the group's zero-ablation on every other language text present: the manipulation check that the edit does little where the features are silent."""
+    name, out = f"zero_{K}@{code}", {}
+    for text in run.languages:
+        if text != code and run.has(text, name):
+            d, nt = run.delta(text, name)
+            out[text] = {"point": pooled(d, nt), "samples": _boot(d, nt, D)}
+    return out
+
+
+def fidelity_table(runs):
+    """Per precision and language: fraction of residual energy not reconstructed by the SAE (sum of squared error over sum of squared norm), mean number of active features, rms norm."""
+    rows = []
+    for label, run in runs.items():
+        for code in run.languages:
+            f = run.fidelity.get(code)
+            if f:
+                rows.append({"precision": label, "language": code, "fvu": f["sum_err2"] / f["sum_x2"], "l0": f["sum_l0"] / f["rows"], "rms_norm": (f["sum_x2"] / f["rows"]) ** 0.5, "rows": f["rows"]})
+    return rows
+
+
+def _row(point, samples):
+    lo, hi = _ci(samples)
+    return {"point": float(point), "lo": lo, "hi": hi}
+
+
+def analyse(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=BANDS):
+    """Effects, macro effects, retention against full precision, sham, off-target and fidelity tables -> analysis.json, CSVs and report.md in out_dir."""
+    if "FP" not in runs:
+        raise ValueError("the full-precision run is needed as the reference")
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    fp = runs["FP"]
+    n = len(next(iter(fp.ids.values())))
+    D = draws(n, n_boot, seed)
+    langs = [c for c in fp.languages if all(r.has(c, f"zero_{K}@{c}") for r in runs.values())]
+    cov = [c for c in (covered or langs) if c in langs]
+    eff = {lab: {c: functional_effect(r, c, K, D) for c in langs} for lab, r in runs.items()}
+    mac = {lab: macro(eff[lab], cov) for lab in runs}
+    res = {"K": K, "n_boot": n_boot, "seed": seed, "bands": list(bands), "covered": cov, "n_positions": n, "effects": {}, "macro": {}, "retention": {}, "sham": {}, "off_target": {}}
+    for lab in runs:
+        res["effects"][lab] = {c: {**_row(eff[lab][c]["point"], eff[lab][c]["samples"]), "harm_group": eff[lab][c]["harm_group"], "harm_control": eff[lab][c]["harm_control"],
+                                   "norm_ratio_group": eff[lab][c]["norm_ratio_group"], "norm_ratio_control": eff[lab][c]["norm_ratio_control"]} for c in langs}
+        res["macro"][lab] = _row(mac[lab]["point"], mac[lab]["samples"])
+        sh = {c: sham_check(runs[lab], c, K, D) for c in langs if runs[lab].has(c, f"sham_{K}@{c}")}
+        res["sham"][lab] = {c: _row(s["point"], s["samples"]) for c, s in sh.items()}
+        res["off_target"][lab] = {c: {t: _row(o["point"], o["samples"]) for t, o in off_target(runs[lab], c, K, D).items()} for c in langs}
+        if lab != "FP":
+            res["retention"][lab] = {"macro": retention(mac[lab], mac["FP"], bands), "languages": {c: retention(eff[lab][c], eff["FP"][c], bands) for c in langs}}
+    fid = fidelity_table(runs)
+    res["fidelity"] = fid
+    (out / "analysis.json").write_text(json.dumps(res, indent=1) + "\n")
+    with open(out / "effects_by_language.csv", "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["precision", "language", "effect", "lo", "hi", "harm_group", "harm_control", "norm_ratio_group", "norm_ratio_control"])
+        for lab in runs:
+            for c in langs:
+                e = res["effects"][lab][c]; w.writerow([lab, c, e["point"], e["lo"], e["hi"], e["harm_group"], e["harm_control"], e["norm_ratio_group"], e["norm_ratio_control"]])
+    with open(out / "retention.csv", "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["precision", "language", "ratio", "lo", "hi", "class"])
+        for lab, r in res["retention"].items():
+            for c, v in [("MACRO", r["macro"])] + list(r["languages"].items()):
+                w.writerow([lab, c, v["ratio"], v["lo"], v["hi"], v["class"]])
+    with open(out / "fidelity.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["precision", "language", "fvu", "l0", "rms_norm", "rows"]); w.writeheader(); w.writerows(fid)
+    (out / "report.md").write_text(report_text(res, runs))
+    return res
+
+
+def report_text(res, runs):
+    K, B = res["K"], res["n_boot"]
+    L = [f"# Functional effects of language feature groups (group size {K})", "",
+         "**Exploratory on already examined data** (FLORES devtest sentences; the features were selected on dev). Next-token loss only; no claim about task accuracy or meaning. "
+         "E is the harm (nats per token, NLL after the edit minus NLL before it, same precision, same sentences) of zero-ablating the language's selective group beyond the mean harm of its "
+         f"activity-matched controls on the language's own text; positive = the selective group matters more than equally active non-selective features. Intervals: {B} paired cluster-bootstrap draws "
+         "over sentence ids (percentile, descriptive; the observed value is the estimate). The retention ratio is E at a precision over E in full precision, classified preserved / attenuated / amplified "
+         f"against the bands [{res['bands'][0]}, {res['bands'][1]}], inconclusive otherwise, undefined when the full-precision interval does not lie above zero.", "",
+         f"Languages in the macro average: {len(res['covered'])} ({', '.join(res['covered'])}). Positions (sentences per language): {res['n_positions']}.", "", "## Macro effect and retention", "",
+         "| precision | E (macro) | 95 % interval | ratio to FP | interval | class |", "|---|---|---|---|---|---|"]
+    for lab in res["macro"]:
+        m = res["macro"][lab]; r = res["retention"].get(lab, {}).get("macro")
+        L.append(f"| {lab} | {m['point']:.4f} | [{m['lo']:.4f}, {m['hi']:.4f}] | " + (f"{r['ratio']:.2f} | [{r['lo']:.2f}, {r['hi']:.2f}] | {r['class']} |" if r and r["ratio"] is not None else f"- | - | {r['class'] if r else 'reference'} |"))
+    L += ["", "## Sham check (the edit path with no intended change; must be about 0 nats per token)", "", "| precision | language | harm | interval |", "|---|---|---|---|"]
+    for lab, d in res["sham"].items():
+        for c, s in d.items():
+            L.append(f"| {lab} | {c} | {s['point']:.5f} | [{s['lo']:.5f}, {s['hi']:.5f}] |")
+    L += ["", "## Effect by language", "", "| precision | language | E | interval | group harm | control harm | removed norm group / control |", "|---|---|---|---|---|---|---|"]
+    for lab, d in res["effects"].items():
+        for c, e in d.items():
+            ng = f"{e['norm_ratio_group']:.3f} / {e['norm_ratio_control']:.3f}" if e["norm_ratio_group"] is not None and e["norm_ratio_control"] is not None else "-"
+            L.append(f"| {lab} | {c} | {e['point']:.4f} | [{e['lo']:.4f}, {e['hi']:.4f}] | {e['harm_group']:.4f} | {e['harm_control']:.4f} | {ng} |")
+    L += ["", "## Off-target harm of the group's zero-ablation on other languages' text (manipulation check)", "", "| precision | group | text | harm | interval |", "|---|---|---|---|---|"]
+    for lab, d in res["off_target"].items():
+        for c, tx in d.items():
+            for t, o in tx.items():
+                L.append(f"| {lab} | {c} | {t} | {o['point']:.5f} | [{o['lo']:.5f}, {o['hi']:.5f}] |")
+    return "\n".join(L) + "\n"
+
+
+def main(argv=None):
+    import argparse
+    ap = argparse.ArgumentParser(description="Analyse functional-validation item files (T-LM).")
+    ap.add_argument("--runs", required=True, help="directory with func_lm_<split>_<precision>.pt files"); ap.add_argument("--split", default="pilot"); ap.add_argument("--out", required=True)
+    ap.add_argument("--K", default="K64"); ap.add_argument("--n-boot", type=int, default=2000); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--covered", nargs="*")
+    a = ap.parse_args(argv)
+    runs = {}
+    for p in sorted(Path(a.runs).glob(f"func_lm_{a.split}_*.pt")):
+        r = Run.from_file(p); runs[r.label] = r
+    analyse(runs, a.out, a.K, a.n_boot, a.seed, a.covered)
+    print("wrote", a.out, sorted(runs))
+
+
+if __name__ == "__main__":
+    main()
