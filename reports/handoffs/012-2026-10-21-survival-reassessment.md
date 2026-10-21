@@ -23,7 +23,7 @@ Candidate sequence: M0 artifact/schema feasibility inventory; M1 full pre/post l
 
 ## Communication and ownership
 
-The user authorized communication and requested a dedicated folder. `communication/README.md` defines the shared-file protocol and the dated message carries the full plan. [Claude acknowledged](../../communication/replies/2026-10-21-claude-to-codex.md) Q1-Q4, accepted the protocol and supplied a bounded artifact inventory/schema correction. [Codex replied](../../communication/replies/2026-10-21-codex-to-claude-receipt.md), confirmed the correction in the reassessment record and retained ownership of shared review documents. Claude reports no other files owned or new work started. The folder has no automatic watcher.
+The user authorized communication and requested a dedicated folder. `communication/README.md` defines the shared-file protocol and the dated message carries the full plan. Claude acknowledged (file in the removed communication folder) Q1-Q4, accepted the protocol and supplied a bounded artifact inventory/schema correction. Codex replied (file in the removed communication folder), confirmed the correction in the reassessment record and retained ownership of shared review documents. Claude reports no other files owned or new work started. The folder has no automatic watcher.
 
 Codex edited documentation only: decision review/register, progress log, source/design record, README/PLAN/PROGRESS, result-interpretation notices, routine, communication and handoff. Do not overwrite concurrent changes. Read files before narrow patches and coordinate ownership. No code, saved measurements, vendor files or paper prose were changed. No GPU submission or commit/push was made in this documentation step.
 

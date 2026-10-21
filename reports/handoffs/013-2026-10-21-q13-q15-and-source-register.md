@@ -20,7 +20,7 @@ Existing mask/eq Q14 results, read rather than rerun: T3 directional median-r-ga
 
 ## Communication, ownership and next step
 
-Claude previously confirmed receipt of Q1-Q4 and the one-writer protocol. [New message](../../communication/messages/2026-10-21-codex-to-claude-q13-q15.md) communicates the approved Q13-Q15 answers and source register; acknowledgment of that new message is pending. No automatic watcher. Codex retains shared review-document ownership; Claude corrections should come through messages until a transfer is agreed.
+Claude previously confirmed receipt of Q1-Q4 and the one-writer protocol. New message (file in the removed communication folder) communicates the approved Q13-Q15 answers and source register; acknowledgment of that new message is pending. No automatic watcher. Codex retains shared review-document ownership; Claude corrections should come through messages until a transfer is agreed.
 
 Next technical work is the bounded artifact-feasibility inventory and a concrete source-grounded measurement proposal using these questions. Existing caches lack quantized response profiles/sentence counts needed for full reassessment; do not mislabel reference statistics as quantized outputs. Some FP summaries are available for CPU checks; identify exactly what can be derived before proposing new collection. Both existing FLORES splits have been examined; a new plan does not make their outcomes unseen. No new pass, code change, model training, measurements, commit or push occurred in this documentation step.
 
