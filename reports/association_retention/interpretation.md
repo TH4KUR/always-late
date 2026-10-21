@@ -67,7 +67,7 @@ Partly. The instrument behaves consistently where it was tested: the new full-pr
 
 ## Reproducibility
 
-The analysis was run twice from the same sidecar with the same seed (Slurm `31807` and `31808`, then `31919` and `31920`): all four files of each stream (`analysis.json`, `feature_status.csv`, `language_summary.csv`, `association_retention.md`) are byte-identical (sha256 equal, 2026-10-21). The full-precision evaluation of the new run equals the original Phase 1 run exactly (see `STATUS.md`).
+The analysis was run twice from the same sidecar with the same seed (Slurm `31807` and `31808`, then `31919` and `31920`): all four files of each stream (`analysis.json`, `feature_status.csv`, `language_summary.csv`, `association_retention.md`) are byte-identical (sha256 equal, 2026-10-21). The full-precision evaluation of the new run equals the original Phase 1 run exactly (see `STATUS.md`). The headline counts were also re-derived with a separate, plain implementation that imports none of the analysis modules (`scripts/g0/check_association_headline_independent.py`, run on the raw equal-budget profile): 6,663 established and 124 / 168 / 356 / 726 / 1,945 lost at INT8 / INT7 / INT6 / INT5 / INT4, 56 at INT16 and INT12, 0 at INT0, identical to the report.
 
 ## Remaining
 
