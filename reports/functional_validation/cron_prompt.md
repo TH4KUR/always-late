@@ -1,6 +1,20 @@
 # Prompt of the 40-minute recurring job (functional-validation study, D-039/D-040)
 
-Two session-only recurring cron entries give an exact 40-minute cadence (local time): `7,47 0-22/2 * * *` and `27 1-23/2 * * *` (00:07, 00:47, 01:27, 02:07, ...). Recurring entries expire after 7 days (created 2026-10-21, so until about 2026-10-28) and live only in the Claude session; if `CronList` shows fewer than two entries with this prompt, recreate them with `CronCreate` (recurring true) and the text of the code block. The scheduler adds jitter, so the cadence is approximate. Jobs fire only while the REPL is idle.
+**Rescheduled 2026-10-22 02:02 at the user's request ("start from 3:11am in the same cadence").** Three session-only recurring entries, each with the SHORT pointer prompt below (the fenced block further down is the full instruction set and is read at every firing, so it can be edited without recreating the jobs):
+
+| id | cron expression | listed times | actual firing times |
+|---|---|---|---|
+| `22155376` | `3 1-23/2 * * *` | :03 of odd hours | :11 of odd hours (3:11, 5:11, ... and 1:11) |
+| `8927e5b6` | `21 1-23/2 * * *` | :21 of odd hours | :51 of odd hours (3:51, 5:51, ... and 1:51) |
+| `846aad0a` | `1 0-22/2 * * *` | :01 of even hours | :31 of even hours (4:31, 6:31, ... and 0:31, 2:31) |
+
+Together: 3:11, 3:51, 4:31, 5:11, 5:51, 6:31, ... exactly 40 minutes apart. **Why the listed times differ from the actual ones:** the scheduler delays every recurring entry by a fixed random amount of 0 to 30 minutes chosen when the entry is created (observed: 6, 8, 13, 14, 16, 23, 26, 30 minutes, often exactly 30). The "Next run" printed by `CronCreate` and `CronList` is the actual time. To (re)create a slot: create several candidates with the listed expression and the pointer prompt, keep the one whose printed next run equals the wanted time, delete the others (the short prompt makes retries cheap). Recurring entries expire after 7 days (created 2026-10-22, so about 2026-10-29) and live only in the Claude session; after a restart recreate all three. The scheduler runs a job only while the REPL is idle.
+
+Pointer prompt used by all three entries:
+
+> 40-minute step for the ANLP project in /home/karma/Documents/ANLP/project/always-late (the user's recurring 40-minute job of 2026-10-21: check Ada jobs, write code, analyse results, make figures, add questions to the decisions docs, update and consolidate documentation; novelty, publishability and methodological correctness first; plans before code). You are Claude. Open reports/functional_validation/cron_prompt.md, read the fenced code block in it and follow that text exactly as your instructions for this firing (it holds the full rules and priorities and supersedes this line). Do ONE bounded step, then stop.
+
+Full instruction set (the first fenced block of this file):
 
 ```
 40-minute step for the ANLP project in /home/karma/Documents/ANLP/project/always-late (user, 2026-10-21: "setup a cronjob for every 40 minutes to check the ada jobs if anything is queued, add more implementation code, analyse the results and make plots figures and other things for comparison, add questions to the decisions docs, update all documentation, clean up old documentation as needed to remove redundancies. the cronjob can do any of these as per the priority of work available to it. the main thing is to continue writing code and queueing the jobs based on my answers. establish the research questions we are answering and working towards strengthening those, and if done, work towards our original proposal. novelty and publishability are priority, and correctness of methodology is non-negotiable. always make plans first before implementing and ensure that it is sensible."). You are Claude. Do ONE bounded step (it may be big if it is one coherent unit), then stop. Do not rely on memory of earlier turns.
@@ -17,5 +31,5 @@ Two session-only recurring cron entries give an exact 40-minute cadence (local t
 4. Questions for the user: add each as a new Q-item in DECISIONS_FOR_REVIEW.md with a default (format of Q17), keep working on the default. Only if NO useful work is possible without an answer, write `BLOCKED: <question id>` as the first line of STATUS.md NEXT STEP and say so in the final message.
 5. Finish every firing by rewriting the NEXT STEP block and appending to the Log in reports/functional_validation/STATUS.md (state the next step concretely, its source and what "done" looks like), update the affected documents (README index, PROGRESS.md/PLAN.md pointers only when the state changed, reports/progress_log.md for a finished step), commit and push. After a finished plan task or a finished job analysis write the next handoff in reports/handoffs/ (next free number, TEMPLATE.md).
 6. If nothing can be done (a job is running and no code is pending, or a user decision is needed), say so in one line, change nothing, and stop; do not invent analyses. If a step is too big for one firing, leave a clean intermediate state (tests green or the failing test written down in STATUS.md).
-7. Cadence guard: run CronList. If fewer than two entries with this prompt exist (the 7-day expiry or a restart), recreate them as described in reports/functional_validation/cron_prompt.md and note it in STATUS.md.
+7. Cadence guard: run CronList. If fewer than three entries with the pointer prompt exist (the 7-day expiry or a restart), recreate them as described at the top of reports/functional_validation/cron_prompt.md (three slots, candidates until the printed next run is the wanted time) and note it in STATUS.md.
 ```
