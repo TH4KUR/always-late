@@ -218,7 +218,7 @@ def run_gates(full, lower, upper, encode, W_dec, tokens, valid, idx):
     return res
 
 
-FAMILIES = ("zero", "controls", "sham", "scale", "mean", "resample", "rescue", "rescue_bounds")
+FAMILIES = ("zero", "controls", "n_controls", "sham", "scale", "mean", "resample", "rescue", "rescue_bounds")
 
 
 def _size(label):
@@ -228,7 +228,7 @@ def _size(label):
 def build_configs(man, run_langs, targets, panel, families, off_target_label="K64", mean_vals_fn=None, pool_fn=None, n_features=None):
     """Edit configurations from the frozen groups manifest. run_langs: language codes of the run in batch-index order; targets: codes to build for; panel: codes whose text is used for the
     off-target check (limited to run_langs); families: {"zero": [labels], "controls": [labels] (every draw of the manifest), "sham": [labels], "scale": {label: [alphas]}, "mean": [labels],
-    "resample": [labels], "rescue": [labels] (FP-donor patch of the group and of every control draw), "rescue_bounds": [True] (donor patches of all features, of the SAE error term and of the whole
+    "resample": [labels], "n_controls": {label: number of control draws to use (cap; default all draws of the manifest)}, "rescue": [labels] (FP-donor patch of the group and of every control draw), "rescue_bounds": [True] (donor patches of all features, of the SAE error term and of the whole
     residual, on every language of the run; needs n_features)} with labels as in the manifest (K16, K64, all). Names are `<family>[draw]_<label>@<target>`. Only the zero-ablation of `off_target_label` also runs on the panel text
     (target excluded); every other configuration runs on its target language's text only. mean_vals_fn(code, idx) and pool_fn(code, idx) supply the mean-ablation values and the resample pool."""
     bad = [f for f in families if f not in FAMILIES]
@@ -246,6 +246,11 @@ def build_configs(man, run_langs, targets, panel, families, off_target_label="K6
             raise ValueError(f"unknown group size {label!r} for {code}")
         return torch.tensor(man["groups"][code]["all"][:man["sizes"][code][label]], dtype=torch.long)
 
+    caps = families.get("n_controls", {})
+    if any(v < 1 for v in caps.values()):
+        raise ValueError("n_controls caps must be at least 1")
+    draws_of = lambda code, label: man["controls"][code][label][:caps.get(label)]
+
     for code in targets:
         i = index[code]
         for label in families.get("zero", []):
@@ -254,7 +259,7 @@ def build_configs(man, run_langs, targets, panel, families, off_target_label="K6
         for label in families.get("controls", []):
             if label not in man["controls"][code]:
                 raise ValueError(f"no control draws of size {label!r} for {code}")
-            for r, s in enumerate(man["controls"][code][label]):
+            for r, s in enumerate(draws_of(code, label)):
                 cfgs.append({"name": f"ctrl{r}_{label}@{code}", "kind": "ablate", "idx": torch.tensor(s, dtype=torch.long), "langs": {i}})
         for label in families.get("sham", []):
             cfgs.append({"name": f"sham_{label}@{code}", "kind": "sham", "idx": ids(code, label), "langs": {i}})
@@ -268,7 +273,7 @@ def build_configs(man, run_langs, targets, panel, families, off_target_label="K6
             cfgs.append({"name": f"mean_{label}@{code}", "kind": "mean", "idx": idx, "langs": {i}, "kw": {"mean_vals": mean_vals_fn(code, idx)}})
         for label in families.get("rescue", []):
             cfgs.append({"name": f"rescue_{label}@{code}", "kind": "donor", "idx": ids(code, label), "langs": {i}})
-            for r, s in enumerate(man["controls"][code][label]):
+            for r, s in enumerate(draws_of(code, label)):
                 cfgs.append({"name": f"rescuectrl{r}_{label}@{code}", "kind": "donor", "idx": torch.tensor(s, dtype=torch.long), "langs": {i}})
         for label in families.get("resample", []):
             if pool_fn is None:
@@ -323,6 +328,9 @@ PRESETS = {
     "none": {},
     "smoke": {"zero": ["K64"], "controls": ["K64"], "sham": ["K64"], "scale": {"K64": [0.5, 2.0]}, "mean": ["K64"], "resample": ["K64"]},
     "primary": {"zero": ["K16", "K64", "all"], "controls": ["K16", "K64", "all"], "sham": ["K64"], "scale": {"K64": [0.5, 2.0]}, "mean": ["K64"], "resample": ["K64"]},
+    # evaluation presets (reduction order of design section 8, applied to the pilot's 21 configurations per language: fewer control draws, no dose and mean-ablation families)
+    "eval": {"zero": ["K16", "K64", "all"], "controls": ["K16", "K64", "all"], "n_controls": {"K16": 3, "K64": 3, "all": 2}, "sham": ["K64"], "resample": ["K64"]},
+    "floor": {"zero": ["K64"], "controls": ["K64"], "n_controls": {"K64": 3}, "sham": ["K64"]},
 }
 LAYER = 12
 
@@ -342,7 +350,7 @@ def main(argv=None):
     ap.add_argument("--manifest", default=str(ROOT / "reports/functional_validation/groups_manifest.json")); ap.add_argument("--selectivity", required=True)
     ap.add_argument("--split", choices=["pilot", "eval"], default="pilot"); ap.add_argument("--n-pilot", type=int, default=150); ap.add_argument("--n-eval", type=int, default=450)
     ap.add_argument("--lm-seed", type=int, default=0); ap.add_argument("--languages", nargs="*"); ap.add_argument("--max-sentences", type=int)
-    ap.add_argument("--preset", choices=sorted(PRESETS), default="smoke"); ap.add_argument("--off-target-label", default="K64")
+    ap.add_argument("--preset", choices=sorted(PRESETS), default="smoke"); ap.add_argument("--off-target-label", default="K64"); ap.add_argument("--panel", nargs="*", default=list(PANEL), help="languages whose text is used for the off-target check")
     ap.add_argument("--rescue", help="group size label (K16, K64, all): add FP-donor patch configurations of that group, its controls and the bounds (all features, error term, whole residual) for every quantized precision")
     ap.add_argument("--max-tokens", type=int, default=1024); ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--pool-sentences", type=int, default=120); ap.add_argument("--pool-rows", type=int, default=300); ap.add_argument("--commit", default="unknown")
@@ -426,7 +434,7 @@ def main(argv=None):
         fams = dict(families)
         if a.rescue and prec != "FP":
             fams["rescue"] = [a.rescue]; fams["rescue_bounds"] = [True]
-        configs = build_configs(man, run_names, run_names, list(PANEL), fams, a.off_target_label, mean_vals_fn=mean_fn, pool_fn=pool_fn, n_features=int(sae.cfg.d_sae))
+        configs = build_configs(man, run_names, run_names, list(a.panel), fams, a.off_target_label, mean_vals_fn=mean_fn, pool_fn=pool_fn, n_features=int(sae.cfg.d_sae))
         passes = sum((1 + sum(1 for c in configs if b["lang"] in c["langs"])) * int(b["valid"].sum()) for b in batches)
         ts = time.time()
         out = evaluate_precision(lower, upper, encode, W_dec, batches, n_sent, configs, decode=decode, donors=donors, device=DEVICE)

@@ -116,7 +116,10 @@ def retention_macro(eb_by_lang, efp_by_lang, covered, bands=BANDS):
         return {"ratio": None, "lo": None, "hi": None, "class": "undefined", "n_languages": 0, "languages": []}
     samples = np.mean([eb_by_lang[c]["samples"] / efp_by_lang[c]["samples"] for c in langs], axis=0)
     lo, hi = _ci(samples)
-    return {"ratio": float(np.mean([eb_by_lang[c]["point"] / efp_by_lang[c]["point"] for c in langs])), "lo": lo, "hi": hi, "class": _classify(lo, hi, bands), "n_languages": len(langs), "languages": langs}
+    ratios = np.array([eb_by_lang[c]["point"] / efp_by_lang[c]["point"] for c in langs])
+    med_lo, med_hi = _ci(np.median([eb_by_lang[c]["samples"] / efp_by_lang[c]["samples"] for c in langs], axis=0))       # robust secondary: tiny-effect languages can have ratios of 5 to 10
+    return {"ratio": float(ratios.mean()), "lo": lo, "hi": hi, "class": _classify(lo, hi, bands), "n_languages": len(langs), "languages": langs,
+            "median_ratio": float(np.median(ratios)), "median_lo": med_lo, "median_hi": med_hi}
 
 
 def family_table(run, D):
@@ -296,14 +299,14 @@ def report_text(res, runs):
          "over sentence ids (percentile, descriptive; the observed value is the estimate). Macro retention is the mean over languages of the per-language ratio E at a precision over E in full precision (D-041; languages whose full-precision interval lies above zero), classified preserved / attenuated / amplified "
          f"against the bands [{res['bands'][0]}, {res['bands'][1]}], inconclusive otherwise, undefined when the full-precision interval does not lie above zero.", "",
          f"Languages in the macro average: {len(res['covered'])} ({', '.join(res['covered'])}). Positions (sentences per language): {res['n_positions']}.", "", "## Macro effect and retention", "",
-         "| precision | mean E | 95 % interval | median E | languages with E > 0 | retention (mean of per-language ratios) | interval | class (languages) | pooled ratio (dominated by large effects) |", "|---|---|---|---|---|---|---|---|---|"]
+         "| precision | mean E | 95 % interval | median E | languages with E > 0 | retention (mean of per-language ratios) | interval | class (languages) | median ratio [interval] | pooled ratio (dominated by large effects) |", "|---|---|---|---|---|---|---|---|---|---|"]
     for lab in res["macro"]:
         m = res["macro"][lab]; r = res["retention"].get(lab, {}).get("macro"); pl = res["retention"].get(lab, {}).get("pooled")
         head = f"| {lab} | {m['point']:.4f} | [{m['lo']:.4f}, {m['hi']:.4f}] | {m['median']:.4f} | {m['n_positive']} of {len(res['covered'])} | "
         if r and r["ratio"] is not None:
-            L.append(head + f"{r['ratio']:.2f} | [{r['lo']:.2f}, {r['hi']:.2f}] | {r['class']} ({r['n_languages']}) | " + (f"{pl['ratio']:.2f} |" if pl and pl["ratio"] is not None else "- |"))
+            L.append(head + f"{r['ratio']:.2f} | [{r['lo']:.2f}, {r['hi']:.2f}] | {r['class']} ({r['n_languages']}) | {r['median_ratio']:.2f} [{r['median_lo']:.2f}, {r['median_hi']:.2f}] | " + (f"{pl['ratio']:.2f} |" if pl and pl["ratio"] is not None else "- |"))
         else:
-            L.append(head + f"- | - | {r['class'] if r else 'reference'} | - |")
+            L.append(head + f"- | - | {r['class'] if r else 'reference'} | - | - |")
     if res.get("families"):
         L += ["", "## Dose, size and replacement (median over languages of the harm in nats per token on the language's own text)", ""]
         fams = sorted({f for d in res["families"].values() for f in d["median_by_family"]})

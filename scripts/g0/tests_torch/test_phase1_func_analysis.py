@@ -295,6 +295,15 @@ class MacroRetention(unittest.TestCase):
         pooled = fa.retention(fa.macro(eff["INT6"], ["aa", "bb"]), fa.macro(eff["FP"], ["aa", "bb"]))
         self.assertAlmostEqual(pooled["ratio"], 0.95, delta=0.03)                           # the pooled ratio is dominated by the large language
 
+    def test_the_median_ratio_is_reported_as_a_robust_secondary(self):
+        fp, b = two_language_runs({"aa": 0.4, "bb": 0.4, "cc": 0.4}, {"aa": 0.2, "bb": 0.4, "cc": 1.2})            # ratios 0.5, 1.0, 3.0
+        D = fa.draws(300, 400, seed=0)
+        eff = {lab: {c: fa.functional_effect(r, c, "K64", D) for c in ("aa", "bb", "cc")} for lab, r in (("FP", fp), ("INT6", b))}
+        m = fa.retention_macro(eff["INT6"], eff["FP"], ["aa", "bb", "cc"])
+        self.assertAlmostEqual(m["ratio"], 1.5, delta=0.05)
+        self.assertAlmostEqual(m["median_ratio"], 1.0, delta=0.05)
+        self.assertLessEqual(m["median_lo"], m["median_ratio"]); self.assertGreaterEqual(m["median_hi"], m["median_ratio"])        # zero-width here: the middle language is identical in both runs
+
     def test_languages_without_a_clearly_positive_full_precision_effect_are_left_out(self):
         fp, b = two_language_runs({"aa": 0.4, "bb": 0.0}, {"aa": 0.4, "bb": 0.3})
         D = fa.draws(300, 400, seed=0)

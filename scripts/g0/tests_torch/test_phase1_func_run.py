@@ -213,6 +213,14 @@ class BuildConfigs(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.build(targets=("cc",), families={"mean": ["K2"]})
 
+    def test_the_number_of_control_draws_can_be_capped_per_size(self):
+        cfgs = {c["name"]: c for c in self.build(families={"zero": ["K2"], "controls": ["K2", "all"], "n_controls": {"K2": 1}, "rescue": ["K2"]})}
+        self.assertIn("ctrl0_K2@aa", cfgs); self.assertNotIn("ctrl1_K2@aa", cfgs)              # K2 has two draws in the manifest, one is kept
+        self.assertIn("ctrl0_all@aa", cfgs)                                                    # a size without a cap keeps all its draws
+        self.assertIn("rescuectrl0_K2@aa", cfgs); self.assertNotIn("rescuectrl1_K2@aa", cfgs)  # the cap also applies to the rescue controls
+        with self.assertRaises(ValueError):
+            self.build(families={"controls": ["K2"], "n_controls": {"K2": 0}})
+
     def test_unknown_label_target_or_family_is_an_error(self):
         for fam in ({"zero": ["K9"]}, {"bogus": ["K2"]}):
             with self.assertRaises(ValueError):
