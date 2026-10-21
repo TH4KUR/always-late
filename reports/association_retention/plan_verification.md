@@ -1,6 +1,6 @@
 # Verification of the language-association-retention plan (D-035)
 
-Date: 2026-10-21. Written by Claude at the user's request ("ensure the plan is factually correct and not already done in other papers, or overexaggerated, before starting implementation and queueing jobs"). Scope: [the design (section 7)](../survival_method_reassessment.md#7-selected-next-study-language-association-retention-d-035), [the implementation plan](../../docs/superpowers/plans/2026-10-21-language-association-retention.md) and the sources they cite ([register](../research_sources.md)). This file is a check, not paper prose; it changes none of Codex's documents, and every correction below is for her to apply or for the user to overrule.
+Date: 2026-10-21. Written by Claude at the user's request ("ensure the plan is factually correct and not already done in other papers, or overexaggerated, before starting implementation and queueing jobs"). Scope: [the design (section 7)](../survival_method_reassessment.md#7-selected-next-study-language-association-retention-d-035), [the implementation plan](../../docs/superpowers/plans/2026-10-21-language-association-retention.md) and the sources they cite ([register](../research_sources.md)). This file is a check, not paper prose. When first written it changed none of Codex's documents; later the same day the user authorised Claude to update her work, and the register and reassessment corrections below, the plan amendments and the status notes were applied (D-036). The corrections stay visible here with their evidence; Codex or the user may overrule them.
 
 ## Verdict
 
@@ -63,9 +63,11 @@ Consequences for the claims:
 4. **Tie handling.** The frozen dev peak was an `argmax` (first index on ties); the plan's tie sets apply to the evaluation profiles. Record the number of dev ties in the manifest.
 5. **Constraints that no longer hold.** The plan's global constraint "No cron, additional chat" reflects the earlier instruction; the user has since asked for a recurring job every 20 minutes (2026-10-21). Codex owns the wording.
 
-## 4. Literature register: statements to correct (for Codex)
+## 4. Literature register: statements to correct (applied to the register and the reassessment on 2026-10-21, D-036)
 
 Three audit agents confirmed that titles, venues and years match the register for all 22 items they checked (P01-P19 and S01-S03), and listed these corrections (each with a quoted phrase and a location in their reports; they are agent findings I have not re-fetched one by one):
+
+Re-read by Claude in the primary PDFs after the audit: P14 (the word "confidence" does not occur; "magnitude" occurs only in "orders of magnitude"), P13 (Table 2 values and the caption's own statement that PT-BR has the heavier tail on average and English the highest maximum; English degrades +18 % against +3.9 %), P03 (the Figure 9 caption says "65K for 2B"), and the FLORES-200 licence (CC BY-SA 4.0 on the facebook/flores dataset card). Everything else in this section is as reported by the audit agents.
 
 - **P14 Olmo (Findings NAACL 2025):** overstated. The paper never measures SAE-latent magnitude (its evidence is perturbation norm vs loss in GPT-2) and the word "confidence" does not occur; delete "or confidence" from the reassessment row and restate the magnitude point as the authors' motivation.
 - **P13 Silva (PROPOR 2026):** the register is accurate but understates: Table 2 reports higher mean, P95 and P99 activations for PT-BR, English is higher only on the maximum, INT8 is lossless in both languages and English (the high-resource language) degrades more under naive FP8. The paper's mechanism is weakly supported (two unmatched texts, no intervention).
@@ -78,7 +80,7 @@ Three audit agents confirmed that titles, venues and years match the register fo
 - **P02 Deng (ACL 2025):** ablation is a decoder-direction projection scored by cross-entropy (it never uses the encoder), English is dropped from the analysis, the SAE width is not stated, and the limitations say low-resource languages are not covered. The agent notes the paper evaluates Gemma-2-2B with Gemma Scope on FLORES (10 languages), making it the closest setup precedent.
 - **P12 Imai (Stat. Sci. 2010):** "regression adjustment alone is insufficient" is a gloss, not the paper's statement.
 - **P01:** record both titles of 2606.03002 and "submitted to TMLR"; **P19** exists as a published article (Neurocomputing 704, article 134826; DOI record from 2026-08-14), so "not verified" is stale, but its full text has not been read by anyone here; **P05** appeared at COLM 2025 per the OpenReview API record (no explicit acceptance decision seen); **P18**'s headline "tax" is a word-fertility ratio and the character fertility used in our covariate is its stated fallback (our `language_level.md` gloss "tokens per character relative to English" is a repo gloss).
-- **Add to the register:** Gupte et al. 2507.15977, Kurz et al. (TACL 2026), Verma et al. (ACL 2026), Marchisio et al. (Findings EMNLP 2024), UniComp, Marie and Fujita, Soualhi, Chimoto et al. (EACL 2026), "Steering Under Compression" (arXiv 2609.06473) and "When Pruning Meets Interpretability" (arXiv 2608.25941).
+- **Added to the register as P20-P29:** Gupte et al. 2507.15977, Kurz et al. (TACL 2026), Verma et al. (ACL 2026), Marchisio et al. (Findings EMNLP 2024), UniComp, Marie and Fujita, Soualhi, Chimoto et al. (EACL 2026), "Steering Under Compression" (arXiv 2609.06473) and "When Pruning Meets Interpretability" (arXiv 2608.25941).
 
 ## 5. What was not verified
 

@@ -3,6 +3,8 @@
 **Hugging Face dataset (private):** https://huggingface.co/datasets/karma-skz/always-late-artifacts  
 Owner `karma-skz`; contents and provenance are in the dataset card (`reports/g0/hf_dataset_card.md`, uploaded as its `README.md`); `MANIFEST.sha256` there lists the SHA-256 of every file. Download (needs a token with read access): `hf download karma-skz/always-late-artifacts --repo-type dataset --local-dir artifacts`.
 
+**Card update, 2026-10-21:** the dataset card was rewritten (licences and attribution, Phase 1 contents, the saved-statistics schema caveat) and uploaded as a third commit (`43026509`, README only); a pre-publication scan of the 274 files found no tokens, keys, emails or addresses. The dataset is still private: Q10 (make it public) is answered yes but the visibility change is waiting for the user (see `DECISIONS_FOR_REVIEW.md` Q10).
+
 **Upload status:** two commits from Ada. (1) 2026-10-18 02:13 IST: baseline, smokes, R1, R2, R5a-c (225 files, 297 MB). (2) 2026-10-18 05:43 IST: the same spec extended with the Phase 1 outputs (`runs/phase1/{p1-mask,p1-none,anchor-batch1,anchor-batch4,smoke-flores-3lang,smoke2-flores-3lang-eq}`; `survival.pt` / `selectivity.pt` per stream, about 25 MB each); the MANIFEST.sha256 now covers 274 files. **STATUS: VERIFIED** after each commit by `hf_artifacts.py` (remote sizes compared with local): 274 files present, 0 missing, 0 size mismatches (logs `hf_upload2.log`, `hf_upload3.log` on Ada). The analysis reports and per-run summaries are in git (`reports/phase1/`).
 
 ## What is where

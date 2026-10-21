@@ -22,7 +22,7 @@
 - Existing FLORES dev selects the cohort; existing devtest evaluates pre/post differences. Both splits have already been examined: this is exploratory reassessment, not unseen confirmation.
 - Preserve historical code behavior when collection is disabled, all saved numerical results, `third_party/`, and `paper/` prose. Write new outputs to a new run directory.
 - Broader Q13-Q15 mechanism/confidence/reconstruction studies, interventions, probes, new SAEs and new corpora are outside this implementation.
-- No cron, additional chat, new Duan comparison or retired `none` workload. No automatic commit/push or GPU submission is performed by writing this plan.
+- No additional chat, new Duan comparison or retired `none` workload. Amended 2026-10-21 on the user's instruction: a recurring job (every 20 minutes, inside the Claude session) performs one bounded step per firing from [the status file](../../../reports/association_retention/STATUS.md); it queues no GPU job before the Task 5 gates and the amendments below pass. Writing this plan performed no GPU submission.
 
 ## Review focus
 
@@ -112,6 +112,18 @@ Use equations and support defaults in the spec. Preserve ties as sets rather tha
 - [ ] Answer the selected question at every width and for each original language. State when the FP evaluation fails to reproduce the dev label, when activity/support is inadequate, and when the peak remains while specificity weakens. Absence of a detected change is not proof of unchanged function or meaning.
 - [ ] Record whether the fixed SAE permits a clear association conclusion. If evidence suggests instrument mismatch, report the limitation and propose a bounded follow-up; do not automatically launch the wider Q15 or new-SAE work.
 - [ ] Update the reassessment, progress log, current plan/progress, artifact inventory and next handoff with actual outcomes and uncertainty. Keep the source register's existing publication/scope limits. Describe this as measurement validation, not a novelty-certified paper contribution.
+
+## Verification amendments (2026-10-21, Claude at the user's request)
+
+[The plan verification](../../../reports/association_retention/plan_verification.md) found the plan's statements about our code and saved results correct and added these facts and constraints. They amend, and do not replace, the tasks above.
+
+1. **Cohort facts (from the saved `mask/eq` files):** 8,086 selective features (at least 73 in every language; English 1,719) and 2,860 matched controls; their union is the entire supported set, 10,946 of 16,384 features, so "the fixed union" for sentence-level storage is two thirds of the dictionary. No language has a zero-member cohort in this run (the NA rule stays for subsets).
+2. **FP baseline ceiling:** on devtest full-precision data, 6,663 of the 8,086 selective features (82.4 %) satisfy the Task 3 baseline conditions (unique peak at the dev language, at least 50 positives there, panel rate at least 1e-5); 89 are tied at the maximum. Report the baseline-establishment fraction beside the headline as planned; per-language shares range down to 39/73 (por_Latn), 46/83 (rus_Cyrl) and 87/137 (pol_Latn).
+3. **Smoke masks:** `keep_masks` seeds by (seed, split offset, language index) and the budget is the minimum over the languages present, so a `--languages` subset does not reproduce the full-run positions or budgets. The smoke validates the collector, not the frozen positions; all cohort mapping uses language codes, never indices, because the saved `peak` indices follow the 27-language order.
+4. **Storage gate (add to Task 5):** the Ada home filesystem had 7.9 GB free (85 % used) on 2026-10-21. Before the full job, record measured bytes per condition from the smoke, multiply by nine conditions and by the number of streams (`eq` and `all`), and require the total to fit with a stated margin; choose dense int16 counts per condition streamed to disk or sparse rows by measurement, not by assumption (a planning figure of roughly 270 MB per condition for sparse rows assumes about 1,000 distinct firing features per sentence and is unmeasured).
+5. **GPU memory (add to Task 2):** the previous run peaked at 9.6 GB of an 11 GB card; the sink's per-batch accumulators must fit in the margin or accumulate on the host.
+6. **Dev ties:** the frozen dev peak language is an `argmax` (first index on ties). Record the number of dev ties in the manifest; the tie-set rule applies to evaluation profiles.
+7. **Claim limits:** the study was not found in prior work by two independent searches, but that is not a novelty certificate; closest works are [P20-P29](../../../reports/research_sources.md). The behavioural claim that quantization harms lower-resource languages more is contested in the literature (P23 and P25 for, P24 against), so the report introduces the tier effect only as a measurement on our activation-correlation outcome.
 
 ## Time budget and stop condition
 

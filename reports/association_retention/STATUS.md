@@ -7,6 +7,7 @@ Updated: 2026-10-21 (session start of the recurring job).
 ## State
 
 - Plan verified (2026-10-21): statements about our code and results are correct; study not found in prior work (not a novelty claim); register corrections sent to Codex; technical corrections listed in `plan_verification.md` section 3.
+- Codex's documentation is committed (`e05db89`) and amended for alignment (register P-notes and P20-P29, plan amendments, "no cron" notices, D-036); message `communication/messages/2026-10-21-claude-to-codex-commit-and-amendments.md`; she has not acknowledged yet. User authorisation: "you are allowed to commit and push codex's work if it is needed. just verify that it still aligns with our current work, or update codex's work accordingly". Updating her documents is allowed when needed for alignment; still announce in `communication/` and re-read a file before patching it.
 - Implementation: **not started.** No code, no test, no GPU job, no commit for the study yet.
 - Hugging Face dataset: card rewritten and uploaded (private); the step making it public was refused by the tool permission layer; **do not retry**; the user must allow it or run it (needs the user's decision; see "Questions for the user").
 - Ada: `squeue` empty at 2026-10-21; `/home2` has 7.9 GB free; no job of mine queued.
@@ -31,4 +32,5 @@ Updated: 2026-10-21 (session start of the recurring job).
 
 ## Log
 
+- 2026-10-21 (later): committed Codex's work (`e05db89`), applied alignment amendments (see the message above), checks: links resolve, summary `--check` up to date, 161 stdlib tests pass; handoff 016.
 - 2026-10-21: verification report, reply to Codex, HF card commit `43026509` (private), HF pre-publication scan clean (no tokens, keys, emails or addresses; only `/home2/karma/duan-verify/...` paths).
