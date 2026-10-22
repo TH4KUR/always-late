@@ -1,4 +1,4 @@
-# Handoff 027: loss-task evaluation ladder COMPLETE (INT8 to INT4), F4 INT4 queued, Belebele pilot running (2026-10-22, 15:45 IST)
+# Handoff 027: loss-task evaluation ladder COMPLETE (INT8 to INT4), F4 INT4 queued, Belebele pilot running (2026-10-22, 15:30 IST)
 
 > The ONLY source of the previous chat. A fresh chat with no memory must be able to continue from this file plus the repository. If this file and the repository disagree, the repository wins: say so in the next handoff. Start with `reports/functional_validation/STATUS.md` (State, NEXT STEP, Log); this file supersedes [handoff 026](026-2026-10-22-eval-ladder-done-calibration-running.md) as the entry point (026 holds the standing rules in its section 0 and [025](025-2026-10-22-chat-end-functional-study-midrun.md) the user's verbatim 2026-10-21 instruction; both still apply unchanged).
 
@@ -10,7 +10,7 @@ The standing rules are those of handoff 026 section 0 (mask regime only; no `non
 
 D-039/D-040: do the language-selective SAE feature groups carry function for their language beyond activity-matched controls (F1), is it kept across the RTN ladder (F2), where does the damage sit (F3, FP-donor rescue), does D-035 association predict function at equal native activity (F4, two-sided), SAE fidelity (B), closer analyses (A), figures (F). The loss task (T-LM) is frozen and exploratory by design; Belebele (T-MC) is the only confirmatory family and is frozen after the pilot, before any evaluation item is scored.
 
-## 2. State right now (verified 2026-10-22 15:40)
+## 2. State right now (verified 2026-10-22 15:30)
 
 - Git `main`, clean after this step's commit, pushed. Tests: stdlib 231, torch 760 (commands in STATUS "Commands").
 - **Loss-task evaluation, frozen settings, full ladder** (`results/eval/`, figures in `figures/eval/`): macro retention of the group effect INT8 1.01 [1.00, 1.02], INT7 1.03 [1.02, 1.06], INT6 1.04 [1.02, 1.05], INT5 1.13 [1.11, 1.18], INT4 2.14 [2.04, 2.50]; per-language classes (preserved / inconclusive / amplified) 27/0/0, 26/1/0, 24/3/0, 20/6/1, 6/5/16; E > 0 in 27 of 27 languages at every precision; sham exactly 0; SAE median FVU 0.1293 (FP and INT8), 0.1298, 0.1314, 0.1375, 0.1795.
@@ -48,6 +48,6 @@ Q17, Q18, Q19 (defaults applied or in force) and the M-questions; the merge deci
 
 `git status`, `CronList`, `squeue -u karma` over the strict-key route, the freeze (`phase1_func_freeze.py verify` for T-LM), the checksums of fetched files against Ada, and whether any frozen file changed after its freeze commit.
 
-## Addendum 2026-10-22 15:55 (same chat; the repository and STATUS.md win)
+## Addendum 2026-10-22 15:40 (same chat; the repository and STATUS.md win)
 
 The Belebele pilot 34724 finished and was analysed: full-precision effect about 0, INT4 accuracy at chance, item count of the T-MC freeze = ALL 385 devtest-origin items per language by the rule fixed before the numbers (D-047, Q20; `results/mc_pilot/`). `func-f4-INT4` 34795 is RUNNING (gates passed), `func-f4-INT5` 34804 was submitted (watchers `bn2iyuxs6`, `bbgpvgpf8`). **Section 4 item 1 and 2 are replaced by:** (1) plan Task 7d step 1 (`phase1_func_ksens_manifest.py`, test first, committed before the freeze), (2) `build-mc --n-items 0` and `verify-mc`, commit, push, (3) deploy a snapshot at the freeze commit, hash-check on Ada, submit two T-MC jobs of three precisions (`-t 07:00:00`) as slots free.
