@@ -1,6 +1,8 @@
 import json
 import sys
 import unittest
+
+import numpy as np
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -41,14 +43,19 @@ class Themes(unittest.TestCase):
     def test_both_themes_have_the_palette_tokens(self):
         for mode in ("light", "dark"):
             t = ff.theme_tokens(mode)
-            for k in ("surface", "ink", "ink2", "muted", "grid", "axis", "series", "ordinal", "ramp"):
+            for k in ("surface", "ink", "ink2", "muted", "grid", "axis", "series", "ordinal", "ordinal4", "ramp"):
                 self.assertIn(k, t)
-            self.assertEqual(len(t["series"]), 3); self.assertEqual(len(t["ordinal"]), 3)
+            self.assertEqual(len(t["series"]), 3); self.assertEqual(len(t["ordinal"]), 3); self.assertEqual(len(t["ordinal4"]), 4)
 
     def test_the_documented_palette_values(self):
         self.assertEqual(ff.theme_tokens("light")["surface"], "#fcfcfb"); self.assertEqual(ff.theme_tokens("dark")["surface"], "#1a1a19")
         self.assertEqual(ff.theme_tokens("light")["series"][0], "#2a78d6"); self.assertEqual(ff.theme_tokens("dark")["series"][0], "#3987e5")
         self.assertEqual(ff.theme_tokens("light")["series"][1], "#eb6834"); self.assertEqual(ff.theme_tokens("dark")["series"][1], "#d95926")
+
+    def test_the_validated_ordinal_ramps_are_pinned(self):
+        # these hex values passed validate_palette.js --ordinal in both modes (2026-10-22); changing one means validating again
+        self.assertEqual(ff.theme_tokens("light")["ordinal"], ["#86b6ef", "#2a78d6", "#104281"]); self.assertEqual(ff.theme_tokens("dark")["ordinal"], ["#184f95", "#3987e5", "#9ec5f4"])
+        self.assertEqual(ff.theme_tokens("light")["ordinal4"], ["#0d366b", "#1c5cab", "#3987e5", "#86b6ef"]); self.assertEqual(ff.theme_tokens("dark")["ordinal4"], ["#b7d3f6", "#6da7ec", "#2a78d6", "#184f95"])
 
     def test_unknown_theme_is_an_error(self):
         with self.assertRaises(ValueError):
@@ -305,6 +312,64 @@ class AssociationVersusFunction(unittest.TestCase):
             assert_text_inside(self, ff.fig_assoc_vs_function(ASSOC, planted_retention(), theme, note="pilot, exploratory"))
 
 
+def planted_rank_rows():
+    def row(c, b, n_est, n_ret):
+        f = n_ret / n_est if n_est else None
+        return {"condition": c, "bin": b, "n_established": n_est, "n_retained": n_ret, "fraction": f, "lo": None if f is None else max(0.0, f - 0.05), "hi": None if f is None else min(1.0, f + 0.05), "n_languages": 3}
+    rows = []
+    for c, fr in (("INT8", (0.99, 0.98, 0.97, 0.96)), ("INT4", (0.85, 0.80, 0.66, 0.69))):
+        for b, f in zip(("1-16", "17-64", "65-256", "257+"), fr):
+            rows.append(row(c, b, 100, round(100 * f)))
+    return rows
+
+
+@unittest.skipUnless(HAVE_MPL, "matplotlib not installed")
+class RankBins(unittest.TestCase):
+    BINS = ("1-16", "17-64", "65-256", "257+")
+
+    def setUp(self):
+        self.fig = ff.fig_rank_bins(planted_rank_rows(), "light", note="descriptive")
+        self.ax = self.fig.axes[0]
+
+    def test_one_line_per_rank_bin_from_full_precision_at_one_to_the_precisions_present(self):
+        self.assertEqual([t.get_text() for t in self.ax.get_xticklabels()], ["FP", "INT8", "INT4"])
+        want = {"1-16": [1.0, 0.99, 0.85], "17-64": [1.0, 0.98, 0.80], "65-256": [1.0, 0.97, 0.66], "257+": [1.0, 0.96, 0.69]}
+        for b in self.BINS:
+            self.assertEqual([round(v, 6) for v in by_gid(self.ax, f"rank_{b}")[0].get_ydata()], want[b])
+
+    def test_the_four_bins_wear_the_validated_ordinal_ramp_and_every_bin_is_named_in_the_legend_and_at_the_line_end(self):
+        tok = ff.theme_tokens("light")["ordinal4"]
+        self.assertEqual([to_hex(by_gid(self.ax, f"rank_{b}")[0].get_color()) for b in self.BINS], tok)
+        self.assertEqual(len(self.ax.get_legend().get_texts()), 4)
+        self.assertEqual(sorted(t.get_text() for t in by_gid(self.ax, "end_label")), sorted(["ranks 1-16", "ranks 17-64", "ranks 65-256", "ranks 257+"]))
+
+    def test_intervals_are_a_wash_spanning_the_wilson_bounds_and_the_axis_leaves_room_below_them(self):
+        want = {"1-16": (0.80, 1.0), "17-64": (0.75, 1.0), "65-256": (0.61, 1.0), "257+": (0.64, 1.0)}                # INT4 lower bound and the full-precision anchor; upper bounds are capped at 1
+        for b in self.BINS:
+            fill = by_gid(self.ax, f"band_{b}"); self.assertEqual(len(fill), 1)
+            ys = fill[0].get_paths()[0].vertices[:, 1]
+            self.assertAlmostEqual(float(ys.min()), want[b][0], places=6); self.assertAlmostEqual(float(ys.max()), want[b][1], places=6)
+            self.assertTrue(any(abs(float(y) - {"1-16": 0.90, "17-64": 0.85, "65-256": 0.71, "257+": 0.74}[b]) < 1e-6 for y in ys), b)    # the upper Wilson bound at INT4 is on the boundary
+        self.assertAlmostEqual(self.ax.get_ylim()[0], 0.61 - 0.04, places=6); self.assertAlmostEqual(self.ax.get_ylim()[1], 1.02, places=6)
+
+    def test_an_empty_bin_is_a_gap_not_a_zero(self):
+        rows = [r for r in planted_rank_rows() if not (r["condition"] == "INT4" and r["bin"] == "257+")]
+        rows.append({"condition": "INT4", "bin": "257+", "n_established": 0, "n_retained": 0, "fraction": None, "lo": None, "hi": None, "n_languages": 0})
+        y = list(by_gid(ff.fig_rank_bins(rows, "light", note="x").axes[0], "rank_257+")[0].get_ydata())
+        self.assertEqual(y[:2], [1.0, 0.96]); self.assertTrue(np.isnan(y[2]))
+        ax = ff.fig_rank_bins(rows, "light", note="x").axes[0]
+        lab = [x for x in by_gid(ax, "end_label") if x.get_text() == "ranks 257+"][0]
+        self.assertEqual((round(lab.get_position()[0], 6), lab.get_position()[1]), (1.12, 0.96))                  # at the last measured point, not at the empty one
+
+    def test_the_title_and_text_are_inside_in_both_themes_and_no_rows_is_an_error(self):
+        for theme in ("light", "dark"):
+            assert_text_inside(self, ff.fig_rank_bins(planted_rank_rows(), theme, note="evaluation split, frozen settings, confirmatory analysis of the pre-registered kind"))
+        with self.assertRaises(ValueError):
+            ff.fig_rank_bins([], "light", note="x")
+        with self.assertRaises(ValueError):
+            ff.fig_rank_bins([dict(r, condition="INT0") for r in planted_rank_rows()], "light", note="x")      # INT0 (the identity control) is not on the ladder
+
+
 def planted_fidelity():
     return [{"precision": "FP", "language": "aaa", "fvu": 0.1}, {"precision": "FP", "language": "bbb", "fvu": 0.3}, {"precision": "FP", "language": "ccc", "fvu": 0.2},
             {"precision": "INT4", "language": "aaa", "fvu": 0.2}, {"precision": "INT4", "language": "bbb", "fvu": 0.4}]
@@ -350,7 +415,7 @@ class LongNotes(unittest.TestCase):
     def builders(self):
         return {"effect": lambda th: ff.fig_effect_per_language(EffectPerLanguage.ROWS, th, self.NOTE, K="K64"), "retention": lambda th: ff.fig_retention(planted_retention(), (0.75, 1.33), th, self.NOTE),
                 "size": lambda th: ff.fig_size_curves(planted_families(), th, self.NOTE), "assoc": lambda th: ff.fig_assoc_vs_function(ASSOC, planted_retention(), th, self.NOTE),
-                "fidelity": lambda th: ff.fig_fidelity(planted_fidelity(), th, self.NOTE)}
+                "fidelity": lambda th: ff.fig_fidelity(planted_fidelity(), th, self.NOTE), "rank": lambda th: ff.fig_rank_bins(planted_rank_rows(), th, self.NOTE)}
 
     def test_every_figure_wraps_a_long_status_note_instead_of_clipping_it(self):
         for name, make in self.builders().items():
@@ -488,13 +553,18 @@ class Main(unittest.TestCase):
         self.assoc.write_text(AssociationLoader.HEADER + "selective,INT4,aaa,100,100,70,30,0,0,0,0,0,0,0,\nselective,INT8,aaa,100,100,98,2,0,0,0,0,0,0,0,\n")
         import json as _j
         self.man = self.d / "groups_manifest.json"; self.man.write_text(_j.dumps(planted_manifest()))
+        self.rank = self.d / "rank_table.csv"
+        with open(self.rank, "w", newline="") as f:
+            w = csv.writer(f); w.writerow(["condition", "bin", "n_established", "n_retained", "fraction", "lo", "hi", "n_languages"])
+            for r in planted_rank_rows():
+                w.writerow([r["condition"], r["bin"], r["n_established"], r["n_retained"], r["fraction"], r["lo"], r["hi"], r["n_languages"]])
 
     def run_main(self, *extra):
-        return ff.main(["--results", str(self.res), "--out", str(self.out), "--note", "pilot, exploratory", "--assoc", str(self.assoc), "--manifest", str(self.man), *extra])
+        return ff.main(["--results", str(self.res), "--out", str(self.out), "--note", "pilot, exploratory", "--assoc", str(self.assoc), "--manifest", str(self.man), "--rank-table", str(self.rank), *extra])
 
     def test_writes_every_figure_in_both_themes_and_formats_and_the_tables(self):
         written = [Path(p).name for p in self.run_main()]
-        for stem in ("fig1_effect_per_language", "fig2_retention", "fig3_group_size", "fig5_association_vs_function", "fig6_sae_fidelity"):
+        for stem in ("fig1_effect_per_language", "fig2_retention", "fig3_group_size", "fig5_association_vs_function", "fig6_sae_fidelity", "fig8_association_by_rank"):
             for theme in ("light", "dark"):
                 for ext in ("svg", "png"):
                     self.assertIn(f"{stem}_{theme}.{ext}", written); self.assertTrue((self.out / f"{stem}_{theme}.{ext}").stat().st_size > 1000)
@@ -543,6 +613,18 @@ class Main(unittest.TestCase):
         for name in ("fig3_group_size_light.png", "fig6_sae_fidelity_light.png"):
             self.assertNotIn(name, written)
         self.assertIn("nats per item", (self.out / "fig1_effect_per_language_light.svg").read_text())
+
+    def test_figure_8_carries_its_own_status_note_not_the_one_of_the_other_figures(self):
+        self.run_main()
+        svg = (self.out / "fig8_association_by_rank_light.svg").read_text()
+        self.assertIn("descriptive", svg); self.assertNotIn("pilot, exploratory", svg)
+        self.run_main("--rank-note", "customnote8")                                                          # one word: the wrapped subtitle may break a longer phrase over two lines
+        self.assertIn("customnote8", (self.out / "fig8_association_by_rank_light.svg").read_text())
+
+    def test_without_a_rank_table_figure_8_is_skipped(self):
+        self.rank.unlink()
+        written = [Path(p).name for p in self.run_main()]
+        self.assertNotIn("fig8_association_by_rank_light.png", written); self.assertIn("fig2_retention_light.png", written)
 
     def test_themes_and_formats_can_be_restricted(self):
         written = [Path(p).name for p in self.run_main("--themes", "dark", "--formats", "png")]

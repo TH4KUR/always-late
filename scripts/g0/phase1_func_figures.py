@@ -24,9 +24,9 @@ PRECISIONS = ["INT16", "INT12", "INT8", "INT7", "INT6", "INT5", "INT4"]         
 _RAMP_LIGHT = ["#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"]    # blue steps 100 to 700 (palette.md)
 _THEMES = {
     "light": {"surface": "#fcfcfb", "ink": "#0b0b0b", "ink2": "#52514e", "muted": "#898781", "grid": "#e1e0d9", "axis": "#c3c2b7",
-              "series": ["#2a78d6", "#eb6834", "#1baf7a"], "ordinal": ["#86b6ef", "#2a78d6", "#104281"], "ramp": _RAMP_LIGHT},
+              "series": ["#2a78d6", "#eb6834", "#1baf7a"], "ordinal": ["#86b6ef", "#2a78d6", "#104281"], "ordinal4": ["#0d366b", "#1c5cab", "#3987e5", "#86b6ef"], "ramp": _RAMP_LIGHT},
     "dark": {"surface": "#1a1a19", "ink": "#f0efec", "ink2": "#c3c2b7", "muted": "#898781", "grid": "#2c2c2a", "axis": "#383835",
-             "series": ["#3987e5", "#d95926", "#199e70"], "ordinal": ["#184f95", "#3987e5", "#9ec5f4"], "ramp": _RAMP_LIGHT[::-1]},      # dark: low values recede into the surface, high values are the light end
+             "series": ["#3987e5", "#d95926", "#199e70"], "ordinal": ["#184f95", "#3987e5", "#9ec5f4"], "ordinal4": ["#b7d3f6", "#6da7ec", "#2a78d6", "#184f95"], "ramp": _RAMP_LIGHT[::-1]},      # dark: low values recede into the surface, high values are the light end
 }
 Y_FLOOR = 0.25                                                                         # lower edge of the log retention axis
 
@@ -272,6 +272,48 @@ def fig_fidelity(fidelity_rows, theme, note):
     return fig
 
 
+RANK_BINS = ["1-16", "17-64", "65-256", "257+"]
+
+
+def fig_rank_bins(rows, theme, note):
+    """Association retention (D-035: share of the features established in full precision that are still language-selective) by the rank of the feature within its language (dev mass; A1), pooled over
+    languages, with Wilson 95 % intervals as a wash; full precision = 1 by definition. The four ordered bins wear the validated four-step ordinal ramp, the top bin the strongest step. rows:
+    rank_table.csv (condition, bin, fraction, lo, hi); an empty bin is a gap, never a zero."""
+    if not rows:
+        raise ValueError("no rank-table rows")
+    present = {r["condition"] for r in rows}
+    precs = ["FP"] + [p for p in PRECISIONS if p in present]
+    if len(precs) < 2:
+        raise ValueError("no precision of the ladder in the rank table")
+    fig, ax, t = _new_fig(theme, 7.0, 4.8)
+    xs = np.arange(len(precs)); lows = []
+    for k, b in enumerate(RANK_BINS):
+        y, lo, hi = [1.0], [1.0], [1.0]
+        for p in precs[1:]:
+            r = next((x for x in rows if x["condition"] == p and x["bin"] == b), None)
+            ok = r is not None and r["fraction"] is not None
+            y.append(r["fraction"] if ok else np.nan); lo.append(r["lo"] if ok else np.nan); hi.append(r["hi"] if ok else np.nan)
+        lows += [v for v in lo if v == v]
+        ax.fill_between(xs, lo, hi, color=t["ordinal4"][k], alpha=0.12, linewidth=0, zorder=2, gid=f"band_{b}")
+        ax.plot(xs, y, color=t["ordinal4"][k], linewidth=2.0, marker="o", markersize=5.5, markeredgecolor=t["surface"], markeredgewidth=1.5, zorder=3, gid=f"rank_{b}")
+        last = max((i for i, v in enumerate(y) if v == v), default=0)
+        ax.text(xs[last] + 0.12, y[last], f"ranks {b}", va="center", ha="left", fontsize=8.5, color=t["ink2"], gid="end_label")
+    bottom, top = min(lows) - 0.04, 1.02
+    ax.set_ylim(bottom, top); ax.set_xlim(-0.4, xs[-1] + 1.25)
+    yt = [v for v in (0.5, 0.6, 0.7, 0.8, 0.9, 1.0) if bottom <= v <= top]
+    ax.set_yticks(yt); ax.set_yticklabels([f"{v:.1f}" for v in yt]); ax.set_xticks(xs); ax.set_xticklabels(precs); ax.grid(False, axis="x")
+    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)", ylabel="fraction still language-selective (features established in full precision)")
+    extra = _title(ax, t, "Association retention by rank of the feature within its language", f"features ranked by dev mass; pooled over languages, Wilson 95 % intervals \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["ordinal4"][k], marker="o", markersize=5.5, linewidth=2, markeredgecolor=t["surface"]) for k in range(len(RANK_BINS))]
+    _legend(ax, t, handles, [f"ranks {b}" for b in RANK_BINS], "lower left")
+    _margins(fig, bottom_in=0.85, extra=extra)
+    return fig
+
+
+def load_rank_table(path):
+    return _read_csv(path, {"n_established", "n_retained", "fraction", "lo", "hi", "n_languages"})
+
+
 def _read_csv(path, floats):
     out = []
     with open(path, newline="") as f:
@@ -382,20 +424,23 @@ def main(argv=None):
     ap.add_argument("--out", required=True); ap.add_argument("--note", required=True, help="status of the data in every title, e.g. 'pilot, exploratory'")
     ap.add_argument("--assoc", default=str(root / "reports/association_retention/results/eq/language_summary.csv")); ap.add_argument("--manifest", default=str(root / "reports/functional_validation/groups_manifest.json"))
     ap.add_argument("--unit", default="nats per token", help="unit of the effect (T-MC: 'nats per item')")
+    ap.add_argument("--rank-note", default="exploratory, descriptive (D-035 statuses measured on devtest)", help="status of the data of figure 8, which is not the data of the other figures")
+    ap.add_argument("--rank-table", default=str(root / "reports/functional_validation/results/assoc_rank/rank_table.csv"), help="A1 rank_table.csv (figure 8); skipped when absent")
     ap.add_argument("--themes", nargs="*", default=["light", "dark"], choices=sorted(_THEMES)); ap.add_argument("--formats", nargs="*", default=["svg", "png"], choices=["svg", "png"])
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     res = load_results(a.results); an = res["analysis"]; K = an.get("K")
     fp_rows = [r for r in res["effects"] if r["precision"] == "FP"]
     assoc = load_association(a.assoc) if Path(a.assoc).exists() else {}
+    rank_rows = load_rank_table(a.rank_table) if Path(a.rank_table).exists() else []
     manifest = json.loads(Path(a.manifest).read_text())
     written = []
     for theme in a.themes:
         figs = [("fig1_effect_per_language", lambda: fig_effect_per_language(fp_rows, theme, a.note, K=K, unit=a.unit)), ("fig2_retention", lambda: fig_retention(an["retention"], an["bands"], theme, a.note)),
                 ("fig3_group_size", lambda: fig_size_curves(res["families"], theme, a.note)), ("fig5_association_vs_function", lambda: fig_assoc_vs_function(assoc, an["retention"], theme, a.note)),
-                ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note))]
+                ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note)), ("fig8_association_by_rank", lambda: fig_rank_bins(rank_rows, theme, a.rank_note))]
         for stem, make in figs:
-            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig6_sae_fidelity": bool(an.get("fidelity"))}
+            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig6_sae_fidelity": bool(an.get("fidelity")), "fig8_association_by_rank": bool(rank_rows)}
             if not has.get(stem, True):                                                                          # the inputs of this figure do not exist for this analysis (for example T-MC has no SAE fidelity)
                 continue
             written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
