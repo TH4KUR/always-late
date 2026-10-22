@@ -230,7 +230,7 @@ def fig_assoc_vs_function(assoc, retention, theme, note):
     ax.plot(xs, asc, color=t["series"][1], linewidth=2.0, marker="s", markersize=5.5, markeredgecolor=t["surface"], markeredgewidth=1.5, zorder=3, gid="association")
     ax.text(xs[-1] + 0.12, func[-1], "function", va="center", fontsize=8.5, color=t["ink2"], gid="end_label")
     ax.text(xs[-1] + 0.12, asc[-1], "association", va="center", fontsize=8.5, color=t["ink2"], gid="end_label")
-    ax.set_yscale("log"); bottom = min(asc) * 0.85; top = max(hi) * 1.15; ax.set_ylim(bottom, top); ax.set_xlim(-0.4, xs[-1] + 1.1)
+    ax.set_yscale("log"); bottom = min(asc) * 0.85; top = max(hi) * 1.5; ax.set_ylim(bottom, top); ax.set_xlim(-0.4, xs[-1] + 1.1)                  # headroom: the two-line legend sits in the upper left, above the highest interval
     yt = [v for v in (0.5, 0.7, 1, 1.5, 2, 3) if bottom <= v <= top]
     ax.set_yticks(yt); ax.set_yticklabels([f"{v:g}" for v in yt]); ax.yaxis.set_minor_locator(NullLocator())
     ax.set_xticks(xs); ax.set_xticklabels(["FP"] + common); ax.grid(False, axis="x")

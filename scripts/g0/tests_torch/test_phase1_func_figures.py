@@ -311,6 +311,29 @@ class AssociationVersusFunction(unittest.TestCase):
         for theme in ("light", "dark"):
             assert_text_inside(self, ff.fig_assoc_vs_function(ASSOC, planted_retention(), theme, note="pilot, exploratory"))
 
+    def test_the_legend_keeps_clear_of_every_plotted_mark_on_the_full_ladder_with_the_evaluation_numbers(self):
+        # found by looking at the evaluation render (2026-10-22): the upper-left legend ended 2 pixels from the INT4 interval of the function series
+        def lang():
+            return {"ratio": 1.0, "lo": 0.9, "hi": 1.1, "class": "preserved"}
+        m = {"INT8": (1.01, 1.00, 1.02), "INT7": (1.03, 1.02, 1.06), "INT6": (1.04, 1.02, 1.05), "INT5": (1.13, 1.11, 1.18), "INT4": (2.14, 2.04, 2.50)}
+        ret = {p: {"macro": {"ratio": r, "lo": lo, "hi": hi, "class": "x", "n_languages": 27, "median_ratio": 1.0, "median_lo": 1.0, "median_hi": 1.0}, "pooled": lang(), "languages": {"aaa": lang()}} for p, (r, lo, hi) in m.items()}
+        asc = {"INT8": {"macro": 0.98}, "INT7": {"macro": 0.96}, "INT6": {"macro": 0.943}, "INT5": {"macro": 0.886}, "INT4": {"macro": 0.679}}
+        for theme in ("light", "dark"):
+            fig = ff.fig_assoc_vs_function(asc, ret, theme, note="evaluation split (300 held-out devtest sentences), frozen settings, exploratory"); ax = fig.axes[0]
+            fig.canvas.draw(); r = fig.canvas.get_renderer(); box = ax.get_legend().get_window_extent(r)
+            pts = []
+            for gid in ("function", "association"):
+                pts += list(zip(by_gid(ax, gid)[0].get_xdata(), by_gid(ax, gid)[0].get_ydata()))
+            for s in by_gid(ax, "function_interval")[0].get_segments():
+                pts += [tuple(s[0]), tuple(s[1])]
+            for x, y in pts:
+                px, py = ax.transData.transform((x, y))
+                inside = box.x0 - 6 <= px <= box.x1 + 6 and box.y0 - 6 <= py <= box.y1 + 6
+                self.assertFalse(inside, f"{theme}: the mark at ({x}, {y}) is within 6 pixels of the legend")
+            for tx in by_gid(ax, "end_label"):
+                b = tx.get_window_extent(r)
+                self.assertFalse(b.x0 < box.x1 + 6 and b.x1 > box.x0 - 6 and b.y0 < box.y1 + 6 and b.y1 > box.y0 - 6, f"{theme}: the label {tx.get_text()} touches the legend")
+
 
 def planted_rank_rows():
     def row(c, b, n_est, n_ret):
