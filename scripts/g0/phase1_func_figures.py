@@ -393,6 +393,71 @@ def rescue_table(rescue):
     return rows
 
 
+def fig_f4(res, theme, note):
+    """Plan Task 8, figure 9 (F4, exploratory): per language the harm of zero-ablating the features whose language association was LOST at precision b minus the harm of zero-ablating activity-matched features that
+    RETAINED it (nats per token on the language's own text), at b (accent, with its 95 % interval) and, for the same subsets, at full precision (gray, thinner), joined by a connector so that a difference that pre-exists
+    the quantization is visible; rows sorted by the contrast at b with the largest on top, the macro mean over the languages above a gap row. res: f4_results.json of phase1_func_f4_analysis.py. The axis is symmetric-log
+    (contrasts can be small and of either sign); the two notes in the gap row describe the axis and claim nothing."""
+    per, langs = res["per_language"], list(res["languages"])
+    if not langs:
+        raise ValueError("no languages in the F4 result")
+    b = res["condition"]; n = len(langs); order = sorted(langs, key=lambda c: per[c]["E_b"]["point"]); y = np.arange(n); ym = n + 1
+    col = lambda key, f: np.array([per[c][key][f] for c in order])
+    eb, eb_lo, eb_hi, ef, ef_lo, ef_hi = col("E_b", "point"), col("E_b", "lo"), col("E_b", "hi"), col("E_fp", "point"), col("E_fp", "lo"), col("E_fp", "hi")
+    mb, mf = res["macro"]["E_b"], res["macro"]["E_fp"]
+    fig, ax, t = _new_fig(theme, 7.6, 0.27 * (n + 2) + 2.4)
+    ax.hlines(y, ef, eb, color=t["axis"], linewidth=1.0, zorder=1, gid="connector")
+    for gid, color, lw, pos, lo, hi in (("fp", t["muted"], 1.4, y, ef_lo, ef_hi), ("native", t["series"][0], 2.0, y, eb_lo, eb_hi)):
+        ax.hlines(pos, lo, hi, color=color, linewidth=lw, zorder=2, gid=f"interval_{gid}")
+        ax.vlines(np.concatenate([lo, hi]), np.concatenate([pos - 0.14, pos - 0.14]), np.concatenate([pos + 0.14, pos + 0.14]), color=color, linewidth=lw * 0.8, zorder=2, gid=f"interval_cap_{gid}")
+    ax.scatter(ef, y, s=30, marker="D", color=t["muted"], edgecolors=t["surface"], linewidths=1.2, zorder=3, gid="f4_fp")
+    ax.scatter(eb, y, s=44, marker="o", color=t["series"][0], edgecolors=t["surface"], linewidths=1.5, zorder=4, gid="f4_native")
+    for gid, m, color, marker, size in (("fp", mf, t["muted"], "D", 46), ("native", mb, t["series"][0], "o", 70)):
+        ax.hlines([ym], [m["lo"]], [m["hi"]], color=color, linewidth=2.6 if gid == "native" else 1.8, zorder=2, gid=f"interval_macro_{gid}")
+        ax.scatter([m["point"]], [ym], s=size, marker=marker, color=color, edgecolors=t["ink"] if gid == "native" else t["surface"], linewidths=1.2, zorder=4, gid=f"f4_macro_{gid}")
+    ax.axvline(0, color=t["muted"], linewidth=1.2, zorder=1, gid="reference_zero")
+    every = np.concatenate([eb_lo, ef_lo, [mb["lo"], mf["lo"]]]); top = np.concatenate([eb_hi, ef_hi, [mb["hi"], mf["hi"]]])
+    left = float(every.min()) * 2.6 if every.min() < 0 else -0.003; right = float(top.max()) * 2.6 if top.max() > 0 else 0.003      # room for the value labels beyond the intervals
+    ax.set_xscale("symlog", linthresh=0.01, linscale=0.6); ax.set_xlim(left, right)
+    ticks = [v for v in (-10, -1, -0.1, -0.01, 0, 0.01, 0.1, 1, 10) if left <= v <= right]
+    ax.set_xticks(ticks); ax.set_xticklabels([f"{v:g}" for v in ticks])
+    ax.set_yticks(list(y) + [n, ym]); ax.set_yticklabels(order + ["", f"macro mean (n = {n})"]); ax.set_ylim(-0.8, ym + 0.8); ax.grid(False, axis="y")
+    ax.yaxis.get_major_ticks()[n].tick1line.set_visible(False)                                      # the gap row has no tick
+    lab = ax.get_yticklabels()[-1]; lab.set_fontweight("bold"); lab.set_color(t["ink"])
+    for k, ha in ((0, "right"), (n - 1, "left")):                                                   # direct labels on the extremes only
+        x = (eb_lo[k] * 1.12) if ha == "right" else (eb_hi[k] * 1.12 + (0.002 if eb_hi[k] <= 0.01 else 0))
+        ax.text(x, y[k], f"{eb[k]:+.3g}", va="center", ha=ha, fontsize=8.5, color=t["ink2"], gid="label")
+    for x, ha, text in ((0.01, "left", "\u2190 lost features matter less"), (0.99, "right", "lost features matter more \u2192")):
+        ax.text(x, n, text, transform=ax.get_yaxis_transform(), ha=ha, va="center", fontsize=8.5, color=t["muted"], gid="axis_note")
+    _axis_labels(ax, t, xlabel="harm of lost minus retained features, nats per token (symlog axis, linear below 0.01)")
+    extra = _title(ax, t, "Ablating features by their association status, matched on native activity",
+                   f"{b}, {n} languages; harm of zero-ablating the features whose association was lost minus harm of activity-matched features that kept it (nats per token, own text); "
+                   f"negative = the lost features matter less; 95 % intervals \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=1.4, markeredgecolor=t["surface"])]
+    _legend(ax, t, handles, [f"contrast at {b} (native)", "same subsets at full precision"], "lower right")
+    _margins(fig, left_in=1.55, bottom_in=0.95, extra=extra)
+    return fig
+
+
+_F4_PARTS = (("E_b", "E_b"), ("E_fp", "E_fp"), ("delta", "delta"))
+
+
+def f4_table(res):
+    """Table twin of figure 9: a row per language (the contrast at b, at full precision and their paired difference with the 95 % intervals, the harms, the signs) and the macro mean; missing values are None."""
+    rows = []
+    for c in res["languages"]:
+        p = res["per_language"][c]; r = {"language": c, "n_languages": None}
+        for key, name in _F4_PARTS:
+            r[name] = p[key]["point"]; r[f"{name}_lo"] = p[key]["lo"]; r[f"{name}_hi"] = p[key]["hi"]
+        r.update({k: p[k] for k in ("harm_lost_b", "harm_retained_b", "harm_lost_fp", "harm_retained_fp", "n_controls", "sign_b", "sign_fp")})
+        rows.append(r)
+    m = {"language": "macro mean", "n_languages": len(res["languages"])}
+    for key, name in _F4_PARTS:
+        m[name] = res["macro"][key]["point"]; m[f"{name}_lo"] = res["macro"][key]["lo"]; m[f"{name}_hi"] = res["macro"][key]["hi"]
+    m.update({k: None for k in ("harm_lost_b", "harm_retained_b", "harm_lost_fp", "harm_retained_fp", "n_controls", "sign_b", "sign_fp")})
+    return rows + [m]
+
+
 def _coverage_rows(cal):
     """The rows of the chosen format of a calibration record (phase1_func_mc_calibration.py): language, items, accuracy, Wilson interval, covered. The record's own `covered` flags and lists must agree with the
     rule (lower bound above chance + margin); a languages without items (n = 0) has no accuracy and is never covered."""
@@ -548,6 +613,10 @@ def _effects_columns(precs):
 
 _RESCUE_COLUMNS = [("precision", "precision", "{}"), ("part", "part", "{}"), ("patch", "patch", "{}"), ("n_languages", "languages with a defined fraction", "{}"), ("n_total", "languages with rescue configurations", "{}"),
                    ("fraction", "share of the gap recovered (macro mean)", "{:.3f}"), ("lo", "lo", "{:.3f}"), ("hi", "hi", "{:.3f}")]
+_F4_COLUMNS = [("language", "language", "{}"), ("n_languages", "languages", "{}"), ("E_b", "contrast at the precision", "{:+.4f}"), ("E_b_lo", "lo", "{:+.4f}"), ("E_b_hi", "hi", "{:+.4f}"),
+               ("E_fp", "contrast at full precision", "{:+.4f}"), ("E_fp_lo", "lo", "{:+.4f}"), ("E_fp_hi", "hi", "{:+.4f}"), ("delta", "difference", "{:+.4f}"), ("delta_lo", "lo", "{:+.4f}"), ("delta_hi", "hi", "{:+.4f}"),
+               ("harm_lost_b", "harm lost at the precision", "{:.4f}"), ("harm_retained_b", "harm retained at the precision", "{:.4f}"), ("harm_lost_fp", "harm lost, full precision", "{:.4f}"),
+               ("harm_retained_fp", "harm retained, full precision", "{:.4f}"), ("n_controls", "retained draws", "{}"), ("sign_b", "sign at the precision", "{}"), ("sign_fp", "sign at full precision", "{}")]
 _COVERAGE_COLUMNS = [("language", "language", "{}"), ("items", "items", "{}"), ("accuracy", "accuracy", "{:.3f}"), ("lo", "lo", "{:.3f}"), ("hi", "hi", "{:.3f}"), ("covered", "covered", "{}")]
 _CONFIG_COLUMNS = [("language", "language", "{}"), ("size_K16", "K16", "{}"), ("size_K64", "K64", "{}"), ("size_all", "all", "{}"), ("draws_K16", "controls K16", "{}"), ("draws_K64", "controls K64", "{}"), ("draws_all", "controls all", "{}")]
 
@@ -573,6 +642,8 @@ def main(argv=None):
     ap.add_argument("--unit", default="nats per token", help="unit of the effect (T-MC: 'nats per item')")
     ap.add_argument("--rank-note", default="exploratory, descriptive (D-035 statuses measured on devtest)", help="status of the data of figure 8, which is not the data of the other figures")
     ap.add_argument("--rank-table", default=str(root / "reports/functional_validation/results/assoc_rank/rank_table.csv"), help="A1 rank_table.csv (figure 8); skipped when absent")
+    ap.add_argument("--f4", nargs="*", default=[], help="directories with f4_results.json (phase1_func_f4_analysis.py output; one per precision): figure 9 and table_f4_<precision> for each")
+    ap.add_argument("--f4-note", default="exploratory (the D-035 statuses were measured on devtest), evaluation split, frozen settings", help="status of the data of figure 9, which is not the data of the other figures")
     ap.add_argument("--themes", nargs="*", default=["light", "dark"], choices=sorted(_THEMES)); ap.add_argument("--formats", nargs="*", default=["svg", "png"], choices=["svg", "png"])
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
@@ -592,8 +663,13 @@ def main(argv=None):
             if not has.get(stem, True):                                                                          # the inputs of this figure do not exist for this analysis (for example T-MC has no SAE fidelity)
                 continue
             written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
+    f4s = [json.loads((Path(d) / "f4_results.json").read_text()) for d in a.f4]
+    for r in f4s:
+        for theme in a.themes:
+            written += save_figure(fig_f4(r, theme, a.f4_note), f"fig9_f4_{r['condition']}_{theme}", out, a.formats)
     ret, eff, conf = retention_table(an, assoc), effects_table(fp_rows, an, manifest), config_table(manifest)
     tables = [("table_retention", ret, _retention_columns()), ("table_effects", eff, _effects_columns([p for p in PRECISIONS if p in an["retention"]])), ("table_configurations", conf, _CONFIG_COLUMNS)]
+    tables += [(f"table_f4_{r['condition']}", f4_table(r), _F4_COLUMNS) for r in f4s]
     if an.get("rescue"):
         tables.append(("table_rescue", rescue_table(an["rescue"]), _RESCUE_COLUMNS))
     if cal is not None:

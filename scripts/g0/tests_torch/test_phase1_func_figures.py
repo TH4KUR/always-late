@@ -525,6 +525,108 @@ class Rescue(unittest.TestCase):
         self.assertEqual(rows[8]["part"], "group_minus_control"); self.assertEqual(rows[8]["n_languages"], 2)
 
 
+def planted_f4(condition="INT4", n_extra=0):
+    def row(p, lo, hi):
+        return {"point": p, "lo": lo, "hi": hi}
+    per = {"aa": {"E_b": row(-0.30, -0.40, -0.20), "E_fp": row(-0.10, -0.15, -0.05), "delta": row(-0.20, -0.30, -0.10), "harm_lost_b": 0.10, "harm_retained_b": 0.40, "harm_lost_fp": 0.05, "harm_retained_fp": 0.15, "n_controls": 3, "sign_b": "negative", "sign_fp": "negative"},
+           "bb": {"E_b": row(0.05, -0.02, 0.12), "E_fp": row(0.04, -0.01, 0.09), "delta": row(0.01, -0.05, 0.07), "harm_lost_b": 0.30, "harm_retained_b": 0.25, "harm_lost_fp": 0.20, "harm_retained_fp": 0.16, "n_controls": 3, "sign_b": "inconclusive", "sign_fp": "inconclusive"},
+           "cc": {"E_b": row(-0.01, -0.03, 0.01), "E_fp": row(-0.02, -0.04, 0.00), "delta": row(0.01, -0.02, 0.04), "harm_lost_b": 0.02, "harm_retained_b": 0.03, "harm_lost_fp": 0.01, "harm_retained_fp": 0.03, "n_controls": 2, "sign_b": "inconclusive", "sign_fp": "inconclusive"}}
+    for k in range(n_extra):
+        per[f"x{k:02d}"] = {**per["bb"], "E_b": row(0.01 * k, 0.01 * k - 0.02, 0.01 * k + 0.02)}
+    langs = list(per)
+    return {"condition": condition, "K": "K64", "n_boot": 100, "seed": 0, "languages": langs, "per_language": per,
+            "macro": {"E_b": {**row(-0.0867, -0.15, -0.03), "median": -0.01}, "E_fp": {**row(-0.0267, -0.06, 0.00), "median": -0.02}, "delta": {**row(-0.06, -0.12, -0.01), "median": 0.01}},
+            "counts": {"E_b": {"negative": 1, "positive": 0, "inconclusive": 2}, "E_fp": {"negative": 1, "positive": 0, "inconclusive": 2}}}
+
+
+@unittest.skipUnless(HAVE_MPL, "matplotlib not installed")
+class F4Figure(unittest.TestCase):
+    def setUp(self):
+        self.res = planted_f4(); self.fig = ff.fig_f4(self.res, "light", note="evaluation split, exploratory"); self.ax = self.fig.axes[0]
+
+    def pts(self, gid):
+        return [(round(float(x), 6), round(float(y), 6)) for x, y in by_gid(self.ax, gid)[0].get_offsets()]
+
+    def test_the_languages_are_sorted_by_the_native_contrast_with_the_largest_on_top_and_the_numbers_are_the_input(self):
+        self.assertEqual(self.pts("f4_native"), [(-0.30, 0.0), (-0.01, 1.0), (0.05, 2.0)])                      # aa, cc, bb
+        self.assertEqual(self.pts("f4_fp"), [(-0.10, 0.0), (-0.02, 1.0), (0.04, 2.0)])                          # the same subsets at full precision, on the same rows
+        self.assertEqual([t.get_text() for t in self.ax.get_yticklabels()][:3], ["aa", "cc", "bb"])
+
+    def test_the_full_precision_series_is_gray_and_the_native_one_wears_the_accent(self):
+        tok = ff.theme_tokens("light")
+        self.assertEqual(to_hex(by_gid(self.ax, "f4_native")[0].get_facecolor()[0]), tok["series"][0]); self.assertEqual(to_hex(by_gid(self.ax, "f4_fp")[0].get_facecolor()[0]), tok["muted"])
+        self.assertEqual(to_hex(by_gid(self.ax, "interval_native")[0].get_color()[0]), tok["series"][0]); self.assertEqual(to_hex(by_gid(self.ax, "interval_fp")[0].get_color()[0]), tok["muted"])
+
+    def test_each_series_has_its_own_interval_and_a_connector_joins_the_two_points_of_a_language(self):
+        seg = lambda gid: [tuple(round(float(v), 6) for v in (s[0][0], s[1][0], s[0][1])) for s in by_gid(self.ax, gid)[0].get_segments()]
+        self.assertEqual(seg("interval_native")[:3], [(-0.40, -0.20, 0.0), (-0.03, 0.01, 1.0), (-0.02, 0.12, 2.0)])
+        self.assertEqual(seg("interval_fp")[:3], [(-0.15, -0.05, 0.0), (-0.04, 0.0, 1.0), (-0.01, 0.09, 2.0)])
+        self.assertEqual(seg("connector")[:3], [(-0.10, -0.30, 0.0), (-0.02, -0.01, 1.0), (0.04, 0.05, 2.0)])
+
+    def test_the_macro_block_sits_above_the_languages_after_a_gap_row_with_its_count_in_the_label(self):
+        self.assertEqual(self.pts("f4_macro_native"), [(-0.0867, 4.0)]); self.assertEqual(self.pts("f4_macro_fp"), [(-0.0267, 4.0)])
+        labels = [t.get_text() for t in self.ax.get_yticklabels()]
+        self.assertEqual(labels[4], "macro mean (n = 3)"); self.assertEqual(labels[3], "")
+        seg = by_gid(self.ax, "interval_macro_native")[0].get_segments()
+        self.assertEqual([(round(float(seg[0][0][0]), 6), round(float(seg[0][1][0]), 6))], [(-0.15, -0.03)])
+
+    def test_the_zero_line_the_axis_note_and_the_symmetric_log_axis_that_keeps_negative_values(self):
+        self.assertEqual(list(by_gid(self.ax, "reference_zero")[0].get_xdata()), [0, 0])
+        self.assertEqual(self.ax.get_xscale(), "symlog")
+        left, right = self.ax.get_xlim(); self.assertLess(left, -0.40); self.assertGreater(right, 0.12)       # every interval end is inside the axis, negative side included
+        notes = {("less" if "less" in t.get_text() else "more"): t for t in by_gid(self.ax, "axis_note")}
+        self.assertEqual(sorted(notes), ["less", "more"]); self.assertIn("lost features matter less", notes["less"].get_text()); self.assertIn("lost features matter more", notes["more"].get_text())
+        self.assertLess(notes["less"].get_position()[0], 0.5); self.assertGreater(notes["more"].get_position()[0], 0.5)       # left and right of the zero line, in the empty gap row above the languages
+        self.assertEqual((notes["less"].get_position()[1], notes["more"].get_position()[1]), (3.0, 3.0))
+
+    def test_the_gap_row_has_no_tick_and_the_extreme_labels_stay_inside_the_axis_with_room_to_spare(self):
+        ticks = self.ax.yaxis.get_major_ticks()
+        self.assertEqual([tk.tick1line.get_visible() for tk in ticks], [True, True, True, False, True])
+        fig = ff.fig_f4(planted_f4(n_extra=23), "light", "x"); ax = fig.axes[0]; fig.canvas.draw(); r = fig.canvas.get_renderer(); box = ax.get_window_extent(r)
+        for tx in by_gid(ax, "label"):
+            b = tx.get_window_extent(r); self.assertGreater(b.x0, box.x0 + 2, tx.get_text()); self.assertLess(b.x1, box.x1 - 2, tx.get_text())      # inside the axes, clear of the spines
+
+    def test_only_the_extremes_are_labelled_with_signed_values(self):
+        labs = sorted(t.get_text() for t in by_gid(self.ax, "label"))
+        self.assertEqual(labs, ["+0.05", "-0.3"])
+
+    def test_the_title_describes_and_the_subtitle_states_the_condition_the_contrast_and_the_status(self):
+        self.assertEqual(self.ax.get_title(loc="left"), "Ablating features by their association status, matched on native activity")
+        sub = " ".join(by_gid(self.ax, "subtitle")[0].get_text().split())
+        for phrase in ("INT4", "3 languages", "negative = the lost features matter less", "evaluation split, exploratory"):
+            self.assertIn(phrase, sub)
+
+    def test_no_text_is_clipped_in_both_themes_with_26_languages_and_a_long_note(self):
+        for theme in ("light", "dark"):
+            assert_text_inside(self, ff.fig_f4(planted_f4(n_extra=23), theme, "evaluation split of 300 held-out devtest sentences per language, frozen settings, confirmatory analysis of the pre-registered kind"))
+
+    def test_an_empty_result_is_an_error(self):
+        r = planted_f4(); r["languages"] = []; r["per_language"] = {}
+        with self.assertRaises(ValueError):
+            ff.fig_f4(r, "light", "x")
+
+    def test_the_table_twin_has_a_row_per_language_and_a_macro_row_with_missing_values_as_none(self):
+        rows = ff.f4_table(self.res)
+        self.assertEqual([r["language"] for r in rows], ["aa", "bb", "cc", "macro mean"])
+        a = rows[0]; self.assertEqual((a["E_b"], a["E_b_lo"], a["E_b_hi"], a["E_fp"], a["delta"], a["harm_lost_b"], a["harm_retained_b"], a["sign_b"]), (-0.30, -0.40, -0.20, -0.10, -0.20, 0.10, 0.40, "negative"))
+        m = rows[3]; self.assertEqual((m["E_b"], m["E_b_lo"], m["delta_hi"], m["n_languages"]), (-0.0867, -0.15, -0.01, 3)); self.assertIsNone(m["harm_lost_b"]); self.assertIsNone(m["sign_b"])
+
+    def test_the_figure_reads_the_real_output_of_the_f4_analysis(self):
+        import tempfile
+        import phase1_func_f4_analysis as f4a
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_phase1_func_f4_analysis import merged
+        specs = {"aa": (0.05, 0.40), "bb": (0.40, 0.05), "cc": (0.2, 0.2)}
+        out = Path(tempfile.mkdtemp()) / "f4"
+        res = f4a.analyse_f4({"FP": merged("FP", specs, seed=1), "INT4": merged("INT4", specs, seed=2)}, out, n_boot=100)
+        res = json.loads((out / "f4_results.json").read_text())                                                  # the file, not the in-memory dictionary
+        ax = ff.fig_f4(res, "light", "x").axes[0]
+        want = sorted((round(res["per_language"][c]["E_b"]["point"], 6), c) for c in res["languages"])
+        got = [(round(float(x), 6), i) for i, (x, _) in enumerate(ax.collections[[c.get_gid() for c in ax.collections].index("f4_native")].get_offsets())]
+        self.assertEqual([g[0] for g in got], [w[0] for w in want])
+        self.assertEqual(len(ff.f4_table(res)), 4)
+
+
 NAN = float("nan")
 
 
@@ -667,7 +769,7 @@ class LongNotes(unittest.TestCase):
         return {"effect": lambda th: ff.fig_effect_per_language(EffectPerLanguage.ROWS, th, self.NOTE, K="K64"), "retention": lambda th: ff.fig_retention(planted_retention(), (0.75, 1.33), th, self.NOTE),
                 "size": lambda th: ff.fig_size_curves(planted_families(), th, self.NOTE), "assoc": lambda th: ff.fig_assoc_vs_function(ASSOC, planted_retention(), th, self.NOTE),
                 "fidelity": lambda th: ff.fig_fidelity(planted_fidelity(), th, self.NOTE), "rank": lambda th: ff.fig_rank_bins(planted_rank_rows(), th, self.NOTE),
-                "coverage": lambda th: ff.fig_coverage(planted_calibration(), th, self.NOTE), "rescue": lambda th: ff.fig_rescue(planted_rescue(), "K64", th, self.NOTE)}
+                "coverage": lambda th: ff.fig_coverage(planted_calibration(), th, self.NOTE), "rescue": lambda th: ff.fig_rescue(planted_rescue(), "K64", th, self.NOTE), "f4": lambda th: ff.fig_f4(planted_f4(), th, self.NOTE)}
 
     def test_every_figure_wraps_a_long_status_note_instead_of_clipping_it(self):
         for name, make in self.builders().items():
@@ -894,6 +996,26 @@ class Main(unittest.TestCase):
         self.assertIn("table_rescue.csv", written); self.assertIn("table_rescue.md", written)
         self.assertIn("exploratory", (self.out / "fig4_rescue_light.svg").read_text())
         self.assertIn("| language group |", (self.out / "table_rescue.md").read_text())
+
+    def test_f4_figures_and_tables_are_written_for_each_result_directory_with_their_own_note_and_skipped_without_the_option(self):
+        import tempfile
+        written = [Path(p).name for p in self.run_main()]
+        self.assertFalse(any("fig9" in n or "table_f4" in n for n in written))
+        dirs = []
+        for cond in ("INT4", "INT5"):
+            d = Path(tempfile.mkdtemp()) / cond; d.mkdir(); (d / "f4_results.json").write_text(json.dumps(planted_f4(cond))); dirs.append(str(d))
+        written = [Path(p).name for p in self.run_main("--f4", *dirs, "--f4-note", "customnote9")]
+        for cond in ("INT4", "INT5"):
+            for theme in ("light", "dark"):
+                for ext in ("svg", "png"):
+                    self.assertIn(f"fig9_f4_{cond}_{theme}.{ext}", written)
+            self.assertIn(f"table_f4_{cond}.csv", written); self.assertIn(f"table_f4_{cond}.md", written)
+        svg = (self.out / "fig9_f4_INT4_light.svg").read_text(); self.assertIn("customnote9", svg); self.assertNotIn("pilot, exploratory", svg)
+        import shutil, time
+        first = {p.name: p.read_bytes() for p in self.out.iterdir() if "f4" in p.name}
+        shutil.rmtree(self.out); time.sleep(1.1)
+        self.run_main("--f4", *dirs, "--f4-note", "customnote9")
+        self.assertEqual(first, {p.name: p.read_bytes() for p in self.out.iterdir() if "f4" in p.name})          # byte-identical regeneration
 
     def test_without_a_rank_table_figure_8_is_skipped(self):
         self.rank.unlink()
