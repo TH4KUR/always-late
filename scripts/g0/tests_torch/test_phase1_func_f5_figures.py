@@ -84,6 +84,13 @@ class Figures(unittest.TestCase):
         v = an.analyse_f5(sa, st2, sm, meta=None, n_boot=30, seed=0)["validity"]; fig = ff.fig_statements(v, "light", "x")
         self.assertEqual(sorted(g.get_gid() for g in fig.findobj() if (g.get_gid() or "").startswith("point:")), ["point:S2"]); self.assertTrue(any("undefined" in t for t in texts(fig)))
 
+    def test_a_statement_that_is_undefined_for_lack_of_data_is_not_drawn_and_says_how_much_data_there_was(self):
+        sa, st, sm = build_world("sensible")[:3]; st["INT4"]["write"]["cos"][:] = 0.3; st["INT4"]["write"]["cos"][:3] = 0.99
+        w = st["INT4"]["write"]; S = np.asarray(w["S"]).astype(np.float64); S[np.arange(len(w["cos"])), np.arange(len(w["cos"]))] = w["cos"]; w["S"] = S.astype(np.float16)
+        res = an.analyse_f5(sa, st, sm, meta=None, n_boot=30, seed=0); self.assertEqual(res["validity"]["statements"]["S2"]["verdict"], "undefined"); self.assertFalse(np.isnan(res["validity"]["statements"]["S2"]["auroc"]))
+        fig = ff.fig_statements(res["validity"], "light", "x"); self.assertNotIn("point:S2", [g.get_gid() for g in fig.findobj()]); self.assertTrue(any("undefined" in x and "3 events" in x for x in texts(fig))); self.assertEqual(sum("0 features defined" in x for x in texts(fig)), 0)       # S1 and S3 had data here
+        res["validity"]["statements"]["S1"].update({"verdict": "undefined", "n_defined": 4, "n_total": 99}); fig = ff.fig_statements(res["validity"], "light", "x"); self.assertTrue(any("4 features defined" in x for x in texts(fig)))
+
     def test_the_retrieval_figure_has_the_overall_the_within_language_and_the_chance_level(self):
         fig = ff.fig_retrieval(self.res["tables"], "light", "x"); self.assertEqual(len(tagged(fig, "top1")), 1); self.assertEqual(len(tagged(fig, "within_top1")), 1); self.assertEqual(len(tagged(fig, "chance")), 1)
         qs = [s for s in ff.STATE_ORDER if s in self.res["tables"] and s not in ff.REFERENCE_STATES]; y = tagged(fig, "top1")[0].get_ydata(); self.assertEqual(len(y), len(qs))

@@ -135,6 +135,7 @@ def state_table(label, states, T, stage_a, tau, nc, n_boot=2000, seed=0):
 
 
 S1_MIN, S2_AUROC, S2_LOWER, S3_MIN = 0.80, 0.60, 0.5, 0.80       # the rule proposed before any number (design section 5, Q23)
+MIN_N = 10                                                         # D-057: a statement with fewer than this many defined features (S1, S3) or events or non-events (S2) is undefined, not "not met"
 
 
 def rule_share(share):
@@ -177,14 +178,17 @@ def validity(states, T, floor, n_boot=2000, seed=0):
             if inadequate else "" if floor["adequate"] else "no repeat-measurement pseudo-state: the adequacy of the instrument is not established")
     st = {}
     m = T["status"]["INT6"] == "retained"; r = share_ci(cos("INT6")[m], tau, lang[m], n_boot, seed)
-    st["S1"] = {"text": "At INT6, at least 80 % of the features labelled retained by the D-035 status have W1 at or above the numerical floor.", **r, "verdict": rule_share(r["share"])}
+    st["S1"] = {"text": "At INT6, at least 80 % of the features labelled retained by the D-035 status have W1 at or above the numerical floor.", **r, "verdict": "undefined" if r["n_defined"] < MIN_N else rule_share(r["share"])}
     lost, kept = np.array(["lost@INT4" in x for x in T["roles"]]), np.array(["retained@INT4" in x for x in T["roles"]]); pair = lost | kept; c4 = cos("INT4"); d = pair & ~np.isnan(c4)
     score, event, cl = kept[d].astype(float), c4[d] >= tau, lang[d]; a = met.auroc(score, event)
     lo, hi = _boot(cl, lambda idx: met.auroc(score[idx], event[idx])["auroc"], n_boot, seed) if a["n_pos"] and a["n_neg"] else (float("nan"), float("nan"))
     st["S2"] = {"text": "At INT4, in the F4 pairs, the AUROC of the status (retained against lost) for the event W1 >= floor is at least 0.60 with its lower cluster-bootstrap bound above 0.5.", "auroc": a["auroc"], "lo": lo, "hi": hi,
-                "n_pos": a["n_pos"], "n_neg": a["n_neg"], "verdict": rule_auroc(a["auroc"], lo)}
+                "n_pos": a["n_pos"], "n_neg": a["n_neg"], "verdict": "undefined" if min(a["n_pos"], a["n_neg"]) < MIN_N else rule_auroc(a["auroc"], lo)}
+    s2c = met.auroc(c4[d], kept[d]); clo, chi = _boot(cl, lambda idx: met.auroc(c4[d][idx], kept[d][idx])["auroc"], n_boot, seed) if s2c["n_pos"] and s2c["n_neg"] else (float("nan"), float("nan"))
+    descriptive = {"S2c": {"text": "At INT4, in the F4 pairs, the AUROC of W1 for the status retained (0.5 = no relation; below 0.5 the lost features keep more of their function). Descriptive: no rule, no verdict.",
+                           "auroc": s2c["auroc"], "lo": clo, "hi": chi, "n_pos": s2c["n_pos"], "n_neg": s2c["n_neg"]}}
     m = corr("INT5") >= DUAN_CUTOFF; r = share_ci(cos("INT5")[m], tau, lang[m], n_boot, seed)
-    st["S3"] = {"text": "At INT5, at least 80 % of the features that survive by the baseline cutoff (token correlation >= 0.9) have W1 at or above the numerical floor.", **r, "verdict": rule_share(r["share"])}
+    st["S3"] = {"text": "At INT5, at least 80 % of the features that survive by the baseline cutoff (token correlation >= 0.9) have W1 at or above the numerical floor.", **r, "verdict": "undefined" if r["n_defined"] < MIN_N else rule_share(r["share"])}
     if inadequate:
         for s in st.values():
             s["verdict"] = "undefined"
@@ -201,7 +205,7 @@ def validity(states, T, floor, n_boot=2000, seed=0):
         if label in states:
             x, y = corr(label), cos(label); sp = met.spearman(x, y); lo, hi = _boot(lang, lambda idx: met.spearman(x[idx], y[idx])["rho"], n_boot, seed) if sp["n"] >= 3 else (float("nan"), float("nan"))
             spear[label] = {**sp, "lo": lo, "hi": hi}
-    return {"tau": tau, "statements": st, "overall": overall([s["verdict"] for s in st.values()]), "note": note, "confusion": conf, "spearman": spear, "paired": paired}
+    return {"tau": tau, "statements": st, "overall": overall([s["verdict"] for s in st.values()]), "note": note, "confusion": conf, "spearman": spear, "paired": paired, "descriptive": descriptive}
 
 
 def check_inputs(stage_a, states):
@@ -320,7 +324,8 @@ def _statement_block(res):
     L += ["| statement | value | 95 % interval (languages resampled) | defined | verdict |", "|---|---|---|---|---|",
           f"| S1 INT6, retained by the D-035 status: share with W1 >= floor (rule: >= 0.80) | {_f3(s['S1']['share'])} | {_ci(s['S1']['lo'], s['S1']['hi']).strip()} | {s['S1']['n_defined']} | {s['S1']['verdict']} |",
           f"| S2 INT4, F4 pairs: AUROC of the status for W1 >= floor (rule: >= 0.60, lower bound > 0.5) | {_f3(s['S2']['auroc'])} | {_ci(s['S2']['lo'], s['S2']['hi']).strip()} | {s['S2']['n_pos']} event, {s['S2']['n_neg']} no event | {s['S2']['verdict']} |",
-          f"| S3 INT5, baseline cutoff (correlation >= 0.9): share with W1 >= floor (rule: >= 0.80) | {_f3(s['S3']['share'])} | {_ci(s['S3']['lo'], s['S3']['hi']).strip()} | {s['S3']['n_defined']} | {s['S3']['verdict']} |", "",
+          f"| S3 INT5, baseline cutoff (correlation >= 0.9): share with W1 >= floor (rule: >= 0.80) | {_f3(s['S3']['share'])} | {_ci(s['S3']['lo'], s['S3']['hi']).strip()} | {s['S3']['n_defined']} | {s['S3']['verdict']} |",
+          f"| descriptive S2c (descriptive, no rule) INT4, F4 pairs: AUROC of W1 for the status retained (0.5 = no relation; below 0.5 the lost features keep more) | {_f3(v['descriptive']['S2c']['auroc'])} | {_ci(v['descriptive']['S2c']['lo'], v['descriptive']['S2c']['hi']).strip()} | {v['descriptive']['S2c']['n_pos']} retained, {v['descriptive']['S2c']['n_neg']} lost | none |", "",
           f"**Overall: {v['overall']}.** Work dtype {i['work_dtype']}; sham gate exact {i['sham_gate_exact']}; logit gates ok {i['logit_gates_ok']}; run complete {i['complete']}.", "",
           "If the three statements hold, they hold for this model, this layer, this quantizer and this sample, nothing more. If they do not hold, the survival label describes the input-side agreement of a coordinate system "
           "and no functional claim may be built on it. The study is exploratory: no confirmatory claim is made from it.", ""]

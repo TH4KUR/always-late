@@ -127,12 +127,13 @@ def fig_statements(validity, theme, note):
         ax.scatter([0.8 if key == "share" else 0.6], [y], marker="D", s=46, color=t["muted"], zorder=3, gid=f"rule:{k}")
         if key == "auroc":
             ax.vlines(0.5, y - 0.22, y + 0.22, color=t["muted"], linewidth=1.5, zorder=3, gid=f"rule_lower:{k}")
-        if not np.isnan(v):
+        if not np.isnan(v) and s["verdict"] != "undefined":
             if not (np.isnan(lo) or np.isnan(hi)):
                 ax.hlines(y, lo, hi, color=t["series"][0], linewidth=2.2, zorder=4, gid=f"interval:{k}")
             ax.scatter([v], [y], s=62, color=t["series"][0], edgecolors=t["surface"], linewidths=1.5, zorder=5, gid=f"point:{k}")
             ax.text(v, y + 0.27, f"{v:.2f}" + ("" if np.isnan(lo) else f" [{lo:.2f}, {hi:.2f}]"), ha="center", va="bottom", fontsize=8.5, color=t["ink2"])
-        ax.text(1.03, y, s["verdict"], transform=ax.get_yaxis_transform(), ha="left", va="center", fontsize=9.5, color=t["ink"], fontweight="bold")
+        why = "" if s["verdict"] != "undefined" else (f"\n{s['n_pos']} events, {s['n_neg']} without" if key == "auroc" else f"\n{s['n_defined']} features defined")
+        ax.text(1.03, y, s["verdict"] + why, transform=ax.get_yaxis_transform(), ha="left", va="center", fontsize=9.5, color=t["ink"], fontweight="bold")
     ax.set_yticks(range(n)); ax.set_yticklabels([r[1] for r in STATEMENT_ROWS][::-1]); ax.set_ylim(-0.6, n - 0.2); ax.set_xlim(0, 1.0); ax.grid(False, axis="y")
     base._axis_labels(ax, t, xlabel="share of features (S1, S3) or AUROC (S2); diamond = the rule (S2: also the lower bound 0.5)")
     sub = f"overall: {validity['overall']}. Exploratory; holds, if at all, for this model, layer, quantizer and sample · {note}"

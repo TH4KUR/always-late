@@ -275,6 +275,65 @@ class VaryingWorld(unittest.TestCase):
         self.assertAlmostEqual(an.validity(st, T, self.floor, n_boot=50, seed=0)["statements"]["S1"]["share"], float((c6[ret6] >= tau).mean()))
 
 
+class Guards(unittest.TestCase):
+    """A statement whose data cannot support a verdict is undefined, not 'not met' (D-057)."""
+    def test_the_minimum_count_is_ten(self):
+        self.assertEqual(an.MIN_N, 10)
+
+    def test_s2_is_undefined_when_fewer_than_ten_features_reach_the_floor_even_if_the_auroc_is_low(self):
+        sa, st, sm, T = build_world("sensible"); floor = an.floor_report(st); tau = floor["tau"]; c = st["INT4"]["write"]["cos"]; c[:] = 0.3; c[:3] = 0.99                      # three events only
+        s = an.validity(st, T, floor, n_boot=50, seed=0)["statements"]["S2"]
+        self.assertEqual(s["n_pos"], 3); self.assertEqual(s["verdict"], "undefined"); self.assertFalse(np.isnan(s["auroc"]))                                                    # the number is still reported
+
+    def test_s2_is_undefined_when_fewer_than_ten_features_miss_the_floor(self):
+        sa, st, sm, T = build_world("sensible"); floor = an.floor_report(st); c = st["INT4"]["write"]["cos"]; c[:] = 0.99; c[:4] = 0.1
+        self.assertEqual(an.validity(st, T, floor, n_boot=50, seed=0)["statements"]["S2"]["verdict"], "undefined")
+
+    def test_s2_with_exactly_ten_events_and_ten_non_events_is_decided(self):
+        sa, st, sm, T = build_varying_world(); floor = an.floor_report(st); tau = floor["tau"]; kept = np.array(["retained@INT4" in r for r in T["roles"]]); lost = np.array(["lost@INT4" in r for r in T["roles"]]); pair = np.flatnonzero(kept | lost)
+        c = st["INT4"]["write"]["cos"]; c[:] = 0.0; c[pair[:10]] = 0.99; c[pair[10:20]] = 0.1
+        s = an.validity(st, T, floor, n_boot=50, seed=0)["statements"]["S2"]; self.assertEqual((s["n_pos"], s["n_neg"]), (10, int((kept | lost).sum()) - 10)); self.assertNotEqual(s["verdict"], "undefined")
+
+    def test_s1_and_s3_are_undefined_below_ten_defined_features(self):
+        sa, st, sm, T = build_world("sensible"); floor = an.floor_report(st)
+        for lab, key in (("INT6", "S1"), ("INT5", "S3")):
+            T2 = dict(T); T2["status"] = dict(T["status"]); T2["status"][lab] = np.where(np.arange(len(T["fid"])) < 9, "retained", "different_peak")
+            st2 = copy.deepcopy(st); st2["INT5"]["read"]["corr"] = np.where(np.arange(len(st["INT5"]["read"]["corr"])) < 9, 0.95, 0.2)
+            T2["rows"] = T["rows"]
+            s = an.validity(st2, T2, floor, n_boot=50, seed=0)["statements"][key]; self.assertEqual(s["n_defined"], 9, key); self.assertEqual(s["verdict"], "undefined", key); self.assertFalse(np.isnan(s["share"]), key)
+
+    def test_ten_defined_features_are_enough_for_s1(self):
+        sa, st, sm, T = build_world("sensible"); floor = an.floor_report(st); T2 = dict(T); T2["status"] = dict(T["status"]); T2["status"]["INT6"] = np.where(np.arange(len(T["fid"])) < 10, "retained", "different_peak")
+        s = an.validity(st, T2, floor, n_boot=50, seed=0)["statements"]["S1"]; self.assertEqual(s["n_defined"], 10); self.assertIn(s["verdict"], ("met", "not met"))
+
+
+    def test_ten_defined_features_are_enough_for_s3(self):
+        sa, st, sm, T = build_world("sensible"); floor = an.floor_report(st); st["INT5"]["read"]["corr"] = np.where(np.arange(len(st["INT5"]["read"]["corr"])) < 10, 0.95, 0.2)
+        s = an.validity(st, T, floor, n_boot=50, seed=0)["statements"]["S3"]; self.assertEqual(s["n_defined"], 10); self.assertIn(s["verdict"], ("met", "not met"))
+
+
+class ContinuousAuroc(unittest.TestCase):
+    def test_the_descriptive_auroc_is_the_probability_that_a_retained_feature_keeps_more_function_than_a_lost_one(self):
+        import phase1_func_f5_metrics as met
+        sa, st, sm, T = build_varying_world(); floor = an.floor_report(st); v = an.validity(st, T, floor, n_boot=60, seed=0); d = v["descriptive"]["S2c"]
+        kept = np.array(["retained@INT4" in r for r in T["roles"]]); lost = np.array(["lost@INT4" in r for r in T["roles"]]); pair = kept | lost; c = st["INT4"]["write"]["cos"]
+        want = met.auroc(c[pair], kept[pair])
+        self.assertAlmostEqual(d["auroc"], want["auroc"]); self.assertEqual((d["n_pos"], d["n_neg"]), (want["n_pos"], want["n_neg"])); self.assertLessEqual(d["lo"], d["auroc"]); self.assertGreaterEqual(d["hi"], d["auroc"])
+        self.assertNotIn("S2c", v["statements"]); self.assertNotIn("verdict", d)                                                                       # descriptive: no verdict, not part of the overall
+
+    def test_the_descriptive_auroc_is_below_one_half_when_lost_features_keep_more(self):
+        sa, st, sm, T = build_world("sensible"); lost = T["status"]["INT4"] != "retained"; rng = np.random.default_rng(4); n = len(lost)
+        st["INT4"]["write"]["cos"] = np.where(lost, rng.uniform(0.9, 1.0, n), rng.uniform(0.2, 0.5, n)); d = an.validity(st, T, an.floor_report(st), n_boot=60, seed=0)["descriptive"]["S2c"]
+        self.assertLess(d["auroc"], 0.05); self.assertLess(d["hi"], 0.5)
+
+    def test_it_is_undefined_without_pairs_and_the_report_lists_it(self):
+        sa, st, sm, T = build_varying_world(); res = an.analyse_f5(sa, st, sm, meta=None, n_boot=40, seed=0); md = an.report_text(res)
+        self.assertIn("descriptive, no rule", md); self.assertIn(an._f3(res["validity"]["descriptive"]["S2c"]["auroc"]), md)
+        for f in sm["features"].values():
+            f["roles"] = ["k64"]
+        d = an.validity(st, an.assemble(sa, sm), an.floor_report(st), n_boot=30, seed=0)["descriptive"]["S2c"]; self.assertTrue(np.isnan(d["auroc"]))
+
+
 class Rules(unittest.TestCase):
     def test_the_share_rule_is_at_least_eighty_percent(self):
         self.assertEqual(an.rule_share(0.80), "met"); self.assertEqual(an.rule_share(0.7999), "not met"); self.assertEqual(an.rule_share(float("nan")), "undefined")
@@ -600,6 +659,10 @@ class Report(unittest.TestCase):
         sa, st, sm, T = build_world("inadequate"); res = an.analyse_f5(sa, st, sm, meta=None, n_boot=30, seed=0); md = an.report_text(res)
         self.assertIn("**Note:**", md); self.assertIn("instrument is inadequate", md); self.assertEqual(md.count("| undefined |"), 3); self.assertIn("**Overall: undetermined.**", md)
         self.assertEqual([l.split(".")[0] for l in md.split("\n") if l.startswith("## ")], [f"## {i}" for i in range(1, 8)])
+
+    def test_the_statement_table_is_one_contiguous_markdown_table_including_the_descriptive_row(self):
+        lines = self.md.split("\n"); i = next(k for k, l in enumerate(lines) if l.startswith("| statement |")); j = next(k for k, l in enumerate(lines) if l.startswith("| descriptive S2c"))
+        self.assertTrue(all(l.startswith("|") for l in lines[i:j + 1])); self.assertEqual(j - i, 5)
 
     def test_the_hypothesis_numbers_are_formatted_for_reading(self):
         self.assertNotRegex(self.md, r"0\.\d{6,}")                                                                    # no 16-digit floats in the report
