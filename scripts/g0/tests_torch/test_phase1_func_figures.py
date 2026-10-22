@@ -90,14 +90,30 @@ class EffectPerLanguage(unittest.TestCase):
         self.assertIn("nats per token", self.ax.get_xlabel())
 
     def test_ticks_the_room_for_an_interval_below_zero_and_labels_only_the_extremes(self):
-        self.assertEqual([t.get_text() for t in self.ax.get_xticklabels()], ["0", "0.01", "0.1", "1", "10"])
+        self.assertEqual([t.get_text() for t in self.ax.get_xticklabels()], ["-0.01", "0", "0.01", "0.1", "1", "10"])      # the interval that crosses zero reaches -0.01: its tick is labelled
         self.assertLessEqual(self.ax.get_xlim()[0], -0.01)                                                  # the interval that crosses zero is inside the axes
         self.assertEqual(sorted(t.get_text() for t in by_gid(self.ax, "label")), ["0.005", "7"])
 
     def test_legend_names_both_series_and_the_note_states_the_status(self):
-        texts = [t.get_text() for t in self.ax.get_legend().get_texts()]
+        texts = [t.get_text() for t in self.fig.legends[0].get_texts()]
         self.assertEqual(len(texts), 2); self.assertIn("95 %", texts[0]); self.assertIn("control", texts[1])
         self.assertIn("pilot, exploratory", all_text(self.fig))
+
+    def test_negative_effects_have_labelled_ticks_and_their_value_labels_sit_right_of_the_interval(self):
+        # found by a dry run on the Belebele pilot analysis (2026-10-22): near-zero effects of either sign, the negative side had unlabelled ticks
+        rows = [{"language": "aaa", "effect": -0.30, "lo": -0.40, "hi": -0.20, "harm_control": 0.02}, {"language": "bbb", "effect": 0.05, "lo": -0.02, "hi": 0.12, "harm_control": 0.01}]
+        fig = ff.fig_effect_per_language(rows, "light", note="x"); ax = fig.axes[0]
+        self.assertEqual([t.get_text() for t in ax.get_xticklabels()], ["-0.1", "-0.01", "0", "0.01", "0.1"])
+        left, right = ax.get_xlim(); self.assertLess(left, -0.40)
+        pos = {t.get_text(): t.get_position()[0] for t in by_gid(ax, "label")}
+        self.assertGreater(pos["-0.3"], -0.20); self.assertGreater(pos["0.05"], 0.12)                          # to the right of the upper end of each extreme row's interval
+
+    def test_the_legend_sits_below_the_axis_so_that_no_row_can_be_under_it(self):
+        for theme in ("light", "dark"):
+            many = [{"language": f"lang_{i:02d}_Latn", "effect": 0.01 * (i + 1), "lo": 0.005 * (i + 1), "hi": 0.02 * (i + 1), "harm_control": 0.01 * (i + 1)} for i in range(27)]
+            fig = ff.fig_effect_per_language(many, theme, note="x"); ax = fig.axes[0]; fig.canvas.draw(); r = fig.canvas.get_renderer()
+            self.assertEqual(len(fig.legends), 1); self.assertIsNone(ax.get_legend())
+            box = fig.legends[0].get_window_extent(r); self.assertLess(box.y1, ax.get_window_extent(r).y0); self.assertLess(box.y1, ax.xaxis.label.get_window_extent(r).y0 + 1)
 
     def test_surface_follows_the_theme(self):
         self.assertEqual(to_hex(self.fig.get_facecolor()), "#fcfcfb")
@@ -130,10 +146,10 @@ class EffectPerLanguage(unittest.TestCase):
 def planted_retention():
     def lang(r, lo, hi, c="preserved"):
         return {"ratio": r, "lo": lo, "hi": hi, "class": c}
-    return {"INT8": {"macro": {"ratio": 1.01, "lo": 1.00, "hi": 1.03, "class": "preserved", "n_languages": 2, "median_ratio": 1.00, "median_lo": 0.99, "median_hi": 1.01},
+    return {"INT8": {"macro": {"ratio": 1.01, "lo": 1.00, "hi": 1.03, "class": "preserved", "n_languages": 3, "median_ratio": 1.00, "median_lo": 0.99, "median_hi": 1.01},
                      "pooled": {"ratio": 1.0, "lo": 0.99, "hi": 1.01, "class": "preserved"},
                      "languages": {"aaa": lang(1.02, 0.9, 1.1), "bbb": lang(0.98, 0.9, 1.0), "vie": lang(None, None, None, "undefined")}},
-            "INT4": {"macro": {"ratio": 2.14, "lo": 2.02, "hi": 2.55, "class": "amplified", "n_languages": 2, "median_ratio": 1.43, "median_lo": 1.40, "median_hi": 1.61},
+            "INT4": {"macro": {"ratio": 2.14, "lo": 2.02, "hi": 2.55, "class": "amplified", "n_languages": 3, "median_ratio": 1.43, "median_lo": 1.40, "median_hi": 1.61},
                      "pooled": {"ratio": 1.34, "lo": 1.3, "hi": 1.4, "class": "inconclusive"},
                      "languages": {"aaa": lang(3.0, 2.5, 3.5, "amplified"), "bbb": lang(-0.5, -0.9, 0.1, "attenuated"), "vie": lang(None, None, None, "undefined")}}}
 
@@ -1047,6 +1063,24 @@ class Main(unittest.TestCase):
         shutil.rmtree(self.out); time.sleep(1.1)
         self.run_main("--f4", *dirs, "--f4-note", "customnote9")
         self.assertEqual(first, {p.name: p.read_bytes() for p in self.out.iterdir() if "f4" in p.name})          # byte-identical regeneration
+
+    def test_retention_figures_are_skipped_with_a_recorded_reason_when_the_macro_rests_on_fewer_than_three_languages(self):
+        # found by a dry run on the Belebele pilot analysis: a one-language "macro" ratio near zero cannot be drawn on a log axis and is not a summary
+        an = json.loads((self.res / "analysis.json").read_text()); an["retention"]["INT4"]["macro"]["n_languages"] = 1; (self.res / "analysis.json").write_text(json.dumps(an))
+        written = [Path(p).name for p in self.run_main()]
+        for stem in ("fig2_retention", "fig5_association_vs_function"):
+            self.assertFalse(any(n.startswith(stem) for n in written), stem)
+        self.assertIn("fig1_effect_per_language_light.png", written); self.assertIn("table_retention.md", written)             # everything else, and the table with the counts, is still written
+        note = (self.out / "figures_skipped.txt").read_text(); self.assertIn("fig2_retention", note); self.assertIn("fig5_association_vs_function", note); self.assertIn("INT4", note); self.assertIn("(1)", note)
+        an["retention"]["INT4"]["macro"]["n_languages"] = 2; (self.res / "analysis.json").write_text(json.dumps(an))
+        self.assertFalse(any(n.startswith("fig2_retention") for n in [Path(p).name for p in self.run_main()]))               # two languages are still too few: the default is three
+        written = [Path(p).name for p in self.run_main("--min-retention-languages", "1")]
+        self.assertIn("fig2_retention_light.png", written); self.assertIn("fig5_association_vs_function_light.png", written)
+        self.assertFalse((self.out / "figures_skipped.txt").exists())                                                         # no stale note when nothing is skipped
+
+    def test_full_ladders_with_enough_languages_are_not_skipped(self):
+        written = [Path(p).name for p in self.run_main()]
+        self.assertIn("fig2_retention_light.png", written); self.assertFalse((self.out / "figures_skipped.txt").exists())
 
     def test_without_a_rank_table_figure_8_is_skipped(self):
         self.rank.unlink()

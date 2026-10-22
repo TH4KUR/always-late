@@ -85,6 +85,15 @@ def _axis_labels(ax, t, xlabel=None, ylabel=None):
         ax.set_ylabel(ylabel, color=t["ink2"], fontsize=9)
 
 
+def _legend_below(fig, t, handles, labels, left_in, right_in):
+    """A figure legend centred under the axes (below the axis label), so that no row of the figure can be under it; the caller reserves the room with the bottom margin."""
+    w_in, h_in = fig.get_size_inches()
+    leg = fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, fontsize=8.5, handlelength=1.8, bbox_to_anchor=((left_in + (w_in - left_in - right_in) / 2) / w_in, 0.1 / h_in))
+    for text in leg.get_texts():
+        text.set_color(t["ink2"])
+    return leg
+
+
 def fig_effect_per_language(rows, theme, note, K=None, unit="nats per token"):
     """Full-precision effect per language: E (harm of zero-ablating the language's group beyond its activity-matched controls, nats per token, with its 95 % interval) against the harm of the controls
     themselves. rows: dicts with language, effect, lo, hi, harm_control (effects_by_language.csv, FP rows). Sorted by E, the largest on top; symlog axis (E spans orders of magnitude and an
@@ -92,7 +101,7 @@ def fig_effect_per_language(rows, theme, note, K=None, unit="nats per token"):
     if not rows:
         raise ValueError("no rows to plot")
     rows = sorted(rows, key=lambda r: r["effect"]); n = len(rows); y = np.arange(n)
-    fig, ax, t = _new_fig(theme, 7.6, 0.27 * n + 2.0)
+    fig, ax, t = _new_fig(theme, 7.6, 0.27 * n + 2.5)
     eff = np.array([r["effect"] for r in rows]); lo = np.array([r["lo"] for r in rows]); hi = np.array([r["hi"] for r in rows]); ctrl = np.array([r["harm_control"] for r in rows])
     ax.hlines(y, lo, hi, color=t["series"][0], linewidth=2.0, zorder=2, gid="interval")
     ax.vlines(np.concatenate([lo, hi]), np.concatenate([y - 0.14, y - 0.14]), np.concatenate([y + 0.14, y + 0.14]), color=t["series"][0], linewidth=1.6, zorder=2, gid="interval_cap")
@@ -101,17 +110,17 @@ def fig_effect_per_language(rows, theme, note, K=None, unit="nats per token"):
     ax.set_xscale("symlog", linthresh=0.01, linscale=0.6)
     left = min(0.0, float(lo.min()) * 1.3); right = float(hi.max()) * 1.6
     ax.set_xlim(left, right)
-    ticks = [v for v in (0, 0.01, 0.1, 1, 10) if left <= v <= right]
+    ticks = [v for v in (-10, -1, -0.1, -0.01, 0, 0.01, 0.1, 1, 10) if left <= v <= right]
     ax.set_xticks(ticks); ax.set_xticklabels([f"{v:g}" for v in ticks])
     ax.set_yticks(y); ax.set_yticklabels([r["language"] for r in rows]); ax.set_ylim(-0.8, n - 0.2)
     ax.grid(False, axis="y")
     for k in (0, n - 1):                                                               # direct labels on the extremes only
-        ax.text(max(eff[k], hi[k]) * 1.25 + (0.002 if hi[k] <= 0.01 else 0), y[k], f"{eff[k]:.3g}", va="center", fontsize=8.5, color=t["ink2"], gid="label")
+        ax.text(hi[k] + 0.002 if hi[k] <= 0.01 else hi[k] * 1.25, y[k], f"{eff[k]:.3g}", va="center", fontsize=8.5, color=t["ink2"], gid="label")      # right of the interval, whatever the sign
     _axis_labels(ax, t, xlabel=f"harm beyond matched controls, {unit} (symmetric-log axis: linear below 0.01)")
     extra = _title(ax, t, "Removing a language's feature group: harm beyond matched controls", f"full precision, {n} languages{', group ' + K if K else ''} \u00b7 {note}")
     handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=0)]
-    _legend(ax, t, handles, ["group effect E (95 % interval)", "matched-control harm"], "lower right")
-    _margins(fig, left_in=1.0, bottom_in=0.8, extra=extra)
+    _legend_below(fig, t, handles, ["group effect E (95 % interval)", "matched-control harm"], 1.0, 0.25)
+    _margins(fig, left_in=1.0, bottom_in=1.3, extra=extra)
     return fig
 
 
@@ -444,11 +453,8 @@ def fig_f4(res, theme, note):
                    f"{b}, {n} languages; harm of zero-ablating the features whose association was lost minus harm of activity-matched features that kept it (nats per token, own text); "
                    f"negative = the lost features matter less; 95 % intervals \u00b7 {note}")
     handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=1.4, markeredgecolor=t["surface"])]
-    w_in, h_in = fig.get_size_inches(); left_in, right_in, bottom_in = 1.55, 0.25, 1.35
-    leg = fig.legend(handles, [f"contrast at {b} (native)", "same subsets at full precision"], loc="lower center", ncol=2, frameon=False, fontsize=8.5, handlelength=1.8,
-                     bbox_to_anchor=((left_in + (w_in - left_in - right_in) / 2) / w_in, 0.1 / h_in))           # below the axis: no row of the figure can be under it
-    for text in leg.get_texts():
-        text.set_color(t["ink2"])
+    left_in, right_in, bottom_in = 1.55, 0.25, 1.35
+    _legend_below(fig, t, handles, [f"contrast at {b} (native)", "same subsets at full precision"], left_in, right_in)
     _margins(fig, left_in=left_in, right_in=right_in, bottom_in=bottom_in, extra=extra)
     return fig
 
@@ -656,6 +662,7 @@ def main(argv=None):
     ap.add_argument("--unit", default="nats per token", help="unit of the effect (T-MC: 'nats per item')")
     ap.add_argument("--rank-note", default="exploratory, descriptive (D-035 statuses measured on devtest)", help="status of the data of figure 8, which is not the data of the other figures")
     ap.add_argument("--rank-table", default=str(root / "reports/functional_validation/results/assoc_rank/rank_table.csv"), help="A1 rank_table.csv (figure 8); skipped when absent")
+    ap.add_argument("--min-retention-languages", type=int, default=3, help="figures 2 and 5 are skipped, with the reason written to figures_skipped.txt, when the macro retention of any precision rests on fewer languages (a one-language macro is not a summary)")
     ap.add_argument("--f4", nargs="*", default=[], help="directories with f4_results.json (phase1_func_f4_analysis.py output; one per precision): figure 9 and table_f4_<precision> for each")
     ap.add_argument("--f4-note", default="exploratory (the D-035 statuses were measured on devtest), evaluation split, frozen settings", help="status of the data of figure 9, which is not the data of the other figures")
     ap.add_argument("--themes", nargs="*", default=["light", "dark"], choices=sorted(_THEMES)); ap.add_argument("--formats", nargs="*", default=["svg", "png"], choices=["svg", "png"])
@@ -668,12 +675,20 @@ def main(argv=None):
     cal = json.loads(Path(a.calibration).read_text()) if Path(a.calibration).exists() else None
     manifest = json.loads(Path(a.manifest).read_text())
     written = []
+    thin = {p: v["macro"].get("n_languages", 0) for p, v in an["retention"].items() if v["macro"].get("n_languages", 0) < a.min_retention_languages}
+    skipped = out / "figures_skipped.txt"
+    if thin:
+        skipped.write_text("fig2_retention, fig5_association_vs_function: skipped because the macro retention rests on fewer than " + str(a.min_retention_languages) + " languages at " + ", ".join(f"{p} ({n})" for p, n in thin.items())
+                           + " (languages with a clearly positive full-precision effect); the counts are in table_retention.\n")
+        print("skipped figures 2 and 5:", skipped.read_text().strip())
+    elif skipped.exists():
+        skipped.unlink()
     for theme in a.themes:
         figs = [("fig1_effect_per_language", lambda: fig_effect_per_language(fp_rows, theme, a.note, K=K, unit=a.unit)), ("fig2_retention", lambda: fig_retention(an["retention"], an["bands"], theme, a.note)),
                 ("fig3_group_size", lambda: fig_size_curves(res["families"], theme, a.note)), ("fig4_rescue", lambda: fig_rescue(an["rescue"], K, theme, a.note)), ("fig5_association_vs_function", lambda: fig_assoc_vs_function(assoc, an["retention"], theme, a.note)),
                 ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note)), ("fig7_belebele_coverage", lambda: fig_coverage(cal, theme, a.calibration_note)), ("fig8_association_by_rank", lambda: fig_rank_bins(rank_rows, theme, a.rank_note))]
         for stem, make in figs:
-            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig4_rescue": bool(an.get("rescue")), "fig6_sae_fidelity": bool(an.get("fidelity")), "fig7_belebele_coverage": cal is not None, "fig8_association_by_rank": bool(rank_rows)}
+            has = {"fig2_retention": not thin, "fig5_association_vs_function": bool(assoc) and not thin, "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig4_rescue": bool(an.get("rescue")), "fig6_sae_fidelity": bool(an.get("fidelity")), "fig7_belebele_coverage": cal is not None, "fig8_association_by_rank": bool(rank_rows)}
             if not has.get(stem, True):                                                                          # the inputs of this figure do not exist for this analysis (for example T-MC has no SAE fidelity)
                 continue
             written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
