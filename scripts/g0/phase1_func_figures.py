@@ -310,6 +310,65 @@ def fig_rank_bins(rows, theme, note):
     return fig
 
 
+def _coverage_rows(cal):
+    """The rows of the chosen format of a calibration record (phase1_func_mc_calibration.py): language, items, accuracy, Wilson interval, covered. The record's own `covered` flags and lists must agree with the
+    rule (lower bound above chance + margin); a languages without items (n = 0) has no accuracy and is never covered."""
+    fmt, thr = cal["format"], cal["chance"] + cal["margin"]
+    rows = []
+    for code, row in cal["languages"].items():
+        c = row[fmt]; has = c["n"] > 0
+        by_rule = bool(has and c["lo"] > thr)
+        if bool(row["covered"]) != by_rule:
+            raise ValueError(f"{code}: the record says covered={row['covered']} but the rule (lower bound above {thr:g}) says {by_rule}")
+        rows.append({"language": code, "items": int(c["n"]), "accuracy": c["acc"] if has else None, "lo": c["lo"] if has else None, "hi": c["hi"] if has else None, "covered": by_rule})
+    if sorted(cal["covered"]) != sorted(r["language"] for r in rows if r["covered"]):
+        raise ValueError("the covered list of the record differs from the covered flags of its languages")
+    return rows
+
+
+def coverage_table(cal):
+    return _coverage_rows(cal)
+
+
+def fig_coverage(cal, theme, note):
+    """Belebele coverage by language (plan Task 8, figure 7): accuracy of the chosen format on the calibration items with its Wilson 95 % interval, sorted with the highest on top, chance and the coverage
+    threshold (chance + margin, from the record) as reference lines; covered languages in the accent (circle), the others in gray (square). Languages without items in the chosen format are listed in the
+    subtitle and not drawn."""
+    rows = _coverage_rows(cal)
+    drawn = sorted((r for r in rows if r["items"] > 0), key=lambda r: r["accuracy"])
+    if not drawn:
+        raise ValueError("no language has items in the chosen format")
+    missing = len(rows) - len(drawn); thr = cal["chance"] + cal["margin"]; n = len(drawn)
+    fig, ax, t = _new_fig(theme, 7.4, 0.3 * n + 2.3)
+    y = np.arange(n)
+    for covered, gid, color, marker, size in ((True, "covered", t["series"][0], "o", 44), (False, "uncovered", t["muted"], "s", 36)):
+        sel = [(r, k) for k, r in enumerate(drawn) if r["covered"] == covered]
+        if not sel:
+            continue
+        ks = np.array([k for _, k in sel]); lo = np.array([r["lo"] for r, _ in sel]); hi = np.array([r["hi"] for r, _ in sel]); acc = np.array([r["accuracy"] for r, _ in sel])
+        ax.hlines(ks, lo, hi, color=color, linewidth=2.0, zorder=2, gid=f"interval_{gid}")
+        ax.vlines(np.concatenate([lo, hi]), np.concatenate([ks - 0.14, ks - 0.14]), np.concatenate([ks + 0.14, ks + 0.14]), color=color, linewidth=1.6, zorder=2, gid=f"interval_cap_{gid}")
+        ax.scatter(acc, ks, s=size, marker=marker, color=color, edgecolors=t["surface"], linewidths=1.5, zorder=4, gid=f"coverage_{gid}")
+    ax.axvline(cal["chance"], color=t["axis"], linewidth=1.0, zorder=1, gid="chance")
+    ax.axvline(thr, color=t["muted"], linewidth=1.2, zorder=1, gid="threshold")
+    ax.set_xlim(0.0, 1.0); ax.set_ylim(-0.8, n - 0.2); ax.set_yticks(y); ax.set_yticklabels([r["language"] for r in drawn]); ax.grid(False, axis="y")
+    ax.set_xticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]); ax.set_xticklabels(["0", "0.2", "0.4", "0.6", "0.8", "1"])
+    ax.text(cal["chance"] - 0.008, n - 0.45, f"chance {cal['chance']:g}", ha="right", va="center", fontsize=8.5, color=t["ink2"], gid="reference_label")
+    ax.text(thr + 0.008, n - 0.45, f"threshold {thr:.2f}", ha="left", va="center", fontsize=8.5, color=t["ink2"], gid="reference_label")
+    for k in (0, n - 1):
+        ax.text(min(drawn[k]["hi"] + 0.012, 0.97), y[k], f"{drawn[k]['accuracy']:.2f}", va="center", fontsize=8.5, color=t["ink2"], gid="label")
+    _axis_labels(ax, t, xlabel="accuracy on the calibration items, full precision (95 % Wilson interval)")
+    n_cov = sum(1 for r in drawn if r["covered"])
+    sub = f"{cal['format']} format; {n_cov} of {n} languages covered (lower bound above {thr:.2f})"
+    if missing:
+        sub += f"; {missing} language{'s' if missing != 1 else ''} without items in this format (not drawn)"
+    extra = _title(ax, t, "Which languages the Belebele task can speak for", f"{sub} \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="s", markersize=5.5, linewidth=2, markeredgecolor=t["surface"])]
+    _legend(ax, t, handles, ["covered", "not covered"], "lower right")
+    _margins(fig, left_in=0.95, bottom_in=0.85, extra=extra)
+    return fig
+
+
 def load_rank_table(path):
     return _read_csv(path, {"n_established", "n_retained", "fraction", "lo", "hi", "n_languages"})
 
@@ -404,6 +463,7 @@ def _effects_columns(precs):
             ("harm_control", "control harm", "{:.3f}")] + [(f"ratio_{p}", f"E ratio {p}", "{:.2f}") for p in precs]
 
 
+_COVERAGE_COLUMNS = [("language", "language", "{}"), ("items", "items", "{}"), ("accuracy", "accuracy", "{:.3f}"), ("lo", "lo", "{:.3f}"), ("hi", "hi", "{:.3f}"), ("covered", "covered", "{}")]
 _CONFIG_COLUMNS = [("language", "language", "{}"), ("size_K16", "K16", "{}"), ("size_K64", "K64", "{}"), ("size_all", "all", "{}"), ("draws_K16", "controls K16", "{}"), ("draws_K64", "controls K64", "{}"), ("draws_all", "controls all", "{}")]
 
 
@@ -423,6 +483,8 @@ def main(argv=None):
     ap.add_argument("--results", required=True, help="directory with analysis.json, effects_by_language.csv, families.csv (phase1_func_analysis.py output)")
     ap.add_argument("--out", required=True); ap.add_argument("--note", required=True, help="status of the data in every title, e.g. 'pilot, exploratory'")
     ap.add_argument("--assoc", default=str(root / "reports/association_retention/results/eq/language_summary.csv")); ap.add_argument("--manifest", default=str(root / "reports/functional_validation/groups_manifest.json"))
+    ap.add_argument("--calibration", default=str(root / "reports/functional_validation/belebele_calibration.json"), help="Belebele calibration record (figure 7 and its table); skipped when absent")
+    ap.add_argument("--calibration-note", default="calibration split (dev-origin passages), full precision: a pipeline check and the basis of the coverage rule, not a result", help="status of the data of figure 7")
     ap.add_argument("--unit", default="nats per token", help="unit of the effect (T-MC: 'nats per item')")
     ap.add_argument("--rank-note", default="exploratory, descriptive (D-035 statuses measured on devtest)", help="status of the data of figure 8, which is not the data of the other figures")
     ap.add_argument("--rank-table", default=str(root / "reports/functional_validation/results/assoc_rank/rank_table.csv"), help="A1 rank_table.csv (figure 8); skipped when absent")
@@ -433,19 +495,23 @@ def main(argv=None):
     fp_rows = [r for r in res["effects"] if r["precision"] == "FP"]
     assoc = load_association(a.assoc) if Path(a.assoc).exists() else {}
     rank_rows = load_rank_table(a.rank_table) if Path(a.rank_table).exists() else []
+    cal = json.loads(Path(a.calibration).read_text()) if Path(a.calibration).exists() else None
     manifest = json.loads(Path(a.manifest).read_text())
     written = []
     for theme in a.themes:
         figs = [("fig1_effect_per_language", lambda: fig_effect_per_language(fp_rows, theme, a.note, K=K, unit=a.unit)), ("fig2_retention", lambda: fig_retention(an["retention"], an["bands"], theme, a.note)),
                 ("fig3_group_size", lambda: fig_size_curves(res["families"], theme, a.note)), ("fig5_association_vs_function", lambda: fig_assoc_vs_function(assoc, an["retention"], theme, a.note)),
-                ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note)), ("fig8_association_by_rank", lambda: fig_rank_bins(rank_rows, theme, a.rank_note))]
+                ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note)), ("fig7_belebele_coverage", lambda: fig_coverage(cal, theme, a.calibration_note)), ("fig8_association_by_rank", lambda: fig_rank_bins(rank_rows, theme, a.rank_note))]
         for stem, make in figs:
-            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig6_sae_fidelity": bool(an.get("fidelity")), "fig8_association_by_rank": bool(rank_rows)}
+            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig6_sae_fidelity": bool(an.get("fidelity")), "fig7_belebele_coverage": cal is not None, "fig8_association_by_rank": bool(rank_rows)}
             if not has.get(stem, True):                                                                          # the inputs of this figure do not exist for this analysis (for example T-MC has no SAE fidelity)
                 continue
             written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
     ret, eff, conf = retention_table(an, assoc), effects_table(fp_rows, an, manifest), config_table(manifest)
-    for name, rows, cols in (("table_retention", ret, _retention_columns()), ("table_effects", eff, _effects_columns([p for p in PRECISIONS if p in an["retention"]])), ("table_configurations", conf, _CONFIG_COLUMNS)):
+    tables = [("table_retention", ret, _retention_columns()), ("table_effects", eff, _effects_columns([p for p in PRECISIONS if p in an["retention"]])), ("table_configurations", conf, _CONFIG_COLUMNS)]
+    if cal is not None:
+        tables.append(("table_coverage", coverage_table(cal), _COVERAGE_COLUMNS))
+    for name, rows, cols in tables:
         write_csv(rows, cols, out / f"{name}.csv"); (out / f"{name}.md").write_text(to_markdown(rows, cols) + "\n")
         written += [str(out / f"{name}.csv"), str(out / f"{name}.md")]
     print("wrote", len(written), "files to", out)

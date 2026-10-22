@@ -370,6 +370,102 @@ class RankBins(unittest.TestCase):
             ff.fig_rank_bins([dict(r, condition="INT0") for r in planted_rank_rows()], "light", note="x")      # INT0 (the identity control) is not on the ladder
 
 
+NAN = float("nan")
+
+
+def planted_calibration(chance=0.25, margin=0.05):
+    """A calibration record as phase1_func_mc_calibration.py writes it: per language and format {acc, lo, hi, n}; the chosen format is cloze; `ddd` has no cloze items (n = 0, NaN)."""
+    def cell(acc, lo, hi, n):
+        return {"acc": acc, "lo": lo, "hi": hi, "n": n}
+    langs = {"aaa": {"letter": cell(0.40, 0.34, 0.46, 250), "cloze": cell(0.60, 0.51, 0.69, 120)},
+             "bbb": {"letter": cell(0.22, 0.17, 0.28, 250), "cloze": cell(0.28, 0.20, 0.37, 120)},
+             "ccc": {"letter": cell(0.33, 0.27, 0.39, 250), "cloze": cell(0.45, 0.36, 0.54, 120)},
+             "ddd": {"letter": cell(0.30, 0.24, 0.37, 250), "cloze": cell(NAN, 0.0, 1.0, 0)},
+             "eee": {"letter": cell(0.36, 0.30, 0.42, 250), "cloze": cell(0.34, 0.26, 0.43, 120)}}                  # accuracy above the threshold, lower bound below it: not covered
+    thr = chance + margin
+    for c, row in langs.items():
+        row["covered"] = bool(row["cloze"]["lo"] > thr)
+    return {"format": "cloze", "chance": chance, "margin": margin, "languages": langs, "covered": [c for c in langs if langs[c]["covered"]], "uncovered": [c for c in langs if not langs[c]["covered"]]}
+
+
+@unittest.skipUnless(HAVE_MPL, "matplotlib not installed")
+class Coverage(unittest.TestCase):
+    def setUp(self):
+        self.cal = planted_calibration()
+        self.fig = ff.fig_coverage(self.cal, "light", note="calibration split, a pipeline check")
+        self.ax = self.fig.axes[0]
+
+    def test_languages_with_items_are_sorted_by_accuracy_highest_on_top_and_languages_without_items_are_not_drawn(self):
+        self.assertEqual([t.get_text() for t in self.ax.get_yticklabels()], ["bbb", "eee", "ccc", "aaa"])
+        self.assertNotIn("ddd", [t.get_text() for t in self.ax.get_yticklabels()])
+
+    def test_the_plotted_numbers_are_the_chosen_formats_accuracies_and_intervals(self):
+        cov = by_gid(self.ax, "coverage_covered")[0].get_offsets().tolist(); unc = by_gid(self.ax, "coverage_uncovered")[0].get_offsets().tolist()
+        self.assertEqual(sorted(map(tuple, cov)), [(0.45, 2.0), (0.60, 3.0)]); self.assertEqual(sorted(tuple(u) for u in unc), [(0.28, 0.0), (0.34, 1.0)])      # not the letter numbers (0.33, 0.40, 0.22, 0.36)
+        segs = sorted((s.tolist()[0][0], s.tolist()[1][0]) for g in ("interval_covered", "interval_uncovered") for c in by_gid(self.ax, g) for s in c.get_segments())
+        self.assertEqual(segs, [(0.20, 0.37), (0.26, 0.43), (0.36, 0.54), (0.51, 0.69)])
+
+    def test_covered_and_uncovered_wear_two_encodings_the_accent_circle_and_the_gray_square(self):
+        tok = ff.theme_tokens("light")
+        self.assertEqual(to_hex(by_gid(self.ax, "coverage_covered")[0].get_facecolor()[0][:3]), tok["series"][0])
+        self.assertEqual(to_hex(by_gid(self.ax, "coverage_uncovered")[0].get_facecolor()[0][:3]), tok["muted"])
+        self.assertNotEqual(by_gid(self.ax, "coverage_covered")[0].get_paths()[0].vertices.tolist(), by_gid(self.ax, "coverage_uncovered")[0].get_paths()[0].vertices.tolist())   # different marker shapes
+        self.assertEqual(len(self.ax.get_legend().get_texts()), 2)
+
+    def test_the_threshold_is_chance_plus_margin_read_from_the_record(self):
+        thr = by_gid(self.ax, "threshold")[0]; ch = by_gid(self.ax, "chance")[0]
+        self.assertEqual((list(thr.get_xdata())[0], list(ch.get_xdata())[0]), (0.30, 0.25))
+        other = planted_calibration(chance=0.20, margin=0.10)
+        ax = ff.fig_coverage(other, "light", note="x").axes[0]
+        self.assertEqual((round(list(by_gid(ax, "threshold")[0].get_xdata())[0], 9), list(by_gid(ax, "chance")[0].get_xdata())[0]), (0.30, 0.20))
+        other2 = planted_calibration(chance=0.25, margin=0.0)
+        self.assertEqual(list(by_gid(ff.fig_coverage(other2, "light", note="x").axes[0], "threshold")[0].get_xdata())[0], 0.25)
+
+    def test_the_subtitle_states_the_format_the_covered_count_and_the_languages_without_items(self):
+        txt = all_text(self.fig)
+        self.assertIn("cloze", txt); self.assertIn("2 of 4 languages covered", txt); self.assertIn("1 language without items", txt); self.assertIn("calibration split, a pipeline check", txt)
+
+    def test_a_record_that_contradicts_its_own_rule_is_refused(self):
+        bad = planted_calibration(); bad["languages"]["bbb"]["covered"] = True; bad["covered"] = ["aaa", "bbb", "ccc"]; bad["uncovered"] = []
+        with self.assertRaises(ValueError):
+            ff.fig_coverage(bad, "light", note="x")
+        bad2 = planted_calibration(); bad2["covered"] = ["aaa"]                                              # ccc is covered by its flag and by the rule but missing from the list
+        with self.assertRaises(ValueError):
+            ff.fig_coverage(bad2, "light", note="x")                                                          # ccc is covered by the rule and by its flag but missing from the list
+
+    def test_a_wrong_per_language_flag_is_refused_even_when_the_covered_list_agrees_with_the_rule(self):
+        bad = planted_calibration(); bad["languages"]["aaa"]["covered"] = False                               # aaa is covered by the rule and in the list; only its own flag is wrong
+        with self.assertRaises(ValueError) as cm:
+            ff.fig_coverage(bad, "light", note="x")
+        self.assertIn("aaa", str(cm.exception))
+
+    def test_a_record_without_any_language_with_items_is_an_error(self):
+        empty = planted_calibration()
+        for row in empty["languages"].values():
+            row["cloze"] = {"acc": NAN, "lo": 0.0, "hi": 1.0, "n": 0}; row["covered"] = False
+        empty["covered"] = []; empty["uncovered"] = list(empty["languages"])
+        with self.assertRaises(ValueError):
+            ff.fig_coverage(empty, "light", note="x")
+
+    def test_the_letter_format_is_plotted_when_it_was_chosen(self):
+        rec = planted_calibration(); rec["format"] = "letter"
+        for row in rec["languages"].values():
+            row["covered"] = bool(row["letter"]["lo"] > 0.30)
+        rec["covered"] = [c for c, r in rec["languages"].items() if r["covered"]]; rec["uncovered"] = [c for c, r in rec["languages"].items() if not r["covered"]]
+        ax = ff.fig_coverage(rec, "light", note="x").axes[0]
+        self.assertEqual(sorted(t.get_text() for t in ax.get_yticklabels()), ["aaa", "bbb", "ccc", "ddd", "eee"])
+
+    def test_no_text_is_clipped_in_either_theme(self):
+        for theme in ("light", "dark"):
+            assert_text_inside(self, ff.fig_coverage(self.cal, theme, note="calibration split, dev-origin passages, a pipeline check and the basis of the coverage rule, not a result"))
+
+    def test_the_table_twin_lists_every_language_and_leaves_missing_numbers_empty(self):
+        rows = {r["language"]: r for r in ff.coverage_table(self.cal)}
+        self.assertEqual(list(rows), ["aaa", "bbb", "ccc", "ddd", "eee"])
+        self.assertEqual((rows["aaa"]["items"], rows["aaa"]["accuracy"], rows["aaa"]["lo"], rows["aaa"]["covered"]), (120, 0.60, 0.51, True))
+        self.assertEqual((rows["ddd"]["items"], rows["ddd"]["accuracy"], rows["ddd"]["lo"], rows["ddd"]["covered"]), (0, None, None, False))
+
+
 def planted_fidelity():
     return [{"precision": "FP", "language": "aaa", "fvu": 0.1}, {"precision": "FP", "language": "bbb", "fvu": 0.3}, {"precision": "FP", "language": "ccc", "fvu": 0.2},
             {"precision": "INT4", "language": "aaa", "fvu": 0.2}, {"precision": "INT4", "language": "bbb", "fvu": 0.4}]
@@ -415,7 +511,8 @@ class LongNotes(unittest.TestCase):
     def builders(self):
         return {"effect": lambda th: ff.fig_effect_per_language(EffectPerLanguage.ROWS, th, self.NOTE, K="K64"), "retention": lambda th: ff.fig_retention(planted_retention(), (0.75, 1.33), th, self.NOTE),
                 "size": lambda th: ff.fig_size_curves(planted_families(), th, self.NOTE), "assoc": lambda th: ff.fig_assoc_vs_function(ASSOC, planted_retention(), th, self.NOTE),
-                "fidelity": lambda th: ff.fig_fidelity(planted_fidelity(), th, self.NOTE), "rank": lambda th: ff.fig_rank_bins(planted_rank_rows(), th, self.NOTE)}
+                "fidelity": lambda th: ff.fig_fidelity(planted_fidelity(), th, self.NOTE), "rank": lambda th: ff.fig_rank_bins(planted_rank_rows(), th, self.NOTE),
+                "coverage": lambda th: ff.fig_coverage(planted_calibration(), th, self.NOTE)}
 
     def test_every_figure_wraps_a_long_status_note_instead_of_clipping_it(self):
         for name, make in self.builders().items():
@@ -553,6 +650,7 @@ class Main(unittest.TestCase):
         self.assoc.write_text(AssociationLoader.HEADER + "selective,INT4,aaa,100,100,70,30,0,0,0,0,0,0,0,\nselective,INT8,aaa,100,100,98,2,0,0,0,0,0,0,0,\n")
         import json as _j
         self.man = self.d / "groups_manifest.json"; self.man.write_text(_j.dumps(planted_manifest()))
+        self.cal = self.d / "belebele_calibration.json"; self.cal.write_text(json.dumps(planted_calibration()))
         self.rank = self.d / "rank_table.csv"
         with open(self.rank, "w", newline="") as f:
             w = csv.writer(f); w.writerow(["condition", "bin", "n_established", "n_retained", "fraction", "lo", "hi", "n_languages"])
@@ -560,15 +658,15 @@ class Main(unittest.TestCase):
                 w.writerow([r["condition"], r["bin"], r["n_established"], r["n_retained"], r["fraction"], r["lo"], r["hi"], r["n_languages"]])
 
     def run_main(self, *extra):
-        return ff.main(["--results", str(self.res), "--out", str(self.out), "--note", "pilot, exploratory", "--assoc", str(self.assoc), "--manifest", str(self.man), "--rank-table", str(self.rank), *extra])
+        return ff.main(["--results", str(self.res), "--out", str(self.out), "--note", "pilot, exploratory", "--assoc", str(self.assoc), "--manifest", str(self.man), "--rank-table", str(self.rank), "--calibration", str(self.cal), *extra])
 
     def test_writes_every_figure_in_both_themes_and_formats_and_the_tables(self):
         written = [Path(p).name for p in self.run_main()]
-        for stem in ("fig1_effect_per_language", "fig2_retention", "fig3_group_size", "fig5_association_vs_function", "fig6_sae_fidelity", "fig8_association_by_rank"):
+        for stem in ("fig1_effect_per_language", "fig2_retention", "fig3_group_size", "fig5_association_vs_function", "fig6_sae_fidelity", "fig7_belebele_coverage", "fig8_association_by_rank"):
             for theme in ("light", "dark"):
                 for ext in ("svg", "png"):
                     self.assertIn(f"{stem}_{theme}.{ext}", written); self.assertTrue((self.out / f"{stem}_{theme}.{ext}").stat().st_size > 1000)
-        for name in ("table_retention", "table_effects", "table_configurations"):
+        for name in ("table_retention", "table_effects", "table_configurations", "table_coverage"):
             self.assertIn(f"{name}.csv", written); self.assertIn(f"{name}.md", written)
 
     def test_svg_keeps_text_as_text_and_png_is_a_png(self):
@@ -620,6 +718,15 @@ class Main(unittest.TestCase):
         self.assertIn("descriptive", svg); self.assertNotIn("pilot, exploratory", svg)
         self.run_main("--rank-note", "customnote8")                                                          # one word: the wrapped subtitle may break a longer phrase over two lines
         self.assertIn("customnote8", (self.out / "fig8_association_by_rank_light.svg").read_text())
+
+    def test_figure_7_carries_the_calibration_note_and_is_skipped_without_the_record(self):
+        self.run_main()
+        svg = (self.out / "fig7_belebele_coverage_light.svg").read_text()
+        self.assertIn("calibration", svg); self.assertNotIn("pilot, exploratory", svg)
+        self.run_main("--calibration-note", "customnote7"); self.assertIn("customnote7", (self.out / "fig7_belebele_coverage_light.svg").read_text())
+        self.cal.unlink()
+        written = [Path(p).name for p in self.run_main()]
+        self.assertNotIn("fig7_belebele_coverage_light.png", written); self.assertNotIn("table_coverage.md", written); self.assertIn("fig2_retention_light.png", written)
 
     def test_without_a_rank_table_figure_8_is_skipped(self):
         self.rank.unlink()
