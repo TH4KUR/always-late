@@ -40,3 +40,10 @@ Q17 to Q20 (defaults in force), Q21 (upload item-level files to the private data
 ## 7. What I would check if something looks wrong
 
 `git status`, `CronList`, `squeue -u karma` over the strict-key route, whether the watchers are alive (`f5-b` must have been submitted after 35319 ended), the sham gate line and logit gates of each F5 job, the first lines of the log for a GateError, and that the two jobs agree on the number of tested features.
+
+## Addendum 04:18 IST (changes after this handoff was written; the repository and STATUS.md win)
+
+- **The rescue job `func-rescue-a` 35319 COMPLETED and is analysed (D-058):** `results/rescue/`, `figures/rescue/fig4_rescue_*`, `table_rescue.*`, checksums in `artifact_checksums.md`. The language group's full-precision activations recover 2.6 % of the INT4 loss gap (matched controls 1.2 %, group minus controls 1.4 %), nothing at INT5 and INT6; all SAE features 17.4 % at INT4; the whole layer-12 residual 29.7 to 39.3 %, so 60 to 70 % of the damage arises in the quantized blocks above layer 12; partial patches can make the loss worse (components are not independent).
+- **F5 job B is `f5-b` 35435** (submitted by the watcher at 04:15; states FP, INT6, INT5, INT4). `f5-a` 35424 is running (started 03:34). Both watchers have finished; no watcher is needed any more (see STATUS "Immediate" for what to do when each job ends). Slots are full until `f5-a` ends (about 06:40); the K = all Belebele run waits for it.
+- Scale test of the F5 analysis on a synthetic full-size world: 5.7 s, 312 MB. State files of the F5 jobs are about 5 MB each.
+
