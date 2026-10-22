@@ -63,14 +63,16 @@ def _reference(states, label, q):
 
 
 def floor_report(states, q=0.05):
-    """The numerical floor of the write side: the q-quantile of W1 (cosine of the fingerprints) between FP and the pseudo-state FP-rebatched (primary: the same weights, another batching) and between FP and INT8
-    (secondary: the first state with different weights); the floor tau is the lower of the two (section 11), both are reported. `adequate`: the repeat measurement has a median W1 of at least ADEQUATE_MEDIAN
-    (None without the pseudo-state)."""
-    prim, sec = _reference(states, "FP_rebatched", q), _reference(states, "INT8", q)
-    if prim is None and sec is None:
-        raise ValueError("neither FP_rebatched nor INT8 is available: there is no numerical floor")
-    best = min([r for r in (prim, sec) if r is not None], key=lambda r: r["tau"])
-    return {"q": q, "primary": prim, "secondary": sec, "tau": best["tau"], "source": best["label"], "adequate": None if prim is None else bool(prim["median"] >= ADEQUATE_MEDIAN)}
+    """The numerical floor of the write side: what 'the same function' looks like when only numerical noise differs. Two noise-only states: FP-rebatched (primary: the same weights, another batching) and INT16 (secondary:
+    the weights rounded at the bf16 noise level; INT16 is NOT identical to FP, the floor job of the loss task found per-token differences of about 0.0065 nats against 0.011 for INT8). The floor tau is the lower of
+    the q-quantiles of W1 (cosine of the fingerprints) of the two (D-055), both are reported; INT8 is reported (`int8`) but is a real quantization and does not enter the floor. It stands in only when neither noise-only
+    state was run. `adequate`: every noise-only state has a median W1 of at least ADEQUATE_MEDIAN (None when none was run)."""
+    prim, sec, i8 = _reference(states, "FP_rebatched", q), _reference(states, "INT16", q), _reference(states, "INT8", q)
+    noise = [r for r in (prim, sec) if r is not None]
+    if not noise and i8 is None:
+        raise ValueError("none of FP_rebatched, INT16 and INT8 is available: there is no numerical floor")
+    best = min(noise or [i8], key=lambda r: r["tau"])
+    return {"q": q, "primary": prim, "secondary": sec, "int8": i8, "tau": best["tau"], "source": best["label"], "adequate": None if not noise else bool(all(r["median"] >= ADEQUATE_MEDIAN for r in noise))}
 
 
 def negative_control(S, lang_idx, rate_fp):
@@ -302,9 +304,10 @@ def statements_text(res):
     f, v, s, i = res["floor"], res["validity"], res["validity"]["statements"], res["instrument"]
     L = ["# F5 statements: is the survival metric sensible? (exploratory)", "",
          "Rule proposed before any number (design section 5, Q23); every number is reported whatever the verdict (`f5_tables.csv`, `f5_results.json`).", "",
-         f"**Numerical floor.** W1 (cosine of the single-feature effect fingerprints) between full precision and the repeat measurement of the same weights (FP-rebatched): median {_fmt(f['primary']['median']) if f['primary'] else 'n/a'}; "
-         f"5th percentile {_fmt(f['primary']['tau']) if f['primary'] else 'n/a'}. Between full precision and INT8: median {_fmt(f['secondary']['median']) if f['secondary'] else 'n/a'}, 5th percentile "
-         f"{_fmt(f['secondary']['tau']) if f['secondary'] else 'n/a'}. The numerical floor used below is {f['tau']:.4f} (the lower of the two, from {f['source']}). Instrument adequate: {f['adequate']}.", ""]
+         f"**Numerical floor.** W1 (cosine of the single-feature effect fingerprints) between full precision and the repeat measurement of the same weights (FP-rebatched): median {_fmt(f['primary']['median']) if f['primary'] else 'n/a'}, "
+         f"5th percentile {_fmt(f['primary']['tau']) if f['primary'] else 'n/a'}; between full precision and INT16 (weights rounded at the bf16 noise level): median {_fmt(f['secondary']['median']) if f['secondary'] else 'n/a'}, "
+         f"5th percentile {_fmt(f['secondary']['tau']) if f['secondary'] else 'n/a'}. The numerical floor used below is {f['tau']:.4f} (the lower of the two, from {f['source']}). "
+         f"INT8, a real quantization, is reported but not part of the floor: median {_fmt(f['int8']['median']) if f['int8'] else 'n/a'}. Instrument adequate: {f['adequate']}.", ""]
     if v["note"]:
         L += [f"**Note:** {v['note']}.", ""]
     L += ["| statement | value | 95 % interval (languages resampled) | defined | verdict |", "|---|---|---|---|---|",

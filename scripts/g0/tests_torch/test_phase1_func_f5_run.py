@@ -563,6 +563,10 @@ class StateLabels(unittest.TestCase):
             with self.assertRaises(ValueError, msg=bad):
                 r5.state_label(bad)
 
+class DefaultStates(unittest.TestCase):
+    def test_the_default_states_include_the_weight_rounding_floor_int16_and_the_batching_floor(self):
+        self.assertEqual([r5.state_label(x) for x in r5.DEFAULT_STATES], ["FP", "FP_rebatched", "INT16", "INT8", "INT6", "INT5", "INT4"])
+
 
 if __name__ == "__main__":
     unittest.main()

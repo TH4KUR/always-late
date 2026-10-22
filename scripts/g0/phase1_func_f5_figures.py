@@ -20,9 +20,10 @@ from matplotlib.patches import Patch
 import phase1_func_f5_analysis as an
 import phase1_func_figures as base
 
-STATE_ORDER = ["FP_rebatched", "INT8", "INT6", "INT5", "INT4"]
-LABELS = {"FP_rebatched": "FP repeat\n(same weights)", "INT8": "INT8", "INT6": "INT6", "INT5": "INT5", "INT4": "INT4"}
-PLAIN = {"FP_rebatched": "FP repeat", "INT8": "INT8", "INT6": "INT6", "INT5": "INT5", "INT4": "INT4"}
+STATE_ORDER = ["FP_rebatched", "INT16", "INT8", "INT6", "INT5", "INT4"]
+REFERENCE_STATES = ("FP_rebatched", "INT16")                                              # the two noise-only states that define the numerical floor: drawn as references, never joined to the precision ladder
+LABELS = {"FP_rebatched": "FP repeat\n(same weights)", "INT16": "INT16\n(weight rounding)", "INT8": "INT8", "INT6": "INT6", "INT5": "INT5", "INT4": "INT4"}
+PLAIN = {"FP_rebatched": "FP repeat", "INT16": "INT16", "INT8": "INT8", "INT6": "INT6", "INT5": "INT5", "INT4": "INT4"}
 
 
 def _f(x):
@@ -153,7 +154,7 @@ def fig_retrieval(tables, theme, note):
     if not order:
         raise ValueError("no state to plot")
     fig, ax, t = base._new_fig(theme, 7.2, 4.6); x = np.arange(len(order)); g = lambda s, *p: _f(_dig(tables[s]["all"].get("retrieval", {}), *p))
-    q = [i for i, s in enumerate(order) if s != "FP_rebatched"]; rep = [i for i, s in enumerate(order) if s == "FP_rebatched"]            # the repeat measurement is a reference, not a step of the ladder: no line to it
+    q = [i for i, s in enumerate(order) if s not in REFERENCE_STATES]; rep = [i for i, s in enumerate(order) if s in REFERENCE_STATES]            # the noise-only states are references, not steps of the ladder: no line to them
     for key, lab, color, mark, gid in (("top1", ("top1",), t["series"][0], "o", "top1"), ("within", ("within", "top1"), t["series"][1], "s", "within_top1")):
         ax.plot(x[q], [g(order[i], *lab) for i in q], color=color, marker=mark, markersize=6, linewidth=2, markeredgecolor=t["surface"], gid=gid)
         if rep:
@@ -179,13 +180,13 @@ def fig_median_ladder(tables, floor, theme, note):
     order = _order(tables)
     if not order:
         raise ValueError("no state to plot")
-    fig, ax, t = base._new_fig(theme, 7.6, 4.8); xr = [i for i, s in enumerate(order) if s != "FP_rebatched"]; qs = [order[i] for i in xr]
+    fig, ax, t = base._new_fig(theme, 7.6, 4.8); xr = [i for i, s in enumerate(order) if s not in REFERENCE_STATES]; qs = [order[i] for i in xr]
     r1 = [_f(tables[s]["all"]["R1"]["median"]) for s in qs]; r1lo = [_f(tables[s]["all"]["R1"]["median_lo"]) for s in qs]; r1hi = [_f(tables[s]["all"]["R1"]["median_hi"]) for s in qs]
     w1 = [_f(tables[s]["all"]["W1"]["median"]) for s in order]; w1lo = [_f(tables[s]["all"]["W1"]["median_lo"]) for s in order]; w1hi = [_f(tables[s]["all"]["W1"]["median_hi"]) for s in order]
     xs_r = np.array(xr, dtype=float) - 0.05; xs_w = np.arange(len(order), dtype=float) + 0.05
     ax.vlines(xs_r, r1lo, r1hi, color=t["series"][0], linewidth=1.8, gid="R1_ci"); ax.vlines(xs_w, w1lo, w1hi, color=t["series"][1], linewidth=1.8, gid="W1_ci")
     ax.plot(xs_r, r1, color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"], gid="R1")
-    iq = [i for i, s in enumerate(order) if s != "FP_rebatched"]; ir = [i for i, s in enumerate(order) if s == "FP_rebatched"]                  # the repeat measurement is a reference, not a step of the ladder: no line to it
+    iq = [i for i, s in enumerate(order) if s not in REFERENCE_STATES]; ir = [i for i, s in enumerate(order) if s in REFERENCE_STATES]                  # the noise-only states are references, not steps of the ladder: no line to them
     ax.plot(xs_w[iq], [w1[i] for i in iq], color=t["series"][1], marker="s", markersize=5.5, linewidth=2, markeredgecolor=t["surface"], gid="W1")
     if ir:
         ax.plot(xs_w[ir], [w1[i] for i in ir], color=t["series"][1], marker="s", markersize=5.5, linestyle="none", markeredgecolor=t["surface"], gid="W1_repeat")

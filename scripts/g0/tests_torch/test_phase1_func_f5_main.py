@@ -152,5 +152,11 @@ class MainRehearsal(unittest.TestCase):
         self.assertEqual(int(st["feat_ids"][0]), self.ids[0]); self.assertEqual(int(st["feat_ids"][-1]), self.ids[-1])
 
 
+    def test_without_a_state_list_the_default_states_run_including_the_weight_rounding_floor(self):
+        argv = list(self.args); i = argv.index("--states"); del argv[i:i + 5]; argv[argv.index("--out") + 1] = str(Path(self.tmp.name) / "out6"); argv += ["--max-features", "6"]
+        self.run_main(argv, self.stubs); m = json.loads((Path(self.tmp.name) / "out6" / "meta_f5.json").read_text()); self.assertEqual(m["states"], ["FP", "FP_rebatched", "INT16", "INT8", "INT6", "INT5", "INT4"])
+        self.assertTrue((Path(self.tmp.name) / "out6" / "f5_state_INT16.pt").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

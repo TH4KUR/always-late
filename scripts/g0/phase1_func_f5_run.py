@@ -253,6 +253,9 @@ def sham_is_exact(o):
     return bool((o["D"] == 0).all()) and o["dnll"] == 0.0
 
 
+DEFAULT_STATES = ["FP", "FP_rebatched", "16", "8", "6", "5", "4"]        # D-055: INT16 (weights rounded at the bf16 noise level) is a state; INT12 would add nothing (the same per-token difference to FP as INT16)
+
+
 def state_label(x):
     """'FP', 'FP_rebatched' (the numerical-floor pseudo-state) or a bit width ('6' or 'INT6') -> the label used in file names and results."""
     x = str(x)
@@ -316,7 +319,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="F5: does a feature do the same thing in a quantized model as in the full-precision model? Read side and write side for the sample features (D-053).")
     ap.add_argument("--out", required=True); ap.add_argument("--flores-root", required=True); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
     ap.add_argument("--sample", default=str(ROOT / "reports/functional_validation/f5/f5_sample.json")); ap.add_argument("--freeze", default=str(ROOT / "reports/functional_validation/evaluation_freeze_lm.json"))
-    ap.add_argument("--states", nargs="*", default=["FP", "FP_rebatched", "8", "6", "5", "4"], help="FP first; FP_rebatched = the numerical-floor pseudo-state; bit widths for RTN states")
+    ap.add_argument("--states", nargs="*", default=DEFAULT_STATES, help="FP first; FP_rebatched = the batching-noise floor (same weights); 16 = the weight-rounding floor (INT16 is NOT identical to FP); bit widths for RTN states")
     ap.add_argument("--M", type=int, default=16); ap.add_argument("--min-ctx", type=int, default=4); ap.add_argument("--topk", type=int, default=50); ap.add_argument("--extra-pad", type=int, default=3)
     ap.add_argument("--dev-sentences", type=int, default=997, help="FLORES dev sentences per language that are candidate contexts"); ap.add_argument("--max-eval", type=int, help="use only the first n frozen evaluation sentences (smoke)")
     ap.add_argument("--max-features", type=int, help="evenly spaced subset of the sample (smoke)"); ap.add_argument("--work-dtype", choices=["native", "float32"], default="float32")

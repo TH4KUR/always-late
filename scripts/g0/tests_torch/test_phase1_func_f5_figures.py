@@ -79,16 +79,16 @@ class Figures(unittest.TestCase):
 
     def test_the_retrieval_figure_has_the_overall_the_within_language_and_the_chance_level(self):
         fig = ff.fig_retrieval(self.res["tables"], "light", "x"); self.assertEqual(len(tagged(fig, "top1")), 1); self.assertEqual(len(tagged(fig, "within_top1")), 1); self.assertEqual(len(tagged(fig, "chance")), 1)
-        qs = [s for s in ff.STATE_ORDER if s in self.res["tables"] and s != "FP_rebatched"]; y = tagged(fig, "top1")[0].get_ydata(); self.assertEqual(len(y), len(qs))
+        qs = [s for s in ff.STATE_ORDER if s in self.res["tables"] and s not in ff.REFERENCE_STATES]; y = tagged(fig, "top1")[0].get_ydata(); self.assertEqual(len(y), len(qs))
         self.assertAlmostEqual(float(y[0]), self.res["tables"][qs[0]]["all"]["retrieval"]["top1"])
-        rep = tagged(fig, "top1_repeat")[0]; self.assertEqual(len(rep.get_ydata()), 1); self.assertEqual(rep.get_linestyle(), "None")                          # the repeat measurement is a reference, not a step of the precision ladder
+        rep = tagged(fig, "top1_repeat")[0]; self.assertEqual(len(rep.get_ydata()), len(ff.REFERENCE_STATES)); self.assertEqual(rep.get_linestyle(), "None")                          # the repeat measurement is a reference, not a step of the precision ladder
 
     def test_the_median_ladder_shows_read_and_write_medians_with_intervals_and_the_floor(self):
         fig = ff.fig_median_ladder(self.res["tables"], self.res["floor"], "light", "x"); r1, w1 = tagged(fig, "R1")[0], tagged(fig, "W1")[0]
-        qs = [s for s in ff.STATE_ORDER if s in self.res["tables"] and s != "FP_rebatched"]; self.assertEqual(len(r1.get_ydata()), len(qs))
+        qs = [s for s in ff.STATE_ORDER if s in self.res["tables"] and s not in ff.REFERENCE_STATES]; self.assertEqual(len(r1.get_ydata()), len(qs))
         self.assertAlmostEqual(float(r1.get_ydata()[0]), self.res["tables"][qs[0]]["all"]["R1"]["median"]); self.assertEqual(len(tagged(fig, "floor")), 1)
-        self.assertEqual(len(w1.get_ydata()), len(qs)); rep = tagged(fig, "W1_repeat")[0]; self.assertEqual(len(rep.get_ydata()), 1); self.assertEqual(rep.get_linestyle(), "None")
-        self.assertAlmostEqual(float(rep.get_ydata()[0]), self.res["tables"]["FP_rebatched"]["all"]["W1"]["median"])
+        self.assertEqual(len(w1.get_ydata()), len(qs)); rep = tagged(fig, "W1_repeat")[0]; self.assertEqual(len(rep.get_ydata()), len(ff.REFERENCE_STATES)); self.assertEqual(rep.get_linestyle(), "None")
+        np.testing.assert_allclose(rep.get_ydata(), [self.res["tables"][s]["all"]["W1"]["median"] for s in ff.REFERENCE_STATES])
 
     def test_the_control_band_is_inside_the_axis_even_when_the_control_reaches_below_the_floor_of_the_axis(self):
         arr = {k: {kk: (vv.copy() if hasattr(vv, "copy") else vv) for kk, vv in v.items()} for k, v in self.arrays.items()}; arr["INT4"]["control"][:] = -0.7; arr["INT4"]["control"][::2] = -0.9
@@ -111,6 +111,12 @@ class Figures(unittest.TestCase):
 
     def test_every_title_states_that_the_data_are_exploratory(self):
         fig = ff.fig_statements(self.res["validity"], "light", "exploratory, planted"); self.assertTrue(any("exploratory" in t for t in texts(fig)))
+
+class Constants(unittest.TestCase):
+    def test_the_noise_only_states_are_the_references_and_come_before_the_ladder(self):
+        self.assertEqual(ff.REFERENCE_STATES, ("FP_rebatched", "INT16")); self.assertEqual(ff.STATE_ORDER, ["FP_rebatched", "INT16", "INT8", "INT6", "INT5", "INT4"])
+        self.assertEqual(sorted(ff.LABELS), sorted(ff.STATE_ORDER)); self.assertEqual(sorted(ff.PLAIN), sorted(ff.STATE_ORDER))
+
 
 class DrawnValues(unittest.TestCase):
     """What is drawn equals the data: positions, colours, lines and thresholds."""

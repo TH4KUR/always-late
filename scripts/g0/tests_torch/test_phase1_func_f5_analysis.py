@@ -28,7 +28,7 @@ def make_world(seed=0, per_lang=30, cos_by_state=None, status_by_cond=None, n_ex
                "n_active": np.full(n_f, 9), "n_ctx": np.full(n_f, 4)}
     cos_by_state = cos_by_state or {}
     states = {}
-    for label in ("FP", "FP_rebatched", "INT8", "INT6", "INT5", "INT4"):
+    for label in ("FP", "FP_rebatched", "INT16", "INT8", "INT6", "INT5", "INT4"):
         cos = np.ones(n_w) if label == "FP" else cos_by_state.get(label, lambda r, n: np.full(n, 0.995))(rng, n_w)
         S = rng.uniform(-0.3, 0.3, (n_w, n_w)); S[np.arange(n_w), np.arange(n_w)] = cos
         states[label] = {"read": {"n": 1000, "corr": np.full(n_f, 0.99), "jaccard": np.full(n_f, 0.95), "scale": np.full(n_f, 1.05),
@@ -90,34 +90,47 @@ class Summaries(unittest.TestCase):
 
 
 class Floor(unittest.TestCase):
-    def test_the_floor_is_the_lower_of_the_two_fifth_percentiles_and_both_are_reported(self):
-        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.linspace(0.95, 1.0, n), "INT8": lambda r, n: np.linspace(0.90, 1.0, n)})
+    def test_the_floor_is_the_lower_of_the_two_noise_only_fifth_percentiles_and_both_are_reported(self):
+        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.linspace(0.95, 1.0, n), "INT16": lambda r, n: np.linspace(0.90, 1.0, n)})
         f = an.floor_report(st); n = len(st["FP"]["write"]["cos"])
         self.assertAlmostEqual(f["primary"]["tau"], float(np.percentile(np.linspace(0.95, 1.0, n), 5))); self.assertAlmostEqual(f["secondary"]["tau"], float(np.percentile(np.linspace(0.90, 1.0, n), 5)))
-        self.assertAlmostEqual(f["tau"], f["secondary"]["tau"]); self.assertEqual(f["source"], "INT8"); self.assertTrue(f["adequate"])
+        self.assertAlmostEqual(f["tau"], f["secondary"]["tau"]); self.assertEqual(f["source"], "INT16"); self.assertTrue(f["adequate"])
 
-    def test_the_floor_is_the_primary_when_it_is_the_lower_one(self):
-        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.linspace(0.80, 1.0, n), "INT8": lambda r, n: np.linspace(0.95, 1.0, n)})
+    def test_the_floor_is_the_repeat_measurement_when_it_is_the_lower_one(self):
+        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.linspace(0.80, 1.0, n), "INT16": lambda r, n: np.linspace(0.95, 1.0, n)})
         f = an.floor_report(st); self.assertEqual(f["source"], "FP_rebatched"); self.assertAlmostEqual(f["tau"], f["primary"]["tau"])
 
-    def test_an_instrument_whose_repeat_measurement_is_not_similar_is_called_inadequate(self):
-        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.full(n, 0.5)}); f = an.floor_report(st)
-        self.assertFalse(f["adequate"]); self.assertAlmostEqual(f["primary"]["median"], 0.5)
-        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.full(n, 0.7)}); self.assertTrue(an.floor_report(st)["adequate"])                  # at the threshold: adequate
-        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.full(n, 0.6999)}); self.assertFalse(an.floor_report(st)["adequate"])
+    def test_int8_is_reported_but_does_not_enter_the_floor(self):
+        sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.linspace(0.95, 1.0, n), "INT16": lambda r, n: np.linspace(0.93, 1.0, n), "INT8": lambda r, n: np.linspace(0.10, 0.2, n)})
+        f = an.floor_report(st); n = len(st["FP"]["write"]["cos"]); self.assertEqual(f["source"], "INT16"); self.assertAlmostEqual(f["tau"], float(np.percentile(np.linspace(0.93, 1.0, n), 5)))
+        self.assertAlmostEqual(f["int8"]["tau"], float(np.percentile(np.linspace(0.10, 0.2, n), 5))); self.assertAlmostEqual(f["int8"]["median"], 0.15)
 
-    def test_without_the_pseudo_state_the_int8_floor_stands_alone_and_adequacy_is_unknown(self):
+    def test_an_instrument_is_inadequate_when_either_noise_only_state_is_not_similar_enough(self):
+        for bad in ("FP_rebatched", "INT16"):
+            sa, st, sm = make_world(cos_by_state={bad: lambda r, n: np.full(n, 0.5)}); f = an.floor_report(st)
+            self.assertFalse(f["adequate"], bad); self.assertAlmostEqual(f[{"FP_rebatched": "primary", "INT16": "secondary"}[bad]]["median"], 0.5)
+        for v, ok in ((0.7, True), (0.6999, False)):
+            sa, st, sm = make_world(cos_by_state={"FP_rebatched": lambda r, n: np.full(n, v)}); self.assertEqual(an.floor_report(st)["adequate"], ok)
+            sa, st, sm = make_world(cos_by_state={"INT16": lambda r, n: np.full(n, v)}); self.assertEqual(an.floor_report(st)["adequate"], ok)
+
+    def test_with_only_one_noise_only_state_the_other_is_none_and_adequacy_follows_the_one_present(self):
         sa, st, sm = make_world(); del st["FP_rebatched"]; f = an.floor_report(st)
-        self.assertIsNone(f["primary"]); self.assertEqual(f["source"], "INT8"); self.assertIsNone(f["adequate"])
+        self.assertIsNone(f["primary"]); self.assertEqual(f["source"], "INT16"); self.assertTrue(f["adequate"])
+        sa, st, sm = make_world(); del st["INT16"]; f = an.floor_report(st); self.assertIsNone(f["secondary"]); self.assertEqual(f["source"], "FP_rebatched")
+
+    def test_without_any_noise_only_state_int8_stands_in_and_adequacy_is_unknown(self):
+        sa, st, sm = make_world(); del st["FP_rebatched"]; del st["INT16"]; f = an.floor_report(st)
+        self.assertEqual(f["source"], "INT8"); self.assertIsNone(f["adequate"]); self.assertIsNone(f["primary"]); self.assertIsNone(f["secondary"])
 
     def test_undefined_similarities_are_left_out_of_the_floor_and_counted(self):
         sa, st, sm = make_world(); c = st["FP_rebatched"]["write"]["cos"]; c[:5] = np.nan; f = an.floor_report(st)
         self.assertEqual(f["primary"]["n_undefined"], 5); self.assertFalse(np.isnan(f["tau"]))
 
     def test_no_reference_state_at_all_is_an_error(self):
-        sa, st, sm = make_world(); del st["FP_rebatched"]; del st["INT8"]
+        sa, st, sm = make_world(); del st["FP_rebatched"]; del st["INT16"]; del st["INT8"]
         with self.assertRaises(ValueError):
             an.floor_report(st)
+
 
 class NegativeControl(unittest.TestCase):
     def test_the_control_feature_is_the_same_language_feature_with_the_nearest_native_rate(self):
@@ -210,7 +223,7 @@ def build_world(kind, seed=0, per_lang=40):
         f["roles"] = ["k64"] + [f"{'lost' if lost else 'retained'}@{c}" for c in ("INT6", "INT5", "INT4")]
     T = an.assemble(sa, sm); lost = T["status"]["INT4"] != "retained"; n = len(lost)
     floor_cos = (lambda: np.full(n, 0.5)) if kind == "inadequate" else (lambda: rng.uniform(0.5, 1.0, n))
-    for label in ("FP_rebatched", "INT8"):
+    for label in ("FP_rebatched", "INT16"):
         st[label]["write"]["cos"] = floor_cos()
     for label in ("INT6", "INT5", "INT4"):
         st[label]["write"]["cos"] = np.where(lost, rng.uniform(0.2, 0.5, n), rng.uniform(0.9, 1.0, n)) if kind != "independent" else rng.uniform(0.2, 1.0, n)
@@ -230,7 +243,7 @@ def build_varying_world(seed=0, per_lang=40):
         for c, r in res.items():
             lost = k % 5 == r; f["status"][c] = "different_peak" if lost else "retained"; f["roles"].append(f"{'lost' if lost else 'retained'}@{c}")
     T = an.assemble(sa, sm); n = len(T["fid"])
-    for label in ("FP_rebatched", "INT8"):
+    for label in ("FP_rebatched", "INT16"):
         st[label]["write"]["cos"] = rng.uniform(0.5, 1.0, n)
     for label in res:
         lost = T["status"][label] != "retained"; weak = lost | (rng.random(n) < 0.1)                                    # 10 % of the retained features have lost their function anyway
@@ -363,7 +376,7 @@ class Pipeline(unittest.TestCase):
         cls.res = an.analyse_f5(cls.sa, cls.st, cls.sm, meta=cls.meta, n_boot=100, seed=0)
 
     def test_every_state_except_full_precision_has_tables_and_the_instrument_checks_are_reported(self):
-        r = self.res; self.assertEqual(sorted(r["tables"]), ["FP_rebatched", "INT4", "INT5", "INT6", "INT8"])
+        r = self.res; self.assertEqual(sorted(r["tables"]), ["FP_rebatched", "INT16", "INT4", "INT5", "INT6", "INT8"])
         i = r["instrument"]; self.assertTrue(i["sham_gate_exact"]); self.assertTrue(i["logit_gates_ok"]); self.assertEqual(i["work_dtype"], "float32"); self.assertTrue(i["complete"]); self.assertTrue(i["fp_identity"])
         self.assertEqual(r["counts"]["n_sample"], 160); self.assertEqual(r["counts"]["n_tested"], 160); self.assertEqual(r["counts"]["n_excluded"], 0)
 
@@ -396,13 +409,13 @@ class Pipeline(unittest.TestCase):
                 self.assertIn(col, head)
             self.assertEqual(len(rows) - 1, sum(len(g) for g in self.res["tables"].values()))
             md = (Path(d) / "statements.md").read_text()
-            for needle in ("S1", "S2", "S3", "supported", "exploratory", "numerical floor"):
+            for needle in ("S1", "S2", "S3", "supported", "exploratory", "numerical floor", "INT16"):
                 self.assertIn(needle, md)
             s = self.res["validity"]["statements"]; rows = {r.split("|")[1].strip()[:2]: r for r in md.split("\n") if r.startswith("| S")}
             self.assertIn(an._fmt(s["S1"]["share"]), rows["S1"]); self.assertIn(an._fmt(s["S2"]["auroc"]), rows["S2"]); self.assertIn(an._fmt(s["S3"]["share"]), rows["S3"])
             for k in ("S1", "S2", "S3"):
                 self.assertTrue(rows[k].rstrip().endswith(f"| {s[k]['verdict']} |"))
-            self.assertIn(f"{self.res['floor']['tau']:.4f}", md)
+            self.assertIn(f"{self.res['floor']['tau']:.4f}", md); self.assertIn(f"not part of the floor: median {an._fmt(self.res['floor']['int8']['median'])}", md)
             for banned in ("confirmed", "proved", "demonstrated"):
                 self.assertNotIn(banned, md)
 
