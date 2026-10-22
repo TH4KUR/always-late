@@ -163,4 +163,13 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - STATUS: open (default applied)
 
 ---
+
+## Q19. Statistical statements of the T-MC confirmatory family (to be written into the T-MC freeze)?  [MEDIUM, not blocking]
+- **Context.** The design (section 6) makes T-MC (Belebele, held-out devtest-origin passages) the only confirmatory family and says the one-sided or two-sided choices and the error control over the five precision statements are written into the freeze file before any T-MC item is scored. The loss task (T-LM) is exploratory by design (devtest was examined in D-035); its replication so far is encouraging (the INT4 macro retention is 2.14 in the pilot and 2.14 in the held-out evaluation) but it does not count as confirmation.
+- **Options.** (a) default: statement 0 (full precision): the macro effect E over the covered languages is greater than 0, one-sided, decided by the lower bound of the 95 % percentile interval of the paired passage bootstrap; statements 1 to 5 (INT8, INT7, INT6, INT5, INT4): the macro retention (mean of per-language ratios, D-041) is classified preserved, attenuated, amplified or inconclusive against the bands [0.75, 1.33] using **99 % intervals** (Bonferroni over the five statements, which is simple, conservative and needs no p-values); everything else (T-LM, per-language effects, rescue, F4, subgroups, doses) stays exploratory and labelled; (b) the same with Holm applied to bootstrap p-values (more power, more machinery, needs a p-value definition for a ratio against a band); (c) a single pre-registered primary statement (INT4 amplification or INT6 preservation only) and everything else exploratory.
+- **Default:** (a), to be written into the T-MC part of the freeze file after the Belebele calibration (it needs the covered languages and the chosen format first). The freeze helper has to be extended for this part (test first).
+- ANSWER:
+- STATUS: open (default applied when the T-MC freeze is written)
+
+---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
