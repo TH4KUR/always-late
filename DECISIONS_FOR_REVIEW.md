@@ -199,5 +199,12 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - ANSWER:
 - STATUS: open
 
+## Q24. Run the whole F5 sample (4,382 features) as well as the stratified subset (1,487 features)? (F5, D-056)  [LOW, not blocking]
+- **Context.** The smoke job measured about 1.5 s per feature and state, so the whole sample would need about 2 hours per state (about 13 GPU hours for six states); D-056 runs a stratified subset (at most 12 features per language and role, every role represented) of 1,487 features in about 5 GPU hours, two jobs. A subset of this size gives 813 features in the INT4 pairs (417 lost, 396 retained) for S2.
+- **Options.** (a) default: subset only; add the rest only if a result is borderline; (b) run the whole sample after the subset (the 2,895 remaining features, about 9 GPU hours); (c) a different cap (give the number).
+- **Default:** (a).
+- ANSWER:
+- STATUS: open
+
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.

@@ -9,6 +9,7 @@ the baseline survival cutoff and the floor, coloured by the D-035 status; 3 the 
 write side by state; 6 the paired difference of W1 between retained and lost features by language."""
 import argparse
 import json
+import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -97,7 +98,7 @@ def fig_read_vs_write(arrays, tau, theme, note, states=("INT6", "INT5", "INT4"))
     t = base.theme_tokens(theme); panels = [s for s in states if s in arrays and "retained" in arrays[s]]
     if not panels:
         raise ValueError("no quantized state with a D-035 status to plot")
-    n = len(panels); fig = Figure(figsize=(3.7 * n + 1.3, 4.9), facecolor=t["surface"]); FigureCanvasAgg(fig); axes = fig.subplots(1, n, sharey=True, squeeze=False)[0]
+    n = len(panels); fig = Figure(figsize=(max(8.2, 3.7 * n + 1.3), 4.9), facecolor=t["surface"]); FigureCanvasAgg(fig); axes = fig.subplots(1, n, sharey=True, squeeze=False)[0]
     for ax, s in zip(axes, panels):
         _style(ax, t); a = arrays[s]; ret = a["retained"]
         ax.scatter(a["corr"][ret], a["cos"][ret], s=7, color=t["series"][0], alpha=0.4, linewidths=0, gid=f"retained:{s}")
@@ -106,9 +107,10 @@ def fig_read_vs_write(arrays, tau, theme, note, states=("INT6", "INT5", "INT4"))
         nund = int((np.isnan(a["cos"]) | np.isnan(a["corr"])).sum()); ax.set_title(PLAIN[s] + (f" ({nund} undefined, not drawn)" if nund else ""), loc="left", fontsize=9.5, color=t["ink"])
         ax.set_xlim(min(-0.05, float(np.nanmin(a["corr"])) - 0.02), 1.02); ax.set_xlabel("token correlation with full precision (read side)", color=t["ink2"], fontsize=8.5)
     ylo = min(-0.2, min(float(np.nanmin(arrays[s]["cos"])) for s in panels) - 0.02); axes[0].set_ylim(ylo, 1.03); axes[0].set_ylabel("W1: cosine of the effect fingerprints (write side)", color=t["ink2"], fontsize=9)
-    w_in, h_in = fig.get_size_inches(); fig.subplots_adjust(left=0.85 / w_in, right=1 - 0.25 / w_in, top=1 - 1.1 / h_in, bottom=1.25 / h_in, wspace=0.08)
+    w_in, h_in = fig.get_size_inches(); sub = textwrap.fill(f"one dot per tested feature; dotted: survival cutoff 0.9; dashed: numerical floor {tau:.3f} · {note}", width=max(40, int((w_in - 1.1) * 72 / 4.9))); extra = 0.16 * sub.count("\n")
+    fig.subplots_adjust(left=0.85 / w_in, right=1 - 0.25 / w_in, top=1 - (1.1 + extra) / h_in, bottom=1.25 / h_in, wspace=0.08)
     fig.text(0.85 / w_in, 1 - 0.32 / h_in, "Do the features that survive by the activation cutoff still do the same thing?", fontsize=10.5, color=t["ink"], ha="left", va="center")
-    fig.text(0.85 / w_in, 1 - 0.58 / h_in, f"one dot per tested feature; dotted: survival cutoff 0.9; dashed: numerical floor {tau:.3f} · {note}", fontsize=8.5, color=t["muted"], ha="left", va="center")
+    fig.text(0.85 / w_in, 1 - 0.46 / h_in, sub, fontsize=8.5, color=t["muted"], ha="left", va="top", linespacing=1.3)
     handles = [Line2D([0], [0], marker="o", color="none", markerfacecolor=t["series"][0], markeredgecolor=t["surface"], markersize=6), Line2D([0], [0], marker="o", color="none", markerfacecolor=t["series"][1], markeredgecolor=t["surface"], markersize=6)]
     _legend_row(fig, t, handles, ["retained by the D-035 language-association status", "lost by the D-035 status"], ncol=2, y_in=0.1)
     return fig

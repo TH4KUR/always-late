@@ -64,6 +64,13 @@ class Figures(unittest.TestCase):
         self.assertEqual(len(tagged(fig, "duan_cutoff")), 3); self.assertEqual(len(tagged(fig, "floor")), 3)
         pts = tagged(fig, "retained:INT4")[0].get_offsets(); np.testing.assert_allclose(pts[:, 1], self.arrays["INT4"]["cos"][self.arrays["INT4"]["retained"]])
 
+    def test_a_single_panel_scatter_is_wide_enough_for_its_title_and_legend(self):
+        fig = ff.fig_read_vs_write(self.arrays, self.res["floor"]["tau"], "light", "exploratory, smoke sample (150 features)", states=("INT4",)); self.assertGreaterEqual(fig.get_size_inches()[0], 7.6)
+        fig.canvas.draw(); r = fig.canvas.get_renderer(); w = fig.bbox.width
+        shown = list(fig.texts) + [x for ax in fig.axes for x in (ax.title, ax.xaxis.label, ax.yaxis.label)] + [x for lg in fig.legends for x in lg.get_texts()]
+        for t in [x for x in shown if x.get_text()]:
+            bb = t.get_window_extent(r); self.assertGreaterEqual(bb.x0, -1.0, t.get_text()); self.assertLessEqual(bb.x1, w + 1.0, t.get_text())          # no title, subtitle, label or legend entry is cut at the sides
+
     def test_the_statement_figure_draws_each_statement_with_its_threshold_and_its_verdict(self):
         fig = ff.fig_statements(self.res["validity"], "light", "exploratory"); s = self.res["validity"]["statements"]
         pts = {g.get_gid(): g for g in fig.findobj() if (g.get_gid() or "").startswith("point:")}; self.assertEqual(sorted(pts), ["point:S1", "point:S2", "point:S3"])
