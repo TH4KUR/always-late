@@ -1,16 +1,14 @@
 # Prompt of the 40-minute recurring job (functional-validation study, D-039/D-040)
 
-**ENDED 2026-10-22 02:06: the user cancelled the cron entries and asked for the loop to be run by hand in a new chat (see [handoff 025](../handoffs/025-2026-10-22-chat-end-functional-study-midrun.md), Appendix A). This file is kept only so that the cron can be recreated if the user asks.**
-
-**Rescheduled 2026-10-22 02:02 at the user's request ("start from 3:11am in the same cadence").** Three session-only recurring entries, each with the SHORT pointer prompt below (the fenced block further down is the full instruction set and is read at every firing, so it can be edited without recreating the jobs):
+**RECREATED 2026-10-22 07:17 at the user's request** (the entries of 2026-10-22 02:02 had been cancelled at 02:06 and the loop run by hand for one chat step; see [handoff 025](../handoffs/025-2026-10-22-chat-end-functional-study-midrun.md), Appendix A, for that history). Three session-only recurring entries, each with the SHORT pointer prompt below (the fenced block further down is the full instruction set and is read at every firing, so it can be edited without recreating the jobs):
 
 | id | cron expression | listed times | actual firing times |
 |---|---|---|---|
-| `22155376` | `3 1-23/2 * * *` | :03 of odd hours | :11 of odd hours (3:11, 5:11, ... and 1:11) |
-| `8927e5b6` | `21 1-23/2 * * *` | :21 of odd hours | :51 of odd hours (3:51, 5:51, ... and 1:51) |
-| `846aad0a` | `1 0-22/2 * * *` | :01 of even hours | :31 of even hours (4:31, 6:31, ... and 0:31, 2:31) |
+| `955a5cc5` | `21 1-23/2 * * *` | :21 of odd hours | :51 of odd hours (7:51, 9:51, ...) |
+| `e33ac7eb` | `1 0-22/2 * * *` | :01 of even hours | :31 of even hours (8:31, 10:31, ...) |
+| `ea207eac` | `41 0-22/2 * * *` | :41 of even hours | :11 of odd hours (9:11, 11:11, ...) |
 
-Together: 3:11, 3:51, 4:31, 5:11, 5:51, 6:31, ... exactly 40 minutes apart. **Why the listed times differ from the actual ones:** the scheduler delays every recurring entry by a fixed random amount of 0 to 30 minutes chosen when the entry is created (observed: 6, 8, 13, 14, 16, 23, 26, 30 minutes, often exactly 30). The "Next run" printed by `CronCreate` and `CronList` is the actual time. To (re)create a slot: create several candidates with the listed expression and the pointer prompt, keep the one whose printed next run equals the wanted time, delete the others (the short prompt makes retries cheap). Recurring entries expire after 7 days (created 2026-10-22, so about 2026-10-29) and live only in the Claude session; after a restart recreate all three. The scheduler runs a job only while the REPL is idle.
+Together: 7:51, 8:31, 9:11, 9:51, 10:31, 11:11, ... exactly 40 minutes apart (the same grid as the earlier entries: :11 and :51 of odd hours, :31 of even hours). **Why the listed times differ from the actual ones:** the scheduler delays every recurring entry by a fixed random amount of 0 to 30 minutes chosen when the entry is created (observed 0, 1, 2, 3, 8, 10, 18, 21, 30 minutes; about a quarter of the entries get exactly 30). The "Next run" printed by `CronCreate` and `CronList` is the actual time. To (re)create a slot: create several candidates with different listed minutes and the pointer prompt, keep the one whose printed next run equals the wanted time, delete the others (the short prompt makes retries cheap; this time three rounds were needed: 25 candidates created, 22 deleted). Recurring entries expire after 7 days (created 2026-10-22, so about 2026-10-29) and live only in the Claude session; after a restart recreate all three. The scheduler runs a job only while the REPL is idle.
 
 Pointer prompt used by all three entries:
 
