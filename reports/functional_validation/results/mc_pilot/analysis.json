@@ -1,0 +1,1098 @@
+{
+ "task": "T-MC",
+ "format": "letter",
+ "K": "K64",
+ "n_boot": 2000,
+ "seed": 0,
+ "bands": [
+  0.75,
+  1.33
+ ],
+ "covered": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda"
+ ],
+ "n_passages": 109,
+ "n_positions": 109,
+ "note": "Calibration-split run (dev-origin passages, the text the features were selected on): a pipeline check, not a result.",
+ "retention_level": 0.99,
+ "effects": {
+  "FP": {
+   "eng_Latn": {
+    "point": 0.0075197944841502405,
+    "lo": -0.0065885383883560675,
+    "hi": 0.022854100786279686,
+    "harm_group": 0.006036796294490457,
+    "harm_control": -0.0014829981896597848,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "deu_Latn": {
+    "point": 0.004214129894689907,
+    "lo": -0.007990360485124645,
+    "hi": 0.016244928160231892,
+    "harm_group": 0.007423188835691054,
+    "harm_control": 0.00320905894100115,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "spa_Latn": {
+    "point": 0.0006428855143884592,
+    "lo": -0.011437884955529496,
+    "hi": 0.01259055469241236,
+    "harm_group": -0.0031647915317586568,
+    "harm_control": -0.0038076770461471163,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "fra_Latn": {
+    "point": -0.014826250893142932,
+    "lo": -0.027265675655144244,
+    "hi": -0.003094520898073819,
+    "harm_group": -0.007566614870394119,
+    "harm_control": 0.007259636022748809,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "por_Latn": {
+    "point": -0.0007205655759564907,
+    "lo": -0.019927407865522318,
+    "hi": 0.018515354465910076,
+    "harm_group": 0.002385504098907714,
+    "harm_control": 0.0031060696748642052,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "rus_Cyrl": {
+    "point": -0.006393329504177503,
+    "lo": -0.020891317405544764,
+    "hi": 0.0073172547062323985,
+    "harm_group": 0.0030931257917472623,
+    "harm_control": 0.009486455295924765,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "zho_Hans": {
+    "point": 0.0026124844070479964,
+    "lo": -0.014563408636012782,
+    "hi": 0.02003885621402327,
+    "harm_group": 0.008556806503870563,
+    "harm_control": 0.005944322096822568,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "jpn_Jpan": {
+    "point": -0.004823283794868289,
+    "lo": -0.023494453641984814,
+    "hi": 0.01334812553096634,
+    "harm_group": 0.011741216685925416,
+    "harm_control": 0.016564500480793703,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "kor_Hang": {
+    "point": -0.004841303358867486,
+    "lo": -0.017536934020822032,
+    "hi": 0.008482524653913174,
+    "harm_group": -0.006052219451251435,
+    "harm_control": -0.0012109160923839512,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "hin_Deva": {
+    "point": 0.00540581809686891,
+    "lo": -0.020364534165417288,
+    "hi": 0.03273222854984777,
+    "harm_group": 0.009919178840015901,
+    "harm_control": 0.00451336074314699,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "ben_Beng": {
+    "point": -0.0036089515332547476,
+    "lo": -0.01376425468779346,
+    "hi": 0.006452940706188267,
+    "harm_group": 0.0013986712190061164,
+    "harm_control": 0.005007622752260865,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "tur_Latn": {
+    "point": 0.014300666821010177,
+    "lo": -0.0020132860155917406,
+    "hi": 0.0301514659698307,
+    "harm_group": 0.013628627611846663,
+    "harm_control": -0.0006720392091635156,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "vie_Latn": {
+    "point": -0.004697822889078349,
+    "lo": -0.038385723124135795,
+    "hi": 0.027358262318379917,
+    "harm_group": -0.01121518784016771,
+    "harm_control": -0.006517364951089362,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "ind_Latn": {
+    "point": 0.004874384843497234,
+    "lo": -0.011626011332119391,
+    "hi": 0.02076868659008625,
+    "harm_group": 0.001710731779774799,
+    "harm_control": -0.0031636530637224373,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "tha_Thai": {
+    "point": 0.0007653838394486462,
+    "lo": -0.013683018619414676,
+    "hi": 0.014964722216841437,
+    "harm_group": 0.002181989230865835,
+    "harm_control": 0.0014166053914171886,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "pol_Latn": {
+    "point": 0.018649470741040588,
+    "lo": 0.004499798153184562,
+    "hi": 0.03292593285548821,
+    "harm_group": 0.0009218367345304494,
+    "harm_control": -0.01772763400651014,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "ukr_Cyrl": {
+    "point": -0.005141015230499164,
+    "lo": -0.01992979371191523,
+    "hi": 0.0097346698724856,
+    "harm_group": -0.002667803744086501,
+    "harm_control": 0.0024732114864126622,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "kan_Knda": {
+    "point": -0.008088644431023457,
+    "lo": -0.01869931270907066,
+    "hi": 0.0029996458624202693,
+    "harm_group": -0.001198179347542185,
+    "harm_control": 0.006890465083481272,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   }
+  },
+  "INT4": {
+   "eng_Latn": {
+    "point": -0.013005931303315732,
+    "lo": -0.033871456675188136,
+    "hi": 0.006333594193209423,
+    "harm_group": -0.013734254763606629,
+    "harm_control": -0.0007283234602908982,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "deu_Latn": {
+    "point": -0.02567766892369489,
+    "lo": -0.04360119884423135,
+    "hi": -0.008099651220027385,
+    "harm_group": -0.011854108562865047,
+    "harm_control": 0.013823560360829839,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "spa_Latn": {
+    "point": -0.02069297153901715,
+    "lo": -0.03527410107831996,
+    "hi": -0.007166109041881081,
+    "harm_group": -0.015353298618051096,
+    "harm_control": 0.005339672920966052,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "fra_Latn": {
+    "point": 0.010923639953645562,
+    "lo": -0.0074904663478302085,
+    "hi": 0.029048752464650888,
+    "harm_group": 0.0029381404921408204,
+    "harm_control": -0.007985499461504742,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "por_Latn": {
+    "point": -0.04650740405123024,
+    "lo": -0.07026525201610063,
+    "hi": -0.02384665204549804,
+    "harm_group": -0.05846293394869296,
+    "harm_control": -0.011955529897462723,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "rus_Cyrl": {
+    "point": 0.01574094914875452,
+    "lo": -0.00021922523753205558,
+    "hi": 0.03173072190305728,
+    "harm_group": 0.00986009147256702,
+    "harm_control": -0.0058808576761875,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "zho_Hans": {
+    "point": -0.06464006704640163,
+    "lo": -0.09123973900939002,
+    "hi": -0.03963295486215693,
+    "harm_group": -0.07774594591802163,
+    "harm_control": -0.013105878871619995,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "jpn_Jpan": {
+    "point": 0.030806374883104507,
+    "lo": -0.005676360040593258,
+    "hi": 0.06785735390101362,
+    "harm_group": -0.006085627823720074,
+    "harm_control": -0.03689200270682458,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "kor_Hang": {
+    "point": 0.04455982087217949,
+    "lo": 0.026730773873790685,
+    "hi": 0.060850480054917264,
+    "harm_group": 0.03393249749148841,
+    "harm_control": -0.010627323380691077,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "hin_Deva": {
+    "point": 0.02992266984797397,
+    "lo": 0.008173771937900557,
+    "hi": 0.05152092109531513,
+    "harm_group": 0.02238154134429099,
+    "harm_control": -0.007541128503682981,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "ben_Beng": {
+    "point": 0.0013176261015826834,
+    "lo": -0.009569999438720103,
+    "hi": 0.012326079207247145,
+    "harm_group": -0.0014299354754920965,
+    "harm_control": -0.002747561577074779,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "tur_Latn": {
+    "point": 0.015847819544137835,
+    "lo": -0.0013756607335184505,
+    "hi": 0.03333269164525424,
+    "harm_group": 0.010940769374615593,
+    "harm_control": -0.004907050169522242,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "vie_Latn": {
+    "point": -0.008483927983971344,
+    "lo": -0.04734265117105284,
+    "hi": 0.026454798657634674,
+    "harm_group": -0.036823823337375064,
+    "harm_control": -0.028339895353403706,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "ind_Latn": {
+    "point": 0.013369730711935776,
+    "lo": -0.0034926788433446406,
+    "hi": 0.030160679479182582,
+    "harm_group": -0.018810063693557016,
+    "harm_control": -0.0321797944054928,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "tha_Thai": {
+    "point": 0.043854602751401066,
+    "lo": 0.02298905264111513,
+    "hi": 0.06312498319157211,
+    "harm_group": 0.03868659082946529,
+    "harm_control": -0.00516801192193578,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "pol_Latn": {
+    "point": 0.0013494563510910856,
+    "lo": -0.013334205607158074,
+    "hi": 0.01597843222373029,
+    "harm_group": -0.014329077108810349,
+    "harm_control": -0.015678533459901434,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "ukr_Cyrl": {
+    "point": 0.01834452588503303,
+    "lo": 0.001591677693187446,
+    "hi": 0.03475386012419368,
+    "harm_group": 0.007219352390875078,
+    "harm_control": -0.011125173494157948,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   },
+   "kan_Knda": {
+    "point": 0.016594962861168645,
+    "lo": 0.005044883920375941,
+    "hi": 0.028555661271842486,
+    "harm_group": 0.009011837322881753,
+    "harm_control": -0.007583125538286894,
+    "norm_ratio_group": null,
+    "norm_ratio_control": null,
+    "n_items": 120,
+    "n_controls": 3
+   }
+  }
+ },
+ "macro": {
+  "FP": {
+   "point": 0.0003246584128485412,
+   "lo": -0.0057221527497302626,
+   "hi": 0.006599512834955767,
+   "median": -3.8840030784015745e-05,
+   "n_positive": 9
+  },
+  "INT4": {
+   "point": 0.0035346782257987316,
+   "lo": -0.0030702095396638682,
+   "hi": 0.009416900356612485,
+   "median": 0.012146685332790669,
+   "n_positive": 12
+  }
+ },
+ "retention": {
+  "INT4": {
+   "macro": {
+    "ratio": 0.07235896234424666,
+    "lo": -2.8742221713985976,
+    "hi": 3.92937839860542,
+    "class": "inconclusive",
+    "n_languages": 1,
+    "languages": [
+     "pol_Latn"
+    ],
+    "median_ratio": 0.07235896234424666,
+    "median_lo": -2.8742221713985976,
+    "median_hi": 3.92937839860542
+   },
+   "pooled": {
+    "ratio": null,
+    "lo": null,
+    "hi": null,
+    "class": "undefined"
+   },
+   "languages": {
+    "eng_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "deu_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "spa_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "fra_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "por_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "rus_Cyrl": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "zho_Hans": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "jpn_Jpan": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "kor_Hang": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "hin_Deva": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "ben_Beng": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "tur_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "vie_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "ind_Latn": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "tha_Thai": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "pol_Latn": {
+     "ratio": 0.07235896234424666,
+     "lo": -2.8742221713985976,
+     "hi": 3.92937839860542,
+     "class": "inconclusive"
+    },
+    "ukr_Cyrl": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    },
+    "kan_Knda": {
+     "ratio": null,
+     "lo": null,
+     "hi": null,
+     "class": "undefined"
+    }
+   }
+  }
+ },
+ "sham": {
+  "FP": {
+   "eng_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "deu_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "spa_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "fra_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "por_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "rus_Cyrl": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "zho_Hans": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "jpn_Jpan": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "kor_Hang": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "hin_Deva": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "ben_Beng": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "tur_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "vie_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "ind_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "tha_Thai": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "pol_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "ukr_Cyrl": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "kan_Knda": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   }
+  },
+  "INT4": {
+   "eng_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "deu_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "spa_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "fra_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "por_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "rus_Cyrl": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "zho_Hans": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "jpn_Jpan": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "kor_Hang": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "hin_Deva": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "ben_Beng": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "tur_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "vie_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "ind_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "tha_Thai": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "pol_Latn": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "ukr_Cyrl": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "kan_Knda": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   }
+  }
+ },
+ "accuracy": [
+  {
+   "precision": "FP",
+   "language": "eng_Latn",
+   "n_items": 120,
+   "acc_none": 0.5833333333333334,
+   "acc_zero": 0.5666666666666667,
+   "acc_control_mean": 0.5805555555555556,
+   "acc_sham": 0.5833333333333334
+  },
+  {
+   "precision": "FP",
+   "language": "deu_Latn",
+   "n_items": 120,
+   "acc_none": 0.5666666666666667,
+   "acc_zero": 0.5666666666666667,
+   "acc_control_mean": 0.5611111111111111,
+   "acc_sham": 0.5666666666666667
+  },
+  {
+   "precision": "FP",
+   "language": "spa_Latn",
+   "n_items": 120,
+   "acc_none": 0.525,
+   "acc_zero": 0.525,
+   "acc_control_mean": 0.5277777777777778,
+   "acc_sham": 0.525
+  },
+  {
+   "precision": "FP",
+   "language": "fra_Latn",
+   "n_items": 120,
+   "acc_none": 0.5166666666666667,
+   "acc_zero": 0.5083333333333333,
+   "acc_control_mean": 0.49722222222222223,
+   "acc_sham": 0.5166666666666667
+  },
+  {
+   "precision": "FP",
+   "language": "por_Latn",
+   "n_items": 120,
+   "acc_none": 0.5666666666666667,
+   "acc_zero": 0.5333333333333333,
+   "acc_control_mean": 0.5444444444444444,
+   "acc_sham": 0.5666666666666667
+  },
+  {
+   "precision": "FP",
+   "language": "rus_Cyrl",
+   "n_items": 120,
+   "acc_none": 0.4666666666666667,
+   "acc_zero": 0.475,
+   "acc_control_mean": 0.4527777777777778,
+   "acc_sham": 0.4666666666666667
+  },
+  {
+   "precision": "FP",
+   "language": "zho_Hans",
+   "n_items": 120,
+   "acc_none": 0.475,
+   "acc_zero": 0.48333333333333334,
+   "acc_control_mean": 0.4777777777777777,
+   "acc_sham": 0.475
+  },
+  {
+   "precision": "FP",
+   "language": "jpn_Jpan",
+   "n_items": 120,
+   "acc_none": 0.4,
+   "acc_zero": 0.375,
+   "acc_control_mean": 0.4055555555555556,
+   "acc_sham": 0.4
+  },
+  {
+   "precision": "FP",
+   "language": "kor_Hang",
+   "n_items": 120,
+   "acc_none": 0.45,
+   "acc_zero": 0.4666666666666667,
+   "acc_control_mean": 0.45555555555555555,
+   "acc_sham": 0.45
+  },
+  {
+   "precision": "FP",
+   "language": "hin_Deva",
+   "n_items": 120,
+   "acc_none": 0.35,
+   "acc_zero": 0.35,
+   "acc_control_mean": 0.35833333333333334,
+   "acc_sham": 0.35
+  },
+  {
+   "precision": "FP",
+   "language": "ben_Beng",
+   "n_items": 120,
+   "acc_none": 0.36666666666666664,
+   "acc_zero": 0.36666666666666664,
+   "acc_control_mean": 0.37777777777777777,
+   "acc_sham": 0.36666666666666664
+  },
+  {
+   "precision": "FP",
+   "language": "tur_Latn",
+   "n_items": 120,
+   "acc_none": 0.4166666666666667,
+   "acc_zero": 0.4083333333333333,
+   "acc_control_mean": 0.41111111111111115,
+   "acc_sham": 0.4166666666666667
+  },
+  {
+   "precision": "FP",
+   "language": "vie_Latn",
+   "n_items": 120,
+   "acc_none": 0.4583333333333333,
+   "acc_zero": 0.4583333333333333,
+   "acc_control_mean": 0.48888888888888893,
+   "acc_sham": 0.4583333333333333
+  },
+  {
+   "precision": "FP",
+   "language": "ind_Latn",
+   "n_items": 120,
+   "acc_none": 0.44166666666666665,
+   "acc_zero": 0.45,
+   "acc_control_mean": 0.4611111111111111,
+   "acc_sham": 0.44166666666666665
+  },
+  {
+   "precision": "FP",
+   "language": "tha_Thai",
+   "n_items": 120,
+   "acc_none": 0.4666666666666667,
+   "acc_zero": 0.4666666666666667,
+   "acc_control_mean": 0.45555555555555555,
+   "acc_sham": 0.4666666666666667
+  },
+  {
+   "precision": "FP",
+   "language": "pol_Latn",
+   "n_items": 120,
+   "acc_none": 0.4166666666666667,
+   "acc_zero": 0.4083333333333333,
+   "acc_control_mean": 0.4222222222222222,
+   "acc_sham": 0.4166666666666667
+  },
+  {
+   "precision": "FP",
+   "language": "ukr_Cyrl",
+   "n_items": 120,
+   "acc_none": 0.425,
+   "acc_zero": 0.45,
+   "acc_control_mean": 0.4361111111111111,
+   "acc_sham": 0.425
+  },
+  {
+   "precision": "FP",
+   "language": "kan_Knda",
+   "n_items": 120,
+   "acc_none": 0.35833333333333334,
+   "acc_zero": 0.35833333333333334,
+   "acc_control_mean": 0.3444444444444444,
+   "acc_sham": 0.35833333333333334
+  },
+  {
+   "precision": "INT4",
+   "language": "eng_Latn",
+   "n_items": 120,
+   "acc_none": 0.3416666666666667,
+   "acc_zero": 0.36666666666666664,
+   "acc_control_mean": 0.3138888888888889,
+   "acc_sham": 0.3416666666666667
+  },
+  {
+   "precision": "INT4",
+   "language": "deu_Latn",
+   "n_items": 120,
+   "acc_none": 0.25,
+   "acc_zero": 0.23333333333333334,
+   "acc_control_mean": 0.23611111111111108,
+   "acc_sham": 0.25
+  },
+  {
+   "precision": "INT4",
+   "language": "spa_Latn",
+   "n_items": 120,
+   "acc_none": 0.25833333333333336,
+   "acc_zero": 0.26666666666666666,
+   "acc_control_mean": 0.25277777777777777,
+   "acc_sham": 0.25833333333333336
+  },
+  {
+   "precision": "INT4",
+   "language": "fra_Latn",
+   "n_items": 120,
+   "acc_none": 0.26666666666666666,
+   "acc_zero": 0.26666666666666666,
+   "acc_control_mean": 0.26666666666666666,
+   "acc_sham": 0.26666666666666666
+  },
+  {
+   "precision": "INT4",
+   "language": "por_Latn",
+   "n_items": 120,
+   "acc_none": 0.3,
+   "acc_zero": 0.31666666666666665,
+   "acc_control_mean": 0.30000000000000004,
+   "acc_sham": 0.3
+  },
+  {
+   "precision": "INT4",
+   "language": "rus_Cyrl",
+   "n_items": 120,
+   "acc_none": 0.25,
+   "acc_zero": 0.24166666666666667,
+   "acc_control_mean": 0.2555555555555556,
+   "acc_sham": 0.25
+  },
+  {
+   "precision": "INT4",
+   "language": "zho_Hans",
+   "n_items": 120,
+   "acc_none": 0.30833333333333335,
+   "acc_zero": 0.275,
+   "acc_control_mean": 0.2833333333333333,
+   "acc_sham": 0.30833333333333335
+  },
+  {
+   "precision": "INT4",
+   "language": "jpn_Jpan",
+   "n_items": 120,
+   "acc_none": 0.25833333333333336,
+   "acc_zero": 0.25833333333333336,
+   "acc_control_mean": 0.26666666666666666,
+   "acc_sham": 0.25833333333333336
+  },
+  {
+   "precision": "INT4",
+   "language": "kor_Hang",
+   "n_items": 120,
+   "acc_none": 0.26666666666666666,
+   "acc_zero": 0.26666666666666666,
+   "acc_control_mean": 0.26666666666666666,
+   "acc_sham": 0.26666666666666666
+  },
+  {
+   "precision": "INT4",
+   "language": "hin_Deva",
+   "n_items": 120,
+   "acc_none": 0.25,
+   "acc_zero": 0.25,
+   "acc_control_mean": 0.26666666666666666,
+   "acc_sham": 0.25
+  },
+  {
+   "precision": "INT4",
+   "language": "ben_Beng",
+   "n_items": 120,
+   "acc_none": 0.25833333333333336,
+   "acc_zero": 0.25833333333333336,
+   "acc_control_mean": 0.25555555555555554,
+   "acc_sham": 0.25833333333333336
+  },
+  {
+   "precision": "INT4",
+   "language": "tur_Latn",
+   "n_items": 120,
+   "acc_none": 0.26666666666666666,
+   "acc_zero": 0.25833333333333336,
+   "acc_control_mean": 0.28055555555555556,
+   "acc_sham": 0.26666666666666666
+  },
+  {
+   "precision": "INT4",
+   "language": "vie_Latn",
+   "n_items": 120,
+   "acc_none": 0.2833333333333333,
+   "acc_zero": 0.26666666666666666,
+   "acc_control_mean": 0.26666666666666666,
+   "acc_sham": 0.2833333333333333
+  },
+  {
+   "precision": "INT4",
+   "language": "ind_Latn",
+   "n_items": 120,
+   "acc_none": 0.24166666666666667,
+   "acc_zero": 0.25,
+   "acc_control_mean": 0.2416666666666667,
+   "acc_sham": 0.24166666666666667
+  },
+  {
+   "precision": "INT4",
+   "language": "tha_Thai",
+   "n_items": 120,
+   "acc_none": 0.25,
+   "acc_zero": 0.25,
+   "acc_control_mean": 0.25555555555555554,
+   "acc_sham": 0.25
+  },
+  {
+   "precision": "INT4",
+   "language": "pol_Latn",
+   "n_items": 120,
+   "acc_none": 0.2833333333333333,
+   "acc_zero": 0.26666666666666666,
+   "acc_control_mean": 0.2833333333333333,
+   "acc_sham": 0.2833333333333333
+  },
+  {
+   "precision": "INT4",
+   "language": "ukr_Cyrl",
+   "n_items": 120,
+   "acc_none": 0.24166666666666667,
+   "acc_zero": 0.24166666666666667,
+   "acc_control_mean": 0.24166666666666667,
+   "acc_sham": 0.24166666666666667
+  },
+  {
+   "precision": "INT4",
+   "language": "kan_Knda",
+   "n_items": 120,
+   "acc_none": 0.25,
+   "acc_zero": 0.25,
+   "acc_control_mean": 0.25,
+   "acc_sham": 0.25
+  }
+ ]
+}

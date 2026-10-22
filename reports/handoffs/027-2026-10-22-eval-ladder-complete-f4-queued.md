@@ -47,3 +47,7 @@ Q17, Q18, Q19 (defaults applied or in force) and the M-questions; the merge deci
 ## 7. What I would check if something looks wrong
 
 `git status`, `CronList`, `squeue -u karma` over the strict-key route, the freeze (`phase1_func_freeze.py verify` for T-LM), the checksums of fetched files against Ada, and whether any frozen file changed after its freeze commit.
+
+## Addendum 2026-10-22 15:55 (same chat; the repository and STATUS.md win)
+
+The Belebele pilot 34724 finished and was analysed: full-precision effect about 0, INT4 accuracy at chance, item count of the T-MC freeze = ALL 385 devtest-origin items per language by the rule fixed before the numbers (D-047, Q20; `results/mc_pilot/`). `func-f4-INT4` 34795 is RUNNING (gates passed), `func-f4-INT5` 34804 was submitted (watchers `bn2iyuxs6`, `bbgpvgpf8`). **Section 4 item 1 and 2 are replaced by:** (1) plan Task 7d step 1 (`phase1_func_ksens_manifest.py`, test first, committed before the freeze), (2) `build-mc --n-items 0` and `verify-mc`, commit, push, (3) deploy a snapshot at the freeze commit, hash-check on Ada, submit two T-MC jobs of three precisions (`-t 07:00:00`) as slots free.

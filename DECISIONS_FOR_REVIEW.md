@@ -171,5 +171,12 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - ANSWER:
 - STATUS: open (default applied when the T-MC freeze is written)
 
+## Q20. The Belebele pilot shows no full-precision effect and an INT4 model at chance: how should the T-MC family proceed?  [MEDIUM, not blocking]
+- **Context.** The calibration-split pilot (job 34724, dev-origin passages, 18 covered languages, 120 letter items each, full precision and INT4; `reports/functional_validation/results/mc_pilot/`, D-047) gives a macro E of 0.0003 nats [-0.0057, 0.0066] at full precision (accuracy 0.458 without edit, 0.456 with the K64 group zeroed, 0.459 with matched controls) and an INT4 accuracy of 0.268 (chance 0.25). Zero-ablating the K64 language group does not change which option the model prefers, although the same group has a median effect beyond matched controls of 0.26 nats per token on next-token loss (T-LM, full precision). A plausible reading (not tested): the answer is a Latin letter and the four options are affected alike, so a language-wide degradation cancels in the four-way comparison; K64 may also be too small. The item-count rule written beforehand selects all 385 devtest-origin items per language; the design forbids changing K, alpha, R, the estimands or the decision rules after the pilot (section 7).
+- **Options.** (a) default: freeze and run T-MC as designed (K64, preset `mc_eval`, all 385 items, statements 0 to 5 of Q19) and report the outcome as it comes (the confirmatory statement 0 is likely not met, retention is undefined where the full-precision effect is not clearly positive, INT4 has no headroom); add the K sensitivity that the design requires with a null as an exploratory run: K = all (about 1,700 features at most) with its matched controls at full precision (and INT6 if cheap), through a derived manifest on the unchanged frozen runner (the same device as F4), committed before the T-MC freeze; (b) stop after the pilot and report it as the finding (saves about 11 GPU hours; no confirmatory family); (c) amend the design before the freeze (a larger primary K, or a different harm such as the per-option log-likelihood of the correct answer text): possible, but it is a change of the pre-fixed estimand made after seeing pilot numbers and has to be your decision.
+- **Default:** (a).
+- ANSWER:
+- STATUS: open (default applied)
+
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.

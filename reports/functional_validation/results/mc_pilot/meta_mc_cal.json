@@ -1,0 +1,110 @@
+{
+ "task": "mc",
+ "split": "cal",
+ "formats": [
+  "letter"
+ ],
+ "preset": "mc_eval",
+ "precisions": [
+  "FP",
+  "4"
+ ],
+ "languages": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda"
+ ],
+ "n_items": 120,
+ "n_items_cloze": 0,
+ "item_seed": 0,
+ "max_len": 1024,
+ "commit": "4367e3b2558b9beb4f08196eaabb6c703504537c",
+ "model": "gemma-2-2b",
+ "gates": {
+  "split_equals_full": true,
+  "scale_one_identity": true,
+  "donor_self_identity": true,
+  "sham_identity": true
+ },
+ "summary": {
+  "letter/FP": {
+   "seconds": 2129.5174832344055,
+   "configs": 108
+  },
+  "letter/INT4": {
+   "seconds": 2128.9671416282654,
+   "configs": 108
+  }
+ },
+ "skipped_for_time": [],
+ "complete": true,
+ "argv": [
+  "--out",
+  "/home2/karma/duan-verify/out/phase1/func-mc-pilot",
+  "--flores-root",
+  "/home2/karma/duan-verify/phase1/data",
+  "--selectivity",
+  "/home2/karma/duan-verify/out/phase1/p1-mask/eq/selectivity.pt",
+  "--manifest",
+  "/home2/karma/duan-verify/phase1/repo_4367e3b/reports/functional_validation/groups_manifest.json",
+  "--commit",
+  "4367e3b2558b9beb4f08196eaabb6c703504537c",
+  "--belebele-root",
+  "/home2/karma/duan-verify/phase1/data/belebele",
+  "--origin-file",
+  "/home2/karma/duan-verify/phase1/data/belebele/passage_origin.json",
+  "--precisions",
+  "FP",
+  "4",
+  "--split",
+  "cal",
+  "--formats",
+  "letter",
+  "--languages",
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda",
+  "--n-items",
+  "120",
+  "--preset",
+  "mc_eval"
+ ],
+ "versions": {
+  "torch": "2.14.1+cu126",
+  "transformer-lens": "3.9.0",
+  "sae-lens": "6.54.5",
+  "transformers": "5.19.0",
+  "datasets": "5.1.0"
+ },
+ "seconds": 4393.341934204102
+}
