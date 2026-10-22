@@ -249,7 +249,7 @@ def analyse_f5(stage_a, states, sample, meta=None, n_boot=2000, seed=0):
     val = validity(states, T, floor, n_boot, seed); m = meta or {}; sg = stage_a.get("sham_gate"); gates = m.get("gates")
     fl = np.asarray(stage_a["feat_lang"]).astype(int); exc = np.asarray(stage_a["excluded"]).astype(bool)
     instrument = {"sham_gate_exact": None if sg is None else bool(all(x["exact"] for x in sg)), "logit_gates_ok": None if gates is None else bool(all(x.get("ok") for x in gates.values())), "work_dtype": m.get("work_dtype"),
-                  "complete": m.get("complete"), "fp_identity": True, "gates": gates, "state_seconds": m.get("state_seconds"), "runs": m.get("runs")}
+                  "complete": m.get("complete"), "per_cell": m.get("per_cell"), "subset_seed": m.get("subset_seed"), "fp_identity": True, "gates": gates, "state_seconds": m.get("state_seconds"), "runs": m.get("runs")}
     counts = {"n_sample": T["n_sample"], "n_tested": int(len(T["fid"])), "n_excluded": T["n_excluded"], "excluded_by_language": {T["languages"][l]: int(((fl == l) & exc).sum()) for l in range(len(T["languages"]))}}
     return {"instrument": instrument, "counts": counts, "floor": floor, "tables": tables, "validity": val, "hypotheses": hypotheses(tables, val, floor)}
 
@@ -295,32 +295,94 @@ def table_rows(res):
     return rows
 
 
+def _f3(v):
+    """Three decimals for the text files; 'n/a' for an undefined value."""
+    return "n/a" if v is None or v != v else f"{v:.3f}"
+
+
 def _ci(lo, hi):
     return "" if lo != lo or hi != hi else f" [{lo:.3f}, {hi:.3f}]"
 
 
-def statements_text(res):
-    """The statement file: the numerical floor, S1 to S3 with values, intervals and verdicts, the overall verdict and what it does and does not mean."""
-    f, v, s, i = res["floor"], res["validity"], res["validity"]["statements"], res["instrument"]
-    L = ["# F5 statements: is the survival metric sensible? (exploratory)", "",
-         "Rule proposed before any number (design section 5, Q23); every number is reported whatever the verdict (`f5_tables.csv`, `f5_results.json`).", "",
-         f"**Numerical floor.** W1 (cosine of the single-feature effect fingerprints) between full precision and the repeat measurement of the same weights (FP-rebatched): median {_fmt(f['primary']['median']) if f['primary'] else 'n/a'}, "
-         f"5th percentile {_fmt(f['primary']['tau']) if f['primary'] else 'n/a'}; between full precision and INT16 (weights rounded at the bf16 noise level): median {_fmt(f['secondary']['median']) if f['secondary'] else 'n/a'}, "
-         f"5th percentile {_fmt(f['secondary']['tau']) if f['secondary'] else 'n/a'}. The numerical floor used below is {f['tau']:.4f} (the lower of the two, from {f['source']}). "
-         f"INT8, a real quantization, is reported but not part of the floor: median {_fmt(f['int8']['median']) if f['int8'] else 'n/a'}. Instrument adequate: {f['adequate']}.", ""]
+def _floor_paragraph(res):
+    f = res["floor"]
+    return (f"**Numerical floor.** W1 (cosine of the single-feature effect fingerprints) between full precision and the repeat measurement of the same weights (FP-rebatched): median {_f3(f['primary']['median']) if f['primary'] else 'n/a'}, "
+            f"5th percentile {_f3(f['primary']['tau']) if f['primary'] else 'n/a'}; between full precision and INT16 (weights rounded at the bf16 noise level): median {_f3(f['secondary']['median']) if f['secondary'] else 'n/a'}, "
+            f"5th percentile {_f3(f['secondary']['tau']) if f['secondary'] else 'n/a'}. The numerical floor used below is {f['tau']:.4f} (the lower of the two, from {f['source']}). "
+            f"INT8, a real quantization, is reported but not part of the floor: median {_f3(f['int8']['median']) if f['int8'] else 'n/a'}. Instrument adequate: {f['adequate']}.")
+
+
+def _statement_block(res):
+    """The note on the instrument (when there is one), the table of S1 to S3 with values, intervals and verdicts, the overall verdict and what it does and does not mean."""
+    v, s, i = res["validity"], res["validity"]["statements"], res["instrument"]; L = []
     if v["note"]:
         L += [f"**Note:** {v['note']}.", ""]
     L += ["| statement | value | 95 % interval (languages resampled) | defined | verdict |", "|---|---|---|---|---|",
-          f"| S1 INT6, retained by the D-035 status: share with W1 >= floor (rule: >= 0.80) | {_fmt(s['S1']['share'])} | {_ci(s['S1']['lo'], s['S1']['hi']).strip()} | {s['S1']['n_defined']} | {s['S1']['verdict']} |",
-          f"| S2 INT4, F4 pairs: AUROC of the status for W1 >= floor (rule: >= 0.60, lower bound > 0.5) | {_fmt(s['S2']['auroc'])} | {_ci(s['S2']['lo'], s['S2']['hi']).strip()} | {s['S2']['n_pos']} event, {s['S2']['n_neg']} no event | {s['S2']['verdict']} |",
-          f"| S3 INT5, baseline cutoff (correlation >= 0.9): share with W1 >= floor (rule: >= 0.80) | {_fmt(s['S3']['share'])} | {_ci(s['S3']['lo'], s['S3']['hi']).strip()} | {s['S3']['n_defined']} | {s['S3']['verdict']} |", "",
+          f"| S1 INT6, retained by the D-035 status: share with W1 >= floor (rule: >= 0.80) | {_f3(s['S1']['share'])} | {_ci(s['S1']['lo'], s['S1']['hi']).strip()} | {s['S1']['n_defined']} | {s['S1']['verdict']} |",
+          f"| S2 INT4, F4 pairs: AUROC of the status for W1 >= floor (rule: >= 0.60, lower bound > 0.5) | {_f3(s['S2']['auroc'])} | {_ci(s['S2']['lo'], s['S2']['hi']).strip()} | {s['S2']['n_pos']} event, {s['S2']['n_neg']} no event | {s['S2']['verdict']} |",
+          f"| S3 INT5, baseline cutoff (correlation >= 0.9): share with W1 >= floor (rule: >= 0.80) | {_f3(s['S3']['share'])} | {_ci(s['S3']['lo'], s['S3']['hi']).strip()} | {s['S3']['n_defined']} | {s['S3']['verdict']} |", "",
           f"**Overall: {v['overall']}.** Work dtype {i['work_dtype']}; sham gate exact {i['sham_gate_exact']}; logit gates ok {i['logit_gates_ok']}; run complete {i['complete']}.", "",
           "If the three statements hold, they hold for this model, this layer, this quantizer and this sample, nothing more. If they do not hold, the survival label describes the input-side agreement of a coordinate system "
           "and no functional claim may be built on it. The study is exploratory: no confirmatory claim is made from it.", ""]
-    return "\n".join(L)
+    return L
 
 
-def write_outputs(res, out_dir):
+def statements_text(res):
+    """The statement file: the numerical floor, S1 to S3 with values, intervals and verdicts, the overall verdict and what it does and does not mean."""
+    return "\n".join(["# F5 statements: is the survival metric sensible? (exploratory)", "",
+                      "Rule proposed before any number (design section 5, Q23); every number is reported whatever the verdict (`f5_tables.csv`, `f5_results.json`).", "", _floor_paragraph(res), ""] + _statement_block(res))
+
+
+LIMITS = ["This study is exploratory: no confirmatory claim is made from it. The rule S1 to S3 was fixed before the first number (Q23); the sample, the contexts and the analysis are one design among several.",
+          "One model (Gemma-2-2B), one layer (the layer-12 residual), one SAE (Gemma Scope, 16,384 features), one quantizer (round-to-nearest per output channel). The ablation is a single-feature zero ablation: a test of the necessity of the feature's term, not of its sufficiency.",
+          "The effect fingerprint is the immediate next-token effect at the ablated positions plus what flows through later positions of the same sentence; the contexts are the dev sentences in which the feature is most active in full precision.",
+          "Features that are active in fewer than 4 candidate dev sentences cannot be tested on the write side; they are counted per language and have read-side values only.",
+          "The D-035 statuses were measured on devtest; the read side uses the 300 frozen evaluation sentences of every language (the same devtest sentences of the frozen loss task).",
+          "The survival verdict is a verdict on a metric, not on the features."]
+
+
+def _row(cells):
+    return "| " + " | ".join(cells) + " |"
+
+
+def _iv(m, key="median", lo="median_lo", hi="median_hi"):
+    return f"{m[key]:.3f}" + ("" if m.get(lo) != m.get(lo) or m.get(hi) != m.get(hi) else f" [{m[lo]:.3f}, {m[hi]:.3f}]")
+
+
+def report_text(res, figures=None):
+    """The report of one set of runner files: instrument and floor, the main table by state, the F4 subsets by precision, the statements, the descriptive hypotheses, the limits and the figures."""
+    f, i, c, v, h = res["floor"], res["instrument"], res["counts"], res["validity"], res["hypotheses"]; L = ["# F5 report: does a feature do the same thing after quantization? (exploratory)", ""]
+    L += ["## 1. Instrument and numerical floor", "",
+          f"{c['n_sample']} sample features, {c['n_tested']} tested on the write side, {c['n_excluded']} too rare to test (read side only). Work dtype {i['work_dtype']}; sham ablation exact: {i['sham_gate_exact']}; logit gates ok: {i['logit_gates_ok']}; "
+          f"run complete: {i['complete']}." + (f" Stratified subset: a per-cell cap of {i['per_cell']} features per language and role (seed {i['subset_seed']})." if i.get("per_cell") else ""), ""]
+    L += [_floor_paragraph(res), ""]
+    L += ["## 2. Main table (all tested features, by state)", "",
+          "R1 token correlation of the activations with full precision (the survival basis); R2 firing-set Jaccard; R3 scale ratio; W1 cosine of the single-feature effect fingerprints; the share at or above the numerical floor and above the "
+          "95th percentile of the matched different-feature control; 'does nothing' = the feature has no effect in the quantized model; top-1 = retrieval of the feature's own identity (within language, chance in brackets). Intervals: 95 %, languages resampled.", "",
+          _row(["state", "tested", "R1 median", "R1 >= 0.9", "R2", "R3", "W1 median", "W1 >= floor", "W1 >= control", "does nothing", "top-1", "within top-1 (chance)"]), _row(["---"] * 12)]
+    for s, groups in res["tables"].items():
+        g = groups["all"]; rt = g.get("retrieval", {}); wi = rt.get("within", {})
+        L.append(_row([s, str(g["n_tested"]), _iv(g["R1"]), f"{g['R1_duan']['share']:.3f}", f"{g['R2']['median']:.3f}", f"{g['R3']['median']:.3f}", _iv(g["W1"]), _iv(g["W1_above_floor"], "share", "lo", "hi"),
+                       f"{g['W1_above_control']['share']:.3f}", f"{g['n_zero_q']} ({g['share_zero_q']:.3f})", f"{rt.get('top1', float('nan')):.3f}", f"{wi.get('top1', float('nan')):.3f} ({wi.get('chance', float('nan')):.3f})"]))
+    L += ["", "## 3. Features whose association was lost and retained (F4 subsets), by precision", "",
+          _row(["group", "tested", "W1 median", "W1 >= floor", "R1 median", "R1 >= 0.9"]), _row(["---"] * 6)]
+    for lab in ("INT6", "INT5", "INT4"):
+        for kind in ("lost", "retained"):
+            g = res["tables"].get(lab, {}).get(f"{kind}@{lab}")
+            if g:
+                L.append(_row([f"{kind}@{lab}", str(g["n_tested"]), _iv(g["W1"]), _iv(g["W1_above_floor"], "share", "lo", "hi"), f"{g['R1']['median']:.3f}", f"{g['R1_duan']['share']:.3f}"]))
+    L += ["", "## 4. Statements: is the survival metric sensible?", ""] + _statement_block(res)
+    fd = lambda d: ", ".join(f"{k} {x:.3f}" for k, x in d.items()) or "n/a"
+    L += ["## 5. Descriptive hypotheses (H5a to H5c)", "",
+          f"- H5a (the median token correlation is at least 0.9 at INT8 and INT6 and lower at INT4 than at INT6): {h['H5a']['holds']}; medians {fd(h['H5a']['median_R1'])}.",
+          f"- H5b (the median W1 is below the median token correlation at every quantized precision): {h['H5b']['holds']}; median W1 {fd(h['H5b']['median_W1'])}; share below the floor {fd(h['H5b']['share_below_floor'])}.",
+          f"- H5c (retained features keep more of their effect than lost ones, paired by language): signs {', '.join(f'{k} {x}' for k, x in h['H5c']['sign'].items()) or 'n/a'}; medians {fd(h['H5c']['median'])}.", "",
+          "## 6. Limits", ""] + [f"- {x}" for x in LIMITS] + ([f"- The sample is a stratified subset of the F5 sample (a per-cell cap of {i['per_cell']} per language and role, seed {i['subset_seed']}), chosen for cost before any result."] if i.get("per_cell") else [])
+    L += ["", "## 7. Figures", ""] + ([f"- ![{n}]({n})" for n in figures] if figures else ["- none"])
+    return "\n".join(L) + "\n"
+
+
+def write_outputs(res, out_dir, figures=None):
     """f5_results.json (strict JSON), f5_tables.csv (one row per state and role group) and statements.md in out_dir."""
     d = Path(out_dir); d.mkdir(parents=True, exist_ok=True)
     (d / "f5_results.json").write_text(json.dumps(to_jsonable(res), indent=1, allow_nan=False) + "\n")
@@ -328,7 +390,7 @@ def write_outputs(res, out_dir):
         w = csv.writer(fh); w.writerow(CSV_COLUMNS)
         for r in table_rows(res):
             w.writerow([_fmt(r[c]) if c not in ("state", "group") else r[c] for c in CSV_COLUMNS])
-    (d / "statements.md").write_text(statements_text(res))
+    (d / "statements.md").write_text(statements_text(res)); (d / "report.md").write_text(report_text(res, figures))
 
 
 def _numpy(x):
@@ -370,6 +432,7 @@ def load_runs(directories):
     for k, m in enumerate(metas):
         gates.update({f"run{k}:{n}": g for n, g in (m.get("gates") or {}).items()})
     return sa0, states, {"runs": [str(d) for d in directories], "complete": all(m.get("complete") for m in metas), "work_dtype": dtypes.pop() if len(dtypes) == 1 else "mixed", "gates": gates or None,
+                         "per_cell": next((m.get("per_cell") for m in metas if m.get("per_cell") is not None), None), "subset_seed": next((m.get("subset_seed") for m in metas if m.get("subset_seed") is not None), None),
                          "state_seconds": {k: v for m in metas for k, v in (m.get("state_seconds") or {}).items()}}
 
 

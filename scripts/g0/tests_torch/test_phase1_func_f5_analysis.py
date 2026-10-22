@@ -412,10 +412,10 @@ class Pipeline(unittest.TestCase):
             for needle in ("S1", "S2", "S3", "supported", "exploratory", "numerical floor", "INT16"):
                 self.assertIn(needle, md)
             s = self.res["validity"]["statements"]; rows = {r.split("|")[1].strip()[:2]: r for r in md.split("\n") if r.startswith("| S")}
-            self.assertIn(an._fmt(s["S1"]["share"]), rows["S1"]); self.assertIn(an._fmt(s["S2"]["auroc"]), rows["S2"]); self.assertIn(an._fmt(s["S3"]["share"]), rows["S3"])
+            self.assertIn(an._f3(s["S1"]["share"]), rows["S1"]); self.assertIn(an._f3(s["S2"]["auroc"]), rows["S2"]); self.assertIn(an._f3(s["S3"]["share"]), rows["S3"])
             for k in ("S1", "S2", "S3"):
                 self.assertTrue(rows[k].rstrip().endswith(f"| {s[k]['verdict']} |"))
-            self.assertIn(f"{self.res['floor']['tau']:.4f}", md); self.assertIn(f"not part of the floor: median {an._fmt(self.res['floor']['int8']['median'])}", md)
+            self.assertIn(f"{self.res['floor']['tau']:.4f}", md); self.assertIn(f"not part of the floor: median {an._f3(self.res['floor']['int8']['median'])}", md)
             for banned in ("confirmed", "proved", "demonstrated"):
                 self.assertNotIn(banned, md)
 
@@ -462,7 +462,7 @@ class Main(unittest.TestCase):
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 an.main(["--run", a, "--run", b, "--sample", str(Path(o) / "sample.json"), "--out", str(Path(o) / "res"), "--n-boot", "40"])
-            self.assertEqual(sorted(p.name for p in (Path(o) / "res").iterdir()), ["f5_results.json", "f5_tables.csv", "statements.md"])
+            self.assertEqual(sorted(p.name for p in (Path(o) / "res").iterdir()), ["f5_results.json", "f5_tables.csv", "report.md", "statements.md"])
             self.assertIn("supported", buf.getvalue()); j = json.loads((Path(o) / "res" / "f5_results.json").read_text()); self.assertEqual(j["instrument"]["runs"], [str(a), str(b)])
 
 class Sharpening(unittest.TestCase):
@@ -484,6 +484,7 @@ class Sharpening(unittest.TestCase):
 
     def test_formatting_helpers(self):
         self.assertEqual(an._fmt(float("nan")), ""); self.assertEqual(an._fmt(None), ""); self.assertEqual(an._fmt(0.123456789), "0.123457"); self.assertEqual(an._fmt(7), "7")
+        self.assertEqual(an._f3(0.123456789), "0.123"); self.assertEqual(an._f3(float("nan")), "n/a"); self.assertEqual(an._f3(None), "n/a"); self.assertEqual(an._f3(1.0), "1.000")
         self.assertEqual(an._ci(0.1, 0.2), " [0.100, 0.200]"); self.assertEqual(an._ci(float("nan"), 0.2), "")
 
     def test_the_sign_of_an_interval_is_decided_by_its_open_bounds(self):
@@ -519,8 +520,8 @@ class Sharpening(unittest.TestCase):
         sa, st, sm, T = build_varying_world(); res = an.analyse_f5(sa, st, sm, meta=None, n_boot=40, seed=0); s = res["validity"]["statements"]
         rows = {r.split("|")[1].strip()[:2]: r for r in an.statements_text(res).split("\n") if r.startswith("| S")}
         for k, key in (("S1", "share"), ("S2", "auroc"), ("S3", "share")):
-            self.assertIn(an._fmt(s[k][key]) + " |", rows[k]); self.assertIn(an._ci(s[k]["lo"], s[k]["hi"]).strip(), rows[k])
-        self.assertNotEqual(an._fmt(s["S1"]["share"]), an._fmt(s["S2"]["auroc"])); self.assertNotEqual(an._fmt(s["S2"]["auroc"]), an._fmt(s["S3"]["share"]))
+            self.assertIn(an._f3(s[k][key]) + " |", rows[k]); self.assertIn(an._ci(s[k]["lo"], s[k]["hi"]).strip(), rows[k])
+        self.assertNotEqual(an._f3(s["S1"]["share"]), an._f3(s["S2"]["auroc"])); self.assertNotEqual(an._f3(s["S2"]["auroc"]), an._f3(s["S3"]["share"]))
 
 
 class MergeDetails(unittest.TestCase):
@@ -531,11 +532,81 @@ class MergeDetails(unittest.TestCase):
             sa, st, meta = an.load_runs([a, b]); self.assertFalse(meta["complete"]); self.assertEqual(meta["work_dtype"], "mixed"); self.assertEqual(sorted(meta["gates"]), ["run0:g", "run1:g"])
             self.assertEqual(len(sa["sham_gate"]), 2 * len(w[0]["sham_gate"]))
 
+    def test_the_subset_cap_of_the_jobs_is_carried_into_the_merged_metadata(self):
+        w = build_world("sensible")
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            save_run(w, a, ["FP", "INT8"], meta={"complete": True, "work_dtype": "float32", "per_cell": 12, "subset_seed": 3}); save_run(w, b, ["FP", "INT6"], meta={"complete": True, "work_dtype": "float32", "per_cell": 12, "subset_seed": 3})
+            meta = an.load_runs([a, b])[2]; self.assertEqual((meta["per_cell"], meta["subset_seed"]), (12, 3))
+
     def test_full_precision_comes_from_the_first_job(self):
         w = build_world("sensible"); w2 = build_world("sensible"); w2[1]["FP"]["read"]["jaccard"] = np.full(len(w2[1]["FP"]["read"]["jaccard"]), 0.123)
         with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
             save_run(w, a, ["FP", "INT8"]); save_run(w2, b, ["FP", "INT6"]); sa, st, meta = an.load_runs([a, b])
             self.assertAlmostEqual(float(st["FP"]["read"]["jaccard"][0]), 0.95)
+
+class Report(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        sa, st, sm, T = build_varying_world(); cls.res = an.analyse_f5(sa, st, sm, meta={"complete": True, "work_dtype": "float32", "gates": {"g": {"ok": True}}, "per_cell": 12, "subset_seed": 0}, n_boot=60, seed=0)
+        cls.md = an.report_text(cls.res, figures=["f5_fig1_w1_distribution_light.png"])
+
+    def test_the_report_has_its_sections_in_order(self):
+        heads = [l for l in self.md.split("\n") if l.startswith("## ")]
+        self.assertEqual([h.split(".")[0].replace("## ", "") for h in heads], ["1", "2", "3", "4", "5", "6", "7"])
+        for needle in ("Instrument", "Main table", "lost and retained", "Statements", "Descriptive hypotheses", "Limits", "Figures"):
+            self.assertTrue(any(needle in h for h in heads), needle)
+
+    def test_the_main_table_has_a_row_per_state_with_the_numbers_of_the_tables(self):
+        rows = {l.split("|")[1].strip(): l for l in self.md.split("\n") if l.startswith("| ") and l.split("|")[1].strip() in self.res["tables"]}
+        self.assertEqual(sorted(rows), sorted(self.res["tables"]))
+        for s, g in ((s, self.res["tables"][s]["all"]) for s in self.res["tables"]):
+            for v in (g["R1"]["median"], g["W1"]["median"], g["W1_above_floor"]["share"], g["retrieval"]["top1"]):
+                self.assertIn(f"{float(v):.3f}", rows[s])
+            self.assertIn(str(g["n_tested"]), rows[s])
+
+    def test_every_cell_of_a_main_table_row_is_its_own_quantity(self):
+        res = copy.deepcopy(self.res); g = res["tables"]["INT6"]["all"]; g["n_zero_q"] = 7; g["n_zero_fp"] = 3; g["share_zero_q"] = 0.0625; md = an.report_text(res)
+        row = [l for l in md.split("\n") if l.startswith("| INT6 ")][0]; cells = [c.strip() for c in row.split("|")[1:-1]]; rt = g["retrieval"]
+        iv = lambda m, k="median", lo="median_lo", hi="median_hi": f"{m[k]:.3f} [{m[lo]:.3f}, {m[hi]:.3f}]"
+        want = ["INT6", str(g["n_tested"]), iv(g["R1"]), f"{g['R1_duan']['share']:.3f}", f"{g['R2']['median']:.3f}", f"{g['R3']['median']:.3f}", iv(g["W1"]), iv(g["W1_above_floor"], "share", "lo", "hi"),
+                f"{g['W1_above_control']['share']:.3f}", "7 (0.062)", f"{rt['top1']:.3f}", f"{rt['within']['top1']:.3f} ({rt['within']['chance']:.3f})"]
+        self.assertEqual(cells, want); self.assertNotEqual(cells[4], cells[5]); self.assertNotEqual(cells[7], cells[8]); self.assertNotEqual(cells[10], cells[11].split(" ")[0])
+
+    def test_the_role_table_puts_lost_before_retained_and_every_limit_and_the_subset_note_are_present(self):
+        lines = self.md.split("\n")
+        for lab in ("INT6", "INT5", "INT4"):
+            self.assertLess([i for i, l in enumerate(lines) if l.startswith(f"| lost@{lab} ")][0], [i for i, l in enumerate(lines) if l.startswith(f"| retained@{lab} ")][0])
+        for x in an.LIMITS:
+            self.assertIn(x, self.md)
+        sec1 = self.md.split("## 2.")[0]; self.assertIn("Stratified subset: a per-cell cap of 12 features per language and role (seed 0)", sec1)
+
+    def test_the_role_table_lists_lost_and_retained_by_precision(self):
+        for lab in ("INT6", "INT5", "INT4"):
+            for kind in ("lost", "retained"):
+                g = self.res["tables"][lab][f"{kind}@{lab}"]; line = [l for l in self.md.split("\n") if l.startswith(f"| {kind}@{lab} ")]
+                self.assertEqual(len(line), 1); self.assertIn(f"{float(g['W1']['median']):.3f}", line[0]); self.assertIn(str(g["n_tested"]), line[0])
+
+    def test_the_limits_the_subset_and_the_exploratory_status_are_stated(self):
+        for needle in ("exploratory", "single-feature zero ablation", "one layer", "round-to-nearest", "evaluation sentences", "per-cell cap of 12", "a verdict on a metric, not on the features"):
+            self.assertIn(needle, self.md)
+        for banned in ("confirmed", "proved", "demonstrated"):
+            self.assertNotIn(banned, self.md)
+
+    def test_the_figures_are_linked_and_the_verdict_is_in_the_report(self):
+        self.assertIn("(f5_fig1_w1_distribution_light.png)", self.md); self.assertIn(self.res["validity"]["overall"], self.md)
+        self.assertIn(f"{self.res['floor']['tau']:.4f}", self.md)
+
+    def test_an_inadequate_instrument_puts_its_note_and_the_undefined_verdicts_into_the_report(self):
+        sa, st, sm, T = build_world("inadequate"); res = an.analyse_f5(sa, st, sm, meta=None, n_boot=30, seed=0); md = an.report_text(res)
+        self.assertIn("**Note:**", md); self.assertIn("instrument is inadequate", md); self.assertEqual(md.count("| undefined |"), 3); self.assertIn("**Overall: undetermined.**", md)
+        self.assertEqual([l.split(".")[0] for l in md.split("\n") if l.startswith("## ")], [f"## {i}" for i in range(1, 8)])
+
+    def test_the_hypothesis_numbers_are_formatted_for_reading(self):
+        self.assertNotRegex(self.md, r"0\.\d{6,}")                                                                    # no 16-digit floats in the report
+
+    def test_write_outputs_writes_the_report_too(self):
+        with tempfile.TemporaryDirectory() as d:
+            an.write_outputs(self.res, d); self.assertTrue((Path(d) / "report.md").read_text().startswith("# F5 report"))
 
 
 if __name__ == "__main__":
