@@ -1,0 +1,409 @@
+"""Figures and tables for the functional-validation study (D-039/D-040, plan Task 8). Reads the OUTPUTS of phase1_func_analysis.py (analysis.json and the CSVs next to it) and the D-035 language
+summary; never the item files. Static figures with the matplotlib object API (no pyplot state), light and dark themes from the validated palette tokens (dataviz skill: reference palette, slots 1 to 3 pass
+the all-pairs gates in both modes; the ordinal blue ramp passes --ordinal), SVG with live text and PNG. Design rules fixed in the plan (Task 8, figure design): one accent hue (slot 1) against gray for the
+reference, never two y axes, undefined values are reported and never drawn as zero, values outside the axis are drawn on its edge and counted, every figure states its split in the title.
+
+    python3 scripts/g0/phase1_func_figures.py --results reports/functional_validation/results/pilot --out reports/functional_validation/figures/pilot --note "pilot, exploratory"      (torch venv: matplotlib)
+"""
+import argparse
+import csv
+import json
+import textwrap
+from pathlib import Path
+
+import matplotlib
+import numpy as np
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+from matplotlib.ticker import NullLocator
+
+PRECISIONS = ["INT16", "INT12", "INT8", "INT7", "INT6", "INT5", "INT4"]               # numerical floor to coarsest; INT0 (the identity control) is a table row only
+_RAMP_LIGHT = ["#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b"]    # blue steps 100 to 700 (palette.md)
+_THEMES = {
+    "light": {"surface": "#fcfcfb", "ink": "#0b0b0b", "ink2": "#52514e", "muted": "#898781", "grid": "#e1e0d9", "axis": "#c3c2b7",
+              "series": ["#2a78d6", "#eb6834", "#1baf7a"], "ordinal": ["#86b6ef", "#2a78d6", "#104281"], "ramp": _RAMP_LIGHT},
+    "dark": {"surface": "#1a1a19", "ink": "#f0efec", "ink2": "#c3c2b7", "muted": "#898781", "grid": "#2c2c2a", "axis": "#383835",
+             "series": ["#3987e5", "#d95926", "#199e70"], "ordinal": ["#184f95", "#3987e5", "#9ec5f4"], "ramp": _RAMP_LIGHT[::-1]},      # dark: low values recede into the surface, high values are the light end
+}
+Y_FLOOR = 0.25                                                                         # lower edge of the log retention axis
+
+
+def theme_tokens(mode):
+    if mode not in _THEMES:
+        raise ValueError(f"unknown theme {mode!r}; choose from {sorted(_THEMES)}")
+    return _THEMES[mode]
+
+
+def _new_fig(theme, width, height):
+    t = theme_tokens(theme)
+    fig = Figure(figsize=(width, height), facecolor=t["surface"])
+    FigureCanvasAgg(fig)
+    ax = fig.add_subplot(111)
+    ax.set_facecolor(t["surface"])
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(t["axis"]); ax.spines[side].set_linewidth(1.0)
+    ax.tick_params(colors=t["muted"], labelcolor=t["ink2"], length=3, width=1.0, labelsize=8.5)
+    ax.grid(True, color=t["grid"], linewidth=0.8, linestyle="-"); ax.set_axisbelow(True)
+    return fig, ax, t
+
+
+def _legend(ax, t, handles, labels, loc):
+    leg = ax.legend(handles, labels, loc=loc, frameon=False, fontsize=8.5, handlelength=1.8)
+    for text in leg.get_texts():
+        text.set_color(t["ink2"])
+    return leg
+
+
+def _title(ax, t, title, subtitle):
+    """Title and a muted subtitle (what is plotted, the status of the data). The subtitle is wrapped to the figure width, so a long status note is never clipped; returns the extra top margin
+    in inches that the wrapped lines need (pass it to _margins as `extra`)."""
+    w_in = ax.figure.get_size_inches()[0]
+    sub = textwrap.fill(subtitle, width=max(40, int((w_in - 1.3) * 72 / 4.9)))
+    extra = sub.count("\n")
+    ax.set_title(title, loc="left", fontsize=10.5, color=t["ink"], pad=22 + 11.5 * extra)
+    ax.text(0.0, 1.012, sub, transform=ax.transAxes, ha="left", va="bottom", fontsize=8.5, color=t["muted"], linespacing=1.3, gid="subtitle")
+    return extra * 0.16
+
+
+def _margins(fig, top_in=0.75, bottom_in=0.85, left_in=0.95, right_in=0.25, extra=0.0):
+    w, h = fig.get_size_inches()
+    fig.subplots_adjust(left=left_in / w, right=1 - right_in / w, top=1 - (top_in + extra) / h, bottom=bottom_in / h)
+
+
+def _axis_labels(ax, t, xlabel=None, ylabel=None):
+    if xlabel is not None:
+        ax.set_xlabel(xlabel, color=t["ink2"], fontsize=9)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel, color=t["ink2"], fontsize=9)
+
+
+def fig_effect_per_language(rows, theme, note, K=None):
+    """Full-precision effect per language: E (harm of zero-ablating the language's group beyond its activity-matched controls, nats per token, with its 95 % interval) against the harm of the controls
+    themselves. rows: dicts with language, effect, lo, hi, harm_control (effects_by_language.csv, FP rows). Sorted by E, the largest on top; symlog axis (E spans orders of magnitude and an
+    interval can cross zero)."""
+    if not rows:
+        raise ValueError("no rows to plot")
+    rows = sorted(rows, key=lambda r: r["effect"]); n = len(rows); y = np.arange(n)
+    fig, ax, t = _new_fig(theme, 7.6, 0.27 * n + 2.0)
+    eff = np.array([r["effect"] for r in rows]); lo = np.array([r["lo"] for r in rows]); hi = np.array([r["hi"] for r in rows]); ctrl = np.array([r["harm_control"] for r in rows])
+    ax.hlines(y, lo, hi, color=t["series"][0], linewidth=2.0, zorder=2, gid="interval")
+    ax.vlines(np.concatenate([lo, hi]), np.concatenate([y - 0.14, y - 0.14]), np.concatenate([y + 0.14, y + 0.14]), color=t["series"][0], linewidth=1.6, zorder=2, gid="interval_cap")
+    ax.scatter(ctrl, y, s=34, marker="D", color=t["muted"], edgecolors=t["surface"], linewidths=1.2, zorder=3, gid="control")
+    ax.scatter(eff, y, s=44, marker="o", color=t["series"][0], edgecolors=t["surface"], linewidths=1.5, zorder=4, gid="effect")
+    ax.set_xscale("symlog", linthresh=0.01, linscale=0.6)
+    left = min(0.0, float(lo.min()) * 1.3); right = float(hi.max()) * 1.6
+    ax.set_xlim(left, right)
+    ticks = [v for v in (0, 0.01, 0.1, 1, 10) if left <= v <= right]
+    ax.set_xticks(ticks); ax.set_xticklabels([f"{v:g}" for v in ticks])
+    ax.set_yticks(y); ax.set_yticklabels([r["language"] for r in rows]); ax.set_ylim(-0.8, n - 0.2)
+    ax.grid(False, axis="y")
+    for k in (0, n - 1):                                                               # direct labels on the extremes only
+        ax.text(max(eff[k], hi[k]) * 1.25 + (0.002 if hi[k] <= 0.01 else 0), y[k], f"{eff[k]:.3g}", va="center", fontsize=8.5, color=t["ink2"], gid="label")
+    _axis_labels(ax, t, xlabel="harm beyond matched controls, nats per token (symmetric-log axis: linear below 0.01)")
+    extra = _title(ax, t, "Removing a language's feature group: harm beyond matched controls", f"full precision, {n} languages{', group ' + K if K else ''} \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=0)]
+    _legend(ax, t, handles, ["group effect E (95 % interval)", "matched-control harm"], "lower right")
+    _margins(fig, left_in=1.0, bottom_in=0.8, extra=extra)
+    return fig
+
+
+def _jitter(k):
+    return ((k * 0.6180339887) % 1.0 - 0.5) * 0.36                                      # deterministic, within +-0.18 of the precision's position
+
+
+def fig_retention(retention, bands, theme, note):
+    """Retention by precision: per language the ratio E(b) / E(FP) as gray context, the macro mean of the ratios (primary, D-041) and the median ratio with their intervals, the preserved band
+    as a wash, log axis. retention: analysis.json['retention'] ({precision: {macro, pooled, languages}}). Undefined languages are not plotted and are counted; a ratio at or below the axis floor is
+    drawn on the floor and counted."""
+    precs = [p for p in PRECISIONS if p in retention]
+    if not precs:
+        raise ValueError("no precision to plot")
+    fig, ax, t = _new_fig(theme, 7.6, 5.4)
+    langs = sorted({l for p in precs for l in retention[p]["languages"]}); order = {l: k for k, l in enumerate(langs)}
+    ok_x, ok_y, floor_x = [], [], []
+    undefined = set()
+    for i, p in enumerate(precs):
+        for l, d in retention[p]["languages"].items():
+            if d.get("ratio") is None:
+                undefined.add(l); continue
+            x = i + _jitter(order[l])
+            if d["ratio"] <= Y_FLOOR:
+                floor_x.append(x)
+            else:
+                ok_x.append(x); ok_y.append(d["ratio"])
+    top = max([retention[p]["macro"]["hi"] for p in precs if retention[p]["macro"].get("hi")] + [retention[p]["macro"].get("median_hi") or 0 for p in precs] + ok_y + [1.6 / 1.25]) * 1.25
+    ax.axhspan(bands[0], bands[1], color=t["series"][0], alpha=0.10, linewidth=0, zorder=1, gid="band")
+    ax.axhline(1.0, color=t["axis"], linewidth=1.0, zorder=1, gid="one")
+    ax.scatter(ok_x, ok_y, s=14, color=t["muted"], alpha=0.65, linewidths=0, zorder=2, gid="language")
+    ax.scatter(floor_x, [Y_FLOOR] * len(floor_x), s=22, marker="v", color=t["muted"], linewidths=0, zorder=2, clip_on=False, gid="language_floor")
+    xs = np.arange(len(precs))
+    mac = [retention[p]["macro"] for p in precs]; mx = xs - 0.1
+    med = [retention[p]["macro"] for p in precs]; dx = xs + 0.1
+    ax.plot(mx, [m["ratio"] for m in mac], color=t["series"][0], linewidth=1.6, zorder=3, gid="macro_line")
+    ax.vlines(mx, [max(m["lo"], Y_FLOOR) for m in mac], [m["hi"] for m in mac], color=t["series"][0], linewidth=2.0, zorder=3, gid="macro_interval")
+    for ends in ([max(m["lo"], Y_FLOOR) for m in mac], [m["hi"] for m in mac]):
+        ax.hlines(ends, mx - 0.05, mx + 0.05, color=t["series"][0], linewidth=1.6, zorder=3, gid="macro_cap")
+    ax.scatter(mx, [m["ratio"] for m in mac], s=56, marker="o", color=t["series"][0], edgecolors=t["surface"], linewidths=1.5, zorder=4, gid="macro")
+    ax.vlines(dx, [max(m["median_lo"], Y_FLOOR) for m in med], [m["median_hi"] for m in med], color=t["series"][1], linewidth=2.0, zorder=3, gid="median_interval")
+    for ends in ([max(m["median_lo"], Y_FLOOR) for m in med], [m["median_hi"] for m in med]):
+        ax.hlines(ends, dx - 0.05, dx + 0.05, color=t["series"][1], linewidth=1.6, zorder=3, gid="median_cap")
+    ax.scatter(dx, [m["median_ratio"] for m in med], s=50, marker="D", color=t["series"][1], edgecolors=t["surface"], linewidths=1.5, zorder=4, gid="median")
+    ax.set_yscale("log"); ax.set_ylim(Y_FLOOR, top); ax.set_xlim(-0.6, len(precs) - 0.4)
+    yt = [v for v in (0.25, 0.5, 0.75, 1, 1.33, 2, 3, 5, 10) if Y_FLOOR <= v <= top]
+    ax.set_yticks(yt); ax.set_yticklabels([f"{v:g}" for v in yt]); ax.yaxis.set_minor_locator(NullLocator()); ax.set_xticks(xs); ax.set_xticklabels(precs)
+    ax.grid(False, axis="x")
+    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)", ylabel="E at the precision / E at full precision (log axis)")
+    extra = _title(ax, t, "Effect of the language feature groups, relative to full precision", f"ratio of the group's effect E at each precision to E at full precision \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["muted"], marker="o", markersize=4, linewidth=0, alpha=0.7), Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]),
+               Line2D([0], [0], color=t["series"][1], marker="D", markersize=5, linewidth=2, markeredgecolor=t["surface"]), Patch(facecolor=t["series"][0], alpha=0.10, linewidth=0)]
+    labels = ["language ratio E(b) / E(FP)", "macro mean of ratios (primary), 95 % interval", "median ratio, 95 % interval", f"preserved band [{bands[0]:.2f}, {bands[1]:.2f}]"]
+    _legend(ax, t, handles, labels, "upper left")
+    notes = []
+    if undefined:
+        notes.append(f"{len(undefined)} language{'s' if len(undefined) != 1 else ''} undefined (no clearly positive full-precision effect), not plotted")
+    if floor_x:
+        notes.append(f"{len(floor_x)} value{'s' if len(floor_x) != 1 else ''} below the axis floor ({Y_FLOOR:g}) drawn on it")
+    if notes:
+        fig.text(0.012, 0.012, "; ".join(notes) + ".", fontsize=8, color=t["muted"], va="bottom", ha="left")
+    _margins(fig, bottom_in=0.95, extra=extra)
+    return fig
+
+
+
+def _ladder(present):
+    return [p for p in ["FP"] + PRECISIONS if p in present]
+
+
+SIZE_FAMILIES = (("E_K16", "K16", "size_K16"), ("E_K64", "K64", "size_K64"), ("E_all", "all features", "size_all"))
+
+
+def fig_size_curves(family_rows, theme, note):
+    """Median over languages of E (harm beyond matched controls) by group size (K16, K64, all features) and precision, from families.csv. The size is an ordered quantity, so the three lines wear the
+    ordinal one-hue ramp; direct end labels; the axis starts at zero."""
+    by = {}
+    for r in family_rows:
+        if r["family"] in {f for f, _, _ in SIZE_FAMILIES}:
+            by.setdefault(r["family"], {}).setdefault(r["precision"], []).append(r["harm"])
+    precs = _ladder({p for d in by.values() for p in d})
+    if not by or not precs:
+        raise ValueError("no E_<size> rows to plot")
+    n_lang = len({r["language"] for r in family_rows if r["family"] in by})
+    fig, ax, t = _new_fig(theme, 7.0, 4.8)
+    top = 0.0
+    for k, (fam, label, gid) in enumerate(SIZE_FAMILIES):
+        if fam not in by:
+            continue
+        pts = [(i, float(np.median(by[fam][p]))) for i, p in enumerate(precs) if p in by[fam]]
+        x, y = zip(*pts); top = max(top, max(y))
+        ax.plot(x, y, color=t["ordinal"][k], linewidth=2.0, marker="o", markersize=6, markeredgecolor=t["surface"], markeredgewidth=1.5, zorder=3, gid=gid)
+        ax.text(x[-1] + 0.14, y[-1], label, va="center", ha="left", fontsize=8.5, color=t["ink2"], gid="end_label")
+    ax.set_xlim(-0.4, len(precs) - 1 + 1.15); ax.set_ylim(0.0, top * 1.15)
+    ax.set_xticks(np.arange(len(precs))); ax.set_xticklabels(precs); ax.grid(False, axis="x")
+    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)", ylabel="median harm beyond matched controls, nats per token")
+    extra = _title(ax, t, "Effect of removing the language group, by group size and precision", f"median over {n_lang} languages of E for 16, 64 and all selective features \u00b7 {note}")
+    _margins(fig, bottom_in=0.85, extra=extra)
+    return fig
+
+
+def fig_assoc_vs_function(assoc, retention, theme, note):
+    """Association retention (D-035: share of the features established as language-selective in full precision that still are) next to the functional macro retention of the group effect E (D-041),
+    both indexed to full precision = 1 on ONE axis. Association is a descriptive count (no interval drawn); function carries its bootstrap interval."""
+    common = [p for p in PRECISIONS if p in assoc and p in retention]
+    if not common:
+        raise ValueError("no precision present in both the association and the function results")
+    fig, ax, t = _new_fig(theme, 7.0, 4.8)
+    xs = np.arange(len(common) + 1)
+    m = [retention[p]["macro"] for p in common]
+    func = [1.0] + [d["ratio"] for d in m]; lo = [1.0] + [d["lo"] for d in m]; hi = [1.0] + [d["hi"] for d in m]
+    asc = [1.0] + [assoc[p]["macro"] for p in common]
+    ax.axhline(1.0, color=t["axis"], linewidth=1.0, zorder=1, gid="one")
+    ax.vlines(xs, lo, hi, color=t["series"][0], linewidth=2.0, zorder=2, gid="function_interval")
+    ax.plot(xs, func, color=t["series"][0], linewidth=2.0, marker="o", markersize=6, markeredgecolor=t["surface"], markeredgewidth=1.5, zorder=3, gid="function")
+    ax.plot(xs, asc, color=t["series"][1], linewidth=2.0, marker="s", markersize=5.5, markeredgecolor=t["surface"], markeredgewidth=1.5, zorder=3, gid="association")
+    ax.text(xs[-1] + 0.12, func[-1], "function", va="center", fontsize=8.5, color=t["ink2"], gid="end_label")
+    ax.text(xs[-1] + 0.12, asc[-1], "association", va="center", fontsize=8.5, color=t["ink2"], gid="end_label")
+    ax.set_yscale("log"); bottom = min(asc) * 0.85; top = max(hi) * 1.15; ax.set_ylim(bottom, top); ax.set_xlim(-0.4, xs[-1] + 1.1)
+    yt = [v for v in (0.5, 0.7, 1, 1.5, 2, 3) if bottom <= v <= top]
+    ax.set_yticks(yt); ax.set_yticklabels([f"{v:g}" for v in yt]); ax.yaxis.set_minor_locator(NullLocator())
+    ax.set_xticks(xs); ax.set_xticklabels(["FP"] + common); ax.grid(False, axis="x")
+    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)", ylabel="relative to full precision (= 1, log axis)")
+    extra = _title(ax, t, "Association retention and functional retention across precision", f"association (D-035, among features established in full precision) and function (group effect E, D-041) \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["series"][1], marker="s", markersize=5.5, linewidth=2, markeredgecolor=t["surface"])]
+    _legend(ax, t, handles, ["function: macro retention of E (95 % interval)", "association: share of established features retained, macro over languages"], "upper left")
+    _margins(fig, bottom_in=0.85, extra=extra)
+    return fig
+
+
+def fig_fidelity(fidelity_rows, theme, note):
+    """SAE fidelity (fraction of variance unexplained at layer 12) per language and precision as a sequential heatmap; languages sorted by the full-precision value; cells that were not measured are
+    left blank and counted."""
+    if not fidelity_rows:
+        raise ValueError("no fidelity rows")
+    precs = _ladder({r["precision"] for r in fidelity_rows})
+    fp = {r["language"]: r["fvu"] for r in fidelity_rows if r["precision"] == "FP"}
+    langs = sorted({r["language"] for r in fidelity_rows}, key=lambda l: (l not in fp, fp.get(l, 0.0), l))
+    arr = np.full((len(langs), len(precs)), np.nan)
+    for r in fidelity_rows:
+        if r["precision"] in precs:
+            arr[langs.index(r["language"]), precs.index(r["precision"])] = r["fvu"]
+    missing = int(np.isnan(arr).sum())
+    fig, ax, t = _new_fig(theme, 6.4, 0.22 * len(langs) + 2.4)
+    cmap = LinearSegmentedColormap.from_list("fidelity", t["ramp"]); cmap.set_bad(t["surface"])
+    im = ax.imshow(np.ma.masked_invalid(arr), aspect="auto", cmap=cmap, interpolation="nearest")
+    ax.set_xticks(np.arange(len(precs))); ax.set_xticklabels(precs); ax.set_yticks(np.arange(len(langs))); ax.set_yticklabels(langs)
+    ax.grid(False)
+    ax.set_xticks(np.arange(-0.5, len(precs), 1), minor=True); ax.set_yticks(np.arange(-0.5, len(langs), 1), minor=True)
+    ax.grid(which="minor", color=t["surface"], linewidth=1.6); ax.tick_params(which="minor", length=0)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_visible(False)
+    cb = fig.colorbar(im, ax=ax, fraction=0.045, pad=0.02)
+    cb.set_label("FVU (fraction of variance unexplained)", color=t["ink2"], fontsize=9); cb.outline.set_visible(False)
+    cb.ax.tick_params(colors=t["muted"], labelcolor=t["ink2"], labelsize=8.5)
+    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)")
+    extra = _title(ax, t, "SAE fidelity at layer 12 across precision and language", f"fraction of variance unexplained (lower is better), languages sorted by the full-precision value \u00b7 {note}")
+    if missing:
+        fig.text(0.012, 0.012, f"{missing} cell{'s' if missing != 1 else ''} not measured (left blank).", fontsize=8, color=t["muted"], va="bottom", ha="left")
+    _margins(fig, left_in=1.0, right_in=0.7, bottom_in=0.85, extra=extra)
+    return fig
+
+
+def _read_csv(path, floats):
+    out = []
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            out.append({k: (None if v == "" else float(v)) if k in floats else v for k, v in row.items()})
+    return out
+
+
+def load_results(results_dir):
+    d = Path(results_dir)
+    return {"analysis": json.loads((d / "analysis.json").read_text()),
+            "effects": _read_csv(d / "effects_by_language.csv", {"effect", "lo", "hi", "harm_group", "harm_control", "norm_ratio_group", "norm_ratio_control"}),
+            "families": _read_csv(d / "families.csv", {"harm", "lo", "hi"})}
+
+
+def load_association(path):
+    """D-035 association retention per condition from language_summary.csv (group `selective`): macro = mean over languages of retained / FP-established, pooled = sum of retained over sum of FP-established;
+    languages without an established feature are skipped."""
+    per = {}
+    for r in _read_csv(path, {"fp_established", "retained"}):
+        if r["group"] != "selective" or not r["fp_established"] or r["language"].isupper():              # POOLED and MACRO_LANGUAGE_MEAN rows (all capitals) are aggregates, not languages
+            continue
+        per.setdefault(r["condition"], []).append((r["retained"], r["fp_established"]))
+    return {c: {"macro": float(np.mean([a / b for a, b in v])), "pooled": sum(a for a, _ in v) / sum(b for _, b in v), "n_languages": len(v)} for c, v in per.items()}
+
+
+def retention_table(analysis, assoc):
+    rows = []
+    for p in _ladder(set(analysis["macro"]) | set(analysis["retention"])):
+        m = analysis["macro"].get(p, {}); r = analysis["retention"].get(p)
+        mac = r["macro"] if r else {}; pooled = r["pooled"] if r else {}
+        classes = [d["class"] for d in r["languages"].values()] if r else []
+        row = {"precision": p, "mean_E": m.get("point"), "mean_E_lo": m.get("lo"), "mean_E_hi": m.get("hi"), "median_E": m.get("median"),
+               "macro_ratio": mac.get("ratio"), "macro_lo": mac.get("lo"), "macro_hi": mac.get("hi"), "class": mac.get("class"),
+               "median_ratio": mac.get("median_ratio"), "median_lo": mac.get("median_lo"), "median_hi": mac.get("median_hi"), "pooled_ratio": pooled.get("ratio"),
+               "assoc_macro": assoc.get(p, {}).get("macro"), "assoc_pooled": assoc.get(p, {}).get("pooled")}
+        for c in ("preserved", "attenuated", "amplified", "inconclusive", "undefined"):
+            row[f"n_{c}"] = sum(1 for x in classes if x == c) if r else None
+        rows.append(row)
+    return rows
+
+
+def effects_table(effect_rows, analysis, manifest):
+    precs = [p for p in PRECISIONS if p in analysis["retention"]]
+    rows = []
+    for e in effect_rows:
+        s = manifest["sizes"].get(e["language"], {})
+        row = {"language": e["language"], "size_K16": s.get("K16"), "size_K64": s.get("K64"), "size_all": s.get("all"),
+               "effect": e["effect"], "lo": e["lo"], "hi": e["hi"], "harm_control": e["harm_control"]}
+        for p in precs:
+            row[f"ratio_{p}"] = analysis["retention"][p]["languages"].get(e["language"], {}).get("ratio")
+        rows.append(row)
+    return rows
+
+
+def config_table(manifest):
+    rows = []
+    for l, s in manifest["sizes"].items():
+        c = manifest.get("controls", {}).get(l, {})
+        rows.append({"language": l, **{f"size_{k}": s.get(k) for k in ("K16", "K64", "all")}, **{f"draws_{k}": (len(c[k]) if k in c else None) for k in ("K16", "K64", "all")}})
+    return rows
+
+
+def to_markdown(rows, columns):
+    """columns: [(key, header, format)]; None is written as '-' (undefined or not measured), never as zero."""
+    lines = ["| " + " | ".join(h for _, h, _ in columns) + " |", "|" + "---|" * len(columns)]
+    for r in rows:
+        lines.append("| " + " | ".join("-" if r.get(k) is None else f.format(r[k]) for k, _, f in columns) + " |")
+    return "\n".join(lines)
+
+
+def write_csv(rows, columns, path):
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f); w.writerow([k for k, _, _ in columns])
+        for r in rows:
+            w.writerow([r.get(k) for k, _, _ in columns])                                         # csv writes None as an empty field
+
+
+def _retention_columns():
+    return [("precision", "precision", "{}"), ("mean_E", "mean E", "{:.3f}"), ("median_E", "median E", "{:.3f}"), ("macro_ratio", "macro retention", "{:.2f}"), ("macro_lo", "lo", "{:.2f}"), ("macro_hi", "hi", "{:.2f}"),
+            ("class", "class", "{}"), ("median_ratio", "median ratio", "{:.2f}"), ("median_lo", "lo", "{:.2f}"), ("median_hi", "hi", "{:.2f}"), ("pooled_ratio", "pooled ratio", "{:.2f}"),
+            ("n_preserved", "preserved", "{}"), ("n_attenuated", "attenuated", "{}"), ("n_amplified", "amplified", "{}"), ("n_inconclusive", "inconclusive", "{}"), ("n_undefined", "undefined", "{}"),
+            ("assoc_macro", "association (D-035, macro)", "{:.3f}"), ("assoc_pooled", "association (pooled)", "{:.3f}")]
+
+
+def _effects_columns(precs):
+    return [("language", "language", "{}"), ("size_K16", "K16", "{}"), ("size_K64", "K64", "{}"), ("size_all", "all", "{}"), ("effect", "E", "{:.3f}"), ("lo", "lo", "{:.3f}"), ("hi", "hi", "{:.3f}"),
+            ("harm_control", "control harm", "{:.3f}")] + [(f"ratio_{p}", f"E ratio {p}", "{:.2f}") for p in precs]
+
+
+_CONFIG_COLUMNS = [("language", "language", "{}"), ("size_K16", "K16", "{}"), ("size_K64", "K64", "{}"), ("size_all", "all", "{}"), ("draws_K16", "controls K16", "{}"), ("draws_K64", "controls K64", "{}"), ("draws_all", "controls all", "{}")]
+
+
+def save_figure(fig, stem, out_dir, formats):
+    paths = []
+    with matplotlib.rc_context({"svg.fonttype": "none", "svg.hashsalt": "phase1-func-figures"}):
+        for ext in formats:
+            path = Path(out_dir) / f"{stem}.{ext}"
+            fig.savefig(path, format=ext, facecolor=fig.get_facecolor(), dpi=200, metadata={"Date": None} if ext == "svg" else {"Software": None})
+            paths.append(str(path))
+    return paths
+
+
+def main(argv=None):
+    root = Path(__file__).resolve().parents[2]
+    ap = argparse.ArgumentParser(description="Figures and tables of the functional-validation study from the analysis outputs.")
+    ap.add_argument("--results", required=True, help="directory with analysis.json, effects_by_language.csv, families.csv (phase1_func_analysis.py output)")
+    ap.add_argument("--out", required=True); ap.add_argument("--note", required=True, help="status of the data in every title, e.g. 'pilot, exploratory'")
+    ap.add_argument("--assoc", default=str(root / "reports/association_retention/results/eq/language_summary.csv")); ap.add_argument("--manifest", default=str(root / "reports/functional_validation/groups_manifest.json"))
+    ap.add_argument("--themes", nargs="*", default=["light", "dark"], choices=sorted(_THEMES)); ap.add_argument("--formats", nargs="*", default=["svg", "png"], choices=["svg", "png"])
+    a = ap.parse_args(argv)
+    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    res = load_results(a.results); an = res["analysis"]; K = an.get("K")
+    fp_rows = [r for r in res["effects"] if r["precision"] == "FP"]
+    assoc = load_association(a.assoc) if Path(a.assoc).exists() else {}
+    manifest = json.loads(Path(a.manifest).read_text())
+    written = []
+    for theme in a.themes:
+        figs = [("fig1_effect_per_language", lambda: fig_effect_per_language(fp_rows, theme, a.note, K=K)), ("fig2_retention", lambda: fig_retention(an["retention"], an["bands"], theme, a.note)),
+                ("fig3_group_size", lambda: fig_size_curves(res["families"], theme, a.note)), ("fig5_association_vs_function", lambda: fig_assoc_vs_function(assoc, an["retention"], theme, a.note)),
+                ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note))]
+        for stem, make in figs:
+            if stem == "fig5_association_vs_function" and not assoc:
+                continue
+            written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
+    ret, eff, conf = retention_table(an, assoc), effects_table(fp_rows, an, manifest), config_table(manifest)
+    for name, rows, cols in (("table_retention", ret, _retention_columns()), ("table_effects", eff, _effects_columns([p for p in PRECISIONS if p in an["retention"]])), ("table_configurations", conf, _CONFIG_COLUMNS)):
+        write_csv(rows, cols, out / f"{name}.csv"); (out / f"{name}.md").write_text(to_markdown(rows, cols) + "\n")
+        written += [str(out / f"{name}.csv"), str(out / f"{name}.md")]
+    print("wrote", len(written), "files to", out)
+    return written
+
+
+if __name__ == "__main__":
+    main()
