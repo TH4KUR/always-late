@@ -302,8 +302,8 @@ def fig_rank_bins(rows, theme, note):
     ax.set_ylim(bottom, top); ax.set_xlim(-0.4, xs[-1] + 1.25)
     yt = [v for v in (0.5, 0.6, 0.7, 0.8, 0.9, 1.0) if bottom <= v <= top]
     ax.set_yticks(yt); ax.set_yticklabels([f"{v:.1f}" for v in yt]); ax.set_xticks(xs); ax.set_xticklabels(precs); ax.grid(False, axis="x")
-    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)", ylabel="fraction still language-selective (features established in full precision)")
-    extra = _title(ax, t, "Association retention by rank of the feature within its language", f"features ranked by dev mass; pooled over languages, Wilson 95 % intervals \u00b7 {note}")
+    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)", ylabel="fraction still language-selective")
+    extra = _title(ax, t, "Association retention by rank of the feature within its language", f"among the features established in full precision, ranked by dev mass; pooled over languages, Wilson 95 % intervals \u00b7 {note}")
     handles = [Line2D([0], [0], color=t["ordinal4"][k], marker="o", markersize=5.5, linewidth=2, markeredgecolor=t["surface"]) for k in range(len(RANK_BINS))]
     _legend(ax, t, handles, [f"ranks {b}" for b in RANK_BINS], "lower left")
     _margins(fig, bottom_in=0.85, extra=extra)
