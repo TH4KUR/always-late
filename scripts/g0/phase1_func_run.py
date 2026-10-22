@@ -509,7 +509,9 @@ def main(argv=None):
     log("saved", a.out, "skipped for time:", skipped)
 
 
-MC_PRESETS = {"none": {}, "mc": {"zero": ["K64"], "controls": ["K64"], "sham": ["K64"], "mean": ["K64"], "resample": ["K64"]}}
+MC_PRESETS = {"none": {}, "mc": {"zero": ["K64"], "controls": ["K64"], "sham": ["K64"], "mean": ["K64"], "resample": ["K64"]},
+              # held-out T-MC evaluation (design section 8, reduction order: R first, then the secondary families): three control draws, no mean ablation
+              "mc_eval": {"zero": ["K64"], "controls": ["K64"], "n_controls": {"K64": 3}, "sham": ["K64"], "resample": ["K64"]}}
 
 
 def mc_items_for(items, origin, split, n_items, seed):

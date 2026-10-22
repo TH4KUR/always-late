@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -546,6 +547,26 @@ class Gates(unittest.TestCase):
                         self.assertNotIn(other, str(cm.exception))
             finally:
                 fi.apply_edit = orig
+
+
+class McPresets(unittest.TestCase):
+    MAN = json.loads((Path(__file__).resolve().parents[3] / "reports/functional_validation/groups_manifest.json").read_text())
+
+    def names(self, preset, code="eng_Latn"):
+        cfgs = fr.build_configs(self.MAN, [code], [code], [code], fr.MC_PRESETS[preset], mean_vals_fn=lambda c, i: torch.zeros(len(i)), pool_fn=lambda c, i: torch.zeros(4, len(i)))
+        return [c["name"] for c in cfgs]
+
+    def test_evaluation_preset_is_the_reduced_design_set(self):
+        # design section 8: the first thing the reduction order cuts is R (three control draws); no dose and no mean ablation in the held-out evaluation
+        self.assertEqual(self.names("mc_eval"), ["zero_K64@eng_Latn", "ctrl0_K64@eng_Latn", "ctrl1_K64@eng_Latn", "ctrl2_K64@eng_Latn", "sham_K64@eng_Latn", "res_K64@eng_Latn"])
+
+    def test_calibration_smoke_preset_keeps_all_five_draws_and_the_mean_ablation(self):
+        names = self.names("mc")
+        self.assertEqual([n for n in names if n.startswith("ctrl")], [f"ctrl{r}_K64@eng_Latn" for r in range(5)])
+        self.assertIn("mean_K64@eng_Latn", names)
+
+    def test_the_evaluation_preset_is_a_subset_of_the_smoke_preset(self):
+        self.assertLessEqual(set(self.names("mc_eval")), set(self.names("mc")))
 
 
 if __name__ == "__main__":
