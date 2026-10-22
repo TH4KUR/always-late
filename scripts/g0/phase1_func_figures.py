@@ -401,11 +401,13 @@ def fig_f4(res, theme, note):
     per, langs = res["per_language"], list(res["languages"])
     if not langs:
         raise ValueError("no languages in the F4 result")
-    b = res["condition"]; n = len(langs); order = sorted(langs, key=lambda c: per[c]["E_b"]["point"]); y = np.arange(n); ym = n + 1
+    b = res["condition"]; n = len(langs); order = sorted(langs, key=lambda c: per[c]["E_b"]["point"]); y = np.arange(n)
+    robust = all("median_lo" in res["macro"][k] for k in ("E_b", "E_fp"))                           # the median row exists for results made with step 2c of the plan (the mean alone can be one language's)
+    ymed, ym = (n + 1, n + 2) if robust else (None, n + 1)
     col = lambda key, f: np.array([per[c][key][f] for c in order])
     eb, eb_lo, eb_hi, ef, ef_lo, ef_hi = col("E_b", "point"), col("E_b", "lo"), col("E_b", "hi"), col("E_fp", "point"), col("E_fp", "lo"), col("E_fp", "hi")
     mb, mf = res["macro"]["E_b"], res["macro"]["E_fp"]
-    fig, ax, t = _new_fig(theme, 7.6, 0.27 * (n + 2) + 2.4)
+    fig, ax, t = _new_fig(theme, 7.6, 0.27 * (n + 3) + 2.7)
     ax.hlines(y, ef, eb, color=t["axis"], linewidth=1.0, zorder=1, gid="connector")
     for gid, color, lw, pos, lo, hi in (("fp", t["muted"], 1.4, y, ef_lo, ef_hi), ("native", t["series"][0], 2.0, y, eb_lo, eb_hi)):
         ax.hlines(pos, lo, hi, color=color, linewidth=lw, zorder=2, gid=f"interval_{gid}")
@@ -414,16 +416,24 @@ def fig_f4(res, theme, note):
     ax.scatter(eb, y, s=44, marker="o", color=t["series"][0], edgecolors=t["surface"], linewidths=1.5, zorder=4, gid="f4_native")
     for gid, m, color, marker, size in (("fp", mf, t["muted"], "D", 46), ("native", mb, t["series"][0], "o", 70)):
         ax.hlines([ym], [m["lo"]], [m["hi"]], color=color, linewidth=2.6 if gid == "native" else 1.8, zorder=2, gid=f"interval_macro_{gid}")
-        ax.scatter([m["point"]], [ym], s=size, marker=marker, color=color, edgecolors=t["ink"] if gid == "native" else t["surface"], linewidths=1.2, zorder=4, gid=f"f4_macro_{gid}")
+        ax.scatter([m["point"]], [ym], s=size, marker=marker, color=color, edgecolors=t["ink"] if gid == "native" else t["surface"], linewidths=1.2, zorder=5 if gid == "fp" else 4, gid=f"f4_macro_{gid}")
+    if robust:
+        for gid, m, color, marker, size in (("fp", mf, t["muted"], "D", 46), ("native", mb, t["series"][0], "o", 70)):
+            ax.hlines([ymed], [m["median_lo"]], [m["median_hi"]], color=color, linewidth=2.6 if gid == "native" else 1.8, zorder=2, gid=f"interval_median_{gid}")
+            ax.scatter([m["median"]], [ymed], s=size, marker=marker, color=color, edgecolors=t["ink"] if gid == "native" else t["surface"], linewidths=1.2, zorder=5 if gid == "fp" else 4, gid=f"f4_median_{gid}")
     ax.axvline(0, color=t["muted"], linewidth=1.2, zorder=1, gid="reference_zero")
     every = np.concatenate([eb_lo, ef_lo, [mb["lo"], mf["lo"]]]); top = np.concatenate([eb_hi, ef_hi, [mb["hi"], mf["hi"]]])
+    if robust:
+        every = np.concatenate([every, [mb["median_lo"], mf["median_lo"]]]); top = np.concatenate([top, [mb["median_hi"], mf["median_hi"]]])
     left = float(every.min()) * 2.6 if every.min() < 0 else -0.003; right = float(top.max()) * 2.6 if top.max() > 0 else 0.003      # room for the value labels beyond the intervals
     ax.set_xscale("symlog", linthresh=0.01, linscale=0.6); ax.set_xlim(left, right)
     ticks = [v for v in (-10, -1, -0.1, -0.01, 0, 0.01, 0.1, 1, 10) if left <= v <= right]
     ax.set_xticks(ticks); ax.set_xticklabels([f"{v:g}" for v in ticks])
-    ax.set_yticks(list(y) + [n, ym]); ax.set_yticklabels(order + ["", f"macro mean (n = {n})"]); ax.set_ylim(-0.8, ym + 0.8); ax.grid(False, axis="y")
+    ticks_y = list(y) + [n] + ([ymed] if robust else []) + [ym]
+    ax.set_yticks(ticks_y); ax.set_yticklabels(order + [""] + ([f"median (n = {n})"] if robust else []) + [f"macro mean (n = {n})"]); ax.set_ylim(-0.8, ym + 0.8); ax.grid(False, axis="y")
     ax.yaxis.get_major_ticks()[n].tick1line.set_visible(False)                                      # the gap row has no tick
-    lab = ax.get_yticklabels()[-1]; lab.set_fontweight("bold"); lab.set_color(t["ink"])
+    for lab in ax.get_yticklabels()[-(2 if robust else 1):]:
+        lab.set_fontweight("bold"); lab.set_color(t["ink"])
     for k, ha in ((0, "right"), (n - 1, "left")):                                                   # direct labels on the extremes only
         x = (eb_lo[k] * 1.12) if ha == "right" else (eb_hi[k] * 1.12 + (0.002 if eb_hi[k] <= 0.01 else 0))
         ax.text(x, y[k], f"{eb[k]:+.3g}", va="center", ha=ha, fontsize=8.5, color=t["ink2"], gid="label")
@@ -434,8 +444,12 @@ def fig_f4(res, theme, note):
                    f"{b}, {n} languages; harm of zero-ablating the features whose association was lost minus harm of activity-matched features that kept it (nats per token, own text); "
                    f"negative = the lost features matter less; 95 % intervals \u00b7 {note}")
     handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=1.4, markeredgecolor=t["surface"])]
-    _legend(ax, t, handles, [f"contrast at {b} (native)", "same subsets at full precision"], "lower right")
-    _margins(fig, left_in=1.55, bottom_in=0.95, extra=extra)
+    w_in, h_in = fig.get_size_inches(); left_in, right_in, bottom_in = 1.55, 0.25, 1.35
+    leg = fig.legend(handles, [f"contrast at {b} (native)", "same subsets at full precision"], loc="lower center", ncol=2, frameon=False, fontsize=8.5, handlelength=1.8,
+                     bbox_to_anchor=((left_in + (w_in - left_in - right_in) / 2) / w_in, 0.1 / h_in))           # below the axis: no row of the figure can be under it
+    for text in leg.get_texts():
+        text.set_color(t["ink2"])
+    _margins(fig, left_in=left_in, right_in=right_in, bottom_in=bottom_in, extra=extra)
     return fig
 
 

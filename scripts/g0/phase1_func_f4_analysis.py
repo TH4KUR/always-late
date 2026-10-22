@@ -23,6 +23,15 @@ def _sign(lo, hi):
     return "negative" if hi < 0 else "positive" if lo > 0 else "inconclusive"
 
 
+def _robust(eff, langs):
+    """Step 2c (added after the first F4 result showed one language dominating the macro mean): the median over languages with a 95 % interval (per draw the median of the languages' draw values) and the mean without
+    the language with the largest ABSOLUTE point value (named), from the same paired draws. Returns the keys that are added to a macro entry."""
+    pts = np.array([eff[c]["point"] for c in langs]); S = np.stack([eff[c]["samples"] for c in langs])
+    med = fa._row(np.median(pts), np.median(S, axis=0)); top = int(np.argmax(np.abs(pts))); keep = [k for k in range(len(langs)) if k != top]
+    wo = {"language": langs[top], **fa._row(pts[keep].mean(), S[keep].mean(axis=0))} if keep else None
+    return {"median_lo": med["lo"], "median_hi": med["hi"], "without_top": wo}
+
+
 def analyse_f4(runs, out_dir, K="K64", n_boot=2000, seed=0):
     """runs: {"FP": Run, "<precision>": Run}; writes f4_results.json, f4_per_language.csv and report.md into out_dir and returns the result dictionary."""
     if "FP" not in runs:
@@ -47,7 +56,7 @@ def analyse_f4(runs, out_dir, K="K64", n_boot=2000, seed=0):
     macro = {}
     for name, eff in (("E_b", e_b), ("E_fp", e_fp), ("delta", delta)):
         m = fa.macro(eff, langs)
-        macro[name] = {**fa._row(m["point"], m["samples"]), "median": float(np.median([eff[c]["point"] for c in langs]))}
+        macro[name] = {**fa._row(m["point"], m["samples"]), "median": float(np.median([eff[c]["point"] for c in langs])), **_robust(eff, langs)}
     counts = {name: {s: sum(1 for c in langs if per[c][key] == s) for s in ("negative", "positive", "inconclusive")} for name, key in (("E_b", "sign_b"), ("E_fp", "sign_fp"))}
     res = {"condition": b, "K": K, "n_boot": n_boot, "seed": seed, "languages": langs, "per_language": per, "macro": macro, "counts": counts}
     (out / "f4_results.json").write_text(json.dumps(res, indent=1) + "\n")
@@ -74,7 +83,13 @@ def report_text(res):
     for k in ("E_b", "E_fp", "delta"):
         m = res["macro"][k]; c = res["counts"].get(k)
         L.append(f"| {names[k]} | {m['point']:+.4f} | [{m['lo']:+.4f}, {m['hi']:+.4f}] | {m['median']:+.4f} | " + (f"{c['negative']} / {c['positive']} / {c['inconclusive']} |" if c else "- |"))
-    L += ["", "## By language", "", f"| language | E at {b} | 95 % interval | E at FP | 95 % interval | Delta | 95 % interval | harm lost at {b} | harm retained at {b} |", "|---|---|---|---|---|---|---|---|---|"]
+    L += ["", "**Robust summaries, added after the first F4 result (INT4) because one language dominated the macro mean (post hoc; applied unchanged to every condition).** Median over the languages and the mean without the "
+           "language with the largest absolute value, from the same paired draws:", ""]
+    for k in ("E_b", "E_fp", "delta"):
+        m = res["macro"][k]; w = m.get("without_top")
+        L.append(f"- {names[k]}: median {m['median']:+.4f} [{m['median_lo']:+.4f}, {m['median_hi']:+.4f}]" + (f"; mean without {w['language']} {w['point']:+.4f} [{w['lo']:+.4f}, {w['hi']:+.4f}]" if w else ""))
+    L += ["", "The intervals describe sentence sampling only: the retained subsets are single or double draws (the number per language is in `f4_matching.md`), so the draw-to-draw variation of a retained subset, which can be "
+          "large when it contains one influential feature, is not in them.", "", "## By language", "", f"| language | E at {b} | 95 % interval | E at FP | 95 % interval | Delta | 95 % interval | harm lost at {b} | harm retained at {b} |", "|---|---|---|---|---|---|---|---|---|"]
     for c in res["languages"]:
         p = res["per_language"][c]
         L.append(f"| {c} | {p['E_b']['point']:+.4f} | [{p['E_b']['lo']:+.4f}, {p['E_b']['hi']:+.4f}] | {p['E_fp']['point']:+.4f} | [{p['E_fp']['lo']:+.4f}, {p['E_fp']['hi']:+.4f}] | "

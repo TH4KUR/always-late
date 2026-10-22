@@ -99,6 +99,70 @@ class Effects(unittest.TestCase):
             f4a.analyse_f4({"FP": merged("FP", {"aa": (0.1, 0.3), "bb": (0.1, 0.3)}), "INT4": merged("INT4", {"aa": (0.1, 0.3)})}, self.out, n_boot=10)
 
 
+class RobustSummaries(unittest.TestCase):
+    """Step 2c (written after the INT4 result showed one language dominating the macro mean): the median over languages and the mean without the language with the largest absolute contrast, from the same draws."""
+    def setUp(self):
+        self.out = Path(tempfile.mkdtemp()) / "res"
+        self.langs = ("aa", "bb", "cc", "dd", "zz")
+
+    def run_(self, b_specs, fp_specs=None, b_seed=2, fp_seed=1):
+        fp_specs = fp_specs or b_specs
+        return f4a.analyse_f4({"FP": merged("FP", fp_specs, seed=fp_seed), "INT4": merged("INT4", b_specs, seed=b_seed)}, self.out, n_boot=400)
+
+    def specs(self, zz=(0.1, 1.2), extra=None):
+        s = {"aa": (0.0, 0.0), "bb": (0.01, 0.0), "cc": (0.0, 0.01), "dd": (0.0, 0.0), "zz": zz}
+        s.update(extra or {})
+        return s
+
+    def test_the_mean_follows_the_outlier_but_the_median_and_the_mean_without_it_do_not(self):
+        m = self.run_(self.specs())["macro"]["E_b"]
+        self.assertLess(m["point"], -0.15); self.assertLess(m["hi"], -0.1)                                  # the mean and its interval are the outlier's
+        self.assertLess(abs(m["median"]), 0.015)
+        self.assertLess(m["median_lo"], 0.0); self.assertGreater(m["median_hi"], -0.02); self.assertLess(abs(m["median_lo"]), 0.05); self.assertLess(abs(m["median_hi"]), 0.05)
+        w = m["without_top"]
+        self.assertEqual(w["language"], "zz"); self.assertLess(abs(w["point"]), 0.015); self.assertLess(w["lo"], 0.015); self.assertGreater(w["hi"], -0.015)
+
+    def test_the_dropped_language_is_the_one_with_the_largest_absolute_value_not_the_largest_signed_value(self):
+        res = self.run_(self.specs(extra={"yy": (0.4, 0.1)}))                                                 # yy has E = +0.3, zz has E = -1.1
+        self.assertEqual(res["macro"]["E_b"]["without_top"]["language"], "zz")
+        self.assertEqual(self.run_(self.specs(zz=(1.2, 0.1)))["macro"]["E_b"]["without_top"]["language"], "zz")   # a positive outlier too
+
+    def test_each_quantity_names_its_own_dropped_language(self):
+        fp = self.specs(zz=(0.1, 0.1), extra={"yy": (0.9, 0.1)})                                              # at full precision the extreme language is yy
+        res = self.run_(self.specs(extra={"yy": (0.0, 0.0)}), fp_specs=fp)["macro"]                            # the same languages in both runs
+        self.assertEqual((res["E_b"]["without_top"]["language"], res["E_fp"]["without_top"]["language"]), ("zz", "yy"))
+        self.assertIn(res["delta"]["without_top"]["language"], ("zz", "yy"))
+
+    def test_identical_data_under_the_same_draws_gives_zero_width_zero_summaries_for_the_difference(self):
+        s = self.specs(); res = f4a.analyse_f4({"FP": merged("FP", s, seed=1), "INT4": merged("INT4", s, seed=1)}, self.out, n_boot=200)["macro"]["delta"]
+        for v in (res["median"], res["median_lo"], res["median_hi"], res["without_top"]["point"], res["without_top"]["lo"], res["without_top"]["hi"]):
+            self.assertEqual(v, 0.0)
+
+    def test_the_old_keys_stay_and_the_json_carries_the_new_ones(self):
+        res = self.run_(self.specs())
+        for q in ("E_b", "E_fp", "delta"):
+            m = res["macro"][q]
+            for k in ("point", "lo", "hi", "median", "median_lo", "median_hi", "without_top"):
+                self.assertIn(k, m, (q, k))
+            for k in ("language", "point", "lo", "hi"):
+                self.assertIn(k, m["without_top"])
+            self.assertLess(m["median_lo"], m["median_hi"]); self.assertLess(m["without_top"]["lo"], m["without_top"]["hi"])      # ordered bounds
+        d = json.loads((self.out / "f4_results.json").read_text()); self.assertEqual(d["macro"]["E_b"]["without_top"]["language"], "zz")
+
+    def test_a_single_language_has_no_mean_without_the_top_one_and_the_report_still_renders(self):
+        res = f4a.analyse_f4({"FP": merged("FP", {"aa": (0.1, 0.3)}, seed=1), "INT4": merged("INT4", {"aa": (0.05, 0.4)}, seed=2)}, self.out, n_boot=100)
+        self.assertIsNone(res["macro"]["E_b"]["without_top"]); self.assertIn("median", (self.out / "report.md").read_text().lower())
+        self.assertNotIn("mean without aa", (self.out / "report.md").read_text())
+
+    def test_the_report_prints_both_summaries_with_the_reason_they_were_added_and_the_caveat_on_the_draws(self):
+        self.run_(self.specs()); txt = (self.out / "report.md").read_text()
+        low = txt.lower()
+        self.assertIn("median", low); self.assertIn("without zz", low); self.assertIn("added after", low); self.assertIn("one language dominated", low)
+        self.assertIn("sentence sampling only", low); self.assertIn("single or double draws", low)
+        for word in ("retention", "preserved", "amplified", "attenuated"):
+            self.assertNotIn(word, low)
+
+
 class Outputs(unittest.TestCase):
     def setUp(self):
         self.out = Path(tempfile.mkdtemp()) / "res"

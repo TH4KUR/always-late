@@ -535,7 +535,9 @@ def planted_f4(condition="INT4", n_extra=0):
         per[f"x{k:02d}"] = {**per["bb"], "E_b": row(0.01 * k, 0.01 * k - 0.02, 0.01 * k + 0.02)}
     langs = list(per)
     return {"condition": condition, "K": "K64", "n_boot": 100, "seed": 0, "languages": langs, "per_language": per,
-            "macro": {"E_b": {**row(-0.0867, -0.15, -0.03), "median": -0.01}, "E_fp": {**row(-0.0267, -0.06, 0.00), "median": -0.02}, "delta": {**row(-0.06, -0.12, -0.01), "median": 0.01}},
+            "macro": {"E_b": {**row(-0.0867, -0.15, -0.03), "median": -0.01, "median_lo": -0.03, "median_hi": 0.0, "without_top": {"language": "aa", **row(0.02, 0.0, 0.04)}},
+                      "E_fp": {**row(-0.0267, -0.06, 0.00), "median": -0.02, "median_lo": -0.04, "median_hi": -0.005, "without_top": {"language": "aa", **row(0.0, -0.02, 0.02)}},
+                      "delta": {**row(-0.06, -0.12, -0.01), "median": 0.01, "median_lo": -0.01, "median_hi": 0.03, "without_top": {"language": "aa", **row(0.02, 0.0, 0.04)}}},
             "counts": {"E_b": {"negative": 1, "positive": 0, "inconclusive": 2}, "E_fp": {"negative": 1, "positive": 0, "inconclusive": 2}}}
 
 
@@ -563,12 +565,41 @@ class F4Figure(unittest.TestCase):
         self.assertEqual(seg("interval_fp")[:3], [(-0.15, -0.05, 0.0), (-0.04, 0.0, 1.0), (-0.01, 0.09, 2.0)])
         self.assertEqual(seg("connector")[:3], [(-0.10, -0.30, 0.0), (-0.02, -0.01, 1.0), (0.04, 0.05, 2.0)])
 
-    def test_the_macro_block_sits_above_the_languages_after_a_gap_row_with_its_count_in_the_label(self):
-        self.assertEqual(self.pts("f4_macro_native"), [(-0.0867, 4.0)]); self.assertEqual(self.pts("f4_macro_fp"), [(-0.0267, 4.0)])
+    def test_the_macro_block_sits_above_the_languages_after_a_gap_row_the_median_below_the_mean_with_counts_in_the_labels(self):
+        self.assertEqual(self.pts("f4_median_native"), [(-0.01, 4.0)]); self.assertEqual(self.pts("f4_median_fp"), [(-0.02, 4.0)])
+        self.assertEqual(self.pts("f4_macro_native"), [(-0.0867, 5.0)]); self.assertEqual(self.pts("f4_macro_fp"), [(-0.0267, 5.0)])
         labels = [t.get_text() for t in self.ax.get_yticklabels()]
-        self.assertEqual(labels[4], "macro mean (n = 3)"); self.assertEqual(labels[3], "")
-        seg = by_gid(self.ax, "interval_macro_native")[0].get_segments()
-        self.assertEqual([(round(float(seg[0][0][0]), 6), round(float(seg[0][1][0]), 6))], [(-0.15, -0.03)])
+        self.assertEqual(labels[3:], ["", "median (n = 3)", "macro mean (n = 3)"])
+        seg = lambda gid: [(round(float(s[0][0]), 6), round(float(s[1][0]), 6)) for s in by_gid(self.ax, gid)[0].get_segments()]
+        self.assertEqual(seg("interval_macro_native"), [(-0.15, -0.03)]); self.assertEqual(seg("interval_macro_fp"), [(-0.06, 0.0)])
+        self.assertEqual(seg("interval_median_native"), [(-0.03, 0.0)]); self.assertEqual(seg("interval_median_fp"), [(-0.04, -0.005)])
+        self.assertTrue(all(lab.get_fontweight() == "bold" for lab in self.ax.get_yticklabels()[-2:]))
+
+    def test_the_full_precision_marker_of_a_macro_row_is_drawn_over_the_native_one_so_that_it_is_never_hidden(self):
+        for gid in ("f4_macro", "f4_median"):
+            self.assertGreater(by_gid(self.ax, f"{gid}_fp")[0].get_zorder(), by_gid(self.ax, f"{gid}_native")[0].get_zorder())
+
+    def test_the_axis_limits_include_the_median_intervals(self):
+        r = planted_f4(); r["macro"]["E_b"]["median_lo"] = -0.9; r["macro"]["E_fp"]["median_hi"] = 0.7
+        left, right = ff.fig_f4(r, "light", "x").axes[0].get_xlim()
+        self.assertLess(left, -0.9); self.assertGreater(right, 0.7)
+
+    def test_results_without_the_robust_summaries_draw_the_mean_row_only(self):
+        r = planted_f4()
+        for q in r["macro"].values():
+            for k in ("median_lo", "median_hi", "without_top"):
+                del q[k]
+        ax = ff.fig_f4(r, "light", "x").axes[0]
+        self.assertEqual(by_gid(ax, "f4_median_native"), []); self.assertEqual([tt.get_text() for tt in ax.get_yticklabels()][3:], ["", "macro mean (n = 3)"])
+        self.assertEqual([(round(float(x), 6), round(float(y), 6)) for x, y in by_gid(ax, "f4_macro_native")[0].get_offsets()], [(-0.0867, 4.0)])
+
+    def test_the_legend_sits_below_the_axis_clear_of_every_row_and_of_the_axis_label(self):
+        for theme in ("light", "dark"):
+            fig = ff.fig_f4(planted_f4(n_extra=23), theme, "x"); ax = fig.axes[0]; fig.canvas.draw(); r = fig.canvas.get_renderer()
+            self.assertEqual(len(fig.legends), 1); self.assertIsNone(ax.get_legend())
+            box = fig.legends[0].get_window_extent(r); ab = ax.get_window_extent(r); xl = ax.xaxis.label.get_window_extent(r)
+            self.assertLess(box.y1, xl.y0 + 1); self.assertLess(box.y1, ab.y0)                                    # below the axis label and the axes: no row can be under it
+            self.assertEqual([t.get_text() for t in fig.legends[0].get_texts()], ["contrast at INT4 (native)", "same subsets at full precision"])
 
     def test_the_zero_line_the_axis_note_and_the_symmetric_log_axis_that_keeps_negative_values(self):
         self.assertEqual(list(by_gid(self.ax, "reference_zero")[0].get_xdata()), [0, 0])
@@ -581,7 +612,7 @@ class F4Figure(unittest.TestCase):
 
     def test_the_gap_row_has_no_tick_and_the_extreme_labels_stay_inside_the_axis_with_room_to_spare(self):
         ticks = self.ax.yaxis.get_major_ticks()
-        self.assertEqual([tk.tick1line.get_visible() for tk in ticks], [True, True, True, False, True])
+        self.assertEqual([tk.tick1line.get_visible() for tk in ticks], [True, True, True, False, True, True])
         fig = ff.fig_f4(planted_f4(n_extra=23), "light", "x"); ax = fig.axes[0]; fig.canvas.draw(); r = fig.canvas.get_renderer(); box = ax.get_window_extent(r)
         for tx in by_gid(ax, "label"):
             b = tx.get_window_extent(r); self.assertGreater(b.x0, box.x0 + 2, tx.get_text()); self.assertLess(b.x1, box.x1 - 2, tx.get_text())      # inside the axes, clear of the spines
