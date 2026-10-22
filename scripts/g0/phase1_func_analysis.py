@@ -89,8 +89,10 @@ def macro(per_language, covered):
     return {"point": float(np.mean([per_language[c]["point"] for c in covered])), "samples": np.mean([per_language[c]["samples"] for c in covered], axis=0), "languages": list(covered)}
 
 
-def _ci(samples):
-    lo, hi = np.percentile(samples, [2.5, 97.5])
+def _ci(samples, level=0.95):
+    """Percentile interval of the bootstrap samples at the given level (0.95: the 2.5th and 97.5th percentiles)."""
+    a = round((1.0 - level) * 50.0, 10)
+    lo, hi = np.percentile(samples, [a, 100.0 - a])
     return float(lo), float(hi)
 
 
@@ -98,16 +100,17 @@ def _classify(lo, hi, bands):
     return "preserved" if bands[0] <= lo and hi <= bands[1] else "attenuated" if hi < bands[0] else "amplified" if lo > bands[1] else "inconclusive"
 
 
-def retention(eb, efp, bands=BANDS):
+def retention(eb, efp, bands=BANDS, level=0.95):
     """Retention ratio E(b) / E(FP) with its percentile interval and class: preserved (interval inside the bands), attenuated (entirely below), amplified (entirely above),
-    inconclusive otherwise; `undefined` when the full-precision interval does not lie above zero."""
+    inconclusive otherwise; `undefined` when the full-precision 95 % interval does not lie above zero (this rule keeps its fixed level, so a stricter `level` of the ratio interval, as the
+    T-MC statements S1 to S5 use, never changes which languages have a ratio)."""
     if _ci(efp["samples"])[0] <= 0 or efp["point"] <= 0:
         return {"ratio": None, "lo": None, "hi": None, "class": "undefined"}
-    lo, hi = _ci(eb["samples"] / efp["samples"])
+    lo, hi = _ci(eb["samples"] / efp["samples"], level)
     return {"ratio": float(eb["point"] / efp["point"]), "lo": lo, "hi": hi, "class": _classify(lo, hi, bands)}
 
 
-def retention_macro(eb_by_lang, efp_by_lang, covered, bands=BANDS):
+def retention_macro(eb_by_lang, efp_by_lang, covered, bands=BANDS, level=0.95):
     """Macro retention = the MEAN OF THE PER-LANGUAGE RATIOS E_l(b) / E_l(FP) over the covered languages whose full-precision interval lies above zero (amendment D-041, written after the
     full-precision pilot showed effects from 0.005 to 7 nats per token: a ratio of mean effects would be the retention of the largest language). Each language counts once; the interval comes
     from the same bootstrap draws applied to every language."""
@@ -115,9 +118,9 @@ def retention_macro(eb_by_lang, efp_by_lang, covered, bands=BANDS):
     if not langs:
         return {"ratio": None, "lo": None, "hi": None, "class": "undefined", "n_languages": 0, "languages": []}
     samples = np.mean([eb_by_lang[c]["samples"] / efp_by_lang[c]["samples"] for c in langs], axis=0)
-    lo, hi = _ci(samples)
+    lo, hi = _ci(samples, level)
     ratios = np.array([eb_by_lang[c]["point"] / efp_by_lang[c]["point"] for c in langs])
-    med_lo, med_hi = _ci(np.median([eb_by_lang[c]["samples"] / efp_by_lang[c]["samples"] for c in langs], axis=0))       # robust secondary: tiny-effect languages can have ratios of 5 to 10
+    med_lo, med_hi = _ci(np.median([eb_by_lang[c]["samples"] / efp_by_lang[c]["samples"] for c in langs], axis=0), level)       # robust secondary: tiny-effect languages can have ratios of 5 to 10
     return {"ratio": float(ratios.mean()), "lo": lo, "hi": hi, "class": _classify(lo, hi, bands), "n_languages": len(langs), "languages": langs,
             "median_ratio": float(np.median(ratios)), "median_lo": med_lo, "median_hi": med_hi}
 

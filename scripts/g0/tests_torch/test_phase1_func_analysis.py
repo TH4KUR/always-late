@@ -325,6 +325,47 @@ class MacroRetention(unittest.TestCase):
         self.assertEqual(fa.retention_macro(eff["INT6"], eff["FP"], ["aa", "bb"])["class"], "attenuated")
 
 
+class IntervalLevel(unittest.TestCase):
+    """The level of the percentile interval of the retention ratios (T-MC statements S1 to S5 use 0.99, Q19 default a); the default 0.95 keeps the loss analysis unchanged."""
+    def eff(self, mean, sd, seed):
+        s = np.random.default_rng(seed).normal(mean, sd, 4000)
+        return {"point": mean, "samples": s}
+
+    def test_ci_levels(self):
+        s = np.random.default_rng(0).normal(0, 1, 5000)
+        self.assertEqual(fa._ci(s), tuple(float(x) for x in np.percentile(s, [2.5, 97.5])))
+        self.assertEqual(fa._ci(s, 0.99), tuple(float(x) for x in np.percentile(s, [0.5, 99.5])))
+        self.assertEqual(fa._ci(s, 0.90), tuple(float(x) for x in np.percentile(s, [5, 95])))
+
+    def test_the_wider_level_contains_the_narrower_one_and_keeps_the_point(self):
+        efp, eb = self.eff(1.0, 0.1, 1), self.eff(0.9, 0.1, 2)
+        r95, r99 = fa.retention(eb, efp, level=0.95), fa.retention(eb, efp, level=0.99)
+        self.assertEqual(r95["ratio"], r99["ratio"]); self.assertLess(r99["lo"], r95["lo"]); self.assertGreater(r99["hi"], r95["hi"])
+        self.assertEqual(fa.retention(eb, efp), r95)                                                         # the default is the 95 % interval
+
+    def test_a_band_edge_between_the_two_intervals_moves_the_class(self):
+        efp, eb = self.eff(1.0, 0.1, 1), self.eff(0.9, 0.1, 2)
+        r95, r99 = fa.retention(eb, efp, level=0.95), fa.retention(eb, efp, level=0.99)
+        bands = (r95["lo"] - 0.002, r95["hi"] + 0.002)                                                       # the 95 % interval just fits, the 99 % interval does not
+        self.assertEqual(fa.retention(eb, efp, bands, level=0.95)["class"], "preserved"); self.assertEqual(fa.retention(eb, efp, bands, level=0.99)["class"], "inconclusive")
+        self.assertLess(r99["lo"], bands[0]); self.assertGreater(r99["hi"], bands[1])
+
+    def test_definedness_keeps_the_fixed_95_percent_rule_at_any_level(self):
+        efp = self.eff(1.0, 0.45, 3)                                                                        # lower bound above 0 at 95 %, below 0 at 99 %
+        self.assertGreater(fa._ci(efp["samples"])[0], 0); self.assertLess(fa._ci(efp["samples"], 0.99)[0], 0)
+        eb = self.eff(1.0, 0.45, 4)
+        self.assertNotEqual(fa.retention(eb, efp, level=0.99)["class"], "undefined")
+        m = fa.retention_macro({"aa": eb}, {"aa": efp}, ["aa"], level=0.99)
+        self.assertEqual(m["n_languages"], 1); self.assertEqual(m["languages"], ["aa"])
+
+    def test_macro_and_median_intervals_widen_too(self):
+        efp = {c: self.eff(1.0, 0.1, 10 + i) for i, c in enumerate(("aa", "bb", "cc"))}; eb = {c: self.eff(0.8 + 0.1 * i, 0.1, 20 + i) for i, c in enumerate(("aa", "bb", "cc"))}
+        m95, m99 = fa.retention_macro(eb, efp, ["aa", "bb", "cc"]), fa.retention_macro(eb, efp, ["aa", "bb", "cc"], level=0.99)
+        self.assertEqual(m95["ratio"], m99["ratio"]); self.assertEqual(m95["median_ratio"], m99["median_ratio"])
+        self.assertLess(m99["lo"], m95["lo"]); self.assertGreater(m99["hi"], m95["hi"])
+        self.assertLess(m99["median_lo"], m95["median_lo"]); self.assertGreater(m99["median_hi"], m95["median_hi"])
+
+
 class MacroSummary(unittest.TestCase):
     def test_mean_and_median_of_the_per_language_effects(self):
         fp, b = two_language_runs({"aa": 0.1, "bb": 0.2, "cc": 3.0}, {"aa": 0.1, "bb": 0.2, "cc": 3.0})

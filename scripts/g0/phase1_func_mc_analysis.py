@@ -137,8 +137,11 @@ def accuracy_rows(runs, K):
     return rows
 
 
-def analyse_mc(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=BANDS, note=None):
-    """Effects, macro effects, retention against full precision, sham and accuracy -> analysis.json, effects_by_language.csv, retention.csv, accuracy.csv and report.md in out_dir."""
+def analyse_mc(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=BANDS, note=None, retention_level=0.95):
+    """Effects, macro effects, retention against full precision, sham and accuracy -> analysis.json, effects_by_language.csv, retention.csv, accuracy.csv and report.md in out_dir. The intervals of the
+    effects (statement S0) are 95 % intervals; `retention_level` is the level of the intervals and classes of the retention ratios (the T-MC statements S1 to S5 use 0.99, Q19 default a)."""
+    if not 0.0 < retention_level < 1.0:
+        raise ValueError(f"retention_level must be strictly between 0 and 1, not {retention_level}")
     if "FP" not in runs:
         raise ValueError("the full-precision run is needed as the reference")
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
@@ -152,7 +155,7 @@ def analyse_mc(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=
     cov = [c for c in (covered or langs) if c in langs]
     eff = {lab: {c: mc_effect(r, c, K, index, W) for c in langs} for lab, r in runs.items()}
     mac = {lab: fa.macro(eff[lab], cov) for lab in runs}
-    res = {"task": "T-MC", "format": fp.fmt, "K": K, "n_boot": n_boot, "seed": seed, "bands": list(bands), "covered": cov, "n_passages": len(index), "n_positions": len(index), "note": note,
+    res = {"task": "T-MC", "format": fp.fmt, "K": K, "n_boot": n_boot, "seed": seed, "bands": list(bands), "covered": cov, "n_passages": len(index), "n_positions": len(index), "note": note, "retention_level": retention_level,
            "effects": {}, "macro": {}, "retention": {}, "sham": {}}
     for lab in runs:
         res["effects"][lab] = {c: {**fa._row(eff[lab][c]["point"], eff[lab][c]["samples"]), "harm_group": eff[lab][c]["harm_group"], "harm_control": eff[lab][c]["harm_control"],
@@ -160,8 +163,8 @@ def analyse_mc(runs, out_dir, K="K64", n_boot=2000, seed=0, covered=None, bands=
         res["macro"][lab] = {**fa._row(mac[lab]["point"], mac[lab]["samples"]), "median": float(np.median([eff[lab][c]["point"] for c in cov])), "n_positive": int(sum(eff[lab][c]["point"] > 0 for c in cov))}
         res["sham"][lab] = {c: fa._row(s["point"], s["samples"]) for c in langs if runs[lab].has(c, f"sham_{K}@{c}") for s in [sham_effect(runs[lab], c, K, index, W)]}
         if lab != "FP":
-            res["retention"][lab] = {"macro": fa.retention_macro(eff[lab], eff["FP"], cov, bands), "pooled": fa.retention(mac[lab], mac["FP"], bands),
-                                     "languages": {c: fa.retention(eff[lab][c], eff["FP"][c], bands) for c in langs}}
+            res["retention"][lab] = {"macro": fa.retention_macro(eff[lab], eff["FP"], cov, bands, level=retention_level), "pooled": fa.retention(mac[lab], mac["FP"], bands, level=retention_level),
+                                     "languages": {c: fa.retention(eff[lab][c], eff["FP"][c], bands, level=retention_level) for c in langs}}
     acc = accuracy_rows(runs, K)
     res["accuracy"] = acc
     (out / "analysis.json").write_text(json.dumps(res, indent=1) + "\n")
@@ -189,9 +192,10 @@ def report_text(res):
     L += ["E is the harm (nats, the drop in the log-probability of the correct option among the four, after the edit minus before it, same precision, same items) of zero-ablating the language's selective "
           f"group beyond the mean harm of its activity-matched controls; positive = the selective group matters more than equally active non-selective features. Intervals: {B} paired cluster-bootstrap draws "
           "over passages (the same draws for every language and precision; percentile, descriptive; the observed value is the estimate). Macro retention is the mean over languages of the per-language ratio E at a "
-          f"precision over E in full precision (D-041), classified against the bands [{res['bands'][0]}, {res['bands'][1]}]; undefined when the full-precision interval does not lie above zero.", "",
+          f"precision over E in full precision (D-041), classified against the bands [{res['bands'][0]}, {res['bands'][1]}] using {100 * res['retention_level']:g} % intervals (the effect intervals are 95 % intervals); "
+          "undefined when the full-precision 95 % interval does not lie above zero.", "",
           f"Covered languages: {len(res['covered'])} ({', '.join(res['covered'])}). Passages: {res['n_passages']}.", "", "## Macro effect and retention", "",
-          "| precision | mean E | 95 % interval | median E | languages with E > 0 | retention (mean of per-language ratios) | interval | class (languages) |", "|---|---|---|---|---|---|---|---|"]
+          "| precision | mean E | 95 % interval | median E | languages with E > 0 | retention (mean of per-language ratios) | " + f"{100 * res['retention_level']:g} % interval | class (languages) |", "|---|---|---|---|---|---|---|---|"]
     for lab in res["macro"]:
         m = res["macro"][lab]; r = res["retention"].get(lab, {}).get("macro")
         head = f"| {lab} | {m['point']:.4f} | [{m['lo']:.4f}, {m['hi']:.4f}] | {m['median']:.4f} | {m['n_positive']} of {len(res['covered'])} | "
@@ -222,11 +226,12 @@ def main(argv=None):
     ap.add_argument("--format", choices=["letter", "cloze"], required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--K", default="K64"); ap.add_argument("--n-boot", type=int, default=2000); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--covered", nargs="*")
     ap.add_argument("--note", help="status line of the report (default by split)")
+    ap.add_argument("--retention-level", type=float, default=0.95, help="level of the retention intervals and classes (the T-MC statements S1 to S5: 0.99)")
     a = ap.parse_args(argv)
     runs = {}
     for p in sorted(Path(a.runs).glob(f"func_mc_{a.split}_{a.format}_*.pt")):
         r = McRun.from_file(p); runs[r.label] = r
-    analyse_mc(runs, a.out, a.K, a.n_boot, a.seed, a.covered, note=a.note or _NOTES[a.split])
+    analyse_mc(runs, a.out, a.K, a.n_boot, a.seed, a.covered, note=a.note or _NOTES[a.split], retention_level=a.retention_level)
     print("wrote", a.out, sorted(runs))
 
 

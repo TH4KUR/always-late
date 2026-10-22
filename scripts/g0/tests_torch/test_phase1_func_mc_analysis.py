@@ -198,6 +198,36 @@ class Analyse(unittest.TestCase):
         r = res["retention"]["INT6"]["languages"]["aaa"]
         self.assertEqual((r["ratio"], r["lo"], r["hi"]), (1.0, 1.0, 1.0))
 
+    def hetero_pair(self):
+        keys = [(f"p{i}", q) for i in range(8) for q in (1, 2)]; answers = [i % 4 for i in range(16)]
+        def run(label, margins):
+            r = planted_run(label, none_m=2.0, zero_m=0.0, ctrl_ms=(2.0,), keys=keys, answers=answers)
+            r.scores[("aaa", "zero_K64@aaa")] = margin_scores(answers, margins)
+            return r
+        return {"FP": run("FP", [0.0] * 8 + [1.5] * 8), "INT6": run("INT6", [0.4] * 8 + [1.2] * 8)}
+
+    def test_the_retention_level_widens_only_the_retention_intervals(self):
+        r95 = mc.analyse_mc(self.hetero_pair(), self.out / "a", n_boot=400)
+        r99 = mc.analyse_mc(self.hetero_pair(), self.out / "b", n_boot=400, retention_level=0.99)
+        self.assertEqual((r95["retention_level"], r99["retention_level"]), (0.95, 0.99))
+        for pick in (lambda r: r["retention"]["INT6"]["macro"], lambda r: r["retention"]["INT6"]["languages"]["aaa"]):
+            a, b = pick(r95), pick(r99)
+            self.assertEqual(a["ratio"], b["ratio"]); self.assertLess(b["lo"], a["lo"]); self.assertGreater(b["hi"], a["hi"])
+        a, b = r95["retention"]["INT6"]["macro"], r99["retention"]["INT6"]["macro"]
+        self.assertLess(b["median_lo"], a["median_lo"]); self.assertGreater(b["median_hi"], a["median_hi"])
+        a, b = r95["retention"]["INT6"]["pooled"], r99["retention"]["INT6"]["pooled"]
+        self.assertEqual(a["ratio"], b["ratio"]); self.assertLess(b["lo"], a["lo"]); self.assertGreater(b["hi"], a["hi"])
+        for lab in ("FP", "INT6"):                                                                           # statement S0 and the effects keep the 95 % intervals
+            self.assertEqual(r95["macro"][lab], r99["macro"][lab]); self.assertEqual(r95["effects"][lab]["aaa"], r99["effects"][lab]["aaa"])
+        rb, ra = (self.out / "b" / "report.md").read_text(), (self.out / "a" / "report.md").read_text()
+        self.assertIn("using 99 % intervals", rb); self.assertIn("| 99 % interval |", rb); self.assertIn("using 95 % intervals", ra); self.assertIn("| 95 % interval |", ra)
+
+    def test_the_default_level_is_95_percent_and_a_level_outside_the_open_unit_interval_is_refused(self):
+        self.assertEqual(mc.analyse_mc(runs_pair(), self.out / "c", n_boot=20)["retention_level"], 0.95)
+        for bad in (0.0, 1.0, 1.5, -0.1):
+            with self.assertRaises(ValueError):
+                mc.analyse_mc(runs_pair(), self.out / "d", n_boot=20, retention_level=bad)
+
     def test_a_planted_attenuation_and_amplification_are_classified(self):
         runs = {"FP": planted_run("FP", none_m=2.0, zero_m=0.0), "INT6": planted_run("INT6", none_m=2.0, zero_m=1.5), "INT4": planted_run("INT4", none_m=2.0, zero_m=-3.0)}
         res = mc.analyse_mc(runs, self.out, n_boot=100)
@@ -283,8 +313,9 @@ class Main(unittest.TestCase):
         mc.main(["--runs", str(d), "--split", "eval", "--format", "letter", "--out", str(out), "--n-boot", "30"])
         self.assertTrue((out / "analysis.json").exists()); self.assertEqual(sorted(json.loads((out / "analysis.json").read_text())["effects"]), ["FP", "INT6"])
         self.assertIn("Held-out T-MC evaluation", (out / "report.md").read_text())
-        mc.main(["--runs", str(d), "--split", "eval", "--format", "letter", "--out", str(d / "out2"), "--n-boot", "10", "--note", "custom status"])
+        mc.main(["--runs", str(d), "--split", "eval", "--format", "letter", "--out", str(d / "out2"), "--n-boot", "10", "--note", "custom status", "--retention-level", "0.99"])
         self.assertIn("custom status", (d / "out2" / "report.md").read_text())
+        self.assertEqual(json.loads((d / "out2" / "analysis.json").read_text())["retention_level"], 0.99)
 
 
 if __name__ == "__main__":
