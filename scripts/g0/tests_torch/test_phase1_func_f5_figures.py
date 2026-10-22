@@ -103,10 +103,16 @@ class Figures(unittest.TestCase):
         self.assertAlmostEqual(float(r1.get_ydata()[0]), self.res["tables"][qs[0]]["all"]["R1"]["median"]); self.assertEqual(len(tagged(fig, "floor")), 1)
         self.assertEqual(len(w1.get_ydata()), len(qs)); rep = tagged(fig, "W1_repeat")[0]; self.assertEqual(len(rep.get_ydata()), len(ff.REFERENCE_STATES)); self.assertEqual(rep.get_linestyle(), "None")
         np.testing.assert_allclose(rep.get_ydata(), [self.res["tables"][s]["all"]["W1"]["median"] for s in ff.REFERENCE_STATES])
+        rr = tagged(fig, "R1_repeat")[0]; self.assertEqual(rr.get_linestyle(), "None"); np.testing.assert_allclose(rr.get_ydata(), [self.res["tables"][s]["all"]["R1"]["median"] for s in ff.REFERENCE_STATES])   # the read side of the noise-only states is a reference too
 
     def test_the_control_band_is_inside_the_axis_even_when_the_control_reaches_below_the_floor_of_the_axis(self):
         arr = {k: {kk: (vv.copy() if hasattr(vv, "copy") else vv) for kk, vv in v.items()} for k, v in self.arrays.items()}; arr["INT4"]["control"][:] = -0.7; arr["INT4"]["control"][::2] = -0.9
         fig = ff.fig_w1_distribution(arr, self.res["floor"], "light", "x"); ax = fig.axes[0]; lo, hi = ax.get_xlim(); self.assertLessEqual(lo, -0.9)
+
+    def test_the_read_side_reference_markers_follow_the_order_of_the_reference_states(self):
+        import copy
+        tables = copy.deepcopy(self.res["tables"]); tables["INT16"]["all"]["R1"]["median"] = 0.7; tables["FP_rebatched"]["all"]["R1"]["median"] = 0.95
+        fig = ff.fig_median_ladder(tables, self.res["floor"], "light", "x"); np.testing.assert_allclose(tagged(fig, "R1_repeat")[0].get_ydata(), [0.95, 0.7])
 
     def test_the_paired_figure_has_one_dot_per_language_and_precision_and_a_zero_line(self):
         fig = ff.fig_paired(self.res["validity"], "light", "x"); p = self.res["validity"]["paired"]

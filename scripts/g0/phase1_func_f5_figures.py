@@ -193,6 +193,8 @@ def fig_median_ladder(tables, floor, theme, note):
     ax.plot(xs_w[iq], [w1[i] for i in iq], color=t["series"][1], marker="s", markersize=5.5, linewidth=2, markeredgecolor=t["surface"], gid="W1")
     if ir:
         ax.plot(xs_w[ir], [w1[i] for i in ir], color=t["series"][1], marker="s", markersize=5.5, linestyle="none", markeredgecolor=t["surface"], gid="W1_repeat")
+    if ir:
+        ax.plot(np.array(ir, dtype=float) - 0.05, [_f(tables[order[i]]["all"]["R1"]["median"]) for i in ir], color=t["series"][0], marker="o", markersize=6, linestyle="none", markeredgecolor=t["surface"], gid="R1_repeat")
     ax.axhline(floor["tau"], color=t["ink2"], linestyle="--", linewidth=1.2, gid="floor")
     ax.set_xticks(range(len(order))); ax.set_xticklabels([PLAIN[s] for s in order]); ax.set_xlim(-0.4, len(order) - 0.6)
     lo = min([v for v in w1lo + r1lo + [floor["tau"]] if not np.isnan(v)] + [0.0]); ax.set_ylim(min(0.0, lo - 0.05), 1.03)

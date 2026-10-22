@@ -270,6 +270,12 @@ z
      <use xlink:href="#mc5d9389034" x="246.457895" y="72.060828" style="fill: #eb6834; stroke: #fcfcfb; stroke-linejoin: miter"/>
     </g>
    </g>
+   <g id="R1_repeat">
+    <g clip-path="url(#p9ee29b2f6a)">
+     <use xlink:href="#m9b67d21f85" x="114.110526" y="70.4" style="fill: #2a78d6; stroke: #fcfcfb"/>
+     <use xlink:href="#m9b67d21f85" x="234.426316" y="71.241558" style="fill: #2a78d6; stroke: #fcfcfb"/>
+    </g>
+   </g>
    <g id="floor">
     <path d="M 72 86.940008 
 L 529.2 86.940008 
