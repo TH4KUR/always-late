@@ -29,6 +29,9 @@ _THEMES = {
              "series": ["#3987e5", "#d95926", "#199e70"], "ordinal": ["#184f95", "#3987e5", "#9ec5f4"], "ordinal4": ["#b7d3f6", "#6da7ec", "#2a78d6", "#184f95"], "ramp": _RAMP_LIGHT[::-1]},      # dark: low values recede into the surface, high values are the light end
 }
 Y_FLOOR = 0.25                                                                         # lower edge of the log retention axis
+RESCUE_PATCHES = [("control", "matched\ncontrols"), ("group", "language group\n({K})"), ("all", "all SAE\nfeatures"), ("error", "SAE error\nterm"), ("full", "whole\nresidual")]   # from the least to the most that is replaced
+RESCUE_PARTS = [("control", "matched controls"), ("group", "language group"), ("group_minus_control", "group minus controls"), ("all", "all SAE features"), ("error", "SAE error term"), ("full", "whole residual")]
+RESCUE_Y_LIMITS = (-0.5, 2.0)                                                          # the data decide the axis inside these limits; an estimate beyond them is drawn on the edge and counted
 
 
 def theme_tokens(mode):
@@ -310,6 +313,86 @@ def fig_rank_bins(rows, theme, note):
     return fig
 
 
+def _precision_colors(t, n):
+    """n steps of the ordinal ramp for the precisions of the ladder, finer to coarser, the coarsest strongest (the 4-step ramp is stored strongest first, hence reversed)."""
+    if n == 1:
+        return [t["ordinal"][1]]
+    if n == 2:
+        return [t["ordinal"][1], t["ordinal"][2]]
+    if n == 3:
+        return list(t["ordinal"])
+    if n == 4:
+        return t["ordinal4"][::-1]
+    return [t["ramp"][i] for i in np.linspace(1, len(t["ramp"]) - 1, n).round().astype(int)]
+
+
+def _rescue_cells(rescue, precs):
+    """{(precision, patch): macro_fraction dict or None} for the five patches of the figure; None = undefined (no language with a clear gap, or the patch was not run)."""
+    return {(p, part): ((rescue[p].get("macro_fraction") or {}).get(part) or None) for p in precs for part, _ in RESCUE_PATCHES}
+
+
+def fig_rescue(rescue, K, theme, note):
+    """Plan Task 8, figure 4: the share of the quantization-induced loss (NLL of the quantized run minus NLL of the full-precision run, on the language's own text) that is recovered when full-precision
+    activations are patched into the quantized model at layer 12. x = what is patched (matched controls, the language group, all SAE features, the SAE error term, the whole residual: from the least to the
+    most that is replaced), dodged by precision (ordinal ramp, coarser stronger); macro mean over the languages with a clearly positive gap with its 95 % interval. The patches overlap (the group is part of all
+    features) and the effects are not additive, so nothing is stacked. rescue: the `rescue` block of analysis.json. Undefined cells are gaps and are counted, never zeros; estimates beyond the axis limits are
+    drawn on the edge and counted."""
+    precs = [p for p in PRECISIONS if p in rescue]
+    if not precs:
+        raise ValueError("no precision of the ladder in the rescue block")
+    cells = _rescue_cells(rescue, precs); defined = [m for m in cells.values() if m is not None]
+    bottom = max(RESCUE_Y_LIMITS[0], min(-0.1, min((m["lo"] for m in defined), default=0.0) - 0.05)); top = min(RESCUE_Y_LIMITS[1], max(1.1, max((m["hi"] for m in defined), default=1.0) + 0.05))
+    n_edge = sum(1 for m in defined if any(not bottom <= m[k] <= top for k in ("point", "lo", "hi"))); n_undef = len(cells) - len(defined)
+    fig, ax, t = _new_fig(theme, 7.6, 4.9)
+    n = len(precs); w = min(0.24, 0.8 / n); colors = _precision_colors(t, n); handles, labels = [], []
+    for j, p in enumerate(precs):
+        off = (j - (n - 1) / 2) * w; xs, ys, los, his, counts = [], [], [], [], []
+        for i, (part, _) in enumerate(RESCUE_PATCHES):
+            m = cells[(p, part)]
+            if m is None:
+                continue
+            xs.append(i + off); ys.append(min(max(m["point"], bottom), top)); los.append(min(max(m["lo"], bottom), top)); his.append(min(max(m["hi"], bottom), top)); counts.append(m.get("n_languages"))
+        if xs:
+            ax.vlines(xs, los, his, color=colors[j], linewidth=2.0, zorder=2, gid=f"interval_{p}")
+            ax.hlines(los + his, np.array(xs + xs) - 0.04, np.array(xs + xs) + 0.04, color=colors[j], linewidth=1.6, zorder=2, gid=f"interval_cap_{p}")
+            ax.scatter(xs, ys, s=44, color=colors[j], edgecolors=t["surface"], linewidths=1.5, zorder=4, gid=f"rescue_{p}")
+        c = [v for v in counts if v is not None]
+        labels.append(f"{p} (n = {min(c)})" if c and min(c) == max(c) else f"{p} (n = {min(c)} to {max(c)})" if c else f"{p} (n = 0)")
+        handles.append(Line2D([0], [0], color=colors[j], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]))
+    ax.axhline(0, color=t["axis"], linewidth=1.0, zorder=1, gid="reference_0"); ax.axhline(1, color=t["muted"], linewidth=1.2, zorder=1, gid="reference_1")
+    xr = len(RESCUE_PATCHES) - 0.5
+    ax.set_xlim(-0.6, xr + 1.4); ax.set_ylim(bottom, top)
+    for v, text in ((0, "nothing recovered"), (1, "whole gap recovered")):
+        ax.text(xr + 0.05, v, text, ha="left", va="center", fontsize=8.5, color=t["ink2"], gid="reference_label")
+    ax.set_xticks(range(len(RESCUE_PATCHES))); ax.set_xticklabels([lab.format(K=K) for _, lab in RESCUE_PATCHES]); ax.grid(False, axis="x")
+    yt = [v for v in np.arange(-0.5, 2.01, 0.25) if bottom - 1e-9 <= v <= top + 1e-9]
+    ax.set_yticks(yt); ax.set_yticklabels([f"{v:g}" for v in yt])
+    _axis_labels(ax, t, xlabel="what is patched from the full-precision model", ylabel="share of the quantization loss recovered")
+    sub = (f"layer 12, language group = {K}; share of the NLL gap to full precision on the language's own text, macro mean over the languages with a clearly positive gap, 95 % interval; "
+           "the patches overlap and are not additive")
+    if n_undef:
+        sub += f"; {n_undef} cell{'s' if n_undef != 1 else ''} without a defined fraction (not drawn)"
+    if n_edge:
+        sub += f"; {n_edge} estimate{'s' if n_edge != 1 else ''} beyond the axis (drawn on its edge)"
+    extra = _title(ax, t, "Share of the quantization loss recovered by patching full-precision activations", f"{sub} \u00b7 {note}")
+    _legend(ax, t, handles, labels, "upper left")
+    _margins(fig, bottom_in=0.95, extra=extra)
+    return fig
+
+
+def rescue_table(rescue):
+    """Table twin of figure 4: per precision of the ladder and per part (the five patches and the difference group minus controls) the languages with a defined fraction, the languages with rescue
+    configurations, and the macro mean with its interval; undefined cells are None."""
+    rows = []
+    for p in [p for p in PRECISIONS if p in rescue]:
+        mf = rescue[p].get("macro_fraction") or {}; n_total = len(rescue[p].get("languages") or {})
+        for part, name in RESCUE_PARTS:
+            m = mf.get(part) or None
+            rows.append({"precision": p, "part": part, "patch": name, "n_languages": m.get("n_languages") if m else None, "n_total": n_total,
+                         "fraction": m["point"] if m else None, "lo": m["lo"] if m else None, "hi": m["hi"] if m else None})
+    return rows
+
+
 def _coverage_rows(cal):
     """The rows of the chosen format of a calibration record (phase1_func_mc_calibration.py): language, items, accuracy, Wilson interval, covered. The record's own `covered` flags and lists must agree with the
     rule (lower bound above chance + margin); a languages without items (n = 0) has no accuracy and is never covered."""
@@ -463,6 +546,8 @@ def _effects_columns(precs):
             ("harm_control", "control harm", "{:.3f}")] + [(f"ratio_{p}", f"E ratio {p}", "{:.2f}") for p in precs]
 
 
+_RESCUE_COLUMNS = [("precision", "precision", "{}"), ("part", "part", "{}"), ("patch", "patch", "{}"), ("n_languages", "languages with a defined fraction", "{}"), ("n_total", "languages with rescue configurations", "{}"),
+                   ("fraction", "share of the gap recovered (macro mean)", "{:.3f}"), ("lo", "lo", "{:.3f}"), ("hi", "hi", "{:.3f}")]
 _COVERAGE_COLUMNS = [("language", "language", "{}"), ("items", "items", "{}"), ("accuracy", "accuracy", "{:.3f}"), ("lo", "lo", "{:.3f}"), ("hi", "hi", "{:.3f}"), ("covered", "covered", "{}")]
 _CONFIG_COLUMNS = [("language", "language", "{}"), ("size_K16", "K16", "{}"), ("size_K64", "K64", "{}"), ("size_all", "all", "{}"), ("draws_K16", "controls K16", "{}"), ("draws_K64", "controls K64", "{}"), ("draws_all", "controls all", "{}")]
 
@@ -500,15 +585,17 @@ def main(argv=None):
     written = []
     for theme in a.themes:
         figs = [("fig1_effect_per_language", lambda: fig_effect_per_language(fp_rows, theme, a.note, K=K, unit=a.unit)), ("fig2_retention", lambda: fig_retention(an["retention"], an["bands"], theme, a.note)),
-                ("fig3_group_size", lambda: fig_size_curves(res["families"], theme, a.note)), ("fig5_association_vs_function", lambda: fig_assoc_vs_function(assoc, an["retention"], theme, a.note)),
+                ("fig3_group_size", lambda: fig_size_curves(res["families"], theme, a.note)), ("fig4_rescue", lambda: fig_rescue(an["rescue"], K, theme, a.note)), ("fig5_association_vs_function", lambda: fig_assoc_vs_function(assoc, an["retention"], theme, a.note)),
                 ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note)), ("fig7_belebele_coverage", lambda: fig_coverage(cal, theme, a.calibration_note)), ("fig8_association_by_rank", lambda: fig_rank_bins(rank_rows, theme, a.rank_note))]
         for stem, make in figs:
-            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig6_sae_fidelity": bool(an.get("fidelity")), "fig7_belebele_coverage": cal is not None, "fig8_association_by_rank": bool(rank_rows)}
+            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig4_rescue": bool(an.get("rescue")), "fig6_sae_fidelity": bool(an.get("fidelity")), "fig7_belebele_coverage": cal is not None, "fig8_association_by_rank": bool(rank_rows)}
             if not has.get(stem, True):                                                                          # the inputs of this figure do not exist for this analysis (for example T-MC has no SAE fidelity)
                 continue
             written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
     ret, eff, conf = retention_table(an, assoc), effects_table(fp_rows, an, manifest), config_table(manifest)
     tables = [("table_retention", ret, _retention_columns()), ("table_effects", eff, _effects_columns([p for p in PRECISIONS if p in an["retention"]])), ("table_configurations", conf, _CONFIG_COLUMNS)]
+    if an.get("rescue"):
+        tables.append(("table_rescue", rescue_table(an["rescue"]), _RESCUE_COLUMNS))
     if cal is not None:
         tables.append(("table_coverage", coverage_table(cal), _COVERAGE_COLUMNS))
     for name, rows, cols in tables:

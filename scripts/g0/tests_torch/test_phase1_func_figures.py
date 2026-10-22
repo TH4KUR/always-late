@@ -370,6 +370,138 @@ class RankBins(unittest.TestCase):
             ff.fig_rank_bins([dict(r, condition="INT0") for r in planted_rank_rows()], "light", note="x")      # INT0 (the identity control) is not on the ladder
 
 
+def planted_rescue():
+    def mf(p, lo, hi, n):
+        return {"point": p, "lo": lo, "hi": hi, "n_languages": n}
+    langs = {c: {"gap": {"point": 0.5}} for c in ("aaa", "bbb", "ccc")}
+    return {"INT6": {"languages": langs, "macro_fraction": {"control": mf(0.02, -0.02, 0.06, 3), "group": mf(0.30, 0.20, 0.40, 3), "group_minus_control": mf(0.28, 0.18, 0.38, 3),
+                                                              "all": mf(0.55, 0.45, 0.65, 3), "error": mf(0.35, 0.25, 0.45, 3), "full": mf(1.0, 0.95, 1.05, 3)}},
+            "INT4": {"languages": langs, "macro_fraction": {"control": mf(0.05, 0.01, 0.09, 3), "group": mf(0.40, 0.30, 0.50, 2), "group_minus_control": mf(0.35, 0.25, 0.45, 2),
+                                                              "all": mf(0.60, 0.50, 0.70, 2), "error": mf(0.30, 0.20, 0.40, 2), "full": mf(0.98, 0.90, 1.06, 2)}}}
+
+
+@unittest.skipUnless(HAVE_MPL, "matplotlib not installed")
+class Rescue(unittest.TestCase):
+    PATCHES = ["control", "group", "all", "error", "full"]
+
+    def setUp(self):
+        self.fig = ff.fig_rescue(planted_rescue(), "K64", "light", note="pilot, exploratory")
+        self.ax = self.fig.axes[0]
+
+    def points(self, ax, prec):
+        return [(round(float(x), 6), round(float(y), 6)) for x, y in by_gid(ax, f"rescue_{prec}")[0].get_offsets()]
+
+    def test_the_plotted_numbers_are_the_input_numbers_at_the_patch_positions_dodged_by_precision(self):
+        want = {"INT6": [0.02, 0.30, 0.55, 0.35, 1.0], "INT4": [0.05, 0.40, 0.60, 0.30, 0.98]}
+        for prec, off in (("INT6", -0.12), ("INT4", 0.12)):                                                    # the ladder order from the finer to the coarser precision, left to right
+            self.assertEqual(self.points(self.ax, prec), [(round(i + off, 6), v) for i, v in enumerate(want[prec])])
+
+    def test_the_intervals_are_the_input_bounds_with_a_cap_at_each_end(self):
+        seg = by_gid(self.ax, "interval_INT6")[0].get_segments()
+        self.assertEqual([(round(float(s[0][0]), 6), round(float(s[0][1]), 6), round(float(s[1][1]), 6)) for s in seg],
+                         [(-0.12, -0.02, 0.06), (0.88, 0.20, 0.40), (1.88, 0.45, 0.65), (2.88, 0.25, 0.45), (3.88, 0.95, 1.05)])
+        caps = by_gid(self.ax, "interval_cap_INT6")[0].get_segments()
+        self.assertEqual(sorted(round(float(s[0][1]), 6) for s in caps), [-0.02, 0.06, 0.2, 0.25, 0.4, 0.45, 0.45, 0.65, 0.95, 1.05])      # both ends of each of the five intervals
+        self.assertTrue(all(abs(float(s[0][1]) - float(s[1][1])) < 1e-12 for s in caps))                                                    # horizontal
+        self.assertEqual(sorted({(round(float(s[0][0]), 6), round(float(s[1][0]), 6)) for s in caps}), [(-0.16, -0.08), (0.84, 0.92), (1.84, 1.92), (2.84, 2.92), (3.84, 3.92)])      # centred on the interval, 0.08 wide
+
+    def test_the_patches_are_ordered_from_the_least_to_the_most_that_is_replaced_and_named_on_the_axis(self):
+        self.assertEqual([t.get_text().replace("\n", " ") for t in self.ax.get_xticklabels()], ["matched controls", "language group (K64)", "all SAE features", "SAE error term", "whole residual"])
+        self.assertEqual(ff.fig_rescue(planted_rescue(), "K16", "light", "x").axes[0].get_xticklabels()[1].get_text().replace("\n", " "), "language group (K16)")
+
+    def test_reference_lines_mark_nothing_recovered_and_the_whole_gap(self):
+        self.assertEqual([list(by_gid(self.ax, f"reference_{v}")[0].get_ydata()) for v in (0, 1)], [[0, 0], [1, 1]])
+
+    def test_the_precisions_wear_the_ordinal_ramp_coarser_stronger_and_are_named_with_their_language_counts(self):
+        tok = ff.theme_tokens("light")
+        self.assertEqual([to_hex(by_gid(self.ax, f"rescue_{p}")[0].get_facecolor()[0]) for p in ("INT6", "INT4")], [tok["ordinal"][1], tok["ordinal"][2]])
+        self.assertEqual([t.get_text() for t in self.ax.get_legend().get_texts()], ["INT6 (n = 3)", "INT4 (n = 2 to 3)"])
+        three = {k: planted_rescue()["INT6"] for k in ("INT6", "INT5", "INT4")}
+        a3 = ff.fig_rescue(three, "K64", "light", "x").axes[0]
+        self.assertEqual([to_hex(by_gid(a3, f"rescue_{p}")[0].get_facecolor()[0]) for p in ("INT6", "INT5", "INT4")], tok["ordinal"])
+        four = {k: planted_rescue()["INT6"] for k in ("INT8", "INT6", "INT5", "INT4")}
+        a4 = ff.fig_rescue(four, "K64", "light", "x").axes[0]
+        self.assertEqual([to_hex(by_gid(a4, f"rescue_{p}")[0].get_facecolor()[0]) for p in ("INT8", "INT6", "INT5", "INT4")], tok["ordinal4"][::-1])
+        dark = ff.fig_rescue(three, "K64", "dark", "x").axes[0]
+        self.assertEqual([to_hex(by_gid(dark, f"rescue_{p}")[0].get_facecolor()[0]) for p in ("INT6", "INT5", "INT4")], ff.theme_tokens("dark")["ordinal"])
+
+    def test_the_ladder_decides_the_order_not_the_order_of_the_input(self):
+        r = planted_rescue(); swapped = {"INT4": r["INT4"], "INT6": r["INT6"]}
+        ax = ff.fig_rescue(swapped, "K64", "light", "x").axes[0]
+        self.assertEqual([t.get_text() for t in ax.get_legend().get_texts()], ["INT6 (n = 3)", "INT4 (n = 2 to 3)"])
+        self.assertLess(self.points(ax, "INT6")[0][0], self.points(ax, "INT4")[0][0])
+
+    def test_an_undefined_cell_is_a_gap_and_is_counted_in_the_subtitle_never_a_zero(self):
+        r = planted_rescue(); del r["INT6"]["macro_fraction"]["error"]; r["INT4"]["macro_fraction"]["full"] = None
+        fig = ff.fig_rescue(r, "K64", "light", "x"); ax = fig.axes[0]
+        self.assertEqual(len(self.points(ax, "INT6")), 4); self.assertEqual(len(self.points(ax, "INT4")), 4)
+        self.assertEqual([x for x, _ in self.points(ax, "INT6")], [-0.12, 0.88, 1.88, 3.88])                    # no marker, in particular none at 0, where the error term would be
+        self.assertEqual([x for x, _ in self.points(ax, "INT4")], [0.12, 1.12, 2.12, 3.12])
+        self.assertIn("2 cells without a defined fraction", " ".join(all_text(fig).split()))
+        self.assertNotIn("without a defined fraction", " ".join(all_text(self.fig).split()))
+
+    def test_a_precision_without_any_clear_gap_stays_in_the_legend_with_zero_languages(self):
+        r = planted_rescue(); r["INT5"] = {"languages": {"aaa": {}}, "macro_fraction": {}}
+        fig = ff.fig_rescue(r, "K64", "light", "x"); ax = fig.axes[0]
+        self.assertEqual([t.get_text() for t in ax.get_legend().get_texts()], ["INT6 (n = 3)", "INT5 (n = 0)", "INT4 (n = 2 to 3)"])
+        self.assertEqual(len(by_gid(ax, "rescue_INT5")), 0)
+        self.assertIn("5 cells without a defined fraction", " ".join(all_text(fig).split()))
+
+    def test_the_axis_follows_the_data_inside_fixed_limits_and_an_estimate_beyond_them_is_drawn_on_the_edge_and_counted(self):
+        self.assertAlmostEqual(self.ax.get_ylim()[0], -0.1, places=6); self.assertAlmostEqual(self.ax.get_ylim()[1], 1.11, places=6)
+        r = planted_rescue(); r["INT4"]["macro_fraction"]["full"] = {"point": 2.4, "lo": 1.8, "hi": 3.0, "n_languages": 2}; r["INT4"]["macro_fraction"]["control"] = {"point": -0.9, "lo": -1.5, "hi": -0.4, "n_languages": 3}
+        r["INT4"]["macro_fraction"]["all"] = {"point": 1.9, "lo": 1.5, "hi": 2.6, "n_languages": 2}                # only its upper bound is beyond the axis
+        fig = ff.fig_rescue(r, "K64", "light", "x"); ax = fig.axes[0]
+        self.assertEqual(ax.get_ylim(), (-0.5, 2.0))
+        pts = self.points(ax, "INT4"); self.assertEqual((pts[0][1], pts[2][1], pts[4][1]), (-0.5, 1.9, 2.0))      # drawn on the edge; an estimate inside the limits is not moved
+        seg = by_gid(ax, "interval_INT4")[0].get_segments()
+        self.assertEqual([(round(float(s[0][1]), 6), round(float(s[1][1]), 6)) for s in (seg[0], seg[2], seg[4])], [(-0.5, -0.4), (1.5, 2.0), (1.8, 2.0)])      # the interval ends are clipped too
+        self.assertIn("3 estimates beyond the axis", " ".join(all_text(fig).split()))
+        self.assertNotIn("beyond the axis", " ".join(all_text(self.fig).split()))
+
+    def test_the_axis_always_shows_both_reference_lines_even_when_every_estimate_is_small(self):
+        low = {"INT4": {"languages": {"aaa": {}}, "macro_fraction": {k: {"point": 0.2, "lo": 0.1, "hi": 0.5, "n_languages": 1} for k in self.PATCHES}}}
+        self.assertEqual(tuple(round(v, 6) for v in ff.fig_rescue(low, "K64", "light", "x").axes[0].get_ylim()), (-0.1, 1.1))
+
+    def test_one_precision_and_five_precisions_get_distinct_ordinal_steps_with_the_coarsest_strongest(self):
+        tok = ff.theme_tokens("light"); one = ff.fig_rescue({"INT4": planted_rescue()["INT4"]}, "K64", "light", "x").axes[0]
+        self.assertEqual(to_hex(by_gid(one, "rescue_INT4")[0].get_facecolor()[0]), tok["ordinal"][1])
+        five = {k: planted_rescue()["INT6"] for k in ("INT8", "INT7", "INT6", "INT5", "INT4")}
+        a5 = ff.fig_rescue(five, "K64", "light", "x").axes[0]
+        cols = [to_hex(by_gid(a5, f"rescue_{p}")[0].get_facecolor()[0]) for p in ("INT8", "INT7", "INT6", "INT5", "INT4")]
+        idx = [tok["ramp"].index(c) for c in cols]
+        self.assertEqual(len(set(cols)), 5); self.assertEqual(idx, sorted(idx)); self.assertEqual(cols[-1], tok["ramp"][-1])     # the light ramp runs from the light to the strong end
+        d5 = ff.fig_rescue(five, "K64", "dark", "x").axes[0]
+        dcols = [to_hex(by_gid(d5, f"rescue_{p}")[0].get_facecolor()[0]) for p in ("INT8", "INT7", "INT6", "INT5", "INT4")]
+        didx = [ff.theme_tokens("dark")["ramp"].index(c) for c in dcols]
+        self.assertEqual(didx, sorted(didx)); self.assertEqual(dcols[-1], ff.theme_tokens("dark")["ramp"][-1])                      # dark: the high end is the light end that stands out on the surface
+
+    def test_the_title_describes_and_the_subtitle_states_what_is_plotted_the_overlap_and_the_data_status(self):
+        title = self.ax.get_title(loc="left"); self.assertEqual(title, "Share of the quantization loss recovered by patching full-precision activations")
+        sub = " ".join(by_gid(self.ax, "subtitle")[0].get_text().split())
+        for phrase in ("layer 12", "K64", "macro mean", "overlap", "not additive", "pilot, exploratory"):
+            self.assertIn(phrase, sub)
+
+    def test_no_text_is_clipped_in_both_themes_with_a_long_note(self):
+        for theme in ("light", "dark"):
+            assert_text_inside(self, ff.fig_rescue(planted_rescue(), "K64", theme, "evaluation split of 300 held-out devtest sentences per language, frozen settings, confirmatory analysis"))
+
+    def test_nothing_on_the_ladder_or_nothing_at_all_is_an_error(self):
+        with self.assertRaises(ValueError):
+            ff.fig_rescue({}, "K64", "light", "x")
+        with self.assertRaises(ValueError):
+            ff.fig_rescue({"INT0": planted_rescue()["INT6"]}, "K64", "light", "x")                           # INT0 (the identity control) is not on the ladder
+
+    def test_the_table_twin_has_every_part_per_precision_with_counts_and_missing_values_as_none(self):
+        r = planted_rescue(); del r["INT6"]["macro_fraction"]["error"]
+        rows = ff.rescue_table(r)
+        self.assertEqual(len(rows), 12); self.assertEqual([x["precision"] for x in rows[:6]], ["INT6"] * 6)
+        self.assertEqual([x["part"] for x in rows[:6]], ["control", "group", "group_minus_control", "all", "error", "full"])
+        g = rows[1]; self.assertEqual((g["patch"], g["n_languages"], g["n_total"], g["fraction"], g["lo"], g["hi"]), ("language group", 3, 3, 0.30, 0.20, 0.40))
+        e = rows[4]; self.assertEqual((e["part"], e["n_languages"], e["fraction"], e["lo"], e["hi"]), ("error", None, None, None, None))
+        self.assertEqual(rows[8]["part"], "group_minus_control"); self.assertEqual(rows[8]["n_languages"], 2)
+
+
 NAN = float("nan")
 
 
@@ -512,7 +644,7 @@ class LongNotes(unittest.TestCase):
         return {"effect": lambda th: ff.fig_effect_per_language(EffectPerLanguage.ROWS, th, self.NOTE, K="K64"), "retention": lambda th: ff.fig_retention(planted_retention(), (0.75, 1.33), th, self.NOTE),
                 "size": lambda th: ff.fig_size_curves(planted_families(), th, self.NOTE), "assoc": lambda th: ff.fig_assoc_vs_function(ASSOC, planted_retention(), th, self.NOTE),
                 "fidelity": lambda th: ff.fig_fidelity(planted_fidelity(), th, self.NOTE), "rank": lambda th: ff.fig_rank_bins(planted_rank_rows(), th, self.NOTE),
-                "coverage": lambda th: ff.fig_coverage(planted_calibration(), th, self.NOTE)}
+                "coverage": lambda th: ff.fig_coverage(planted_calibration(), th, self.NOTE), "rescue": lambda th: ff.fig_rescue(planted_rescue(), "K64", th, self.NOTE)}
 
     def test_every_figure_wraps_a_long_status_note_instead_of_clipping_it(self):
         for name, make in self.builders().items():
@@ -727,6 +859,18 @@ class Main(unittest.TestCase):
         self.cal.unlink()
         written = [Path(p).name for p in self.run_main()]
         self.assertNotIn("fig7_belebele_coverage_light.png", written); self.assertNotIn("table_coverage.md", written); self.assertIn("fig2_retention_light.png", written)
+
+    def test_figure_4_and_its_table_are_written_only_when_the_analysis_has_a_rescue_block(self):
+        written = [Path(p).name for p in self.run_main()]
+        self.assertNotIn("fig4_rescue_light.png", written); self.assertNotIn("table_rescue.md", written)
+        an = json.loads((self.res / "analysis.json").read_text()); an["rescue"] = planted_rescue(); (self.res / "analysis.json").write_text(json.dumps(an))
+        written = [Path(p).name for p in self.run_main()]
+        for theme in ("light", "dark"):
+            for ext in ("svg", "png"):
+                self.assertIn(f"fig4_rescue_{theme}.{ext}", written)
+        self.assertIn("table_rescue.csv", written); self.assertIn("table_rescue.md", written)
+        self.assertIn("exploratory", (self.out / "fig4_rescue_light.svg").read_text())
+        self.assertIn("| language group |", (self.out / "table_rescue.md").read_text())
 
     def test_without_a_rank_table_figure_8_is_skipped(self):
         self.rank.unlink()
