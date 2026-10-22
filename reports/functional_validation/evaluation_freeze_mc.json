@@ -1,0 +1,291 @@
+{
+ "schema": 1,
+ "kind": "functional-validation-freeze",
+ "part": "T-MC",
+ "created": "2026-10-22",
+ "commit": "ff9d230efdbaf46dd85e02034b42db706124b6e1",
+ "lm_freeze_sha256": "7db650e18129eb8d5766d96026e9b8792fc1d2a7b5963fbb96ba4aa0595d4980",
+ "files": {
+  "cohort_manifest": {
+   "path": "reports/association_retention/frozen_cohort_manifest.json",
+   "sha256": "0d70d1f9bacbe218fb63bae47528a9f1ffdf60e73356a3d6a56742a3bc70ceb2"
+  },
+  "groups_manifest": {
+   "path": "reports/functional_validation/groups_manifest.json",
+   "sha256": "1ac1c5802a2504cd9729ee8bc99ae9893b24a57c42814ce5426fba18e1d7fa3d"
+  },
+  "their_functions": {
+   "path": "reports/g0/their_functions.json",
+   "sha256": "62a1765b9ea1230d216f382543c4a165d84e7cb7f27ae43af3b882a7b5c24330"
+  },
+  "code_run": {
+   "path": "scripts/g0/phase1_func_run.py",
+   "sha256": "a712550561503faaef5634dc0ceffc13f8ee105ddf9168a94abde4ad25b416cf"
+  },
+  "code_intervene": {
+   "path": "scripts/g0/phase1_func_intervene.py",
+   "sha256": "64c0f12031490e2aa9b8fbca217b3ed653cd62fc9fdd401c8bdd964fdbf25265"
+  },
+  "code_groups": {
+   "path": "scripts/g0/phase1_func_groups.py",
+   "sha256": "0f8a27bdd963eecde9d68bc809cf6e17c69717b32f675ca870a9623edf3af735"
+  },
+  "code_tasks": {
+   "path": "scripts/g0/phase1_func_tasks.py",
+   "sha256": "40117845e7059d372f2d4826d8601794dc670ce6864dd689f97fad4208fb22da"
+  },
+  "code_lib": {
+   "path": "scripts/g0/phase1_lib.py",
+   "sha256": "8207fab0ed3574907a6fcc6bfbbf47ff44bbba3e99d402204139cd90a8f870ec"
+  },
+  "code_mc_analysis": {
+   "path": "scripts/g0/phase1_func_mc_analysis.py",
+   "sha256": "e044f18dd54f98b745325e68135843f661901cd64511b84e4e9f7e719fd9f799"
+  },
+  "code_analysis": {
+   "path": "scripts/g0/phase1_func_analysis.py",
+   "sha256": "ce18fe50b37472f2ede6c829b3af903ad3c4bd2c94db6484fe8cdf24b5a4650f"
+  },
+  "code_calibration": {
+   "path": "scripts/g0/phase1_func_mc_calibration.py",
+   "sha256": "8f7df014cdf59da16d30e82912c81d7061daf5889abed2f640de22c2c9ed173a"
+  },
+  "belebele_manifest": {
+   "path": "data/belebele/MANIFEST.json",
+   "sha256": "48e9d5584c91f7fd843ad5f46a0369e2a2cbff94a12f2846f743339fbfebae68"
+  },
+  "passage_origin": {
+   "path": "data/belebele/passage_origin.json",
+   "sha256": "2190c4a5458584a4e04d2c47d33717bdff35c255dba1ec234e488abc1ae694b3"
+  },
+  "calibration_record": {
+   "path": "reports/functional_validation/belebele_calibration.json",
+   "sha256": "8c7c046ec91e03c13bbd858aaa1684b4bdc3fdd949bbda1ff09e7e3d0462a6c0"
+  }
+ },
+ "calibration": {
+  "format": "letter",
+  "covered": [
+   "eng_Latn",
+   "deu_Latn",
+   "spa_Latn",
+   "fra_Latn",
+   "por_Latn",
+   "rus_Cyrl",
+   "zho_Hans",
+   "jpn_Jpan",
+   "kor_Hang",
+   "hin_Deva",
+   "ben_Beng",
+   "tur_Latn",
+   "vie_Latn",
+   "ind_Latn",
+   "tha_Thai",
+   "pol_Latn",
+   "ukr_Cyrl",
+   "kan_Knda"
+  ]
+ },
+ "mc": {
+  "preset": "mc_eval",
+  "preset_definition": {
+   "zero": [
+    "K64"
+   ],
+   "controls": [
+    "K64"
+   ],
+   "n_controls": {
+    "K64": 3
+   },
+   "sham": [
+    "K64"
+   ],
+   "resample": [
+    "K64"
+   ]
+  },
+  "split": "eval",
+  "format": "letter",
+  "n_items": 0,
+  "n_items_cloze": 0,
+  "item_seed": 0,
+  "max_len": 1024,
+  "max_tokens": 1024,
+  "batch_size": 16
+ },
+ "items": {
+  "ben_Beng": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "deu_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "eng_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "fra_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "hin_Deva": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "ind_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "jpn_Jpan": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "kan_Knda": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "kor_Hang": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "pol_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "por_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "rus_Cyrl": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "spa_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "tha_Thai": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "tur_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "ukr_Cyrl": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "vie_Latn": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  },
+  "zho_Hans": {
+   "n_items": 385,
+   "keys_sha256": "2207eeb232d2421866a3cfb2171618ca92f319e34c73071a120d79a5ad0c3f61"
+  }
+ },
+ "precisions": {
+  "FP": "mc_eval",
+  "INT8": "mc_eval",
+  "INT7": "mc_eval",
+  "INT6": "mc_eval",
+  "INT5": "mc_eval",
+  "INT4": "mc_eval"
+ },
+ "analysis": {
+  "bands": [
+   0.75,
+   1.33
+  ],
+  "macro_rule": "D-041: mean over the covered languages with a clearly positive full-precision E of the per-language ratios E_l(b)/E_l(FP); median ratio and pooled ratio are secondaries",
+  "n_boot": 2000,
+  "seed": 0,
+  "primary_K": "K64",
+  "cluster": "passage",
+  "cluster_note": "the passage is the link of the item key; one multinomial draw matrix serves every language and precision",
+  "harm": "-(log p_correct(edit) - log p_correct(none)), p_correct = softmax over the four option scores; E = zero-ablation harm beyond the mean of the control draws",
+  "covered": [
+   "eng_Latn",
+   "deu_Latn",
+   "spa_Latn",
+   "fra_Latn",
+   "por_Latn",
+   "rus_Cyrl",
+   "zho_Hans",
+   "jpn_Jpan",
+   "kor_Hang",
+   "hin_Deva",
+   "ben_Beng",
+   "tur_Latn",
+   "vie_Latn",
+   "ind_Latn",
+   "tha_Thai",
+   "pol_Latn",
+   "ukr_Cyrl",
+   "kan_Knda"
+  ],
+  "format": "letter",
+  "statements": [
+   {
+    "id": "S0",
+    "precision": "FP",
+    "claim": "the macro effect E over the covered languages is greater than 0",
+    "sidedness": "one-sided",
+    "interval_level": 0.95,
+    "decision": "the lower bound of the percentile interval of the paired passage bootstrap is above 0"
+   },
+   {
+    "id": "S1",
+    "precision": "INT8",
+    "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+    "sidedness": "two-sided",
+    "interval_level": 0.99,
+    "correction": "Bonferroni over the five precision statements (Q19 default a)",
+    "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise"
+   },
+   {
+    "id": "S2",
+    "precision": "INT7",
+    "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+    "sidedness": "two-sided",
+    "interval_level": 0.99,
+    "correction": "Bonferroni over the five precision statements (Q19 default a)",
+    "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise"
+   },
+   {
+    "id": "S3",
+    "precision": "INT6",
+    "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+    "sidedness": "two-sided",
+    "interval_level": 0.99,
+    "correction": "Bonferroni over the five precision statements (Q19 default a)",
+    "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise"
+   },
+   {
+    "id": "S4",
+    "precision": "INT5",
+    "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+    "sidedness": "two-sided",
+    "interval_level": 0.99,
+    "correction": "Bonferroni over the five precision statements (Q19 default a)",
+    "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise"
+   },
+   {
+    "id": "S5",
+    "precision": "INT4",
+    "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+    "sidedness": "two-sided",
+    "interval_level": 0.99,
+    "correction": "Bonferroni over the five precision statements (Q19 default a)",
+    "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise"
+   }
+  ],
+  "everything_else": "T-LM, per-language effects, rescue, F4, subgroups and doses are exploratory and labelled",
+  "q19": "default (a) applied; Q19 stays open in DECISIONS_FOR_REVIEW.md until the user answers (a change before the build, never after)"
+ },
+ "deviations": {}
+}
