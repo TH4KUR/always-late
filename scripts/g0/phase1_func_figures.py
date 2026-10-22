@@ -82,7 +82,7 @@ def _axis_labels(ax, t, xlabel=None, ylabel=None):
         ax.set_ylabel(ylabel, color=t["ink2"], fontsize=9)
 
 
-def fig_effect_per_language(rows, theme, note, K=None):
+def fig_effect_per_language(rows, theme, note, K=None, unit="nats per token"):
     """Full-precision effect per language: E (harm of zero-ablating the language's group beyond its activity-matched controls, nats per token, with its 95 % interval) against the harm of the controls
     themselves. rows: dicts with language, effect, lo, hi, harm_control (effects_by_language.csv, FP rows). Sorted by E, the largest on top; symlog axis (E spans orders of magnitude and an
     interval can cross zero)."""
@@ -104,7 +104,7 @@ def fig_effect_per_language(rows, theme, note, K=None):
     ax.grid(False, axis="y")
     for k in (0, n - 1):                                                               # direct labels on the extremes only
         ax.text(max(eff[k], hi[k]) * 1.25 + (0.002 if hi[k] <= 0.01 else 0), y[k], f"{eff[k]:.3g}", va="center", fontsize=8.5, color=t["ink2"], gid="label")
-    _axis_labels(ax, t, xlabel="harm beyond matched controls, nats per token (symmetric-log axis: linear below 0.01)")
+    _axis_labels(ax, t, xlabel=f"harm beyond matched controls, {unit} (symmetric-log axis: linear below 0.01)")
     extra = _title(ax, t, "Removing a language's feature group: harm beyond matched controls", f"full precision, {n} languages{', group ' + K if K else ''} \u00b7 {note}")
     handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=0)]
     _legend(ax, t, handles, ["group effect E (95 % interval)", "matched-control harm"], "lower right")
@@ -284,7 +284,7 @@ def load_results(results_dir):
     d = Path(results_dir)
     return {"analysis": json.loads((d / "analysis.json").read_text()),
             "effects": _read_csv(d / "effects_by_language.csv", {"effect", "lo", "hi", "harm_group", "harm_control", "norm_ratio_group", "norm_ratio_control"}),
-            "families": _read_csv(d / "families.csv", {"harm", "lo", "hi"})}
+            "families": _read_csv(d / "families.csv", {"harm", "lo", "hi"}) if (d / "families.csv").exists() else []}                    # absent for T-MC
 
 
 def load_association(path):
@@ -381,6 +381,7 @@ def main(argv=None):
     ap.add_argument("--results", required=True, help="directory with analysis.json, effects_by_language.csv, families.csv (phase1_func_analysis.py output)")
     ap.add_argument("--out", required=True); ap.add_argument("--note", required=True, help="status of the data in every title, e.g. 'pilot, exploratory'")
     ap.add_argument("--assoc", default=str(root / "reports/association_retention/results/eq/language_summary.csv")); ap.add_argument("--manifest", default=str(root / "reports/functional_validation/groups_manifest.json"))
+    ap.add_argument("--unit", default="nats per token", help="unit of the effect (T-MC: 'nats per item')")
     ap.add_argument("--themes", nargs="*", default=["light", "dark"], choices=sorted(_THEMES)); ap.add_argument("--formats", nargs="*", default=["svg", "png"], choices=["svg", "png"])
     a = ap.parse_args(argv)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
@@ -390,11 +391,12 @@ def main(argv=None):
     manifest = json.loads(Path(a.manifest).read_text())
     written = []
     for theme in a.themes:
-        figs = [("fig1_effect_per_language", lambda: fig_effect_per_language(fp_rows, theme, a.note, K=K)), ("fig2_retention", lambda: fig_retention(an["retention"], an["bands"], theme, a.note)),
+        figs = [("fig1_effect_per_language", lambda: fig_effect_per_language(fp_rows, theme, a.note, K=K, unit=a.unit)), ("fig2_retention", lambda: fig_retention(an["retention"], an["bands"], theme, a.note)),
                 ("fig3_group_size", lambda: fig_size_curves(res["families"], theme, a.note)), ("fig5_association_vs_function", lambda: fig_assoc_vs_function(assoc, an["retention"], theme, a.note)),
                 ("fig6_sae_fidelity", lambda: fig_fidelity(an["fidelity"], theme, a.note))]
         for stem, make in figs:
-            if stem == "fig5_association_vs_function" and not assoc:
+            has = {"fig5_association_vs_function": bool(assoc), "fig3_group_size": any(r["family"].startswith("E_") for r in res["families"]), "fig6_sae_fidelity": bool(an.get("fidelity"))}
+            if not has.get(stem, True):                                                                          # the inputs of this figure do not exist for this analysis (for example T-MC has no SAE fidelity)
                 continue
             written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
     ret, eff, conf = retention_table(an, assoc), effects_table(fp_rows, an, manifest), config_table(manifest)

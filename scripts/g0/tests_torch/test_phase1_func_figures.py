@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -98,6 +99,10 @@ class EffectPerLanguage(unittest.TestCase):
     def test_no_rows_is_an_error(self):
         with self.assertRaises(ValueError):
             ff.fig_effect_per_language([], "light", note="x")
+
+    def test_the_unit_of_the_effect_axis_is_a_parameter(self):
+        ax = ff.fig_effect_per_language(self.ROWS, "light", note="x", unit="nats per item").axes[0]
+        self.assertIn("nats per item", ax.get_xlabel()); self.assertNotIn("per token", ax.get_xlabel())
 
     def test_no_text_is_clipped_in_either_theme(self):
         for theme in ("light", "dark"):
@@ -528,6 +533,16 @@ class Main(unittest.TestCase):
         self.assertEqual(sorted(first), sorted(second))
         for name in first:
             self.assertEqual(first[name], second[name], name)
+
+    def test_a_results_folder_without_families_and_fidelity_still_gives_the_other_figures_and_the_unit_is_passed_on(self):
+        (self.res / "families.csv").unlink()
+        an = json.loads((self.res / "analysis.json").read_text()); del an["fidelity"]; (self.res / "analysis.json").write_text(json.dumps(an))
+        written = [Path(p).name for p in self.run_main("--unit", "nats per item")]
+        for name in ("fig1_effect_per_language_light.png", "fig2_retention_light.png", "fig5_association_vs_function_light.png", "table_retention.md"):
+            self.assertIn(name, written)
+        for name in ("fig3_group_size_light.png", "fig6_sae_fidelity_light.png"):
+            self.assertNotIn(name, written)
+        self.assertIn("nats per item", (self.out / "fig1_effect_per_language_light.svg").read_text())
 
     def test_themes_and_formats_can_be_restricted(self):
         written = [Path(p).name for p in self.run_main("--themes", "dark", "--formats", "png")]
