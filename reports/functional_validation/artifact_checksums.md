@@ -1,6 +1,6 @@
 # Item-level result files of the functional study on Ada: sizes and sha256
 
-Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue) was still running, its files are added when it has ended. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40 (the F5 jobs `f5-a`, `f5-b` and the rescue job follow). 61 files, 52.5 MB. A fetched copy can be checked with `sha256sum`.
+Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue, 35319) ended at 04:14 and its files were added at 04:16; the F5 jobs `f5-a` and `f5-b` follow. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40 (the F5 jobs `f5-a`, `f5-b` and the rescue job follow). 65 files, 58.3 MB. A fetched copy can be checked with `sha256sum`.
 
 | path | bytes | sha256 |
 |---|---|---|
@@ -54,6 +54,10 @@ Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). T
 | `func-pilot-b/func_lm_pilot_INT12.pt` | 2093851 | `70075d0f2f00a160709462c783565e0ffb7647ee5b077f8a5bfccd456b6ef4d0` |
 | `func-pilot-b/func_lm_pilot_INT16.pt` | 2093851 | `4bc0e4e41feb0edabdfa42ca36e486738e35a15bb3cabd3f9f4cc01574501480` |
 | `func-pilot-b/func_lm_pilot_INT4.pt` | 2092449 | `57a7d78e4dddbb01c831149d3eeb98279ddd50ce91dc9a2abc9699382b2ab7f4` |
+| `func-rescue-a/func_lm_eval_INT4.pt` | 1922987 | `7d5492628fc3e44197198d65c27be80991bc99387bfb300b7ab969d20a2063c4` |
+| `func-rescue-a/func_lm_eval_INT5.pt` | 1922987 | `7134dc2d5bf2c1119287478d2a0443728a9d12fe04470c94d017b647e05fccd5` |
+| `func-rescue-a/func_lm_eval_INT6.pt` | 1922987 | `67d723eca25f3d76431d399e69794c02b03c1093d0756c2e91bbb2a9bdb22bd2` |
+| `func-rescue-a/meta_lm_eval.json` | 2116 | `b721dfada4be5c6cd14405e4939356cb06242d3d23422e65546a10eef8ecc6a6` |
 | `func-smoke/func_lm_pilot_FP.pt` | 53561 | `57a3049567c81277f4b059dd4b503dc41def758be8cd62df41490c932cd2aabe` |
 | `func-smoke/func_lm_pilot_INT6.pt` | 53733 | `9c37b6586c11c6baf82ec8f6cd211d0c53c96cf30482112dcb430aca4624989c` |
 | `func-smoke/meta_lm_pilot.json` | 1592 | `1722e44bc769f8609756fb0f9cd8179a91a6621960297b0a348788d841bc68cf` |
