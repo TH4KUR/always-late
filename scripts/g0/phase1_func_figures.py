@@ -444,7 +444,8 @@ def fig_f4(res, theme, note):
     for lab in ax.get_yticklabels()[-(2 if robust else 1):]:
         lab.set_fontweight("bold"); lab.set_color(t["ink"])
     for k, ha in ((0, "right"), (n - 1, "left")):                                                   # direct labels on the extremes only
-        x = (eb_lo[k] * 1.12) if ha == "right" else (eb_hi[k] * 1.12 + (0.002 if eb_hi[k] <= 0.01 else 0))
+        lo_k, hi_k = min(eb_lo[k], ef_lo[k]), max(eb_hi[k], ef_hi[k])                                  # clear the wider of the two intervals of the row
+        x = (lo_k * 1.12 - (0.002 if lo_k >= -0.01 else 0)) if ha == "right" else (hi_k * 1.12 + (0.002 if hi_k <= 0.01 else 0))
         ax.text(x, y[k], f"{eb[k]:+.3g}", va="center", ha=ha, fontsize=8.5, color=t["ink2"], gid="label")
     for x, ha, text in ((0.01, "left", "\u2190 lost features matter less"), (0.99, "right", "lost features matter more \u2192")):
         ax.text(x, n, text, transform=ax.get_yaxis_transform(), ha=ha, va="center", fontsize=8.5, color=t["muted"], gid="axis_note")

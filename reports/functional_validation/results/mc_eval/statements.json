@@ -1,0 +1,148 @@
+{
+ "freeze_commit": "ff9d230efdbaf46dd85e02034b42db706124b6e1",
+ "n_covered": 18,
+ "statements": [
+  {
+   "id": "S0",
+   "precision": "FP",
+   "claim": "the macro effect E over the covered languages is greater than 0",
+   "sidedness": "one-sided",
+   "interval_level": 0.95,
+   "decision": "the lower bound of the percentile interval of the paired passage bootstrap is above 0",
+   "outcome": "not met",
+   "n_languages": 18,
+   "point": -0.00010020017050789068,
+   "lo": -0.003493111151784929,
+   "hi": 0.003111876142835262,
+   "detail": "macro E -0.0001 nats per item, 95 % interval [-0.0035, +0.0031], languages with E > 0: 10 of 18"
+  },
+  {
+   "id": "S1",
+   "precision": "INT8",
+   "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+   "sidedness": "two-sided",
+   "interval_level": 0.99,
+   "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise",
+   "outcome": "undefined",
+   "n_languages": 0,
+   "point": null,
+   "lo": null,
+   "hi": null,
+   "detail": "no covered language has a clearly positive full-precision effect (rule D-041)"
+  },
+  {
+   "id": "S2",
+   "precision": "INT7",
+   "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+   "sidedness": "two-sided",
+   "interval_level": 0.99,
+   "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise",
+   "outcome": "undefined",
+   "n_languages": 0,
+   "point": null,
+   "lo": null,
+   "hi": null,
+   "detail": "no covered language has a clearly positive full-precision effect (rule D-041)"
+  },
+  {
+   "id": "S3",
+   "precision": "INT6",
+   "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+   "sidedness": "two-sided",
+   "interval_level": 0.99,
+   "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise",
+   "outcome": "undefined",
+   "n_languages": 0,
+   "point": null,
+   "lo": null,
+   "hi": null,
+   "detail": "no covered language has a clearly positive full-precision effect (rule D-041)"
+  },
+  {
+   "id": "S4",
+   "precision": "INT5",
+   "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+   "sidedness": "two-sided",
+   "interval_level": 0.99,
+   "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise",
+   "outcome": "undefined",
+   "n_languages": 0,
+   "point": null,
+   "lo": null,
+   "hi": null,
+   "detail": "no covered language has a clearly positive full-precision effect (rule D-041)"
+  },
+  {
+   "id": "S5",
+   "precision": "INT4",
+   "claim": "the macro retention of E (mean of per-language ratios E_l(b) / E_l(FP), D-041) is classified preserved, attenuated, amplified or inconclusive against the bands",
+   "sidedness": "two-sided",
+   "interval_level": 0.99,
+   "decision": "preserved if the interval lies inside the bands, attenuated if entirely below, amplified if entirely above, inconclusive otherwise",
+   "outcome": "undefined",
+   "n_languages": 0,
+   "point": null,
+   "lo": null,
+   "hi": null,
+   "detail": "no covered language has a clearly positive full-precision effect (rule D-041)"
+  }
+ ],
+ "context": [
+  {
+   "precision": "FP",
+   "point": -0.00010020017050789068,
+   "lo": -0.003493111151784929,
+   "hi": 0.003111876142835262,
+   "median": 0.00013764160316210775,
+   "n_positive": 10,
+   "n_covered": 18
+  },
+  {
+   "precision": "INT8",
+   "point": 7.731205150873103e-05,
+   "lo": -0.003223753599441835,
+   "hi": 0.0033031151018221923,
+   "median": -0.0010981326521649912,
+   "n_positive": 8,
+   "n_covered": 18
+  },
+  {
+   "precision": "INT7",
+   "point": -0.0006608743125471112,
+   "lo": -0.0038104940764491575,
+   "hi": 0.0024366055410323744,
+   "median": 0.0008679695517412599,
+   "n_positive": 9,
+   "n_covered": 18
+  },
+  {
+   "precision": "INT6",
+   "point": -0.0012440630115862802,
+   "lo": -0.004460685964030374,
+   "hi": 0.0019244984011764566,
+   "median": -0.0016769125339748316,
+   "n_positive": 8,
+   "n_covered": 18
+  },
+  {
+   "precision": "INT5",
+   "point": -0.006586938068416482,
+   "lo": -0.010237658966615801,
+   "hi": -0.0030730845338469556,
+   "median": -0.006470156174000737,
+   "n_positive": 6,
+   "n_covered": 18
+  },
+  {
+   "precision": "INT4",
+   "point": 0.004225760571047173,
+   "lo": 0.0003411844147321145,
+   "hi": 0.008148539729119445,
+   "median": 0.010440179932638727,
+   "n_positive": 10,
+   "n_covered": 18
+  }
+ ],
+ "complete": true,
+ "missing_precisions": []
+}

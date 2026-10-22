@@ -176,7 +176,14 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Options.** (a) default: freeze and run T-MC as designed (K64, preset `mc_eval`, all 385 items, statements 0 to 5 of Q19) and report the outcome as it comes (the confirmatory statement 0 is likely not met, retention is undefined where the full-precision effect is not clearly positive, INT4 has no headroom); add the K sensitivity that the design requires with a null as an exploratory run: K = all (about 1,700 features at most) with its matched controls at full precision (and INT6 if cheap), through a derived manifest on the unchanged frozen runner (the same device as F4), committed before the T-MC freeze; (b) stop after the pilot and report it as the finding (saves about 11 GPU hours; no confirmatory family); (c) amend the design before the freeze (a larger primary K, or a different harm such as the per-option log-likelihood of the correct answer text): possible, but it is a change of the pre-fixed estimand made after seeing pilot numbers and has to be your decision.
 - **Default:** (a).
 - ANSWER:
-- STATUS: open (default applied)
+- STATUS: open (default (a) in progress: the T-MC family was run as frozen on 2026-10-22/23, S0 not met and S1 to S5 undefined (D-050); the exploratory K = all Belebele run is queued next)
+
+## Q21. Archive the item-level result files of the functional study to the private Hugging Face dataset?  [LOW, not blocking, needs your go-ahead because it uploads]
+- **Context.** The functional study (D-039 to D-051) produced item-level result files (per sentence or per item scores of every configuration and precision): the held-out loss evaluation (`func_lm_eval_<precision>.pt`, about 2.3 MB each for the main ladder, the floor and the rescue jobs), the F4 jobs (about 0.6 MB each) and the Belebele evaluation (`func_mc_eval_letter_<precision>.pt`, about 2.2 MB each, six files). They exist only on Ada (`/home2/karma/duan-verify/out/phase1/func-*`) and in the session scratchpad; the repository holds the analyses and figures derived from them, not the files (large artifacts are not committed). Anyone who wants to re-run the analyses or check a number needs them.
+- **Options.** (a) default: when you agree, upload them (about 40 MB in total) to the PRIVATE dataset with `scripts/g0/hf_artifacts.py upload` after extending `reports/g0/hf_artifact_spec.json`, run `verify` until it prints `"ok": true`, and record them in `reports/artifacts.md`; nothing is deleted and the dataset stays private; (b) keep them on Ada only and record their paths and sha256 in a file in the repository (no upload); (c) do nothing.
+- **Default:** (a) after your answer; until then (b) is done by the routine (a checksum list in `reports/functional_validation/` is cheap and needs no upload).
+- ANSWER:
+- STATUS: open
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.

@@ -127,3 +127,11 @@ Paragraphs removed from the front-page documents `README.md`, `PLAN.md` and `PRO
 ```text
 **Scope update, 2026-10-21 (D-028):** the study now uses `mask` only. Do not launch or extend `none` work, including sensitivity analyses, or run further Duan numerical comparisons. Historical commands and cached reproduction tooling remain available for provenance; their existence does not put retired work back in scope. Q5 and Q9 are closed without execution. Q15's expanded question is adopted under D-034; its exact run remains to be designed. Other unanswered runs remain separate and must be mask-only. This overrides older two-regime and Duan-baseline requirements below.
 ```
+
+## HANDOFF.md, the banner line of 2026-10-22 (superseded 2026-10-23 by the pointer to handoff 028)
+
+*Reason:* the line named handoff 027 as the latest and described the state of 2026-10-22 15:45; the state is in STATUS.md and handoff 028. Verbatim:
+
+```text
+> **Latest handoff: [027 -- loss-task evaluation ladder complete (INT8 to INT4), F4 INT4 queued, Belebele pilot running](reports/handoffs/027-2026-10-22-eval-ladder-complete-f4-queued.md).** Earlier: [026](reports/handoffs/026-2026-10-22-eval-ladder-done-calibration-running.md), [025](reports/handoffs/025-2026-10-22-chat-end-functional-study-midrun.md) (the work loop, history). The 40-minute cron job is active (entries and recipe: [`reports/functional_validation/cron_prompt.md`](reports/functional_validation/cron_prompt.md); current state: [`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md)). Earlier: [022](reports/handoffs/022-2026-10-21-q16-functional-validation-selected.md) (Q16 selected), 023 and 024 (design, code, pilot).
+```

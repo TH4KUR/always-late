@@ -626,6 +626,21 @@ class F4Figure(unittest.TestCase):
         self.assertLess(notes["less"].get_position()[0], 0.5); self.assertGreater(notes["more"].get_position()[0], 0.5)       # left and right of the zero line, in the empty gap row above the languages
         self.assertEqual((notes["less"].get_position()[1], notes["more"].get_position()[1]), (3.0, 3.0))
 
+    def test_the_extreme_value_labels_clear_the_full_precision_interval_of_their_row_as_well(self):
+        # found by looking at the INT6 render: the label of the left extreme sat on the gray full-precision interval, which reached further out than the native one
+        r = planted_f4(); r["per_language"]["aa"]["E_fp"] = {"point": -0.5, "lo": -0.6, "hi": -0.4}; r["per_language"]["bb"]["E_fp"] = {"point": 0.25, "lo": 0.2, "hi": 0.3}
+        ax = ff.fig_f4(r, "light", "x").axes[0]; pos = {t.get_text(): t for t in by_gid(ax, "label")}
+        self.assertLess(pos["-0.3"].get_position()[0], -0.6); self.assertEqual(pos["-0.3"].get_ha(), "right")        # left of the lower end of the wider of the two intervals
+        self.assertGreater(pos["+0.05"].get_position()[0], 0.3); self.assertEqual(pos["+0.05"].get_ha(), "left")      # right of the upper end of the wider of the two intervals
+
+    def test_a_label_next_to_a_small_interval_is_offset_by_a_fixed_step_not_only_by_a_factor(self):
+        r = planted_f4()
+        for c, (b, lo, hi) in (("aa", (-0.004, -0.005, -0.003)), ("bb", (0.004, 0.003, 0.005))):
+            r["per_language"][c]["E_b"] = {"point": b, "lo": lo, "hi": hi}; r["per_language"][c]["E_fp"] = {"point": b, "lo": lo, "hi": hi}
+        r["per_language"]["cc"]["E_b"] = {"point": 0.0, "lo": -0.001, "hi": 0.001}; r["per_language"]["cc"]["E_fp"] = {"point": 0.0, "lo": -0.001, "hi": 0.001}
+        ax = ff.fig_f4(r, "light", "x").axes[0]; pos = {t.get_text(): t.get_position()[0] for t in by_gid(ax, "label")}
+        self.assertLessEqual(pos["-0.004"], -0.005 - 0.0015); self.assertGreaterEqual(pos["+0.004"], 0.005 + 0.0015)             # a factor alone would give 0.0006 of room
+
     def test_the_gap_row_has_no_tick_and_the_extreme_labels_stay_inside_the_axis_with_room_to_spare(self):
         ticks = self.ax.yaxis.get_major_ticks()
         self.assertEqual([tk.tick1line.get_visible() for tk in ticks], [True, True, True, False, True, True])

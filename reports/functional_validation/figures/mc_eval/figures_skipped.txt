@@ -1,0 +1,1 @@
+fig2_retention, fig5_association_vs_function: skipped because the macro retention rests on fewer than 3 languages at INT4 (0), INT5 (0), INT6 (0), INT7 (0), INT8 (0) (languages with a clearly positive full-precision effect); the counts are in table_retention.
