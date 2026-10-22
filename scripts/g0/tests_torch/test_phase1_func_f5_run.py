@@ -479,6 +479,45 @@ class RealRunHelpers(unittest.TestCase):
         for n in (None, 10, 99):
             self.assertEqual(len(r5.sample_arrays(self.SAMPLE, max_features=n)[0]), 10)
 
+    SAMPLE2 = {"languages": ["aa", "bb"], "features": {
+        **{str(i): {"language": "aa", "roles": ["k64"]} for i in range(100, 110)}, **{str(i): {"language": "aa", "roles": ["lost@INT4"]} for i in range(200, 206)},
+        **{str(i): {"language": "aa", "roles": ["k64", "retained@INT4"]} for i in range(300, 304)}, **{str(i): {"language": "bb", "roles": ["k64"]} for i in range(400, 403)},
+        **{str(i): {"language": "bb", "roles": ["lost@INT4", "retained@INT5"]} for i in range(500, 512)}}}
+
+    @staticmethod
+    def cells(sample):
+        out = {}
+        for k, f in sample["features"].items():
+            for r in f["roles"]:
+                out.setdefault((f["language"], r), []).append(int(k))
+        return out
+
+    def test_a_per_cell_cap_keeps_at_most_that_many_features_per_language_and_role_by_a_hash_order(self):
+        import hashlib
+        ids, groups = r5.sample_arrays(self.SAMPLE2, per_cell=3, seed=7); kept = set(ids.tolist()); key = lambda i: hashlib.sha256(f"7:{i}".encode()).hexdigest()
+        want = set()
+        for cell, members in self.cells(self.SAMPLE2).items():
+            want |= set(sorted(members, key=key)[:3])
+        self.assertEqual(kept, want); self.assertEqual(ids.tolist(), sorted(ids.tolist()))
+
+    def test_cells_smaller_than_the_cap_are_kept_whole_and_the_languages_follow_the_features(self):
+        ids, groups = r5.sample_arrays(self.SAMPLE2, per_cell=50)
+        self.assertEqual(len(ids), len(self.SAMPLE2["features"])); langs = {int(i): g for i, g in zip(ids.tolist(), groups.tolist())}
+        self.assertEqual(langs[100], 0); self.assertEqual(langs[400], 1); self.assertEqual(langs[505], 1)
+
+    def test_the_subset_is_deterministic_and_changes_with_the_seed(self):
+        a = r5.sample_arrays(self.SAMPLE2, per_cell=2, seed=0)[0].tolist(); b = r5.sample_arrays(self.SAMPLE2, per_cell=2, seed=0)[0].tolist(); c = r5.sample_arrays(self.SAMPLE2, per_cell=2, seed=1)[0].tolist()
+        self.assertEqual(a, b); self.assertNotEqual(a, c)
+
+    def test_a_cap_and_a_feature_limit_combine_cap_first(self):
+        capped = r5.sample_arrays(self.SAMPLE2, per_cell=2)[0]; both = r5.sample_arrays(self.SAMPLE2, per_cell=2, max_features=4)[0]
+        self.assertEqual(len(both), 4); self.assertTrue(set(both.tolist()) <= set(capped.tolist())); self.assertEqual(int(both[0]), int(capped[0])); self.assertEqual(int(both[-1]), int(capped[-1]))
+
+    def test_every_role_that_has_members_stays_represented_after_the_cap(self):
+        ids, groups = r5.sample_arrays(self.SAMPLE2, per_cell=1); kept = set(ids.tolist())
+        for cell, members in self.cells(self.SAMPLE2).items():
+            self.assertTrue(kept & set(members), cell)
+
     def test_an_unknown_language_in_the_sample_is_an_error(self):
         bad = {"languages": ["aaa"], "features": {"1": {"language": "zzz"}}}
         with self.assertRaises(ValueError):

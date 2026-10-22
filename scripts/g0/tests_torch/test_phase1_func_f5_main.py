@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -55,7 +56,7 @@ class MainRehearsal(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory(); tmp = Path(cls.tmp.name); cls.out = tmp / "out"
         cls.codes = ["l0", "l1", "l2"]; cls.model = ToyTL(); cls.sae = ToySAE(); cls.sae.cfg = types.SimpleNamespace(hook_name="blocks.12.hook_resid_post", d_in=D, d_sae=F)
         (tmp / "roster.json").write_text(json.dumps({"codes": cls.codes}))
-        cls.ids = list(range(0, F, 2)); (tmp / "sample.json").write_text(json.dumps({"languages": cls.codes, "features": {str(f): {"language": cls.codes[f % 3]} for f in cls.ids}}))
+        cls.ids = list(range(0, F, 2)); (tmp / "sample.json").write_text(json.dumps({"languages": cls.codes, "features": {str(f): {"language": cls.codes[f % 3], "roles": ["k64"]} for f in cls.ids}}))
         (tmp / "manifest.json").write_text(json.dumps({"functions": {}}))
         (tmp / "freeze.json").write_text(json.dumps({"ids": {"n_total": 1012, "n_pilot": 150, "n_eval": 300, "seed": 0, "eval_ids": ft.lm_ids(1012, 150, 300, 0)["eval"]}}))
         cls.stubs = cls.make_stubs(tmp, cls.model, cls.sae)
@@ -156,6 +157,15 @@ class MainRehearsal(unittest.TestCase):
         argv = list(self.args); i = argv.index("--states"); del argv[i:i + 5]; argv[argv.index("--out") + 1] = str(Path(self.tmp.name) / "out6"); argv += ["--max-features", "6"]
         self.run_main(argv, self.stubs); m = json.loads((Path(self.tmp.name) / "out6" / "meta_f5.json").read_text()); self.assertEqual(m["states"], ["FP", "FP_rebatched", "INT16", "INT8", "INT6", "INT5", "INT4"])
         self.assertTrue((Path(self.tmp.name) / "out6" / "f5_state_INT16.pt").exists())
+
+
+    def test_a_per_cell_cap_gives_a_stratified_subset_and_is_recorded(self):
+        argv = list(self.args); argv[argv.index("--out") + 1] = str(Path(self.tmp.name) / "out7"); i = argv.index("--states"); argv[i + 1:i + 5] = ["FP"]; argv += ["--per-cell", "2", "--subset-seed", "5"]
+        self.run_main(argv, self.stubs); o = Path(self.tmp.name) / "out7"; m = json.loads((o / "meta_f5.json").read_text()); st = torch.load(o / "f5_stage_a.pt", weights_only=False)
+        self.assertEqual((m["n_features"], m["per_cell"], m["subset_seed"]), (6, 2, 5)); self.assertEqual(len(st["feat_ids"]), 6)
+        sample = json.loads((Path(self.tmp.name) / "sample.json").read_text()); self.assertEqual(st["feat_ids"].tolist(), r5.sample_arrays(sample, None, 2, 5)[0].tolist())
+        self.assertNotEqual(st["feat_ids"].tolist(), r5.sample_arrays(sample, None, 2, 0)[0].tolist())
+        self.assertEqual(sorted(np.bincount(st["feat_lang"]).tolist()), [2, 2, 2])                                    # two per language (each language is one cell: the toy features have the role k64 only)
 
 
 if __name__ == "__main__":

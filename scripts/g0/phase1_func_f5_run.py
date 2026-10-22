@@ -221,13 +221,25 @@ def make_upper_final(model, layer):
     return lambda resid: model(resid, start_at_layer=layer + 1, stop_at_layer=model.cfg.n_layers)
 
 
-def sample_arrays(sample, max_features=None):
-    """(feature ids [n] sorted ascending, language index [n] in the sample's language order) of the F5 sample; max_features keeps that many evenly spaced features (first and last included; for smoke tests)."""
+def sample_arrays(sample, max_features=None, per_cell=None, seed=0):
+    """(feature ids [n] sorted ascending, language index [n] in the sample's language order) of the F5 sample. per_cell: keep at most that many features per (language, role) cell, the first ones in the order of
+    sha256(seed:feature id), a feature being kept when it is among them in any of its cells (every role that has members stays represented); max_features: then keep that many evenly spaced features (first and
+    last included; smoke tests)."""
+    import hashlib
     import numpy as np
     langs = list(sample["languages"]); ids = sorted(int(k) for k in sample["features"]); feats = sample["features"]
     for k, f in feats.items():
         if f["language"] not in langs:
             raise ValueError(f"feature {k} has the language {f['language']}, which is not in the sample's roster")
+    if per_cell is not None:
+        cells = {}
+        for i in ids:
+            for r in feats[str(i)]["roles"]:
+                cells.setdefault((feats[str(i)]["language"], r), []).append(i)
+        keep = set()
+        for members in cells.values():
+            keep |= set(sorted(members, key=lambda i: hashlib.sha256(f"{seed}:{i}".encode()).hexdigest())[:per_cell])
+        ids = sorted(keep)
     if max_features is not None and max_features < len(ids):
         keep = sorted(set(np.linspace(0, len(ids) - 1, max_features).round().astype(int).tolist())); ids = [ids[i] for i in keep]
     return torch.tensor(ids, dtype=torch.long), torch.tensor([langs.index(feats[str(i)]["language"]) for i in ids], dtype=torch.long)
@@ -322,6 +334,7 @@ def main(argv=None):
     ap.add_argument("--states", nargs="*", default=DEFAULT_STATES, help="FP first; FP_rebatched = the batching-noise floor (same weights); 16 = the weight-rounding floor (INT16 is NOT identical to FP); bit widths for RTN states")
     ap.add_argument("--M", type=int, default=16); ap.add_argument("--min-ctx", type=int, default=4); ap.add_argument("--topk", type=int, default=50); ap.add_argument("--extra-pad", type=int, default=3)
     ap.add_argument("--dev-sentences", type=int, default=997, help="FLORES dev sentences per language that are candidate contexts"); ap.add_argument("--max-eval", type=int, help="use only the first n frozen evaluation sentences (smoke)")
+    ap.add_argument("--per-cell", type=int, help="keep at most this many features per (language, role) cell of the sample, chosen by a seeded hash order (the stratified subset for a cheaper full run)"); ap.add_argument("--subset-seed", type=int, default=0)
     ap.add_argument("--max-features", type=int, help="evenly spaced subset of the sample (smoke)"); ap.add_argument("--work-dtype", choices=["native", "float32"], default="float32")
     ap.add_argument("--max-tokens", type=int, default=1024); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--commit", default="unknown")
     a = ap.parse_args(argv)
@@ -367,7 +380,7 @@ def main(argv=None):
 
     names = [r["code"] for r in pd_.load_roster(a.roster)]
     sample = json.loads(Path(a.sample).read_text()); assert sample["languages"] == names, "the sample was built for another language order"
-    feat_ids, groups = sample_arrays(sample, a.max_features)
+    feat_ids, groups = sample_arrays(sample, a.max_features, a.per_cell, a.subset_seed)
     freeze = json.loads(Path(a.freeze).read_text()); eval_ids = frozen_eval_ids(freeze)[:a.max_eval]
     eval_data = {}
     for i, code in enumerate(names):
@@ -393,7 +406,7 @@ def main(argv=None):
 
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sha = lambda path: hashlib.sha256(Path(path).read_bytes()).hexdigest()
-    meta = {"task": "f5", "commit": a.commit, "model": model_name, "hook": hook, "states": states, "n_features": int(len(feat_ids)), "M": a.M, "min_ctx": a.min_ctx, "topk": a.topk, "extra_pad": a.extra_pad,
+    meta = {"task": "f5", "commit": a.commit, "model": model_name, "hook": hook, "states": states, "n_features": int(len(feat_ids)), "per_cell": a.per_cell, "subset_seed": a.subset_seed, "M": a.M, "min_ctx": a.min_ctx, "topk": a.topk, "extra_pad": a.extra_pad,
             "dev_sentences_per_language": a.dev_sentences, "n_dev": len(dev), "n_eval_per_language": len(eval_ids), "work_dtype": a.work_dtype, "languages": names, "gates": gates,
             "sample_sha256": sha(a.sample), "freeze_sha256": sha(a.freeze), "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "state_seconds": {}}
 
