@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import torch
@@ -136,6 +137,27 @@ class Fingerprint(unittest.TestCase):
             torch.testing.assert_close(out["D"], want, rtol=1e-4, atol=1e-5)
             self.assertEqual(out["n_pos"], len(acts)); self.assertEqual(out["n_active_q"], len(acts))
 
+    def test_the_ablation_is_applied_in_the_work_dtype_and_not_rounded_to_the_dtype_of_the_cache(self):
+        k = next(iter(self.plan["ctx"])); d = self.sae.W_dec[self.feat[k]]; sents = self.plan["ctx"][k]; M = len(sents)
+        bf = {"resid": {s: r.to(torch.bfloat16) for s, r in self.cache["resid"].items()}, "act": self.cache["act"]}; seen = {}
+
+        def spy(x):
+            seen["x"] = x.clone(); return self.stack.upper_final(x.float())
+
+        def realized_error(work_dtype):
+            r5.fingerprint_feature(k, self.plan, bf, self.pos, d, spy, self.stack.logits_fn, V, "cpu", work_dtype=work_dtype); x = seen["x"]; err = 0.0
+            for j, s in enumerate(sents):
+                p = self.pos[(k, s)]; a = self.cache["act"][(k, s)]
+                err = max(err, float(((x[M + j, p + 1].double() - x[j, p + 1].double()) + a[:, None].double() * d[None, :].double()).abs().max()))
+            return err, x.dtype
+        e_native, dt_native = realized_error(None); e_wide, dt_wide = realized_error(torch.float32)
+        self.assertEqual(dt_native, torch.bfloat16); self.assertGreater(e_native, 1e-3)                      # the edit lost to bf16 rounding: this is what the work dtype avoids
+        self.assertEqual(dt_wide, torch.float32); self.assertLess(e_wide, 1e-5)
+
+    def test_a_sham_in_the_work_dtype_is_still_exactly_zero(self):
+        k = next(iter(self.plan["ctx"])); out = self.fp(k, sham=True, work_dtype=torch.float64)
+        self.assertEqual(float(out["D"].abs().max()), 0.0); self.assertEqual(out["dnll"], 0.0)
+
     def test_a_sham_ablation_of_amplitude_zero_changes_nothing_exactly(self):
         k = next(iter(self.plan["ctx"]))
         out = self.fp(k, sham=True)
@@ -225,7 +247,7 @@ class StatesEndToEnd(unittest.TestCase):
         cls.feat = torch.tensor([29, 3, 17, 8, 22, 1, 12, 25, 5, 30, 14, 9, 20, 7, 26, 11, 2, 19, 23, 15])
         cls.batcher = staticmethod(lambda sents, bs=6: p1.make_batches({0: sents}, BOS, "mask", 0, 256, bs))
         ma = r5.max_activation_per_sentence(cls.stack.lower, cls.sae.encode, cls.batcher(cls.dev), cls.feat, len(cls.dev))
-        sel = r5.select_contexts(ma, 5, 3); testable = [int(cls.feat[k]) for k in range(len(cls.feat)) if not bool(sel["excluded"][k])]
+        sel = r5.select_contexts(ma, 5, 3); cls.sel = sel; testable = [int(cls.feat[k]) for k in range(len(cls.feat)) if not bool(sel["excluded"][k])]
         assert len(testable) >= 8
         cls.drift_feature, cls.silent_feature = testable[1], testable[3]
         dj = cls.sae.W_dec[cls.drift_feature]; r = torch.randn(D, generator=torch.Generator().manual_seed(11)) * 3
@@ -244,12 +266,21 @@ class StatesEndToEnd(unittest.TestCase):
                 a = a * 0.5                                                                                   # every activation halved: the same features, half the scale
             return a
         cls.encode = staticmethod(encode)
-        cls.groups = (cls.feat % 3).numpy()
+        cls.groups = (cls.feat % 3).numpy(); cls.calls = []
         cls.out = r5.run_f5(["FP", "FP_rebatched", "Q", "Z", "S"], setup, cls.stack.lower, cls.stack.upper_final, cls.stack.logits_fn, encode, cls.sae.W_dec, cls.feat, cls.batcher(cls.ev), cls.dev, cls.batcher,
-                            M=5, min_ctx=3, V=V, device="cpu", topk=3, groups=cls.groups)
+                            M=5, min_ctx=3, V=V, device="cpu", topk=3, groups=cls.groups, on_state=lambda label, res: cls.calls.append((label, res)))
 
     def w(self):
         return self.out["stage_a"]["write_features"]
+
+    def test_stage_a_keeps_the_context_sentences_of_every_feature_as_indices_into_the_candidate_list(self):
+        c = self.out["stage_a"]["contexts"]; self.assertEqual(c.shape, (len(self.feat), 5))
+        np.testing.assert_array_equal(c, self.sel["contexts"].numpy()); self.assertTrue(((c >= -1) & (c < len(self.dev))).all())
+
+    def test_the_state_callback_receives_every_state_once_in_order_with_its_own_result(self):
+        self.assertEqual([c[0] for c in self.calls], ["FP", "FP_rebatched", "Q", "Z", "S"])
+        for label, res in self.calls:
+            self.assertIs(res, self.out["states"][label])
 
     def test_the_stage_a_result_lists_the_tested_and_the_excluded_features_by_feature_id(self):
         a = self.out["stage_a"]; self.assertEqual(len(a["write_features"]) + int(a["excluded"].sum()), len(self.feat)); self.assertGreaterEqual(len(a["write_features"]), 8)
@@ -306,9 +337,9 @@ class StatesEndToEnd(unittest.TestCase):
         s = self.out["states"]["S"]["write"]; self.assertEqual(float(s["magnitude_ratio"][self.w().index(self.silent_feature)]), 0.0)
 
     def test_the_floor_state_is_presented_reversed_and_padded_and_the_others_are_not(self):
-        calls = []; orig = r5.fingerprint_feature
+        calls, sham = [], []; orig = r5.fingerprint_feature
         def spy(*a, **kw):
-            calls.append((kw.get("reverse"), kw.get("extra_pad")))
+            (sham if kw.get("sham") else calls).append((kw.get("reverse"), kw.get("extra_pad")))
             return orig(*a, **kw)
         r5.fingerprint_feature = spy
         try:
@@ -317,6 +348,7 @@ class StatesEndToEnd(unittest.TestCase):
         finally:
             r5.fingerprint_feature = orig
         n = len(self.w()); self.assertEqual(calls[:n], [(False, 0)] * n); self.assertEqual(calls[n:], [(True, 3)] * n)
+        self.assertEqual(len(sham), 2)                                                                        # the sham gate (two features, in full precision) is not a state measurement
 
     def test_stage_a_always_runs_in_full_precision_whatever_state_the_model_was_left_in(self):
         self.setup("S")                                                                                      # the model is left in the state with a silent feature
@@ -363,6 +395,173 @@ class ExcludedFeaturesShiftTheRows(unittest.TestCase):
         wi = self.out["states"]["FP"]["write"]["retrieval"]["within"]
         self.assertAlmostEqual(wi["chance"], float((1.0 / sizes).mean()), places=12); self.assertEqual(wi["n_singletons"], int(len(g) - len(sizes)))
         self.assertEqual(wi["n_queries"] + wi["n_singletons"], len(rows))
+
+class FakeFinal:
+    """The attributes of a HookedTransformer that the float32 logits use: ln_final.w, unembed.W_U and b_U, cfg.eps and cfg.output_logits_soft_cap."""
+    def __init__(self, d=8, V=20, cap=30.0, dtype=torch.float32, seed=0):
+        g = torch.Generator().manual_seed(seed)
+        self.ln_final = SimpleNamespace(w=(torch.randn(d, generator=g) * 0.3 + 1.0).to(dtype))
+        self.unembed = SimpleNamespace(W_U=(torch.randn(d, V, generator=g) * 3).to(dtype), b_U=(torch.randn(V, generator=g) * 0.7).to(dtype))
+        self.cfg = SimpleNamespace(eps=1e-6, output_logits_soft_cap=cap, n_layers=26)
+
+
+def reference_logits(m, h):
+    h = h.double(); n = h / torch.sqrt((h ** 2).mean(-1, keepdim=True) + m.cfg.eps) * m.ln_final.w.double()
+    z = n @ m.unembed.W_U.double() + m.unembed.b_U.double(); cap = m.cfg.output_logits_soft_cap
+    return cap * torch.tanh(z / cap) if cap else z
+
+
+class FinalLogitsTests(unittest.TestCase):
+    def test_float32_logits_equal_the_float64_closed_form_of_final_norm_unembedding_and_soft_cap(self):
+        m = FakeFinal(); h = torch.randn(11, 8) * 40
+        np.testing.assert_allclose(r5.make_logits_fn(m)(h).double().numpy(), reference_logits(m, h).numpy(), atol=2e-5)
+
+    def test_the_norm_epsilon_matters_for_a_hidden_state_of_tiny_scale_and_is_the_models(self):
+        m = FakeFinal(); h = torch.randn(7, 8) * 1e-3
+        np.testing.assert_allclose(r5.make_logits_fn(m)(h).double().numpy(), reference_logits(m, h).numpy(), atol=2e-5)
+        m.cfg.eps = 1e-2; np.testing.assert_allclose(r5.make_logits_fn(m)(h).double().numpy(), reference_logits(m, h).numpy(), atol=2e-5)
+
+    def test_the_vocabulary_is_processed_in_slices_with_the_same_result(self):
+        m = FakeFinal(V=20); h = torch.randn(5, 8); want = reference_logits(m, h).numpy()
+        for chunk in (1, 3, 7, 19, 20, 64):
+            np.testing.assert_allclose(r5.make_logits_fn(m, vocab_chunk=chunk)(h).double().numpy(), want, atol=2e-5, err_msg=f"chunk {chunk}")
+        self.assertEqual(tuple(r5.make_logits_fn(m, vocab_chunk=7)(h).shape), (5, 20))
+
+    def test_the_output_is_float32_even_for_bfloat16_parameters_and_input_and_uses_their_values_exactly(self):
+        m = FakeFinal(dtype=torch.bfloat16); h = (torch.randn(5, 8) * 40).to(torch.bfloat16); z = r5.make_logits_fn(m)(h)
+        self.assertEqual(z.dtype, torch.float32)
+        np.testing.assert_allclose(z.double().numpy(), reference_logits(m, h).numpy(), atol=5e-5)
+
+    def test_the_soft_cap_bounds_the_logits_and_is_absent_when_the_cap_is_none_or_zero(self):
+        h = torch.randn(40, 8)
+        big = FakeFinal(cap=30.0); big.unembed.W_U = big.unembed.W_U * 6                                           # the norm removes the input scale: the unembedding makes the logits large
+        self.assertLess(float(r5.make_logits_fn(big)(h).abs().max()), 30.0 + 1e-4)
+        for cap in (None, 0.0):
+            m = FakeFinal(cap=cap); m.unembed.W_U = m.unembed.W_U * 6; z = r5.make_logits_fn(m)(h)
+            self.assertGreater(float(z.abs().max()), 30.0); np.testing.assert_allclose(z.double().numpy(), reference_logits(m, h).numpy(), rtol=1e-5, atol=1e-3)
+
+    def test_the_parameters_are_read_when_the_function_is_called_not_when_it_is_made(self):
+        m = FakeFinal(); h = torch.randn(4, 8); fn = r5.make_logits_fn(m); before = fn(h).clone()
+        m.unembed.W_U = m.unembed.W_U * 0.5                                         # a quantizer or a state restore replaces the parameter data
+        np.testing.assert_allclose(fn(h).double().numpy(), reference_logits(m, h).numpy(), atol=2e-5); self.assertFalse(torch.allclose(fn(h), before))
+
+    def test_the_input_is_not_modified_and_the_row_order_is_kept(self):
+        m = FakeFinal(); h = torch.randn(6, 8); h0 = h.clone(); fn = r5.make_logits_fn(m); z = fn(h)
+        self.assertTrue(torch.equal(h, h0)); self.assertTrue(torch.allclose(fn(h[[3, 1]]), z[[3, 1]], atol=1e-6))
+
+
+class UpperFinalSpy(unittest.TestCase):
+    def test_the_upper_half_starts_after_the_hooked_layer_and_stops_before_the_final_norm(self):
+        calls = []
+
+        class Model:
+            cfg = SimpleNamespace(n_layers=26)
+
+            def __call__(self, x, **kw):
+                calls.append(kw); return x + 1
+        out = r5.make_upper_final(Model(), 12)(torch.zeros(2, 3, 4))
+        self.assertEqual(calls, [{"start_at_layer": 13, "stop_at_layer": 26}]); self.assertTrue(torch.equal(out, torch.ones(2, 3, 4)))
+
+
+class RealRunHelpers(unittest.TestCase):
+    SAMPLE = {"languages": ["aaa", "bbb", "ccc"], "features": {"30": {"language": "ccc"}, "4": {"language": "aaa"}, "17": {"language": "bbb"}, "9": {"language": "aaa"}, "250": {"language": "ccc"},
+                                                                    "11": {"language": "bbb"}, "3": {"language": "aaa"}, "88": {"language": "ccc"}, "61": {"language": "bbb"}, "7": {"language": "aaa"}}}
+
+    def test_the_sample_arrays_are_the_sorted_feature_ids_with_the_language_index_of_each(self):
+        ids, groups = r5.sample_arrays(self.SAMPLE)
+        self.assertEqual(ids.tolist(), [3, 4, 7, 9, 11, 17, 30, 61, 88, 250]); self.assertEqual(groups.tolist(), [0, 0, 0, 0, 1, 1, 2, 1, 2, 2])
+
+    def test_a_feature_limit_takes_evenly_spaced_features_including_the_first_and_the_last(self):
+        ids, groups = r5.sample_arrays(self.SAMPLE, max_features=4); full, fg = r5.sample_arrays(self.SAMPLE)
+        self.assertEqual(len(ids), 4); self.assertEqual(int(ids[0]), 3); self.assertEqual(int(ids[-1]), 250); self.assertEqual(ids.tolist(), sorted(ids.tolist()))
+        for i, g in zip(ids.tolist(), groups.tolist()):
+            self.assertEqual(g, int(fg[full.tolist().index(i)]))
+        for n in (None, 10, 99):
+            self.assertEqual(len(r5.sample_arrays(self.SAMPLE, max_features=n)[0]), 10)
+
+    def test_an_unknown_language_in_the_sample_is_an_error(self):
+        bad = {"languages": ["aaa"], "features": {"1": {"language": "zzz"}}}
+        with self.assertRaises(ValueError):
+            r5.sample_arrays(bad)
+
+    def test_the_frozen_evaluation_ids_are_read_from_the_freeze_and_checked_against_the_recomputation(self):
+        import phase1_func_tasks as ft
+        good = {"ids": {"n_total": 1012, "n_pilot": 150, "n_eval": 300, "seed": 0, "eval_ids": ft.lm_ids(1012, 150, 300, 0)["eval"]}}
+        self.assertEqual(r5.frozen_eval_ids(good), good["ids"]["eval_ids"])
+        bad = {"ids": dict(good["ids"], eval_ids=good["ids"]["eval_ids"][:-1] + [5000])}
+        with self.assertRaises(ValueError):
+            r5.frozen_eval_ids(bad)
+
+    def test_the_logit_agreement_gate_passes_for_noise_and_fails_for_another_function(self):
+        z = torch.randn(200, 50) * 5; noisy = z + torch.randn_like(z) * 0.05
+        g = r5.logit_agreement(z, noisy, min_top1=0.97, max_abs=1.0); self.assertTrue(g["ok"]); self.assertGreater(g["top1"], 0.97)
+        other = r5.logit_agreement(z, torch.randn(200, 50) * 5, min_top1=0.97, max_abs=1.0); self.assertFalse(other["ok"])
+        self.assertFalse(r5.logit_agreement(z, z + 3.0 * torch.sign(torch.randn_like(z)), min_top1=0.0, max_abs=1.0)["ok"])
+        flat = torch.randn(200, 50) * 0.1                                              # nearly flat logits: a small absolute difference still changes the top-1 token
+        self.assertFalse(r5.logit_agreement(flat, flat + torch.randn_like(flat) * 0.5, min_top1=0.97, max_abs=10.0)["ok"])
+
+    def test_the_sham_gate_requires_exactly_zero_everywhere(self):
+        self.assertTrue(r5.sham_is_exact({"D": torch.zeros(5), "dnll": 0.0})); self.assertFalse(r5.sham_is_exact({"D": torch.tensor([0, 0, 1e-12, 0, 0.0]), "dnll": 0.0}))
+        self.assertFalse(r5.sham_is_exact({"D": torch.zeros(5), "dnll": 1e-15}))
+
+class GateAndCallbacks(unittest.TestCase):
+    """The sham gate of run_f5 (a sham ablation of the first tested features must give exactly zero in full precision), the stage-A callback and the work dtype."""
+    @classmethod
+    def setUpClass(cls):
+        cls.stack = ToyStack(linear=True); cls.sae = ToySAE(); cls.dev = sentences(80, seed=5); cls.ev = sentences(30, seed=6)
+        cls.feat = torch.tensor([29, 3, 17, 8, 22, 1, 12, 25, 5, 30, 14, 9]); cls.batcher = staticmethod(lambda sents, bs=6: p1.make_batches({0: sents}, BOS, "mask", 0, 256, bs))
+
+    def run_(self, logits_fn=None, upper_final=None, **kw):
+        return r5.run_f5(["FP"], lambda label: None, self.stack.lower, upper_final or self.stack.upper_final, logits_fn or self.stack.logits_fn, self.sae.encode, self.sae.W_dec, self.feat,
+                         self.batcher(self.ev), self.dev, self.batcher, M=5, min_ctx=3, V=V, device="cpu", topk=3, **kw)
+
+    def test_the_sham_gate_runs_on_the_first_tested_features_and_is_recorded(self):
+        out = self.run_(); g = out["stage_a"]["sham_gate"]; w = out["stage_a"]["write_features"]
+        self.assertEqual([x["feature"] for x in g], w[:2]); self.assertTrue(all(x["exact"] for x in g))
+        self.assertEqual(len(self.run_(sham_gate=3)["stage_a"]["sham_gate"]), 3); self.assertEqual(self.run_(sham_gate=0)["stage_a"]["sham_gate"], [])
+
+    def test_the_gate_stops_the_run_when_baseline_and_ablated_rows_do_not_agree_exactly(self):
+        calls = {"n": 0}
+
+        def noisy(h):
+            calls["n"] += 1; return self.stack.logits_fn(h) + 1e-4 * calls["n"] * torch.linspace(-1, 1, V)                # a different vocabulary-dependent offset at every call: baseline and ablated logits cannot agree
+        with self.assertRaises(r5.GateError):
+            self.run_(logits_fn=noisy)
+        calls["n"] = 0; self.run_(logits_fn=noisy, sham_gate=0)                                                       # with the gate off the same stack runs
+
+    def test_the_gate_stops_the_run_when_only_the_second_gate_feature_is_inexact(self):
+        calls = {"n": 0}
+
+        def noisy_once(h):
+            calls["n"] += 1                                                                                             # calls 1 and 2: baseline and ablated rows of the first gate feature; 3 and 4: of the second
+            return self.stack.logits_fn(h) + (1e-4 * torch.linspace(-1, 1, V) if calls["n"] == 4 else 0.0)
+        with self.assertRaises(r5.GateError) as cm:
+            self.run_(logits_fn=noisy_once)
+        self.assertIn(f"features [{self.run_(sham_gate=0)['stage_a']['write_features'][1]}]:", str(cm.exception))             # only the inexact one is named
+
+    def test_the_stage_a_callback_is_called_once_before_any_state(self):
+        events = []
+        r5.run_f5(["FP", "FP_rebatched"], lambda label: None, self.stack.lower, self.stack.upper_final, self.stack.logits_fn, self.sae.encode, self.sae.W_dec, self.feat, self.batcher(self.ev), self.dev,
+                  self.batcher, M=5, min_ctx=3, V=V, device="cpu", topk=3, on_stage_a=lambda sa: events.append(("A", sa)), on_state=lambda label, res: events.append((label, res)))
+        self.assertEqual([e[0] for e in events], ["A", "FP", "FP_rebatched"]); self.assertIn("write_features", events[0][1]); self.assertIn("sham_gate", events[0][1])
+
+    def test_the_work_dtype_reaches_the_upper_half(self):
+        seen = []
+
+        def spy(x):
+            seen.append(x.dtype); return self.stack.upper_final(x)
+        self.run_(upper_final=spy, work_dtype=torch.float64); self.assertTrue(seen); self.assertTrue(all(d == torch.float64 for d in seen))
+        seen.clear(); self.run_(upper_final=spy); self.assertTrue(all(d == torch.float32 for d in seen))
+
+class StateLabels(unittest.TestCase):
+    def test_labels_are_normalised_and_the_quantizer_bits_are_extracted(self):
+        self.assertEqual([r5.state_label(x) for x in ("FP", "FP_rebatched", "8", "INT6", "16")], ["FP", "FP_rebatched", "INT8", "INT6", "INT16"])
+        self.assertEqual([r5.state_bits(x) for x in ("FP", "FP_rebatched", "INT8", "INT4")], [None, None, 8, 4])
+
+    def test_nonsense_labels_are_rejected(self):
+        for bad in ("fp", "INT", "INT0", "INT-4", "FP8", "", "4.5", "int6", "INT06", "INT1", "1", "0"):
+            with self.assertRaises(ValueError, msg=bad):
+                r5.state_label(bad)
 
 
 if __name__ == "__main__":
