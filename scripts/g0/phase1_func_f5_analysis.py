@@ -442,9 +442,10 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="F5 analysis: tables, numerical floor, negative control and the validity statements S1 to S3 from the files of the runner (one or more job directories).")
     ap.add_argument("--run", action="append", required=True, help="a job directory of phase1_func_f5_run.py (repeat for several jobs)"); ap.add_argument("--sample", default=str(ROOT / "reports/functional_validation/f5/f5_sample.json"))
     ap.add_argument("--out", required=True); ap.add_argument("--n-boot", type=int, default=2000); ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--figures", nargs="*", default=[], help="paths of figures (relative to the report) to link in report.md")
     a = ap.parse_args(argv)
     sa, states, meta = load_runs(a.run); sample = json.loads(Path(a.sample).read_text())
-    res = analyse_f5(sa, states, sample, meta=meta, n_boot=a.n_boot, seed=a.seed); write_outputs(res, a.out)
+    res = analyse_f5(sa, states, sample, meta=meta, n_boot=a.n_boot, seed=a.seed); write_outputs(res, a.out, a.figures)
     print("wrote", a.out, "| states", sorted(res["tables"]), "| floor", round(res["floor"]["tau"], 4), "from", res["floor"]["source"], "| overall:", res["validity"]["overall"])
 
 

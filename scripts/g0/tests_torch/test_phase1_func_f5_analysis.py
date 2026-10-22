@@ -461,9 +461,9 @@ class Main(unittest.TestCase):
             save_run(w, a, ["FP", "FP_rebatched", "INT8"]); save_run(w, b, ["FP", "INT6", "INT5", "INT4"]); (Path(o) / "sample.json").write_text(json.dumps(w[2]))
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                an.main(["--run", a, "--run", b, "--sample", str(Path(o) / "sample.json"), "--out", str(Path(o) / "res"), "--n-boot", "40"])
+                an.main(["--run", a, "--run", b, "--sample", str(Path(o) / "sample.json"), "--out", str(Path(o) / "res"), "--n-boot", "40", "--figures", "../figures/f5/f5_fig3_statements_light.png"])
             self.assertEqual(sorted(p.name for p in (Path(o) / "res").iterdir()), ["f5_results.json", "f5_tables.csv", "report.md", "statements.md"])
-            self.assertIn("supported", buf.getvalue()); j = json.loads((Path(o) / "res" / "f5_results.json").read_text()); self.assertEqual(j["instrument"]["runs"], [str(a), str(b)])
+            self.assertIn("(../figures/f5/f5_fig3_statements_light.png)", (Path(o) / "res" / "report.md").read_text()); self.assertIn("supported", buf.getvalue()); j = json.loads((Path(o) / "res" / "f5_results.json").read_text()); self.assertEqual(j["instrument"]["runs"], [str(a), str(b)])
 
 class Sharpening(unittest.TestCase):
     @classmethod
