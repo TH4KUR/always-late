@@ -1,0 +1,70 @@
+# Design: does feature X do the same thing after quantization? (F5, feature-function equivalence and the validity of the survival metric)
+
+Date: 2026-10-23. Owner: Claude. Status: design written before any code; hypotheses and thresholds are proposals (Q23) and fixed in the plan before the first number is computed. Origin: the user's instruction of 2026-10-23: "we should work towards establishing whether feature X still performs the same function pre and post quantization. That would tell us whether our feature survival rate metric is even sensible or not. It would make no sense to calculate feature survival the way we are if the features themselves don't perform the same functions after each quantization." Related: [functional-validation design](2026-10-21-functional-validation-design.md) (F1 to F4, B), [plan](../plans/2026-10-21-functional-validation.md) Tasks 10 to 14, decisions D-052 and D-053, review items Q22 and Q23.
+
+## 1. The question and why it matters
+
+A fixed SAE is trained once, on the full-precision (FP) model. Every "survival" number in this project and in the work we replicate asks whether feature *f* of that SAE still behaves as it did when the same SAE is applied to the activations of a quantized model *b*. The reading is only meaningful if the SAE basis still means the same thing in *b*: if the encoder direction of *f* still picks out the same information (read side) **and** the decoder direction of *f* still has the same downstream consequences (write side). Quantization changes the weights of every block, including those that produce the layer-12 residual and those that consume it, so neither is guaranteed. If features do not keep their function, "feature survival" counts agreement of a coordinate system that no longer means the same thing, and the survival rate would not be a sensible quantity.
+
+## 2. What the project has and has not shown (checked 2026-10-23)
+
+| quantity | what it is | status |
+|---|---|---|
+| Duan-style survival (Pearson correlation of the activations of *f* in FP and in *b* over tokens, cutoff 0.9) | read side, token level | computed in the old Phase 1 pipeline (the replication of the baseline); not the object of the current functional study |
+| D-035 association retention | read side: does *f* keep its original language as its unique, supported peak | done, 27 languages, INT8 to INT4 (70.8 % retained at INT4) |
+| Group necessity (F1, F2) | write side, **group level**: zero-ablating the K64 group harms its language beyond matched controls | done, held-out loss: preserved through INT5, amplified at INT4; **absent on Belebele (D-050)** |
+| F4 | does the D-035 status predict the *importance* of a feature at equal native activity | done: no systematic difference at INT4, INT5, INT6 (D-048, D-049, D-051) |
+| SAE fidelity (B) | does the SAE still reconstruct the quantized residual | done: median FVU 0.129 (FP) to 0.180 (INT4) |
+| **Per-feature write-side function** | does ablating *f* have the same consequences in *b* as in FP | **not done** |
+| **Per-feature read-side agreement at the token level in the current study, and its relation to write-side function** | | **not done** |
+
+Main's own reassessment already stated the gap: the implemented endpoints are "preservation of activation patterns for features selected before compression, not a demonstrated preservation of their language identity or causal role" ([reassessment, section 2](../../../reports/survival_method_reassessment.md)). F4 is related but different: it compares the *size* of an effect between feature subsets, not whether one feature's effect is the *same* effect in two models.
+
+## 3. Definitions
+
+Notation: *f* a feature of the frozen Gemma Scope layer-12 SAE (16,384 features, hook `blocks.12.hook_resid_post`), *m* a model state in {FP, INT16, INT12, INT8, INT7, INT6, INT5, INT4}, *a_f^m(t)* the activation of *f* on the residual of model *m* at token position *t* (same encoder for every *m*), *d_f* the decoder direction. `mask` regime: BOS present, never a statistic and never edited.
+
+**Read side (R).** Over the evaluation positions P (the 300 frozen devtest sentences of every language; BOS excluded):
+- R1 token-level Pearson correlation *c_f^m* of a_f^FP and a_f^m (the Duan survival basis);
+- R2 firing-set Jaccard *J_f^m* of A^FP = {t : a_f^FP(t) > 0} and A^m;
+- R3 scale ratio *s_f^m* = mean of a_f^m over positions active in both, divided by the same mean in FP;
+- R4 the D-035 status (retained / lost) at *m* (existing).
+
+**Write side (W).** For each feature, a context set C_f: the M = 16 sentences of the FLORES **dev** text (all 27 languages; selection text, never an evaluation sentence) in which a_f^FP is largest, and T_f, the positions of those sentences where a_f^FP > 0. In model *m* the single feature is zero-ablated at those positions, `x' = x - a_f^m(t) d_f` (a no-op where f is inactive in *m*; the fraction of T_f where this happens is reported: it is the read-side loss seen from the write side), the rest of the network unchanged. The effect fingerprint is the mean over T_f of the **centred logit change** at the output of that position, `D_m(f) = mean_t [ (z'_t - z_t) - mean_v (z'_t - z_t) ]` in R^V (V = 256,000; centring removes the normalisation shift of the softmax), plus the mean change of the sentence loss e_m(f).
+- W1 cosine similarity of D_FP(f) and D_m(f) (0 where D_m(f) = 0: "f does nothing in m", counted separately);
+- W2 overlap of the k = 50 most promoted tokens (largest D entries) of the two fingerprints;
+- W3 magnitude ratios ‖D_m‖ / ‖D_FP‖ and e_m / e_FP;
+- W4 **functional identity by retrieval**: the rank of *f* itself among all candidate features *g* of the sample when ordered by cos(D_FP(f), D_m(g)): top-1 accuracy and mean reciprocal rank, over all features and within a language. This asks the question the survival metric implicitly asks ("is this still feature f?") in functional terms.
+
+**Floors and negative controls.** The numerical floor: INT16 and INT12 (round-to-nearest at a width at which nothing changes) and INT8 define what "the same function" looks like when the only difference is rounding noise; τ_floor is the 5th percentile of W1 over the features at INT8 (proposal; INT16 if it is available). The negative control: cos(D_FP(f), D_m(g)) for g ≠ f matched to f in language and native activity shows what "a different function" looks like and sets the scale on which W1 is read.
+
+## 4. The sample
+
+S1: the K64 groups (the selective features of every language that matter most: the groups already used in F1 to F3). S2: the F4 subsets (`reports/functional_validation/f4/`): per language and per precision (INT6, INT5, INT4) the features whose language association was LOST and the activity-matched RETAINED features: this gives the comparison of the two survival statuses at equal native activity for free (about 3,800 features in total before overlaps). A feature enters W only if at least 8 dev sentences have it active in FP (rare features are excluded and counted); read-side statistics are computed for every feature of S1 and S2.
+
+## 5. Hypotheses and decision rules (exploratory; proposals fixed in the plan before the first number; Q23)
+
+- H5a (read side): the token-level agreement is high through INT6 and falls at INT5 and INT4 (median c_f ≥ 0.9 at INT8 to INT6), as in the baseline work and in D-035.
+- H5b (write side): W1 follows the read side but is lower than it at the same precision (output-side drift is larger than input-side drift), and at INT4 many features have W1 below τ_floor.
+- H5c (validity): the D-035 status carries functional information at equal activity: in the F4 pairs, retained features have a higher median W1 than lost ones (paired by language, two-sided).
+- **The survival metric is called sensible if, in advance-proposed terms:** (S1) at INT6, at least 80 % of the features labelled retained have W1 ≥ τ_floor; (S2) at INT4, the AUROC of the status (retained against lost) for the event W1 ≥ τ_floor in the F4 pairs is at least 0.60 with its lower cluster-bootstrap bound above 0.5; (S3) at INT5, at least 80 % of the features that "survive" by the Duan cutoff (c_f ≥ 0.9) have W1 ≥ τ_floor. If these fail, the survival label describes input-side agreement of a coordinate system and no functional claim may be built on it; if they hold, they hold for this model, this layer, this quantizer and this sample, nothing more. All numbers are reported whatever the verdict.
+
+## 6. Analysis and statistics
+
+Unit: the feature; clustering: the language (27 clusters; cluster bootstrap over languages, 2,000 draws, seed 0, percentile 95 % intervals, descriptive; the observed value is the estimate). Paired comparisons by language. Undefined values (D_FP or D_m a zero vector, too few contexts) are coded explicitly and counted, never as zero without a count. W1 and W4 are reported against the floor and the negative control, never alone. No claim of absence from a single null; sensitivity: M = 8 and 32 contexts, k = 20 and 100, a second ablation (replace a_f by its dev mean on the other languages) on a subsample.
+
+## 7. Compute
+
+One precision = one model state. Read side: one streaming pass over about 190,000 evaluation positions per precision, per-feature sufficient statistics (sums, cross-sums, active counts) accumulated on the GPU against the stored FP activations of the sample features (about 1.4 GB in CPU memory in float16): minutes per precision. Write side: per feature one batched upper-half forward over its 16 contexts with the ablation, about 500 token passes; 4,000 features is about 2 million token passes, about 25 minutes per precision at the measured 1.3 to 1.5 thousand token passes per second, about 3 hours for FP, INT16, INT12, INT8, INT6, INT5, INT4; FP fingerprints (512 KB each in float16) are kept for the in-job similarity computation and the retrieval; only compact statistics are saved. At most two Ada jobs; the frozen T-LM and T-MC files are not touched (new scripts, no change to `phase1_func_run.py`).
+
+## 8. Llama-3.2-1B as a supporting model (decision D-052; Q22)
+
+The user kept the Llama-3.2-1B model of the branch `local-final-pipeline` as a supporting model for testing our results, findings and hypotheses on a second architecture. Facts checked 2026-10-23: the SAEs `seonglae/Llama-3.2-1B-sae` are downloadable from Ada (four: trained on the model's own synthetic data (FaithfulSAE) or on FineWeb, seeds 42 and 49; TopK k = 48, 14,336 features, d_in 2048, hook `blocks.12.hook_resid_pre` of a 16-block model, trained with BOS, context 512; the branch measured FVU 0.268 at full precision, worse than Gemma's 0.129); **the model weights `meta-llama/Llama-3.2-1B` are gated and the token on Ada returns 403: access must be granted by the account owner (Q22)**. What Llama adds: (i) a second architecture and SAE family for H5a to H5c (the most valuable use: the validity of the survival metric should not be a Gemma artefact); (ii) **two independently trained SAEs per training set, so the seed-to-seed identity of features gives a second noise floor ("how different are two equally good bases") against which the quantization effect can be read**; (iii) the group-level tests (F1, F2) only for the languages that Llama 3.2 supports well (English, German, French, Italian, Portuguese, Hindi, Spanish, Thai) and with the caveat that the language-feature cohort has to be rebuilt for its SAE (D-035 pipeline). Risks: weaker SAE, gated access, a runner written for Gemma (BOS handling, hook name, TopK gate) that must be generalised without touching the frozen files.
+
+## 9. Prior art (register P39 to P42, checked 2026-10-23; see the register for status and limits)
+
+Closest: Borobia et al. (P31, pruning): geometric survival does not predict causal importance; Feature Drift (P39, base to chat models): base-SAE features keep their activation patterns but can lose their causal influence on the chat model; Gupte et al. (P40): SAEs of the original model interpret compressed models with slight degradation (abstract read; quantization-specific results not found); the single-token causal necessity study (P41): necessity of a feature under one SAE family does not transfer to another. **No work was found that tests, per feature, whether the causal function of an SAE feature is the same before and after weight quantization, nor that uses such a test to validate a survival metric**; search coverage is limited and is repeated before submission.
+
+## 10. Limits stated now
+
+One model per architecture, one layer, one quantizer (round-to-nearest per output channel), one SAE per model; the ablation is a single-feature zero ablation (necessity of the term, not sufficiency); the logit fingerprint is the immediate next-token effect at the ablated positions plus what flows through later positions of the same sentence; selection contexts are dev text; features that fire rarely cannot be tested on the write side; the survival verdict is a verdict on a metric, not on the features.

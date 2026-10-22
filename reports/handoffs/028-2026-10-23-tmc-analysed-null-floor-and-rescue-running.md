@@ -46,3 +46,12 @@ Q17 to Q20 (defaults applied or in force; Q20 default (a) is being carried out),
 ## 7. What I would check if something looks wrong
 
 `git status`, `CronList`, `squeue -u karma` over the strict-key route, `phase1_func_freeze.py verify` and `verify-mc` (torch venv), the checksums of fetched files against Ada, whether any frozen file changed after its freeze commit, and the timestamps of the log (they must come from `date`).
+
+## Addendum 2026-10-23 (the user's message, verbatim, and what it changed; the repository and STATUS.md win)
+
+> for the parallel branches, i dont think we need to merge /extensions-on-main as it clashes with what we are doing right now. i believe we, on main, are no the right track.
+> from the /local-final-pipeline we can keep the Llama-3.2-1B model as a supporting model for testing our results, findings and hypotheses.
+>
+> if we havent already, we should work towards establishing weather feature "X" still performs the same function pre and post quantizations. that would tell us weather our feature survival rate metric is even sensible or not. it would make no sense to calculate feature survival the way we are if the features themselves dont perform the same functions after each quantization.
+
+Decisions D-052 and D-053, review items Q22 (Llama weights are gated: the account owner must accept the licence) and Q23 (the rule for calling the survival metric sensible), the design `docs/superpowers/specs/2026-10-23-feature-function-equivalence-design.md` and plan Tasks 10 to 14. **The next steps of section 4 are unchanged for the running jobs; the CPU work after them is plan Task 11 (F5 metrics module, tests first), Task 12, Task 13; the exploratory K = all Belebele run still takes the first free GPU slot.** The "merge decision" open question of section 5 is answered: no merge.

@@ -185,5 +185,19 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - ANSWER:
 - STATUS: open
 
+## Q22. Access to the Llama-3.2-1B weights for the supporting model (D-052)?  [MEDIUM, needs you: it is a licence acceptance]
+- **Context.** You kept the Llama-3.2-1B model of the branch `local-final-pipeline` as a supporting model. Checked on 2026-10-23: its SAEs (`seonglae/Llama-3.2-1B-sae`, four files, 117 MB each) download from Ada; the model `meta-llama/Llama-3.2-1B` is **gated**, and the Hugging Face token on Ada returns 403 (GatedRepoError): the account that owns the token has not accepted Meta's Llama 3.2 licence. No copy of the weights exists on this machine. I will not work around the gate (for example with an ungated community re-upload) without your explicit decision, because the licence terms apply to the weights whichever mirror they come from.
+- **Options.** (a) default: you open https://huggingface.co/meta-llama/Llama-3.2-1B with the account that owns the token on Ada, accept the licence, and tell me; I then download the weights to the cache on the login node (about 2.5 GB) and continue; (b) you or a teammate (the branch's author already ran the model) provide the weights or a token with access; (c) you explicitly allow an ungated mirror of the same weights (same licence).
+- **Default:** (a). Until then the Gemma work continues and the Llama part of the plan (Task 14) waits; nothing else depends on it.
+- ANSWER:
+- STATUS: open
+
+## Q23. The rule for calling the survival metric sensible (F5, D-053)?  [HIGH for the paper's claim, not blocking the code]
+- **Context.** The design (section 5) proposes, before any F5 number exists: the survival metric is called sensible if (S1) at INT6 at least 80 % of the features labelled retained have a write-side similarity W1 at or above the numerical floor (the 5th percentile of W1 at INT8); (S2) at INT4 the AUROC of the D-035 status for the event "W1 at or above the floor", in the matched F4 pairs, is at least 0.60 with its lower cluster-bootstrap bound above 0.5; (S3) at INT5 at least 80 % of the features that survive by the Duan cutoff (correlation 0.9) have W1 at or above the floor. If these fail, the survival label is read as input-side agreement only.
+- **Options.** (a) default: use S1 to S3 as proposed (they are written into the plan before the first number); (b) change the thresholds (give the numbers); (c) report the numbers without a verdict.
+- **Default:** (a). A different rule given now is applied; given after the numbers it would be a post-hoc change and would be recorded as one.
+- ANSWER:
+- STATUS: open
+
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
