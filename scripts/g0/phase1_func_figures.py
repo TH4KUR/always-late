@@ -478,6 +478,53 @@ def f4_table(res):
     return rows + [m]
 
 
+def _macro_precisions(an):
+    macro = an["macro"]
+    precs = (["FP"] if "FP" in macro else []) + [p for p in PRECISIONS if p in macro]
+    if not precs:
+        raise ValueError("no precision of the ladder in the macro effects")
+    return precs
+
+
+def fig_macro_effect(an, theme, note, unit="nats per token"):
+    """Plan Task 6c step 2, figure 10: the macro effect E (mean over the covered languages of the harm of zero-ablating the language group beyond matched controls) at every precision, with its 95 % interval of the paired
+    bootstrap, the median over languages as a gray diamond, a zero line, and above each interval the number of languages with E > 0. Meant for the confirmatory family, where the retention ratios can be undefined (the effect
+    itself is always defined); it makes no statement: the outcomes of S0 to S5 are in the table twin. an: analysis.json of phase1_func_analysis.py or phase1_func_mc_analysis.py."""
+    macro = an["macro"]; precs = _macro_precisions(an); n_cov = len(an["covered"]); xs = np.arange(len(precs))
+    pt, lo, hi, med = (np.array([macro[p][k] for p in precs], dtype=float) for k in ("point", "lo", "hi", "median"))
+    fig, ax, t = _new_fig(theme, 7.0, 5.2)
+    ax.axhline(0, color=t["muted"], linewidth=1.2, zorder=1, gid="reference_zero")
+    ax.vlines(xs, lo, hi, color=t["series"][0], linewidth=2.4, zorder=2, gid="macro_interval")
+    ax.hlines(np.concatenate([lo, hi]), np.concatenate([xs - 0.08, xs - 0.08]), np.concatenate([xs + 0.08, xs + 0.08]), color=t["series"][0], linewidth=1.8, zorder=2, gid="macro_interval_cap")
+    ax.scatter(xs, pt, s=70, marker="o", color=t["series"][0], edgecolors=t["surface"], linewidths=1.5, zorder=4, gid="macro_mean")
+    ax.scatter(xs, med, s=40, marker="D", color=t["muted"], edgecolors=t["surface"], linewidths=1.2, zorder=5, gid="macro_median")
+    upper = np.maximum(hi, med)                                                                             # the median can lie outside the interval of the mean
+    bottom, top = min(float(np.minimum(lo, med).min()), 0.0), max(float(upper.max()), 0.0); span = (top - bottom) or 1.0
+    ax.set_ylim(bottom - 0.12 * span, top + 0.18 * span); ax.set_xlim(-0.5, len(precs) - 0.5)
+    for x, h, p in zip(xs, upper, precs):
+        ax.text(x, h + 0.03 * span, f"{macro[p]['n_positive']} of {n_cov}", ha="center", va="bottom", fontsize=8.5, color=t["ink2"], gid="count")
+    ax.set_xticks(xs); ax.set_xticklabels(precs); ax.grid(False, axis="x")
+    _axis_labels(ax, t, xlabel="weight precision (round-to-nearest, coarser to the right)", ylabel=f"macro mean E, {unit}")
+    extra = _title(ax, t, "Macro effect of removing the language groups, by precision",
+                   f"mean over {n_cov} covered languages of E (harm of zero-ablating the language group beyond matched controls, {unit}), 95 % intervals of the paired bootstrap; diamonds: median over languages; "
+                   f"numbers above the intervals: languages with E > 0 \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=0, markeredgecolor=t["surface"])]
+    _legend_below(fig, t, handles, ["macro mean of E (95 % interval)", "median over languages"], 0.95, 0.25)
+    _margins(fig, bottom_in=1.35, extra=extra)
+    return fig
+
+
+def macro_effect_table(an, statements=None):
+    """Table twin of figure 10: per precision the macro effect with its interval, the median, the languages with E > 0 and the covered languages; with the output of phase1_func_mc_statements.py the id and the outcome of
+    the frozen statement of that precision (None otherwise)."""
+    by_p = {s["precision"]: s for s in (statements or {}).get("statements", [])}; n_cov = len(an["covered"]); rows = []
+    for p in _macro_precisions(an):
+        m = an["macro"][p]; s = by_p.get(p)
+        rows.append({"precision": p, "point": m["point"], "lo": m["lo"], "hi": m["hi"], "median": m["median"], "n_positive": m["n_positive"], "n_covered": n_cov,
+                     "statement": s["id"] if s else None, "outcome": s["outcome"] if s else None})
+    return rows
+
+
 def _coverage_rows(cal):
     """The rows of the chosen format of a calibration record (phase1_func_mc_calibration.py): language, items, accuracy, Wilson interval, covered. The record's own `covered` flags and lists must agree with the
     rule (lower bound above chance + margin); a languages without items (n = 0) has no accuracy and is never covered."""
@@ -637,6 +684,8 @@ _F4_COLUMNS = [("language", "language", "{}"), ("n_languages", "languages", "{}"
                ("E_fp", "contrast at full precision", "{:+.4f}"), ("E_fp_lo", "lo", "{:+.4f}"), ("E_fp_hi", "hi", "{:+.4f}"), ("delta", "difference", "{:+.4f}"), ("delta_lo", "lo", "{:+.4f}"), ("delta_hi", "hi", "{:+.4f}"),
                ("harm_lost_b", "harm lost at the precision", "{:.4f}"), ("harm_retained_b", "harm retained at the precision", "{:.4f}"), ("harm_lost_fp", "harm lost, full precision", "{:.4f}"),
                ("harm_retained_fp", "harm retained, full precision", "{:.4f}"), ("n_controls", "retained draws", "{}"), ("sign_b", "sign at the precision", "{}"), ("sign_fp", "sign at full precision", "{}")]
+_MACRO_COLUMNS = [("precision", "precision", "{}"), ("point", "macro E", "{:+.4f}"), ("lo", "lo", "{:+.4f}"), ("hi", "hi", "{:+.4f}"), ("median", "median E", "{:+.4f}"), ("n_positive", "languages with E > 0", "{}"),
+                  ("n_covered", "covered languages", "{}"), ("statement", "frozen statement", "{}"), ("outcome", "outcome", "{}")]
 _COVERAGE_COLUMNS = [("language", "language", "{}"), ("items", "items", "{}"), ("accuracy", "accuracy", "{:.3f}"), ("lo", "lo", "{:.3f}"), ("hi", "hi", "{:.3f}"), ("covered", "covered", "{}")]
 _CONFIG_COLUMNS = [("language", "language", "{}"), ("size_K16", "K16", "{}"), ("size_K64", "K64", "{}"), ("size_all", "all", "{}"), ("draws_K16", "controls K16", "{}"), ("draws_K64", "controls K64", "{}"), ("draws_all", "controls all", "{}")]
 
@@ -663,6 +712,8 @@ def main(argv=None):
     ap.add_argument("--rank-note", default="exploratory, descriptive (D-035 statuses measured on devtest)", help="status of the data of figure 8, which is not the data of the other figures")
     ap.add_argument("--rank-table", default=str(root / "reports/functional_validation/results/assoc_rank/rank_table.csv"), help="A1 rank_table.csv (figure 8); skipped when absent")
     ap.add_argument("--min-retention-languages", type=int, default=3, help="figures 2 and 5 are skipped, with the reason written to figures_skipped.txt, when the macro retention of any precision rests on fewer languages (a one-language macro is not a summary)")
+    ap.add_argument("--macro-effect", action="store_true", help="also write figure 10 (the macro effect by precision) and table_macro_effect, from the analysis.json of --results")
+    ap.add_argument("--statements", default=None, help="statements.json of phase1_func_mc_statements.py: adds the frozen statement and its outcome to table_macro_effect")
     ap.add_argument("--f4", nargs="*", default=[], help="directories with f4_results.json (phase1_func_f4_analysis.py output; one per precision): figure 9 and table_f4_<precision> for each")
     ap.add_argument("--f4-note", default="exploratory (the D-035 statuses were measured on devtest), evaluation split, frozen settings", help="status of the data of figure 9, which is not the data of the other figures")
     ap.add_argument("--themes", nargs="*", default=["light", "dark"], choices=sorted(_THEMES)); ap.add_argument("--formats", nargs="*", default=["svg", "png"], choices=["svg", "png"])
@@ -692,6 +743,10 @@ def main(argv=None):
             if not has.get(stem, True):                                                                          # the inputs of this figure do not exist for this analysis (for example T-MC has no SAE fidelity)
                 continue
             written += save_figure(make(), f"{stem}_{theme}", out, a.formats)
+    stm = json.loads(Path(a.statements).read_text()) if a.statements else None
+    if a.macro_effect:
+        for theme in a.themes:
+            written += save_figure(fig_macro_effect(an, theme, a.note, a.unit), f"fig10_macro_effect_{theme}", out, a.formats)
     f4s = [json.loads((Path(d) / "f4_results.json").read_text()) for d in a.f4]
     for r in f4s:
         for theme in a.themes:
@@ -699,6 +754,8 @@ def main(argv=None):
     ret, eff, conf = retention_table(an, assoc), effects_table(fp_rows, an, manifest), config_table(manifest)
     tables = [("table_retention", ret, _retention_columns()), ("table_effects", eff, _effects_columns([p for p in PRECISIONS if p in an["retention"]])), ("table_configurations", conf, _CONFIG_COLUMNS)]
     tables += [(f"table_f4_{r['condition']}", f4_table(r), _F4_COLUMNS) for r in f4s]
+    if a.macro_effect:
+        tables.append(("table_macro_effect", macro_effect_table(an, stm), _MACRO_COLUMNS))
     if an.get("rescue"):
         tables.append(("table_rescue", rescue_table(an["rescue"]), _RESCUE_COLUMNS))
     if cal is not None:

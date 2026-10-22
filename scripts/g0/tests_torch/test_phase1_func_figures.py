@@ -674,6 +674,93 @@ class F4Figure(unittest.TestCase):
         self.assertEqual(len(ff.f4_table(res)), 4)
 
 
+def planted_macro(precs=("FP", "INT8", "INT4"), n_cov=3):
+    pts = {"FP": (0.010, 0.004, 0.016, 0.012, 2), "INT8": (0.009, 0.001, 0.017, 0.008, 2), "INT7": (0.008, -0.002, 0.018, 0.007, 1), "INT6": (0.004, -0.004, 0.012, 0.004, 1), "INT5": (-0.002, -0.01, 0.006, -0.001, 1), "INT4": (-0.011, -0.02, -0.002, -0.009, 0)}
+    return {"task": "T-MC", "covered": [f"l{k}" for k in range(n_cov)], "macro": {p: {"point": pts[p][0], "lo": pts[p][1], "hi": pts[p][2], "median": pts[p][3], "n_positive": pts[p][4]} for p in precs}}
+
+
+@unittest.skipUnless(HAVE_MPL, "matplotlib not installed")
+class MacroEffect(unittest.TestCase):
+    def setUp(self):
+        self.an = planted_macro(); self.fig = ff.fig_macro_effect(self.an, "light", note="held-out evaluation", unit="nats per item"); self.ax = self.fig.axes[0]
+
+    def pts(self, gid):
+        return [(round(float(x), 6), round(float(y), 6)) for x, y in by_gid(self.ax, gid)[0].get_offsets()]
+
+    def test_the_macro_means_and_medians_are_the_input_numbers_in_ladder_order(self):
+        self.assertEqual(self.pts("macro_mean"), [(0.0, 0.010), (1.0, 0.009), (2.0, -0.011)]); self.assertEqual(self.pts("macro_median"), [(0.0, 0.012), (1.0, 0.008), (2.0, -0.009)])
+        self.assertEqual([t.get_text() for t in self.ax.get_xticklabels()], ["FP", "INT8", "INT4"])
+        shuffled = {"task": "T-MC", "covered": self.an["covered"], "macro": {p: self.an["macro"][p] for p in ("INT4", "FP", "INT8")}}
+        ax = ff.fig_macro_effect(shuffled, "light", "x", "nats per item").axes[0]; self.assertEqual([t.get_text() for t in ax.get_xticklabels()], ["FP", "INT8", "INT4"])
+
+    def test_the_intervals_are_the_95_percent_bounds_with_caps(self):
+        seg = [(round(float(s[0][0]), 6), round(float(s[0][1]), 6), round(float(s[1][1]), 6)) for s in by_gid(self.ax, "macro_interval")[0].get_segments()]
+        self.assertEqual(seg, [(0.0, 0.004, 0.016), (1.0, 0.001, 0.017), (2.0, -0.02, -0.002)])
+        caps = by_gid(self.ax, "macro_interval_cap")[0].get_segments()
+        self.assertEqual(sorted(round(float(s[0][1]), 6) for s in caps), [-0.02, -0.002, 0.001, 0.004, 0.016, 0.017])
+
+    def test_the_zero_line_is_drawn_and_the_axis_holds_zero_and_every_interval_with_room(self):
+        self.assertEqual(list(by_gid(self.ax, "reference_zero")[0].get_ydata()), [0, 0])
+        lo, hi = self.ax.get_ylim(); self.assertLess(lo, -0.02); self.assertGreater(hi, 0.017)
+        allpos = planted_macro(precs=("FP", "INT8")); lo2, hi2 = ff.fig_macro_effect(allpos, "light", "x", "nats per token").axes[0].get_ylim()
+        self.assertLessEqual(lo2, 0.0); self.assertGreater(hi2, 0.017)                                      # zero stays on the axis even when every interval is above it
+        far = {"covered": ["a", "b"], "macro": {"FP": {"point": 0.70, "lo": 0.68, "hi": 0.72, "median": 0.26, "n_positive": 2}}}                # like the loss task: every value far above zero
+        self.assertLessEqual(ff.fig_macro_effect(far, "light", "x", "nats per token").axes[0].get_ylim()[0], 0.0)
+
+    def test_a_median_outside_the_interval_of_the_mean_stays_on_the_axis_and_its_count_label_clears_it(self):
+        # found by looking at the render of the Belebele pilot: the INT4 median lay above the interval of the mean and above the axis, clipped
+        an = planted_macro(precs=("FP", "INT4")); an["macro"]["INT4"].update(median=0.05); an["macro"]["FP"].update(median=-0.05)
+        ax = ff.fig_macro_effect(an, "light", "x", "nats per item").axes[0]; lo, hi = ax.get_ylim()
+        self.assertLess(lo, -0.05); self.assertGreater(hi, 0.05)
+        for t in by_gid(ax, "count"):
+            self.assertGreater(t.get_position()[1], 0.05 if t.get_position()[0] > 0.5 else 0.016)         # above the larger of the interval end and the median
+
+    def test_the_number_of_languages_with_a_positive_effect_is_written_above_each_interval(self):
+        texts = {round(float(t.get_position()[0]), 6): t.get_text() for t in by_gid(self.ax, "count")}
+        self.assertEqual(texts, {0.0: "2 of 3", 1.0: "2 of 3", 2.0: "0 of 3"})
+        for t in by_gid(self.ax, "count"):
+            self.assertGreater(t.get_position()[1], 0.016 if t.get_position()[0] < 1.5 else -0.002)         # above the upper end of its interval
+
+    def test_the_mean_wears_the_accent_the_median_is_gray_and_the_legend_sits_below_the_axis(self):
+        tok = ff.theme_tokens("light")
+        self.assertEqual(to_hex(by_gid(self.ax, "macro_mean")[0].get_facecolor()[0]), tok["series"][0]); self.assertEqual(to_hex(by_gid(self.ax, "macro_median")[0].get_facecolor()[0]), tok["muted"])
+        self.assertEqual(len(self.fig.legends), 1); self.assertIsNone(self.ax.get_legend())
+        self.fig.canvas.draw(); r = self.fig.canvas.get_renderer(); self.assertLess(self.fig.legends[0].get_window_extent(r).y1, self.ax.xaxis.label.get_window_extent(r).y0 + 1)
+
+    def test_the_median_diamond_is_drawn_over_the_mean_so_that_it_is_never_hidden(self):
+        self.assertGreater(by_gid(self.ax, "macro_median")[0].get_zorder(), by_gid(self.ax, "macro_mean")[0].get_zorder())
+
+    def test_the_title_describes_and_the_subtitle_and_axis_carry_the_language_count_the_unit_and_the_status(self):
+        self.assertEqual(self.ax.get_title(loc="left"), "Macro effect of removing the language groups, by precision")
+        sub = " ".join(by_gid(self.ax, "subtitle")[0].get_text().split())
+        for phrase in ("3 covered languages", "95 %", "held-out evaluation", "languages with E > 0"):
+            self.assertIn(phrase, sub)
+        self.assertIn("nats per item", self.ax.get_ylabel())
+
+    def test_no_text_is_clipped_in_both_themes_with_a_long_note(self):
+        for theme in ("light", "dark"):
+            assert_text_inside(self, ff.fig_macro_effect(planted_macro(precs=("FP", "INT8", "INT7", "INT6", "INT5", "INT4"), n_cov=18), theme, "held-out evaluation of 385 items per language, frozen settings, confirmatory family of the pre-registered kind", "nats per item"))
+
+    def test_nothing_on_the_ladder_is_an_error(self):
+        with self.assertRaises(ValueError):
+            ff.fig_macro_effect({"covered": ["a"], "macro": {}}, "light", "x", "nats per item")
+        with self.assertRaises(ValueError):
+            ff.fig_macro_effect({"covered": ["a"], "macro": {"INT0": {"point": 0, "lo": 0, "hi": 0, "median": 0, "n_positive": 0}}}, "light", "x", "nats per item")
+
+    def test_the_table_twin_has_a_row_per_precision_and_the_statement_outcomes_when_given(self):
+        rows = ff.macro_effect_table(self.an)
+        self.assertEqual([r["precision"] for r in rows], ["FP", "INT8", "INT4"])
+        a = rows[0]; self.assertEqual((a["point"], a["lo"], a["hi"], a["median"], a["n_positive"], a["n_covered"], a["statement"], a["outcome"]), (0.010, 0.004, 0.016, 0.012, 2, 3, None, None))
+        stm = {"statements": [{"id": "S0", "precision": "FP", "outcome": "met"}, {"id": "S1", "precision": "INT8", "outcome": "preserved"}, {"id": "S5", "precision": "INT4", "outcome": "undefined"}]}
+        rows = ff.macro_effect_table(self.an, stm)
+        self.assertEqual([(r["statement"], r["outcome"]) for r in rows], [("S0", "met"), ("S1", "preserved"), ("S5", "undefined")])
+
+    def test_the_figure_reads_the_real_committed_belebele_pilot_analysis(self):
+        an = json.loads((Path(__file__).resolve().parents[3] / "reports/functional_validation/results/mc_pilot/analysis.json").read_text())
+        ax = ff.fig_macro_effect(an, "light", "pilot layout check", "nats per item").axes[0]
+        self.assertEqual([t.get_text() for t in ax.get_xticklabels()], ["FP", "INT4"]); self.assertEqual(len(ff.macro_effect_table(an)), 2); self.assertEqual(ff.macro_effect_table(an)[0]["n_covered"], 18)
+
+
 NAN = float("nan")
 
 
@@ -816,7 +903,7 @@ class LongNotes(unittest.TestCase):
         return {"effect": lambda th: ff.fig_effect_per_language(EffectPerLanguage.ROWS, th, self.NOTE, K="K64"), "retention": lambda th: ff.fig_retention(planted_retention(), (0.75, 1.33), th, self.NOTE),
                 "size": lambda th: ff.fig_size_curves(planted_families(), th, self.NOTE), "assoc": lambda th: ff.fig_assoc_vs_function(ASSOC, planted_retention(), th, self.NOTE),
                 "fidelity": lambda th: ff.fig_fidelity(planted_fidelity(), th, self.NOTE), "rank": lambda th: ff.fig_rank_bins(planted_rank_rows(), th, self.NOTE),
-                "coverage": lambda th: ff.fig_coverage(planted_calibration(), th, self.NOTE), "rescue": lambda th: ff.fig_rescue(planted_rescue(), "K64", th, self.NOTE), "f4": lambda th: ff.fig_f4(planted_f4(), th, self.NOTE)}
+                "coverage": lambda th: ff.fig_coverage(planted_calibration(), th, self.NOTE), "rescue": lambda th: ff.fig_rescue(planted_rescue(), "K64", th, self.NOTE), "f4": lambda th: ff.fig_f4(planted_f4(), th, self.NOTE), "macro": lambda th: ff.fig_macro_effect(planted_macro(), th, self.NOTE, "nats per item")}
 
     def test_every_figure_wraps_a_long_status_note_instead_of_clipping_it(self):
         for name, make in self.builders().items():
@@ -1081,6 +1168,23 @@ class Main(unittest.TestCase):
     def test_full_ladders_with_enough_languages_are_not_skipped(self):
         written = [Path(p).name for p in self.run_main()]
         self.assertIn("fig2_retention_light.png", written); self.assertFalse((self.out / "figures_skipped.txt").exists())
+
+    def test_figure_10_and_its_table_are_written_only_with_the_option_and_carry_the_statement_outcomes_when_given(self):
+        written = [Path(p).name for p in self.run_main()]
+        self.assertFalse(any("fig10" in n or "table_macro_effect" in n for n in written))
+        an = json.loads((self.res / "analysis.json").read_text()); an["covered"] = ["aaa", "bbb"]; (self.res / "analysis.json").write_text(json.dumps(an))
+        stm = self.d / "statements.json"; stm.write_text(json.dumps({"statements": [{"id": "S0", "precision": "FP", "outcome": "met"}, {"id": "S1", "precision": "INT8", "outcome": "preserved"}]}))
+        written = [Path(p).name for p in self.run_main("--macro-effect", "--statements", str(stm))]
+        for theme in ("light", "dark"):
+            for ext in ("svg", "png"):
+                self.assertIn(f"fig10_macro_effect_{theme}.{ext}", written)
+        self.assertIn("table_macro_effect.csv", written); self.assertIn("table_macro_effect.md", written)
+        md = (self.out / "table_macro_effect.md").read_text(); self.assertIn("| S0 |", md); self.assertIn("met", md)
+        import shutil, time
+        first = {p.name: p.read_bytes() for p in self.out.iterdir() if "macro_effect" in p.name}
+        shutil.rmtree(self.out); time.sleep(1.1)
+        self.run_main("--macro-effect", "--statements", str(stm))
+        self.assertEqual(first, {p.name: p.read_bytes() for p in self.out.iterdir() if "macro_effect" in p.name})                  # byte-identical regeneration
 
     def test_without_a_rank_table_figure_8_is_skipped(self):
         self.rank.unlink()
