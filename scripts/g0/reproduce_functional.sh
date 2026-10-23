@@ -36,10 +36,15 @@ PYEOF
 }
 have() { [ -d "$IN/$1" ] || [ -e "$IN/$1" ] || { echo "skipped   $2 (missing input $1)"; return 1; }; }
 cd "$ROOT" || exit 2
+COV=$($PY -I -c "import json; print(' '.join(json.load(open('reports/functional_validation/evaluation_freeze_mc.json'))['calibration']['covered']))")
 if have eval "results/eval"; then $PY -B scripts/g0/phase1_func_analysis.py --runs "$IN/eval" --split eval --out "$OUT/eval" --K K64 --n-boot 2000 > /dev/null; cmpdir "$OUT/eval" "$RES/eval" eval analysis.json effects_by_language.csv families.csv fidelity.csv retention.csv report.md; fi
+if have eval "results/eval_subsets"; then       # D-068: the same analysis restricted to the 18 languages with Belebele headroom and to the 9 without
+    UNC=$($PY -I -c "import json; c=set('$COV'.split()); print(' '.join(l for l in json.load(open('reports/functional_validation/results/eval/analysis.json'))['covered'] if l not in c))")
+    $PY -B scripts/g0/phase1_func_analysis.py --runs "$IN/eval" --split eval --out "$OUT/eval_subsets/covered18" --K K64 --n-boot 2000 --covered $COV > /dev/null; cmpdir "$OUT/eval_subsets/covered18" "$RES/eval_subsets/covered18" eval_subsets/covered18 analysis.json effects_by_language.csv families.csv fidelity.csv retention.csv report.md
+    $PY -B scripts/g0/phase1_func_analysis.py --runs "$IN/eval" --split eval --out "$OUT/eval_subsets/uncovered9" --K K64 --n-boot 2000 --covered $UNC > /dev/null; cmpdir "$OUT/eval_subsets/uncovered9" "$RES/eval_subsets/uncovered9" eval_subsets/uncovered9 analysis.json effects_by_language.csv families.csv fidelity.csv retention.csv report.md
+fi
 if have rescue "results/rescue"; then $PY -B scripts/g0/phase1_func_analysis.py --runs "$IN/rescue" --split eval --out "$OUT/rescue" --K K64 --n-boot 2000 > /dev/null; cmpdir "$OUT/rescue" "$RES/rescue" rescue analysis.json effects_by_language.csv families.csv fidelity.csv rescue.csv retention.csv report.md; fi
 for b in INT4 INT5 INT6; do if have f4-$b "results/f4/$b"; then $PY -B scripts/g0/phase1_func_f4_analysis.py --runs "$IN/f4-$b" --split eval --condition $b --out "$OUT/f4/$b" > /dev/null; cmpdir "$OUT/f4/$b" "$RES/f4/$b" f4/$b f4_per_language.csv f4_results.json report.md; fi; done
-COV=$($PY -I -c "import json; print(' '.join(json.load(open('reports/functional_validation/evaluation_freeze_mc.json'))['calibration']['covered']))")
 if have mc-eval "results/mc_eval"; then
     $PY -B scripts/g0/phase1_func_mc_analysis.py --runs "$IN/mc-eval" --split eval --format letter --out "$OUT/mc_eval" --K K64 --n-boot 2000 --seed 0 --retention-level 0.99 --covered $COV --note "Held-out T-MC evaluation (devtest-origin passages); the confirmatory family of the design, settings frozen before scoring." > /dev/null 2>&1
     cmpdir "$OUT/mc_eval" "$RES/mc_eval" mc_eval analysis.json accuracy.csv effects_by_language.csv retention.csv report.md
