@@ -73,3 +73,7 @@ D-067: on the 1,449 F5-tested features that are established D-035 features, the 
 ## Addendum 7 (21:51): the claim map
 
 Section 3 of `reports/functional_validation/RESULTS_SUMMARY.md` is now a table of eleven claims with evidence and limits (the 'paper-facing digest' step). Nothing waits on code; remaining defaults: the user's answers (Q21 to Q26), documentation consolidation (plan Task 9: `reports/scheduled_routine.md`), re-running the dated prior-art search in about a week.
+
+## Addendum 8 (22:36): reproducibility check
+
+`scripts/g0/reproduce_functional.sh <inputs root> <scratch dir>` re-runs every analysis of the functional study and compares with the committed outputs (57 of 57 identical on 2026-10-23); layout and commands in `reports/functional_validation/REPRODUCE.md`. The scratch inputs used (symlink layout) are under the session scratchpad `repro_in/` and vanish with it; re-fetch from Ada per the register. Nothing waits on code; defaults for the next firings: the user's answers (Q21 to Q26), documentation consolidation (plan Task 9).

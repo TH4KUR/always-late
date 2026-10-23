@@ -1,0 +1,72 @@
+#!/bin/bash
+# Re-run the analyses of the functional study from their input files and compare every output with the committed one (docs: reports/functional_validation/REPRODUCE.md).
+#   bash scripts/g0/reproduce_functional.sh <inputs root> <scratch output dir>
+# Inputs root layout (files fetched from Ada one by one, sha256 checked against reports/functional_validation/artifact_checksums.md; job names are Ada's under out/phase1/):
+#   eval/       func_lm_eval_{FP,INT0,INT12,INT16,INT8,INT7,INT6,INT5,INT4}.pt + meta_lm_eval.json          (func-eval-a, -b, -c, -d)
+#   rescue/     func-rescue-a files            f4-INT4/ f4-INT5/ f4-INT6/   func-f4-INT<b> files
+#   mc-eval/    func-mc-eval-a and -b files (their two meta_mc_eval.json renamed meta_mc_eval_a.json and meta_mc_eval_b.json)      mc-ksens/   func-mc-ksens files
+#   f5-a/ f5-b/ f5-smoke2/ f5-m8/ f5-m32/ f5-dir/ f5-dir2/ f5-fa/ f5-fa-dir/    the per-state files of the F5 jobs
+#   feature_status_eq.csv   Ada association-full/analysis-eq/feature_status.csv
+# Prints identical / DIFFERS / skipped (input missing) for every output file; exit 1 if anything DIFFERS. Needs the torch venv (numpy, scipy, statsmodels).
+# Known, benign differences are compared with the field ignored and say so: the run paths and the flags direction_control / fixed_amplitude (added to the F5 metadata after the main run), the figure links of f5/report.md, the free-text note of mc_ksens.
+set -u
+IN=${1:?inputs root}; OUT=${2:?scratch output dir}; ROOT=$(cd "$(dirname "$0")/../.." && pwd); RES=$ROOT/reports/functional_validation/results; PY=${PY:-$HOME/.venvs/anlp-torch/bin/python}
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-4}; mkdir -p "$OUT"; FAIL=0
+cmpf() { # new committed label
+    if [ ! -e "$1" ]; then echo "skipped   $3 (not produced)"; return; fi
+    if cmp -s "$1" "$2"; then echo "identical $3"; else echo "DIFFERS   $3"; FAIL=1; fi
+}
+cmpdir() { # new_dir committed_dir label files...
+    n=$1; c=$2; l=$3; shift 3; for f in "$@"; do cmpf "$n/$f" "$c/$f" "$l/$f"; done
+}
+jsoneq() { # new committed label ignored-key-paths (dot-separated, comma-separated)
+    if [ ! -e "$1" ]; then echo "skipped   $3 (not produced)"; return; fi
+    if $PY -I - "$1" "$2" "$4" <<'PYEOF'
+import json, sys
+a, b = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
+for path in filter(None, sys.argv[3].split(",")):
+    for d in (a, b):
+        x = d; ks = path.split(".")
+        for k in ks[:-1]:
+            x = x.get(k, {}) if isinstance(x, dict) else {}
+        if isinstance(x, dict): x.pop(ks[-1], None)
+sys.exit(0 if a == b else 1)
+PYEOF
+    then echo "identical $3 (apart from: ${4:-nothing})"; else echo "DIFFERS   $3"; FAIL=1; fi
+}
+have() { [ -d "$IN/$1" ] || [ -e "$IN/$1" ] || { echo "skipped   $2 (missing input $1)"; return 1; }; }
+cd "$ROOT" || exit 2
+if have eval "results/eval"; then $PY -B scripts/g0/phase1_func_analysis.py --runs "$IN/eval" --split eval --out "$OUT/eval" --K K64 --n-boot 2000 > /dev/null; cmpdir "$OUT/eval" "$RES/eval" eval analysis.json effects_by_language.csv families.csv fidelity.csv retention.csv report.md; fi
+if have rescue "results/rescue"; then $PY -B scripts/g0/phase1_func_analysis.py --runs "$IN/rescue" --split eval --out "$OUT/rescue" --K K64 --n-boot 2000 > /dev/null; cmpdir "$OUT/rescue" "$RES/rescue" rescue analysis.json effects_by_language.csv families.csv fidelity.csv rescue.csv retention.csv report.md; fi
+for b in INT4 INT5 INT6; do if have f4-$b "results/f4/$b"; then $PY -B scripts/g0/phase1_func_f4_analysis.py --runs "$IN/f4-$b" --split eval --condition $b --out "$OUT/f4/$b" > /dev/null; cmpdir "$OUT/f4/$b" "$RES/f4/$b" f4/$b f4_per_language.csv f4_results.json report.md; fi; done
+COV=$($PY -I -c "import json; print(' '.join(json.load(open('reports/functional_validation/evaluation_freeze_mc.json'))['calibration']['covered']))")
+if have mc-eval "results/mc_eval"; then
+    $PY -B scripts/g0/phase1_func_mc_analysis.py --runs "$IN/mc-eval" --split eval --format letter --out "$OUT/mc_eval" --K K64 --n-boot 2000 --seed 0 --retention-level 0.99 --covered $COV --note "Held-out T-MC evaluation (devtest-origin passages); the confirmatory family of the design, settings frozen before scoring." > /dev/null 2>&1
+    cmpdir "$OUT/mc_eval" "$RES/mc_eval" mc_eval analysis.json accuracy.csv effects_by_language.csv retention.csv report.md
+    $PY -B scripts/g0/phase1_func_mc_statements.py --freeze reports/functional_validation/evaluation_freeze_mc.json --analysis "$OUT/mc_eval/analysis.json" --out "$OUT/mc_statements" > /dev/null; cmpdir "$OUT/mc_statements" "$RES/mc_eval" mc_eval statements.csv statements.json statements.md
+fi
+if have mc-ksens "results/mc_ksens"; then
+    $PY -B scripts/g0/phase1_func_mc_analysis.py --runs "$IN/mc-ksens" --split eval --format letter --out "$OUT/mc_ksens" --K K64 --n-boot 2000 --seed 0 --retention-level 0.99 --covered $COV --note "x" > /dev/null 2>&1
+    cmpdir "$OUT/mc_ksens" "$RES/mc_ksens" mc_ksens accuracy.csv effects_by_language.csv retention.csv; jsoneq "$OUT/mc_ksens/analysis.json" "$RES/mc_ksens/analysis.json" mc_ksens/analysis.json note
+fi
+if have f5-a "results/f5" && have f5-b "results/f5"; then
+    $PY -B scripts/g0/phase1_func_f5_analysis.py --run "$IN/f5-a" --run "$IN/f5-b" --out "$OUT/f5" > /dev/null; cmpdir "$OUT/f5" "$RES/f5" f5 f5_tables.csv statements.md; jsoneq "$OUT/f5/f5_results.json" "$RES/f5/f5_results.json" f5/f5_results.json instrument.runs,instrument.direction_control,instrument.fixed_amplitude
+    A="$IN/f5-a"; B="$IN/f5-b"; S=reports/functional_validation/results/f5_sensitivity
+    sens() { name=$1; shift; $PY -B scripts/g0/phase1_func_f5_sensitivity.py "$@" --label x --out "$OUT/sens/$name" > /dev/null 2>&1; cmpf "$OUT/sens/$name/sensitivity.json" "$RES/f5_sensitivity/$name/sensitivity.json" "f5_sensitivity/$name/sensitivity.json"; }
+    have f5-m8 "f5_sensitivity/m8" && sens m8 --main-run "$A" --main-run "$B" --sens-run "$IN/f5-m8" --states INT16 INT4
+    have f5-m32 "f5_sensitivity/m32" && sens m32 --main-run "$A" --main-run "$B" --sens-run "$IN/f5-m32" --states INT16 INT4
+    have f5-dir "f5_sensitivity/direction_swap" && sens direction_swap --main-run "$A" --main-run "$B" --sens-run "$IN/f5-dir" --states INT16 INT4
+    have f5-fa "f5_sensitivity/fixed_amplitude" && sens fixed_amplitude --main-run "$A" --main-run "$B" --sens-run "$IN/f5-fa" --states INT16 INT4
+    have f5-fa "f5_sensitivity/fixed_amplitude_direction_swap" && have f5-fa-dir "f5_sensitivity/fixed_amplitude_direction_swap" && sens fixed_amplitude_direction_swap --main-run "$IN/f5-fa" --sens-run "$IN/f5-fa-dir" --states INT16 INT4
+    have f5-dir2 "f5_sensitivity/direction_swap_int8_6_5" && sens direction_swap_int8_6_5 --main-run "$A" --main-run "$B" --sens-run "$IN/f5-dir2" --states INT16 INT8 INT6 INT5
+    if have f5-dir2 "figures/f5/ladder_control_table.csv" && have f5-dir "figures/f5/ladder_control_table.csv"; then
+        $PY -B scripts/g0/phase1_func_f5_figures.py ladder --main-run "$A" --main-run "$B" --control-run "$IN/f5-dir2" --control-run "$IN/f5-dir" --out "$OUT/ladder" --note x --formats svg > /dev/null 2>&1; cmpf "$OUT/ladder/ladder_control_table.csv" reports/functional_validation/figures/f5/ladder_control_table.csv figures/f5/ladder_control_table.csv
+    fi
+fi
+if have f5-smoke2 "results/f5_smoke"; then $PY -B scripts/g0/phase1_func_f5_analysis.py --run "$IN/f5-smoke2" --out "$OUT/f5_smoke" > /dev/null; cmpdir "$OUT/f5_smoke" "$RES/f5_smoke" f5_smoke f5_tables.csv statements.md; jsoneq "$OUT/f5_smoke/f5_results.json" "$RES/f5_smoke/f5_results.json" f5_smoke/f5_results.json instrument.runs,instrument.direction_control,instrument.fixed_amplitude; fi
+if have feature_status_eq.csv "the association analyses"; then
+    $PY -B scripts/g0/phase1_assoc_rank_link.py --status "$IN/feature_status_eq.csv" --out "$OUT/assoc_rank" > /dev/null; cmpdir "$OUT/assoc_rank" "$RES/assoc_rank" assoc_rank $(ls "$RES/assoc_rank")
+    $PY -B scripts/g0/phase1_assoc_margin.py --status "$IN/feature_status_eq.csv" --out "$OUT/within-language" > /dev/null; cmpdir "$OUT/within-language" reports/association_retention/results/within-language within-language analysis.json report.md loss_by_margin_quintile.csv
+    if have f5-a "margin-function" && have f5-b "margin-function"; then $PY -B scripts/g0/phase1_assoc_function_link.py --status "$IN/feature_status_eq.csv" --run "$IN/f5-a" --run "$IN/f5-b" --out "$OUT/margin-function" > /dev/null; cmpdir "$OUT/margin-function" reports/association_retention/results/margin-function margin-function analysis.json report.md margin_vs_function.csv; fi
+fi
+[ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }

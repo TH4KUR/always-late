@@ -3,8 +3,8 @@
   "status": "feature_status_eq.csv",
   "sha256": "3ab979852f3007987bfd364d334d9199e0cb2c3064d57cc932e287e70aec6a71",
   "runs": [
-   "f5a-partial",
-   "f5b"
+   "f5-a",
+   "f5-b"
   ],
   "sample": "f5_sample.json"
  },
