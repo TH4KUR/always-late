@@ -183,5 +183,12 @@ class MainRehearsal(unittest.TestCase):
         self.assertFalse((Path(self.tmp.name) / "out9" / "f5_stage_a.pt").exists())
 
 
+    def test_the_fixed_amplitude_option_is_recorded_and_off_by_default(self):
+        o = Path(self.tmp.name) / "out10"; argv = list(self.args); argv[argv.index("--out") + 1] = str(o); i = argv.index("--states"); argv[i + 1:i + 5] = ["FP", "4"]; argv += ["--fixed-amplitude"]
+        self.run_main(argv, self.stubs); m = json.loads((o / "meta_f5.json").read_text()); st = torch.load(o / "f5_stage_a.pt", weights_only=False)
+        self.assertTrue(m["fixed_amplitude"]); self.assertTrue(st["fixed_amplitude"]); self.assertFalse(self.meta["fixed_amplitude"]); self.assertFalse(self.stage["fixed_amplitude"])
+        c = torch.load(o / "f5_state_INT4.pt", weights_only=False)["write"]["cos"]; self.assertTrue(np.isfinite(c).all())
+
+
 if __name__ == "__main__":
     unittest.main()

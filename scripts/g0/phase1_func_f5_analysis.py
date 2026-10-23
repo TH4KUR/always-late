@@ -247,7 +247,7 @@ def analyse_f5(stage_a, states, sample, meta=None, n_boot=2000, seed=0):
     val = validity(states, T, floor, n_boot, seed); m = meta or {}; sg = stage_a.get("sham_gate"); gates = m.get("gates")
     fl = np.asarray(stage_a["feat_lang"]).astype(int); exc = np.asarray(stage_a["excluded"]).astype(bool)
     instrument = {"sham_gate_exact": None if sg is None else bool(all(x["exact"] for x in sg)), "logit_gates_ok": None if gates is None else bool(all(x.get("ok") for x in gates.values())), "work_dtype": m.get("work_dtype"),
-                  "complete": m.get("complete"), "per_cell": m.get("per_cell"), "subset_seed": m.get("subset_seed"), "direction_control": bool(m.get("direction_control", False)), "fp_identity": True, "gates": gates, "state_seconds": m.get("state_seconds"), "runs": m.get("runs")}
+                  "complete": m.get("complete"), "per_cell": m.get("per_cell"), "subset_seed": m.get("subset_seed"), "direction_control": bool(m.get("direction_control", False)), "fixed_amplitude": bool(m.get("fixed_amplitude", False)), "fp_identity": True, "gates": gates, "state_seconds": m.get("state_seconds"), "runs": m.get("runs")}
     counts = {"n_sample": T["n_sample"], "n_tested": int(len(T["fid"])), "n_excluded": T["n_excluded"], "excluded_by_language": {T["languages"][l]: int(((fl == l) & exc).sum()) for l in range(len(T["languages"]))}}
     return {"instrument": instrument, "counts": counts, "floor": floor, "tables": tables, "validity": val, "hypotheses": hypotheses(tables, val, floor)}
 
@@ -354,6 +354,9 @@ def report_text(res, figures=None):
     if i.get("direction_control"):
         L += ["> **DIRECTION-SWAP CONTROL RUN.** In this run every ablation uses the decoder direction of a matched DIFFERENT feature (same language, nearest native rate) at the positions and with the activations of the feature in question. "
               "W1 below is therefore the similarity of the effect of a feature-shaped perturbation of the downstream map, not the effect of the features themselves; compare it with the ordinary run of the same features (`phase1_func_f5_sensitivity.py`).", ""]
+    if i.get("fixed_amplitude"):
+        L += ["> **FIXED-AMPLITUDE RUN.** In this run the ablation in every quantized state subtracts the full-precision amplitudes of the feature at the same positions instead of the state's own activations: W1 below is the "
+              "similarity of the response of the quantized model's downstream computation to the same perturbation, independent of whether the activation pattern changed (design section 11.4).", ""]
     L += ["## 1. Instrument and numerical floor", "",
           f"{c['n_sample']} sample features, {c['n_tested']} tested on the write side, {c['n_excluded']} too rare to test (read side only). Work dtype {i['work_dtype']}; sham ablation exact: {i['sham_gate_exact']}; logit gates ok: {i['logit_gates_ok']}; "
           f"run complete: {i['complete']}." + (f" Stratified subset: a per-cell cap of {i['per_cell']} features per language and role (seed {i['subset_seed']})." if i.get("per_cell") else ""), ""]
@@ -430,14 +433,14 @@ def load_runs(directories):
                 raise ValueError(f"{d}: the state {label} is in more than one job")
             states.setdefault(label, res)
     sa0["sham_gate"] = sham
-    flags = {bool(m.get("direction_control", False)) for m in metas}
+    flags = {(bool(m.get("direction_control", False)), bool(m.get("fixed_amplitude", False))) for m in metas}
     if len(flags) > 1:
-        raise ValueError("a direction-swap control run and an ordinary run cannot be merged: the similarities of the control are about another ablation")
+        raise ValueError("runs of different variants (ordinary, direction-swap control, fixed amplitude) cannot be merged: their similarities are about different ablations")
     dtypes = {m.get("work_dtype") for m in metas}; gates = {}
     for k, m in enumerate(metas):
         gates.update({f"run{k}:{n}": g for n, g in (m.get("gates") or {}).items()})
     return sa0, states, {"runs": [str(d) for d in directories], "complete": all(m.get("complete") for m in metas), "work_dtype": dtypes.pop() if len(dtypes) == 1 else "mixed", "gates": gates or None,
-                         "direction_control": flags.pop(), "per_cell": next((m.get("per_cell") for m in metas if m.get("per_cell") is not None), None), "subset_seed": next((m.get("subset_seed") for m in metas if m.get("subset_seed") is not None), None),
+                         "direction_control": next(iter(flags))[0], "fixed_amplitude": next(iter(flags))[1], "per_cell": next((m.get("per_cell") for m in metas if m.get("per_cell") is not None), None), "subset_seed": next((m.get("subset_seed") for m in metas if m.get("subset_seed") is not None), None),
                          "state_seconds": {k: v for m in metas for k, v in (m.get("state_seconds") or {}).items()}}
 
 

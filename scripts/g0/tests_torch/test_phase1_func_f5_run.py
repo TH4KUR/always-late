@@ -659,6 +659,52 @@ class DirectionControl(unittest.TestCase):
         rows = out_swap["stage_a"]["write_rows"]; low = [k for k in range(len(w)) if k != i and int(self.dir_ids[rows[k]]) != fj and align(int(self.dir_ids[rows[k]])) < 0.2]; self.assertGreaterEqual(len(low), 4)
         self.assertLess(cos_own[i], 0.86); self.assertGreater(np.median(cos_swap[low]), 0.9); self.assertGreater(np.median(cos_swap[low]) - cos_own[i], 0.08)                  # the drift hits the direction of j, not the nearly orthogonal controls
 
+class FixedAmplitude(unittest.TestCase):
+    """The fixed-amplitude variant: in every state the ablation subtracts the full-precision amplitude a_f^FP(t) at the positions T_f (design section 11.4)."""
+    @classmethod
+    def setUpClass(cls):
+        cls.stack = ToyStack(linear=True); cls.sae = ToySAE(); cls.dev = sentences(80, seed=5); cls.ev = sentences(30, seed=6); cls.feat = torch.tensor([29, 3, 17, 8, 22, 1, 12, 25, 5, 30, 14, 9])
+        cls.batcher = staticmethod(lambda sents, bs=6: p1.make_batches({0: sents}, BOS, "mask", 0, 256, bs))
+        ma = r5.max_activation_per_sentence(cls.stack.lower, cls.sae.encode, cls.batcher(cls.dev), cls.feat, len(cls.dev)); sel = r5.select_contexts(ma, 5, 3)
+        testable = [int(cls.feat[k]) for k in range(len(cls.feat)) if not bool(sel["excluded"][k])]; cls.silent = testable[3]; cls.state = {"label": "FP"}
+
+        def encode(x):
+            a = cls.sae.encode(x)
+            if cls.state["label"] == "S":
+                a[:, cls.silent] = 0.0
+            if cls.state["label"] == "Z":
+                a = a * 0.5
+            return a
+        cls.encode = staticmethod(encode)
+        cls.setup = staticmethod(lambda label: cls.state.update(label=label))
+
+    def run_(self, fixed, direction_ids=None):
+        return r5.run_f5(["FP", "Z", "S"], self.setup, self.stack.lower, self.stack.upper_final, self.stack.logits_fn, self.encode, self.sae.W_dec, self.feat, self.batcher(self.ev), self.dev, self.batcher,
+                         M=5, min_ctx=3, V=V, device="cpu", topk=3, fixed_amplitude=fixed, direction_ids=direction_ids)
+
+    def test_explicit_amplitudes_equal_to_the_states_own_change_nothing_and_doubled_amplitudes_double_the_fingerprint(self):
+        sents = sentences(60, seed=3); feat = torch.arange(F); ma = r5.max_activation_per_sentence(self.stack.lower, self.sae.encode, batches_of(sents), feat, len(sents)); sel = r5.select_contexts(ma, M=5, min_ctx=3)
+        plan = r5.plan_contexts(sel["contexts"], sel["excluded"], sents); bt = batches_of(plan["sentences"], 4); pos = r5.fp_active_positions(self.stack.lower, self.sae.encode, bt, plan, feat)
+        cache = r5.cache_state(self.stack.lower, self.sae.encode, bt, plan, feat, pos); k = next(iter(plan["ctx"])); d = self.sae.W_dec[feat[k]]
+        f = lambda **kw: r5.fingerprint_feature(k, plan, cache, pos, d, self.stack.upper_final, self.stack.logits_fn, V, "cpu", **kw)
+        base = f(); same = f(amplitudes=cache["act"]); torch.testing.assert_close(base["D"], same["D"]); doubled = f(amplitudes={key: 2 * v for key, v in cache["act"].items()})
+        torch.testing.assert_close(doubled["D"], 2 * base["D"], rtol=1e-4, atol=1e-6); self.assertEqual(doubled["n_active_q"], base["n_active_q"]); self.assertEqual(doubled["n_pos"], base["n_pos"])
+
+    def test_full_precision_is_unchanged_by_the_option(self):
+        a = self.run_(False)["states"]["FP"]["write"]; b = self.run_(True)["states"]["FP"]["write"]; np.testing.assert_allclose(a["cos"], b["cos"], atol=1e-6)
+
+    def test_a_feature_silent_in_the_state_keeps_its_full_precision_fingerprint_but_is_still_counted_as_inactive(self):
+        o = self.run_(False); f = self.run_(True); w = o["stage_a"]["write_features"]; i = w.index(self.silent)
+        self.assertTrue(o["states"]["S"]["write"]["zero_q"][i]); self.assertEqual(o["states"]["S"]["write"]["cos"][i], 0.0)
+        self.assertFalse(f["states"]["S"]["write"]["zero_q"][i]); self.assertAlmostEqual(float(f["states"]["S"]["write"]["cos"][i]), 1.0, places=5); self.assertEqual(int(f["states"]["S"]["write"]["n_active_q"][i]), 0)
+
+    def test_halved_activations_halve_the_ordinary_fingerprint_but_not_the_fixed_amplitude_one(self):
+        o = self.run_(False)["states"]["Z"]["write"]["magnitude_ratio"]; f = self.run_(True)["states"]["Z"]["write"]["magnitude_ratio"]
+        np.testing.assert_allclose(o[~np.isnan(o)], 0.5, atol=1e-5); np.testing.assert_allclose(f[~np.isnan(f)], 1.0, atol=1e-5)
+
+    def test_the_option_works_together_with_the_direction_control_and_the_sham_gate_stays_exact(self):
+        out = self.run_(True, direction_ids=torch.roll(self.feat, 1)); self.assertTrue(all(g["exact"] for g in out["stage_a"]["sham_gate"])); self.assertTrue(np.isfinite(out["states"]["Z"]["write"]["cos"]).all())
+
 
 if __name__ == "__main__":
     unittest.main()

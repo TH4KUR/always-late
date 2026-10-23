@@ -336,6 +336,27 @@ class DirectionControlRuns(unittest.TestCase):
         plain = an.report_text(an.analyse_f5(sa, st, sm, meta=None, n_boot=30, seed=0)); self.assertNotIn("DIRECTION-SWAP", plain)
 
 
+class FixedAmplitudeRuns(unittest.TestCase):
+    def test_a_fixed_amplitude_run_is_never_merged_with_an_ordinary_run_or_a_differently_varied_one(self):
+        w = build_world("sensible"); base = {"complete": True, "work_dtype": "float32"}
+        for a_meta, b_meta in (({**base, "fixed_amplitude": True}, base), ({**base, "fixed_amplitude": True}, {**base, "direction_control": True}), ({**base, "fixed_amplitude": True, "direction_control": True}, {**base, "fixed_amplitude": True})):
+            with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+                save_run(w, a, ["FP", "INT8"], meta=a_meta); save_run(w, b, ["FP", "INT6"], meta=b_meta)
+                with self.assertRaises(ValueError):
+                    an.load_runs([a, b])
+
+    def test_matching_variants_merge_and_carry_both_flags(self):
+        w = build_world("sensible"); m = {"complete": True, "work_dtype": "float32", "fixed_amplitude": True, "direction_control": True}
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            save_run(w, a, ["FP", "INT8"], meta=m); save_run(w, b, ["FP", "INT6"], meta=m); meta = an.load_runs([a, b])[2]; self.assertTrue(meta["fixed_amplitude"]); self.assertTrue(meta["direction_control"])
+
+    def test_the_report_says_that_the_amplitudes_were_fixed(self):
+        sa, st, sm, T = build_varying_world(); res = an.analyse_f5(sa, st, sm, meta={"fixed_amplitude": True}, n_boot=30, seed=0); self.assertTrue(res["instrument"]["fixed_amplitude"])
+        sec1 = an.report_text(res).split("## 2.")[0]; self.assertIn("FIXED-AMPLITUDE RUN", sec1); self.assertIn("full-precision amplitudes", sec1)
+        self.assertNotIn("FIXED-AMPLITUDE", an.report_text(an.analyse_f5(sa, st, sm, meta=None, n_boot=30, seed=0)))
+        both = an.report_text(an.analyse_f5(sa, st, sm, meta={"fixed_amplitude": True, "direction_control": True}, n_boot=30, seed=0)).split("## 2.")[0]; self.assertIn("FIXED-AMPLITUDE RUN", both); self.assertIn("DIRECTION-SWAP CONTROL RUN", both)
+
+
 class ContinuousAuroc(unittest.TestCase):
     def test_the_descriptive_auroc_is_the_probability_that_a_retained_feature_keeps_more_function_than_a_lost_one(self):
         import phase1_func_f5_metrics as met

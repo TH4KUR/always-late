@@ -107,11 +107,12 @@ def cache_state(lower, encode, batches, plan, feat_ids, positions, device=None):
 
 
 @torch.no_grad()
-def fingerprint_feature(k, plan, cache, positions, d_f, upper_final, logits_fn, V, device, chunk=64, sham=False, reverse=False, extra_pad=0, work_dtype=None):
+def fingerprint_feature(k, plan, cache, positions, d_f, upper_final, logits_fn, V, device, chunk=64, sham=False, reverse=False, extra_pad=0, work_dtype=None, amplitudes=None):
     """The effect fingerprint of feature k in the state of `cache` (see the module docstring). -> {"D": [V] float32 on `device`, "n_pos": ablated positions (the full-precision active ones), "n_active_q": of
     these, the positions where the feature is active in this state, "dnll": mean per predicted token of the loss change, "n_ctx"}. reverse and extra_pad present the contexts in another order and with more padding
     (the same weights, another batching: the numerical-floor pseudo-state). work_dtype (default: the dtype of the cache) is the dtype of the residual that goes into the upper half: with bf16 the edited rows
-    would be rounded to bf16 and the rounding noise would be part of the edit; float32 keeps the edit exactly x - a d."""
+    would be rounded to bf16 and the rounding noise would be part of the edit; float32 keeps the edit exactly x - a d. amplitudes ({(k, s): tensor}, default: the state's own activations of the cache) are the
+    amplitudes that are subtracted (the FIXED-AMPLITUDE variant passes the full-precision ones); the counts n_pos and n_active_q always come from the state's own activations."""
     sents = plan["ctx"][k][::-1] if reverse else plan["ctx"][k]; rows = [cache["resid"][s] for s in sents]; M = len(rows)
     if work_dtype is not None:
         rows = [r.to(work_dtype) for r in rows]
@@ -121,10 +122,10 @@ def fingerprint_feature(k, plan, cache, positions, d_f, upper_final, logits_fn, 
         base[j, :r.shape[0]] = r
     abl = base.clone(); df = d_f.float().cpu(); n_pos = n_active = 0
     for j, s in enumerate(sents):
-        p = positions[(k, s)]; a = cache["act"][(k, s)]
+        p = positions[(k, s)]; a = cache["act"][(k, s)]; amp = a if amplitudes is None else amplitudes[(k, s)]
         n_pos += len(p); n_active += int((a > 0).sum())
         if len(p) and not sham:
-            abl[j, p + 1] = (abl[j, p + 1].float() - a[:, None] * df[None, :]).to(base.dtype)
+            abl[j, p + 1] = (abl[j, p + 1].float() - amp[:, None] * df[None, :]).to(base.dtype)
     hidden = upper_final(torch.cat([base, abl], 0).to(device))
     hb, ha, tg, has_t, flag = [], [], [], [], []
     for j, s in enumerate(sents):
@@ -285,13 +286,14 @@ def state_bits(label):
     return int(label[3:]) if label.startswith("INT") else None
 
 
-def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids, eval_batches, dev_sentences, batcher, M, min_ctx, V, device, topk=50, groups=None, extra_pad=3, log=lambda *a: None, on_state=lambda label, result: None, on_stage_a=lambda stage_a: None, work_dtype=None, sham_gate=2, direction_ids=None):
+def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids, eval_batches, dev_sentences, batcher, M, min_ctx, V, device, topk=50, groups=None, extra_pad=3, log=lambda *a: None, on_state=lambda label, result: None, on_stage_a=lambda stage_a: None, work_dtype=None, sham_gate=2, direction_ids=None, fixed_amplitude=False):
     """The F5 measurements for the model states `states` (labels; "FP" first; "FP_rebatched" is the numerical-floor pseudo-state: the same weights, the contexts reversed and padded). setup(label) puts the model in
     that state (restores the full-precision weights, quantizes) and is called before the state is measured; batcher(sentences) -> batches (the format of phase1_lib.make_batches).
     Stage A (full precision): the contexts of every sample feature from the candidate sentences, the full-precision active positions, the full-precision read-side reference. Per state: the read side over the evaluation
     batches, then the write side (fingerprints) and its comparison with the full-precision fingerprints. -> {"stage_a": {...}, "states": {label: {"read": {...}, "write": {...}}}}.
     direction_ids (one feature id per sample row, or None): the DIRECTION-SWAP CONTROL: the ablation uses the decoder direction of that feature instead of the row's own, at the positions and with the activations of the row's
-    feature (design section 11.3); the identity map reproduces the ordinary run."""
+    feature (design section 11.3); the identity map reproduces the ordinary run. fixed_amplitude: the FIXED-AMPLITUDE variant (design section 11.4): in every state the ablation subtracts the full-precision
+    amplitude of stage A at the same positions instead of the state's own activation (the counts of the state's own activity are kept)."""
     import numpy as np
     import phase1_func_f5_metrics as met
     setup("FP")
@@ -300,12 +302,13 @@ def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids
     rows = sorted(plan["ctx"]); write_features = [int(feat_ids[k]) for k in rows]; ctx_batches = batcher(plan["sentences"])
     positions = fp_active_positions(lower, encode, ctx_batches, plan, feat_ids, device); fp_read = collect_read(lower, encode, eval_batches, feat_ids, device)
     cache_fp = cache_state(lower, encode, ctx_batches, plan, feat_ids, positions, device); _dir = lambda k: int(direction_ids[k]) if direction_ids is not None else int(feat_ids[k])
-    gate = [{"feature": int(feat_ids[k]), "exact": sham_is_exact(fingerprint_feature(k, plan, cache_fp, positions, W_dec[_dir(k)], upper_final, logits_fn, V, device, sham=True, work_dtype=work_dtype))}
+    amps = cache_fp["act"] if fixed_amplitude else None
+    gate = [{"feature": int(feat_ids[k]), "exact": sham_is_exact(fingerprint_feature(k, plan, cache_fp, positions, W_dec[_dir(k)], upper_final, logits_fn, V, device, sham=True, work_dtype=work_dtype, amplitudes=amps))}
             for k in rows[:sham_gate]]
     if not all(g["exact"] for g in gate):
         raise GateError(f"the sham ablation is not exactly zero for the features {[g['feature'] for g in gate if not g['exact']]}: baseline and ablated rows do not go through identical computations")
     log("stage A:", len(rows), "features with contexts,", int(sel["excluded"].sum()), "excluded,", len(plan["sentences"]), "context sentences")
-    out = {"stage_a": {"write_features": write_features, "write_rows": rows, "excluded": sel["excluded"].numpy(), "n_active": sel["n_active"].numpy(), "n_ctx": sel["n_ctx"].numpy(), "contexts": sel["contexts"].numpy(), "sham_gate": gate, "direction_ids": None if direction_ids is None else np.asarray(direction_ids).astype(int)}, "states": {}}
+    out = {"stage_a": {"write_features": write_features, "write_rows": rows, "excluded": sel["excluded"].numpy(), "n_active": sel["n_active"].numpy(), "n_ctx": sel["n_ctx"].numpy(), "contexts": sel["contexts"].numpy(), "sham_gate": gate, "direction_ids": None if direction_ids is None else np.asarray(direction_ids).astype(int), "fixed_amplitude": bool(fixed_amplitude)}, "states": {}}
     on_stage_a(out["stage_a"])
     D_fp, g = None, (None if groups is None else np.asarray(groups)[rows])
     for label in states:
@@ -313,7 +316,7 @@ def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids
         cache = cache_fp if label == "FP" else cache_state(lower, encode, ctx_batches, plan, feat_ids, positions, device); rebatched = label == "FP_rebatched"
         Ds, st = [], {"n_pos": [], "n_active_q": [], "dnll": []}
         for k in rows:
-            o = fingerprint_feature(k, plan, cache, positions, W_dec[_dir(k)], upper_final, logits_fn, V, device, reverse=rebatched, extra_pad=extra_pad if rebatched else 0, work_dtype=work_dtype)
+            o = fingerprint_feature(k, plan, cache, positions, W_dec[_dir(k)], upper_final, logits_fn, V, device, reverse=rebatched, extra_pad=extra_pad if rebatched else 0, work_dtype=work_dtype, amplitudes=amps)
             Ds.append(o["D"].half().cpu()); st["n_pos"].append(o["n_pos"]); st["n_active_q"].append(o["n_active_q"]); st["dnll"].append(o["dnll"])
         D = torch.stack(Ds)
         if label == "FP":
@@ -338,6 +341,7 @@ def main(argv=None):
     ap.add_argument("--dev-sentences", type=int, default=997, help="FLORES dev sentences per language that are candidate contexts"); ap.add_argument("--max-eval", type=int, help="use only the first n frozen evaluation sentences (smoke)")
     ap.add_argument("--per-cell", type=int, help="keep at most this many features per (language, role) cell of the sample, chosen by a seeded hash order (the stratified subset for a cheaper full run)"); ap.add_argument("--subset-seed", type=int, default=0)
     ap.add_argument("--direction-control", action="store_true", help="the direction-swap control: ablate the decoder direction of the matched different feature (same language, nearest native rate) at the positions and with the activations of each feature")
+    ap.add_argument("--fixed-amplitude", action="store_true", help="the fixed-amplitude variant: in every state subtract the full-precision amplitude at the same positions (design section 11.4)")
     ap.add_argument("--max-features", type=int, help="evenly spaced subset of the sample (smoke)"); ap.add_argument("--work-dtype", choices=["native", "float32"], default="float32")
     ap.add_argument("--max-tokens", type=int, default=1024); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--commit", default="unknown")
     a = ap.parse_args(argv)
@@ -415,7 +419,7 @@ def main(argv=None):
 
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sha = lambda path: hashlib.sha256(Path(path).read_bytes()).hexdigest()
-    meta = {"task": "f5", "commit": a.commit, "model": model_name, "hook": hook, "states": states, "n_features": int(len(feat_ids)), "per_cell": a.per_cell, "subset_seed": a.subset_seed, "direction_control": bool(a.direction_control), "M": a.M, "min_ctx": a.min_ctx, "topk": a.topk, "extra_pad": a.extra_pad,
+    meta = {"task": "f5", "commit": a.commit, "model": model_name, "hook": hook, "states": states, "n_features": int(len(feat_ids)), "per_cell": a.per_cell, "subset_seed": a.subset_seed, "direction_control": bool(a.direction_control), "fixed_amplitude": bool(a.fixed_amplitude), "M": a.M, "min_ctx": a.min_ctx, "topk": a.topk, "extra_pad": a.extra_pad,
             "dev_sentences_per_language": a.dev_sentences, "n_dev": len(dev), "n_eval_per_language": len(eval_ids), "work_dtype": a.work_dtype, "languages": names, "gates": gates,
             "sample_sha256": sha(a.sample), "freeze_sha256": sha(a.freeze), "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "state_seconds": {}}
 
@@ -434,7 +438,7 @@ def main(argv=None):
         log("state", label, "saved after", round(meta["state_seconds"][label]), "s; peak GPU GB", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0); write_meta(False)
 
     run_f5(states, setup, lower, upper_final, logits_fn, encode, sae.W_dec, feat_ids, eval_batches, dev, batcher, a.M, a.min_ctx, V, DEVICE, topk=a.topk, groups=groups.numpy(), extra_pad=a.extra_pad, log=log,
-           on_state=on_state, on_stage_a=on_stage_a, work_dtype=work_dtype, direction_ids=direction_ids)
+           on_state=on_state, on_stage_a=on_stage_a, work_dtype=work_dtype, direction_ids=direction_ids, fixed_amplitude=a.fixed_amplitude)
     restore(); write_meta(True)
     log("saved", a.out)
 
