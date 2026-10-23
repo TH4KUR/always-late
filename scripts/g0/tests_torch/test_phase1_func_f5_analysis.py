@@ -312,6 +312,30 @@ class Guards(unittest.TestCase):
         s = an.validity(st, T, floor, n_boot=50, seed=0)["statements"]["S3"]; self.assertEqual(s["n_defined"], 10); self.assertIn(s["verdict"], ("met", "not met"))
 
 
+class DirectionControlRuns(unittest.TestCase):
+    def test_a_control_run_and_an_ordinary_run_are_never_merged(self):
+        w = build_world("sensible")
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            save_run(w, a, ["FP", "INT8"], meta={"complete": True, "work_dtype": "float32", "direction_control": True}); save_run(w, b, ["FP", "INT6"], meta={"complete": True, "work_dtype": "float32", "direction_control": False})
+            with self.assertRaises(ValueError):
+                an.load_runs([a, b])
+
+    def test_two_control_runs_merge_and_carry_the_flag(self):
+        w = build_world("sensible")
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            save_run(w, a, ["FP", "INT8"], meta={"complete": True, "work_dtype": "float32", "direction_control": True}); save_run(w, b, ["FP", "INT6"], meta={"complete": True, "work_dtype": "float32", "direction_control": True})
+            self.assertTrue(an.load_runs([a, b])[2]["direction_control"])
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            save_run(w, a, ["FP", "INT8"], meta={"complete": True, "work_dtype": "float32"}); save_run(w, b, ["FP", "INT6"], meta={"complete": True, "work_dtype": "float32"})
+            self.assertFalse(an.load_runs([a, b])[2]["direction_control"])                                              # runs written before the option existed are ordinary runs
+
+    def test_the_report_of_a_control_run_says_so_at_the_top_of_the_first_section(self):
+        sa, st, sm, T = build_varying_world()
+        ctrl = an.analyse_f5(sa, st, sm, meta={"direction_control": True}, n_boot=30, seed=0); self.assertTrue(ctrl["instrument"]["direction_control"])
+        md = an.report_text(ctrl); sec1 = md.split("## 2.")[0]; self.assertIn("DIRECTION-SWAP CONTROL RUN", sec1); self.assertIn("not the effect of the features themselves", sec1)
+        plain = an.report_text(an.analyse_f5(sa, st, sm, meta=None, n_boot=30, seed=0)); self.assertNotIn("DIRECTION-SWAP", plain)
+
+
 class ContinuousAuroc(unittest.TestCase):
     def test_the_descriptive_auroc_is_the_probability_that_a_retained_feature_keeps_more_function_than_a_lost_one(self):
         import phase1_func_f5_metrics as met

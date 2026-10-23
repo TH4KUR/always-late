@@ -285,11 +285,13 @@ def state_bits(label):
     return int(label[3:]) if label.startswith("INT") else None
 
 
-def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids, eval_batches, dev_sentences, batcher, M, min_ctx, V, device, topk=50, groups=None, extra_pad=3, log=lambda *a: None, on_state=lambda label, result: None, on_stage_a=lambda stage_a: None, work_dtype=None, sham_gate=2):
+def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids, eval_batches, dev_sentences, batcher, M, min_ctx, V, device, topk=50, groups=None, extra_pad=3, log=lambda *a: None, on_state=lambda label, result: None, on_stage_a=lambda stage_a: None, work_dtype=None, sham_gate=2, direction_ids=None):
     """The F5 measurements for the model states `states` (labels; "FP" first; "FP_rebatched" is the numerical-floor pseudo-state: the same weights, the contexts reversed and padded). setup(label) puts the model in
     that state (restores the full-precision weights, quantizes) and is called before the state is measured; batcher(sentences) -> batches (the format of phase1_lib.make_batches).
     Stage A (full precision): the contexts of every sample feature from the candidate sentences, the full-precision active positions, the full-precision read-side reference. Per state: the read side over the evaluation
-    batches, then the write side (fingerprints) and its comparison with the full-precision fingerprints. -> {"stage_a": {...}, "states": {label: {"read": {...}, "write": {...}}}}."""
+    batches, then the write side (fingerprints) and its comparison with the full-precision fingerprints. -> {"stage_a": {...}, "states": {label: {"read": {...}, "write": {...}}}}.
+    direction_ids (one feature id per sample row, or None): the DIRECTION-SWAP CONTROL: the ablation uses the decoder direction of that feature instead of the row's own, at the positions and with the activations of the row's
+    feature (design section 11.3); the identity map reproduces the ordinary run."""
     import numpy as np
     import phase1_func_f5_metrics as met
     setup("FP")
@@ -297,13 +299,13 @@ def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids
     sel = select_contexts(ma, M, min_ctx); plan = plan_contexts(sel["contexts"], sel["excluded"], dev_sentences)
     rows = sorted(plan["ctx"]); write_features = [int(feat_ids[k]) for k in rows]; ctx_batches = batcher(plan["sentences"])
     positions = fp_active_positions(lower, encode, ctx_batches, plan, feat_ids, device); fp_read = collect_read(lower, encode, eval_batches, feat_ids, device)
-    cache_fp = cache_state(lower, encode, ctx_batches, plan, feat_ids, positions, device)
-    gate = [{"feature": int(feat_ids[k]), "exact": sham_is_exact(fingerprint_feature(k, plan, cache_fp, positions, W_dec[int(feat_ids[k])], upper_final, logits_fn, V, device, sham=True, work_dtype=work_dtype))}
+    cache_fp = cache_state(lower, encode, ctx_batches, plan, feat_ids, positions, device); _dir = lambda k: int(direction_ids[k]) if direction_ids is not None else int(feat_ids[k])
+    gate = [{"feature": int(feat_ids[k]), "exact": sham_is_exact(fingerprint_feature(k, plan, cache_fp, positions, W_dec[_dir(k)], upper_final, logits_fn, V, device, sham=True, work_dtype=work_dtype))}
             for k in rows[:sham_gate]]
     if not all(g["exact"] for g in gate):
         raise GateError(f"the sham ablation is not exactly zero for the features {[g['feature'] for g in gate if not g['exact']]}: baseline and ablated rows do not go through identical computations")
     log("stage A:", len(rows), "features with contexts,", int(sel["excluded"].sum()), "excluded,", len(plan["sentences"]), "context sentences")
-    out = {"stage_a": {"write_features": write_features, "write_rows": rows, "excluded": sel["excluded"].numpy(), "n_active": sel["n_active"].numpy(), "n_ctx": sel["n_ctx"].numpy(), "contexts": sel["contexts"].numpy(), "sham_gate": gate}, "states": {}}
+    out = {"stage_a": {"write_features": write_features, "write_rows": rows, "excluded": sel["excluded"].numpy(), "n_active": sel["n_active"].numpy(), "n_ctx": sel["n_ctx"].numpy(), "contexts": sel["contexts"].numpy(), "sham_gate": gate, "direction_ids": None if direction_ids is None else np.asarray(direction_ids).astype(int)}, "states": {}}
     on_stage_a(out["stage_a"])
     D_fp, g = None, (None if groups is None else np.asarray(groups)[rows])
     for label in states:
@@ -311,7 +313,7 @@ def run_f5(states, setup, lower, upper_final, logits_fn, encode, W_dec, feat_ids
         cache = cache_fp if label == "FP" else cache_state(lower, encode, ctx_batches, plan, feat_ids, positions, device); rebatched = label == "FP_rebatched"
         Ds, st = [], {"n_pos": [], "n_active_q": [], "dnll": []}
         for k in rows:
-            o = fingerprint_feature(k, plan, cache, positions, W_dec[int(feat_ids[k])], upper_final, logits_fn, V, device, reverse=rebatched, extra_pad=extra_pad if rebatched else 0, work_dtype=work_dtype)
+            o = fingerprint_feature(k, plan, cache, positions, W_dec[_dir(k)], upper_final, logits_fn, V, device, reverse=rebatched, extra_pad=extra_pad if rebatched else 0, work_dtype=work_dtype)
             Ds.append(o["D"].half().cpu()); st["n_pos"].append(o["n_pos"]); st["n_active_q"].append(o["n_active_q"]); st["dnll"].append(o["dnll"])
         D = torch.stack(Ds)
         if label == "FP":
@@ -335,6 +337,7 @@ def main(argv=None):
     ap.add_argument("--M", type=int, default=16); ap.add_argument("--min-ctx", type=int, default=4); ap.add_argument("--topk", type=int, default=50); ap.add_argument("--extra-pad", type=int, default=3)
     ap.add_argument("--dev-sentences", type=int, default=997, help="FLORES dev sentences per language that are candidate contexts"); ap.add_argument("--max-eval", type=int, help="use only the first n frozen evaluation sentences (smoke)")
     ap.add_argument("--per-cell", type=int, help="keep at most this many features per (language, role) cell of the sample, chosen by a seeded hash order (the stratified subset for a cheaper full run)"); ap.add_argument("--subset-seed", type=int, default=0)
+    ap.add_argument("--direction-control", action="store_true", help="the direction-swap control: ablate the decoder direction of the matched different feature (same language, nearest native rate) at the positions and with the activations of each feature")
     ap.add_argument("--max-features", type=int, help="evenly spaced subset of the sample (smoke)"); ap.add_argument("--work-dtype", choices=["native", "float32"], default="float32")
     ap.add_argument("--max-tokens", type=int, default=1024); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--commit", default="unknown")
     a = ap.parse_args(argv)
@@ -380,7 +383,13 @@ def main(argv=None):
 
     names = [r["code"] for r in pd_.load_roster(a.roster)]
     sample = json.loads(Path(a.sample).read_text()); assert sample["languages"] == names, "the sample was built for another language order"
-    feat_ids, groups = sample_arrays(sample, a.max_features, a.per_cell, a.subset_seed)
+    feat_ids, groups = sample_arrays(sample, a.max_features, a.per_cell, a.subset_seed); direction_ids = None
+    if a.direction_control:
+        import phase1_func_f5_metrics as met
+        match = met.match_controls(groups.numpy(), np.array([sample["features"][str(int(i))]["native"]["FP"][0] for i in feat_ids.tolist()]))
+        if (match < 0).any():
+            raise ValueError(f"{int((match < 0).sum())} sample features have no matched different feature (same language, positive native rate): the direction-swap control needs at least two features per language")
+        direction_ids = feat_ids.numpy()[match]
     freeze = json.loads(Path(a.freeze).read_text()); eval_ids = frozen_eval_ids(freeze)[:a.max_eval]
     eval_data = {}
     for i, code in enumerate(names):
@@ -406,7 +415,7 @@ def main(argv=None):
 
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     sha = lambda path: hashlib.sha256(Path(path).read_bytes()).hexdigest()
-    meta = {"task": "f5", "commit": a.commit, "model": model_name, "hook": hook, "states": states, "n_features": int(len(feat_ids)), "per_cell": a.per_cell, "subset_seed": a.subset_seed, "M": a.M, "min_ctx": a.min_ctx, "topk": a.topk, "extra_pad": a.extra_pad,
+    meta = {"task": "f5", "commit": a.commit, "model": model_name, "hook": hook, "states": states, "n_features": int(len(feat_ids)), "per_cell": a.per_cell, "subset_seed": a.subset_seed, "direction_control": bool(a.direction_control), "M": a.M, "min_ctx": a.min_ctx, "topk": a.topk, "extra_pad": a.extra_pad,
             "dev_sentences_per_language": a.dev_sentences, "n_dev": len(dev), "n_eval_per_language": len(eval_ids), "work_dtype": a.work_dtype, "languages": names, "gates": gates,
             "sample_sha256": sha(a.sample), "freeze_sha256": sha(a.freeze), "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "state_seconds": {}}
 
@@ -425,7 +434,7 @@ def main(argv=None):
         log("state", label, "saved after", round(meta["state_seconds"][label]), "s; peak GPU GB", torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0); write_meta(False)
 
     run_f5(states, setup, lower, upper_final, logits_fn, encode, sae.W_dec, feat_ids, eval_batches, dev, batcher, a.M, a.min_ctx, V, DEVICE, topk=a.topk, groups=groups.numpy(), extra_pad=a.extra_pad, log=log,
-           on_state=on_state, on_stage_a=on_stage_a, work_dtype=work_dtype)
+           on_state=on_state, on_stage_a=on_stage_a, work_dtype=work_dtype, direction_ids=direction_ids)
     restore(); write_meta(True)
     log("saved", a.out)
 

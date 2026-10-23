@@ -188,3 +188,16 @@ def paired_median_difference(a, clusters_a, b, clusters_b):
             continue
         by[c] = float(np.nanmedian(va) - np.nanmedian(vb))
     return {"by_cluster": by, "median": float(np.median(list(by.values()))) if by else float("nan")}
+
+
+def match_controls(lang_idx, rate_fp):
+    """For every feature i the index of the feature j != i of the same language whose full-precision native rate is nearest on the log scale (ties: the smaller index); -1 when there is no candidate or the
+    feature has no positive rate (a feature without a positive rate is not a candidate either). The one rule behind the negative control of the analysis and the direction-swap control of the runner."""
+    lang = np.asarray(lang_idx); rate = np.asarray(rate_fp, dtype=np.float64); match = np.full(len(rate), -1, dtype=int)
+    for l in np.unique(lang):
+        idx = np.flatnonzero((lang == l) & (rate > 0))
+        for i in idx:
+            cand = idx[idx != i]
+            if len(cand):
+                match[i] = cand[int(np.argmin(np.abs(np.log(rate[cand]) - np.log(rate[i]))))]
+    return match

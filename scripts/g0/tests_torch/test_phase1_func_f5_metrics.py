@@ -219,5 +219,25 @@ class ClusterBootstrap(unittest.TestCase):
         d = m.paired_median_difference(a, ca, b, cb)
         self.assertEqual(list(d["by_cluster"]), [0]); self.assertEqual(d["median"], 1.5)                         # cluster 1 has no defined a, cluster 2 no a at all
 
+
+class MatchControls(unittest.TestCase):
+    """The matched different feature: same language, nearest native rate on the log scale (shared by the negative control of the analysis and the direction-swap control of the runner)."""
+    def test_the_match_is_the_same_language_feature_with_the_nearest_log_rate(self):
+        rate = np.array([1e-3, 2e-3, 1.1e-3, 5e-3, 5e-3, 3e-3]); lang = np.array([0, 0, 0, 1, 1, 2])
+        self.assertEqual(m.match_controls(lang, rate).tolist(), [2, 2, 0, 4, 3, -1])
+
+    def test_the_log_scale_decides_not_the_linear_distance(self):
+        self.assertEqual(m.match_controls(np.zeros(3, dtype=int), np.array([10.0, 4.0, 20.0]))[0], 2)
+
+    def test_ties_go_to_the_smaller_index_and_a_feature_never_matches_itself(self):
+        self.assertEqual(m.match_controls(np.zeros(4, dtype=int), np.full(4, 1e-3)).tolist(), [1, 0, 0, 0])
+
+    def test_a_feature_without_a_positive_rate_has_no_match_and_is_not_anyones_match(self):
+        r = m.match_controls(np.zeros(3, dtype=int), np.array([0.0, 1e-3, 2e-3])); self.assertEqual(r.tolist(), [-1, 2, 1])
+
+    def test_matches_never_cross_languages(self):
+        lang = np.array([0, 1, 0, 1]); r = m.match_controls(lang, np.array([1.0, 1.0, 5.0, 5.0]))
+        self.assertTrue(all(lang[i] == lang[j] for i, j in enumerate(r) if j >= 0)); self.assertEqual(r.tolist(), [2, 3, 0, 1])
+
 if __name__ == "__main__":
     unittest.main()

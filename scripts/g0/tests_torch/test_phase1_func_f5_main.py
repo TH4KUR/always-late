@@ -56,7 +56,7 @@ class MainRehearsal(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory(); tmp = Path(cls.tmp.name); cls.out = tmp / "out"
         cls.codes = ["l0", "l1", "l2"]; cls.model = ToyTL(); cls.sae = ToySAE(); cls.sae.cfg = types.SimpleNamespace(hook_name="blocks.12.hook_resid_post", d_in=D, d_sae=F)
         (tmp / "roster.json").write_text(json.dumps({"codes": cls.codes}))
-        cls.ids = list(range(0, F, 2)); (tmp / "sample.json").write_text(json.dumps({"languages": cls.codes, "features": {str(f): {"language": cls.codes[f % 3], "roles": ["k64"]} for f in cls.ids}}))
+        cls.ids = list(range(0, F, 2)); (tmp / "sample.json").write_text(json.dumps({"languages": cls.codes, "features": {str(f): {"language": cls.codes[f % 3], "roles": ["k64"], "native": {"FP": [0.001 * (1 + (f % 7)), 0.01]}} for f in cls.ids}}))
         (tmp / "manifest.json").write_text(json.dumps({"functions": {}}))
         (tmp / "freeze.json").write_text(json.dumps({"ids": {"n_total": 1012, "n_pilot": 150, "n_eval": 300, "seed": 0, "eval_ids": ft.lm_ids(1012, 150, 300, 0)["eval"]}}))
         cls.stubs = cls.make_stubs(tmp, cls.model, cls.sae)
@@ -166,6 +166,21 @@ class MainRehearsal(unittest.TestCase):
         sample = json.loads((Path(self.tmp.name) / "sample.json").read_text()); self.assertEqual(st["feat_ids"].tolist(), r5.sample_arrays(sample, None, 2, 5)[0].tolist())
         self.assertNotEqual(st["feat_ids"].tolist(), r5.sample_arrays(sample, None, 2, 0)[0].tolist())
         self.assertEqual(sorted(np.bincount(st["feat_lang"]).tolist()), [2, 2, 2])                                    # two per language (each language is one cell: the toy features have the role k64 only)
+
+
+    def test_the_direction_control_option_records_the_matched_direction_features_and_is_off_by_default(self):
+        import phase1_func_f5_metrics as met
+        o = Path(self.tmp.name) / "out8"; argv = list(self.args); argv[argv.index("--out") + 1] = str(o); i = argv.index("--states"); argv[i + 1:i + 5] = ["FP", "4"]; argv += ["--direction-control"]
+        self.run_main(argv, self.stubs); m = json.loads((o / "meta_f5.json").read_text()); st = torch.load(o / "f5_stage_a.pt", weights_only=False)
+        rates = np.array([0.001 * (1 + (f % 7)) for f in self.ids]); want = np.array(self.ids)[met.match_controls(np.array([f % 3 for f in self.ids]), rates)]
+        self.assertTrue(m["direction_control"]); np.testing.assert_array_equal(st["direction_ids"], want); self.assertTrue((st["direction_ids"] != st["feat_ids"]).all())
+        self.assertFalse(self.meta["direction_control"]); self.assertIsNone(self.stage["direction_ids"])
+
+    def test_a_language_with_a_single_sample_feature_makes_the_direction_control_impossible_and_is_refused(self):
+        argv = list(self.args); argv[argv.index("--out") + 1] = str(Path(self.tmp.name) / "out9"); i = argv.index("--states"); argv[i + 1:i + 5] = ["FP"]; argv += ["--direction-control", "--per-cell", "1"]
+        with self.assertRaises(ValueError):
+            self.run_main(argv, self.stubs)
+        self.assertFalse((Path(self.tmp.name) / "out9" / "f5_stage_a.pt").exists())
 
 
 if __name__ == "__main__":

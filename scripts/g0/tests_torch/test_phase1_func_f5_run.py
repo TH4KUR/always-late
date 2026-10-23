@@ -606,6 +606,59 @@ class DefaultStates(unittest.TestCase):
     def test_the_default_states_include_the_weight_rounding_floor_int16_and_the_batching_floor(self):
         self.assertEqual([r5.state_label(x) for x in r5.DEFAULT_STATES], ["FP", "FP_rebatched", "INT16", "INT8", "INT6", "INT5", "INT4"])
 
+class DirectionControl(unittest.TestCase):
+    """The direction-swap control: the positions and amplitudes of feature f, the decoder direction of another feature g (design section 11.3)."""
+    @classmethod
+    def setUpClass(cls):
+        cls.sae = ToySAE(); cls.dev = sentences(80, seed=5); cls.ev = sentences(30, seed=6); cls.feat = torch.tensor([29, 3, 17, 8, 22, 1, 12, 25, 5, 30, 14, 9])
+        cls.batcher = staticmethod(lambda sents, bs=6: p1.make_batches({0: sents}, BOS, "mask", 0, 256, bs)); cls.dir_ids = torch.roll(cls.feat, 1)                     # row k uses the direction of row k - 1
+
+    def run_(self, stack, setup, direction_ids=None, states=("FP", "Q")):
+        return r5.run_f5(list(states), setup, stack.lower, stack.upper_final, stack.logits_fn, self.sae.encode, self.sae.W_dec, self.feat, self.batcher(self.ev), self.dev, self.batcher,
+                         M=5, min_ctx=3, V=V, device="cpu", topk=3, direction_ids=direction_ids)
+
+    def test_the_stage_a_result_records_the_direction_features_or_none(self):
+        stack = ToyStack(linear=True); setup = lambda label: None
+        self.assertIsNone(self.run_(stack, setup)["stage_a"]["direction_ids"]); out = self.run_(stack, setup, self.dir_ids)["stage_a"]
+        np.testing.assert_array_equal(out["direction_ids"], self.dir_ids.numpy())
+
+    def test_every_fingerprint_and_the_sham_gate_use_the_decoder_of_the_direction_feature(self):
+        stack = ToyStack(linear=True); seen = []; orig = r5.fingerprint_feature
+
+        def spy(k, plan, cache, positions, d_f, *a, **kw):
+            seen.append((k, d_f.clone())); return orig(k, plan, cache, positions, d_f, *a, **kw)
+        r5.fingerprint_feature = spy
+        try:
+            self.run_(stack, lambda label: None, self.dir_ids, states=("FP",))
+        finally:
+            r5.fingerprint_feature = orig
+        self.assertGreaterEqual(len(seen), 12)
+        for k, d in seen:
+            torch.testing.assert_close(d, self.sae.W_dec[int(self.dir_ids[k])])
+
+    def test_the_identity_map_changes_nothing(self):
+        stack = ToyStack(linear=True); setup = lambda label: None; a = self.run_(stack, setup)["states"]["Q"]["write"]["cos"]; b = self.run_(stack, setup, self.feat)["states"]["Q"]["write"]["cos"]
+        np.testing.assert_allclose(a, b, atol=1e-6)
+
+    def test_a_generic_drift_lowers_the_feature_and_the_control_alike_and_a_specific_drift_only_the_feature(self):
+        rng = torch.Generator().manual_seed(3); R = torch.randn(D, D, generator=rng) * 0.4
+        generic = ToyStack(linear=True); generic.perturb = lambda A: A
+        state = {"label": "FP"}
+        def set_generic(label):
+            state["label"] = label; generic.perturb = (lambda A: A + R) if label == "Q" else (lambda A: A)
+        own = self.run_(generic, set_generic)["states"]["Q"]["write"]["cos"]; swap = self.run_(generic, set_generic, self.dir_ids)["states"]["Q"]["write"]["cos"]
+        self.assertLess(np.median(own), 0.99); self.assertLess(np.median(swap), 0.99); self.assertLess(abs(np.median(own) - np.median(swap)), 0.2)             # a generic drift lowers both alike
+        # a drift along the decoder of ONE feature j: only ablations with that direction see it
+        j_row = 3; fj = int(self.feat[j_row]); dj = self.sae.W_dec[fj]; specific = ToyStack(linear=True); r = torch.randn(D, generator=torch.Generator().manual_seed(11)) * 5
+        def set_specific(label):
+            specific.perturb = (lambda A: A + torch.outer(dj / (dj @ dj), r)) if label == "Q" else (lambda A: A)
+        out_own = self.run_(specific, set_specific); out_swap = self.run_(specific, set_specific, self.dir_ids)
+        w = out_own["stage_a"]["write_features"]; i = w.index(fj); cos_own = out_own["states"]["Q"]["write"]["cos"]; cos_swap = out_swap["states"]["Q"]["write"]["cos"]
+        # the toy dictionary is overcomplete (32 directions in 8 dimensions), so a drift along d_j reaches the directions that are correlated with it: compare with the controls whose direction is nearly orthogonal to d_j
+        align = lambda g: abs(float(self.sae.W_dec[g] @ dj / (self.sae.W_dec[g].norm() * dj.norm())))
+        rows = out_swap["stage_a"]["write_rows"]; low = [k for k in range(len(w)) if k != i and int(self.dir_ids[rows[k]]) != fj and align(int(self.dir_ids[rows[k]])) < 0.2]; self.assertGreaterEqual(len(low), 4)
+        self.assertLess(cos_own[i], 0.86); self.assertGreater(np.median(cos_swap[low]), 0.9); self.assertGreater(np.median(cos_swap[low]) - cos_own[i], 0.08)                  # the drift hits the direction of j, not the nearly orthogonal controls
+
 
 if __name__ == "__main__":
     unittest.main()
