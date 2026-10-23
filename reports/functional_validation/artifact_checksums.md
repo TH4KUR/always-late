@@ -1,6 +1,6 @@
 # Item-level result files of the functional study on Ada: sizes and sha256
 
-Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue, 35319) ended at 04:14 and its files were added at 04:16; the F5 jobs `f5-a` and `f5-b` follow. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40; the F5 full job A (`f5-a`, 35424) files at 06:32 ; the sensitivity job `f5-m8` at 07:13 ; job B (`f5-b`, 35435) at 07:57 ; `f5-m32` at 08:52 ; the K = all Belebele job `func-mc-ksens` at 12:33; the fixed-amplitude job `f5-fa` at 11:37; the direction-swap control `f5-dir` at 09:52. 99 files, 101.7 MB. A fetched copy can be checked with `sha256sum`.
+Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue, 35319) ended at 04:14 and its files were added at 04:16; the F5 jobs `f5-a` and `f5-b` follow. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40; the F5 full job A (`f5-a`, 35424) files at 06:32 ; the sensitivity job `f5-m8` at 07:13 ; job B (`f5-b`, 35435) at 07:57 ; `f5-m32` at 08:52 ; the K = all Belebele job `func-mc-ksens` at 12:33; the fixed-amplitude job `f5-fa` at 11:37; its combination with the swap control `f5-fa-dir` at 13:15; the direction-swap control `f5-dir` at 09:52. 104 files, 103.2 MB. A fetched copy can be checked with `sha256sum`.
 
 | path | bytes | sha256 |
 |---|---|---|
@@ -33,6 +33,11 @@ Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). T
 | `f5-fa/f5_state_INT16.pt` | 381018 | `cdefcf3f8b0fb77f01894e0814b093b4160a812ee3db462ad99d028800a91593` |
 | `f5-fa/f5_state_INT4.pt` | 381011 | `783263de667b6816cb4334ff3e71655d7213501250e2442e20e0ea8070da6aec` |
 | `f5-fa/meta_f5.json` | 1728 | `3f838e8ece5ec11bc31f48d96d23512c98a1a80d65002c862374dd1f334fd635` |
+| `f5-fa-dir/f5_stage_a.pt` | 291775 | `30448aa8e0a0a31298dd040d11654ed5cd4f9dd0e9e48ee1da9756cfa375c762` |
+| `f5-fa-dir/f5_state_FP.pt` | 376645 | `ec328672bb694cd6e44045ebcccaf1165eb54f3f78edc5733c3d0691bdcd8b9e` |
+| `f5-fa-dir/f5_state_INT16.pt` | 381082 | `d214c5a51607ebf86877648d6b200bbf2a6ac11a93088dde146eca156fa89db1` |
+| `f5-fa-dir/f5_state_INT4.pt` | 380947 | `e48d670db0ae769d7ef414defdda84aefd22a1f6ce8e97b65cf5f621031a41f1` |
+| `f5-fa-dir/meta_f5.json` | 1726 | `4ff3580922ae5d695c4c220ae62ee8a6de7f85e2ce1d86b79edda22f25bc25a4` |
 | `f5-dir/f5_stage_a.pt` | 291711 | `23c1fe9df1b712d355c7b83c76ba6c348df3a7d78535bb5dc6e4a06a35217d9a` |
 | `f5-dir/f5_state_FP.pt` | 376645 | `ec328672bb694cd6e44045ebcccaf1165eb54f3f78edc5733c3d0691bdcd8b9e` |
 | `f5-dir/f5_state_INT16.pt` | 381018 | `461824e553b787bbd68e99e6b020605f1a722fcf6747f835f273c7dc0a20eebb` |
