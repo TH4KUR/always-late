@@ -81,3 +81,7 @@ Section 3 of `reports/functional_validation/RESULTS_SUMMARY.md` is now a table o
 ## Addendum 9 (23:12): entry pages consolidated
 
 `PROGRESS.md` (block 'NEXT RUN'S GOAL') and `reports/scheduled_routine.md` (rule 5, steps 1, 4, 6, 'How a step ends') now point at STATUS `Immediate`; the stale texts are in `reports/archive/routine_and_progress_stale_blocks_2026-10-23.md`. Nothing waits on code; the open items are the user's answers (Q21 to Q26).
+
+## Addendum 10 (23:48): documentation clean-up and the standing rule
+
+The user (main chat, 2026-10-23): clean up documentation, remove stale and redundant documents, but **never remove progress tracking** (the trail of all directions explored and considered must survive to the end of the project). Done: `reports/INDEX.md` (map, rule, directions ledger, record of removals); the rule is in `functional_validation/cron_prompt.md` (hard rule 3), `scheduled_routine.md` (rule 7), `HANDOFF.md` and the assistant's memory; 24 generated files removed that were byte-identical to files of `figures/eval/` (last commit holding them: `7147f0e`). Everything else stays.

@@ -27,7 +27,8 @@
 >   - the JumpReLU threshold margin adds nothing beyond raw magnitude; two residuals stay unexplained;
 >   - everything beyond the pre-registered family is additional or exploratory, correlational (27 languages) and labelled so; the completed BOS-free results are historical evidence from a regime that failed the project's noise-floor check.
 >   - Q3/Q4 and Q13-Q15's reporting/investigation directions are recorded; the replacement measurement design remains to be selected. Other unanswered review items remain in `DECISIONS_FOR_REVIEW.md`; historical OSF status remains unverified.
-> - Entry points: **[`HANDOFF.md`](HANDOFF.md)** (for a new agent or teammate), [`PLAN.md`](PLAN.md), [`PROGRESS.md`](PROGRESS.md), [`issues.md`](issues.md) (review of the discarded work), [`reports/duan_codebase_audit.md`](reports/duan_codebase_audit.md).
+> - **Update 2026-10-23:** the survival-method reassessment and the replacement measurements were carried out as the functional-validation study and the association analyses (results and claim map: [`RESULTS_SUMMARY.md`](reports/functional_validation/RESULTS_SUMMARY.md); every analysis re-runs with [`REPRODUCE.md`](reports/functional_validation/REPRODUCE.md)); **the documentation map, with the trail of all directions explored or considered, is [`reports/INDEX.md`](reports/INDEX.md)**; the bullets above are kept as written on 2026-10-21.
+> - Entry points: **[`HANDOFF.md`](HANDOFF.md)** (for a new agent or teammate), [`reports/INDEX.md`](reports/INDEX.md) (documentation map), [`PLAN.md`](PLAN.md), [`PROGRESS.md`](PROGRESS.md), [`issues.md`](issues.md) (review of the discarded work), [`reports/duan_codebase_audit.md`](reports/duan_codebase_audit.md).
 > - `paper/main.tex` still contains superseded text (see `issues.md` A1-A6). It must be rewritten by the team.
 
 ---

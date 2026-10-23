@@ -4,6 +4,8 @@
 >
 > Older banner paragraphs (the two handoff series of 2026-10-21 and the Codex 014 note) were moved verbatim to [`reports/archive/handoff_md_stale_sections_2026-10-23.md`](reports/archive/handoff_md_stale_sections_2026-10-23.md) on 2026-10-23 (plan Task 9). **The project state is NOT described in the sections below: read the newest handoff and `reports/functional_validation/STATUS.md`.**
 
+> **Documentation map (what is current, what is the progress-tracking trail that is never deleted, what is evidence): [`reports/INDEX.md`](reports/INDEX.md).**
+>
 > **START HERE (since 2026-10-18): read ONLY the newest file in `reports/handoffs/` first** (highest number; template `reports/handoffs/TEMPLATE.md`; the routine is `reports/scheduled_routine.md`). It is the only record of the previous chat; the sections below are reference material.
 
 Written 2026-10-16, rewritten the same night after the audit and the decision to **discard our previous codebase**. For an agent with no memory of the previous sessions. Read this file fully, then the "POST-MORTEM of our previous codebase" entry at the end of `reports/progress_log.md`, `reports/audit_our_vs_duan.md` (what was found), `third_party/duan2026/UPSTREAM.md` (exactly what was removed and edited) and `reports/duan_codebase_audit.md` (Ada facts, closure protocol). Items marked **UNVERIFIED** were not verified.
@@ -65,6 +67,7 @@ Commands from the repo root. Ada: `ssh karma@ada-gw1` (key auth works from the u
 
 - Do not edit `third_party/duan2026/` by hand, add edits, change the baseline constants, or change the comparison bands. Do not describe diagnostics as replication.
 - Do not resurrect the legacy pipeline into the working tree. If something from it is needed, check out the tag and port the *idea* as a tested diff on their code.
+- **Never remove, shorten or overwrite progress-tracking documents** (decisions, questions, logs, handoffs, plans and designs, source registers, audits, the archive): the user's instruction of 2026-10-23, so that the whole trail of directions explored and considered survives to the end of the project. The map of what is current, what is trail and what is evidence is [`reports/INDEX.md`](reports/INDEX.md); consolidation moves text verbatim into `reports/archive/` with a pointer.
 - Do not edit `paper/` prose or write report text.
 - Do not touch the user's `plan02-train` jobs, other users' files, `~/.netrc`, `~/.env`, `~/.ssh`, HF tokens. Do not fill `/home2`. No long jobs on the login node.
 - Do not commit data, weights, `.pt` files, per-feature CSV dumps or secrets. Commit small CSV/JSON/MD results under `reports/g0/`.
