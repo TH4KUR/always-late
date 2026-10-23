@@ -61,3 +61,7 @@ D-066: within language, the feature's own full-precision margin predicts the los
 ## Addendum 4 (19:56): the A2 figure is done
 
 `results/within-language/fig_loss_by_margin_{light,dark}.{svg,png}` (module `scripts/g0/phase1_assoc_margin_figures.py`, 18 tests, 20 mutants killed; torch suite 1174, stdlib 265; command in the module docstring). The next step is STATUS "Immediate" (1): A3, a CPU cross-check of function (F5 W1) against the full-precision margin, plan and prediction first. No job runs on Ada; the open items are the user's answers (Q21 to Q26).
+
+## Addendum 5 (20:39): A3 is done
+
+D-067: on the 1,449 F5-tested features that are established D-035 features, the full-precision margin separates the association loss with AUROC 0.86 (INT6) / 0.77 (INT5) but the function event (W1 below the floor) with only 0.58 / 0.53; Spearman(margin, W1) about +0.10. New code `scripts/g0/phase1_assoc_function_link.py` (27 tests, 28 mutants killed; torch suite 1201, stdlib 265), output `reports/association_retention/results/margin-function/`; inputs: the F5 jobs A and B (scratch copies `f5a-partial/`, `f5b/`; Ada `f5-a`, `f5-b`) and the D-035 status file (Ada `association-full/analysis-eq/feature_status.csv`). Next step in STATUS "Immediate" (1): an A3 figure. No job runs on Ada; the open items are the user's answers (Q21 to Q26).
