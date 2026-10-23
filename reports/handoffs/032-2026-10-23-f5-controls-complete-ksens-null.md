@@ -45,3 +45,7 @@ Q21 (upload item-level files to the private dataset?), Q22 (accept the Llama lic
 ## 7. What I would check if something looks wrong
 
 `git status`, the link checker (last line ends " 0 broken"), `CronList` (three entries), `squeue -u karma` over the strict-key route, the sham gate line and logit gates in each F5 log, the item-key hashes against the freeze for any T-MC file, and that jobs merged in an analysis share their stage A.
+
+## Addendum (2026-10-23 13:52): the next step was started
+
+Design section 11.5 and plan Task 15e (the swap control at INT8, INT6 and INT5, predictions P1 to P3 written first) were committed at 13:51 and the job `f5-dir2` **35885** was submitted at 13:52 (snapshot `repo_50d71b6`, `--states FP 16 8 6 5 --per-cell 3 --subset-seed 0 --direction-control`, `-t 02:30:00`, expected end about 15:25, output `/home2/karma/duan-verify/out/phase1/f5-dir2/`). So section 2's "no job running" is out of date: one job runs, one slot is free. Section 4 steps (a) and (b) are done; (c) to (e) remain, with the exact commands in STATUS "Immediate".
