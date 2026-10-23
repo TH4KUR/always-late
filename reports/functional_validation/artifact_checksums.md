@@ -1,6 +1,6 @@
 # Item-level result files of the functional study on Ada: sizes and sha256
 
-Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue, 35319) ended at 04:14 and its files were added at 04:16; the F5 jobs `f5-a` and `f5-b` follow. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40; the F5 full job A (`f5-a`, 35424) files at 06:32 ; the sensitivity job `f5-m8` at 07:13 ; job B (`f5-b`, 35435) at 07:57 (`f5-m32` and the K = all Belebele job follow). 81 files, 92.9 MB. A fetched copy can be checked with `sha256sum`.
+Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue, 35319) ended at 04:14 and its files were added at 04:16; the F5 jobs `f5-a` and `f5-b` follow. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40; the F5 full job A (`f5-a`, 35424) files at 06:32 ; the sensitivity job `f5-m8` at 07:13 ; job B (`f5-b`, 35435) at 07:57 ; `f5-m32` at 08:52 (the direction-swap control `f5-dir`, the K = all Belebele job and the rescue-free remainder follow). 86 files, 94.4 MB. A fetched copy can be checked with `sha256sum`.
 
 | path | bytes | sha256 |
 |---|---|---|
@@ -28,6 +28,11 @@ Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). T
 | `f5-b/f5_state_INT5.pt` | 4613651 | `7ffbb931dbc8d263548238da9e1c607001c4c8536df63769328b622ddee796ea` |
 | `f5-b/f5_state_INT6.pt` | 4614547 | `5982c54ea474a83e1c249121087b847a1af8824a209a998fd8f406f7c33046a2` |
 | `f5-b/meta_f5.json` | 1713 | `cd982282fa623f19eae4c648c72bc3675b6516b806cbd3278e9ccc7260bbc1e7` |
+| `f5-m32/f5_stage_a.pt` | 343167 | `c2648f6443f65574b4613b81f5267e9a72fcf28722da7be99793587873938f3b` |
+| `f5-m32/f5_state_FP.pt` | 376837 | `cbaa91ba95c933d56d5bb15be1f6a7b28e9e31728c9747d1d5f016bd8fedf82e` |
+| `f5-m32/f5_state_INT16.pt` | 381082 | `bc3f21c510f6e585ad15a3f3d06e51948bfcc783c7bd0fc1fabc3456538f83d6` |
+| `f5-m32/f5_state_INT4.pt` | 380883 | `dbd8c05324d5c5dbbefdd56c3f5336759e3e6ff745205b3de7c13856c5a58780` |
+| `f5-m32/meta_f5.json` | 1675 | `2023ab8fbfd740ec40248c7b50929e8bb0278f3c188770ab92d86981886c8950` |
 | `f5-m8/f5_stage_a.pt` | 260735 | `31e41a1f673d7443ef1cfed0ed988cf5df6d68d679ff9a5a70a161f93973ea54` |
 | `f5-m8/f5_state_FP.pt` | 376709 | `c3ec39fc01f25878d4f363a1d1cc25b5ea1338db1ab794a897ccafe494d8bec6` |
 | `f5-m8/f5_state_INT16.pt` | 381018 | `ab8ff2f6bce501c0e0f3be7ae76fd739c6148c35c7bd3c6cf832e2e4fa3a3493` |
