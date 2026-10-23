@@ -10,6 +10,7 @@ Question: do the SAE features selected as language-selective before quantization
 | [`results/all/association_retention.md`](results/all/association_retention.md) | generated report, all-token stream, aggregate profile (no intervals) |
 | [`results/crosscheck-eq/crosscheck.md`](results/crosscheck-eq/crosscheck.md) | firing-rate view against activation-mean view; status against the historical correlation |
 | [`results/robustness-eq/robustness.md`](results/robustness-eq/robustness.md) | support-rule sensitivity; loss against baseline covariates |
+| [`results/within-language/report.md`](results/within-language/report.md) | **A2, D-066:** is the loss of association predicted by the full-precision margin, within language? lost fraction by margin quintile, within-language AUROC, fixed-effects logistic regression, floor comparison, cohort without English (also `analysis.json`, `loss_by_margin_quintile.csv`) |
 | [`artifact_inventory.md`](artifact_inventory.md), `frozen_cohort_manifest.json` | what the old saved files could support; frozen cohort and provenance |
 | [`plan_verification.md`](plan_verification.md) | verification of the plan before implementation (code and result statements, prior art, register corrections) |
 | [`STATUS.md`](STATUS.md), [`cron_prompt.md`](cron_prompt.md) | live status log and the prompt of the 50-minute job |
