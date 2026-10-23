@@ -14,17 +14,17 @@
 
 Last updated: **2026-10-18 (morning)** (Phase 1 results, below); the rest of this file is from **2026-10-16 (night)**, after the audit of why our old pipeline disagreed with Duan's and the decision to **discard that pipeline and build on Duan's codebase**. **New agent? Start with `HANDOFF.md`.** The post-mortem of the old codebase is the last entry of `reports/progress_log.md`; its code is only at the git tag `legacy-pipeline-2026-10-16`; its Phase-1 results are in `reports/legacy_pipeline/` (hypotheses, not findings). Evidence: `reports/progress_log.md`, `reports/audit_our_vs_duan.md`, `issues.md`, `PLAN.md`.
 
-## NEXT RUN'S GOAL (rewritten at the end of every scheduled invocation; the routine is `reports/scheduled_routine.md`, run in its own chat every 2 hours)
+## NEXT RUN'S GOAL (current as of 2026-10-23; the text of 2026-10-19 and 2026-10-21 that stood here is archived verbatim)
 
-**Updated 2026-10-21 (D-035):** the bounded 27-language association study is now selected and planned. Read [handoff 014](reports/handoffs/014-2026-10-21-language-association-plan.md), the linked design and implementation plan; implementation begins with an artifact inventory and frozen input/cohort manifest. Specific jobs await missing-artifact confirmation and smoke gates. No new measurement has run. **Progress and the next concrete step are kept in `reports/association_retention/STATUS.md` (its NEXT STEP block), rewritten by the 20-minute recurring job; the Mode statement below ("no cron, no second chat") was superseded on 2026-10-21 by the user's request for that job (D-036).** Broader Q13-Q15 questions, remaining review items and novelty claims are separate. Q1/Q2 remain in force. The state below is historical where it conflicts with this update.
+**Where to look:** the ordered next steps, the live state and the log are in [`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md) (`Immediate`); the newest handoff is named at the top of [`HANDOFF.md`](HANDOFF.md); the old block is in [`reports/archive/routine_and_progress_stale_blocks_2026-10-23.md`](reports/archive/routine_and_progress_stale_blocks_2026-10-23.md) (it said that nothing was unblocked: that was true on 2026-10-19 and is superseded by the functional-validation study).
 
-State at 2026-10-19 ~17:00 IST: Phase 1 (S1-S8) and N1 to N13 are done and **reproduced end to end** (`reports/phase1_reproduction.md`: 89 of 89 committed result files identical when regenerated from the cached run files at 4 BLAS threads). The one-page evidence summary is `reports/phase1_summary.md` (generated; status labels). **No analysis is unblocked: everything left needs the user.** HF verified (274 files; nothing large added), wandb 19 runs conforming, no Ada job running. **Mode (user): everything runs in this one chat, step by step, a handoff after every step (`reports/handoffs/`, newest = only source of the previous chat); no cron, no second chat.** Newest handoff: `reports/handoffs/009-2026-10-19-n13-reproduction-done.md`.
+**State on 2026-10-23:** the functional-validation study is finished and summarised for the team on one page ([`RESULTS_SUMMARY.md`](reports/functional_validation/RESULTS_SUMMARY.md), with a claim map, evidence and limits per claim); every analysis re-runs from its inputs with one command ([`REPRODUCE.md`](reports/functional_validation/REPRODUCE.md)); no Ada job is running. Open items: the user's answers Q21 to Q26 (Q22 and Q26 would unlock a second model; defaults are in force) and the team's paper text (the routine never writes it).
 
 What a next step does, in this order:
-1. Read the newest handoff; read `DECISIONS_FOR_REVIEW.md` for answers.
-2. **If any question is answered:** apply it as the handoff's section 4 says (D-entry, test-first change, mark `APPLIED`, regenerate `reports/phase1_summary.md`, handoff).
-3. **If none is answered: say so and stop.** Do not invent analyses (the CPU analyses available without new data are exhausted and reproduced); low-cost read-only checks (git, Ada `squeue`, HF `verify`, `CronList`) are fine.
-4. Rewrite this block; update the progress log; commit and push; write the next handoff.
+1. Read the newest handoff and STATUS `Immediate`; read `DECISIONS_FOR_REVIEW.md` for answers.
+2. **If a question is answered:** apply it as the handoff and the routine say (D-entry, test-first change, mark `APPLIED`, plan first for anything new).
+3. **If none is answered:** documentation consolidation is allowed; a new analysis only if it follows from the plan and its hypotheses can be written down before any number; otherwise say so and stop (do not invent analyses).
+4. Rewrite `Immediate`, append to the Log, update the progress log, commit and push; handoff after a finished plan task or job analysis.
 
 ## Where we really are
 

@@ -77,3 +77,7 @@ Section 3 of `reports/functional_validation/RESULTS_SUMMARY.md` is now a table o
 ## Addendum 8 (22:36): reproducibility check
 
 `scripts/g0/reproduce_functional.sh <inputs root> <scratch dir>` re-runs every analysis of the functional study and compares with the committed outputs (57 of 57 identical on 2026-10-23); layout and commands in `reports/functional_validation/REPRODUCE.md`. The scratch inputs used (symlink layout) are under the session scratchpad `repro_in/` and vanish with it; re-fetch from Ada per the register. Nothing waits on code; defaults for the next firings: the user's answers (Q21 to Q26), documentation consolidation (plan Task 9).
+
+## Addendum 9 (23:12): entry pages consolidated
+
+`PROGRESS.md` (block 'NEXT RUN'S GOAL') and `reports/scheduled_routine.md` (rule 5, steps 1, 4, 6, 'How a step ends') now point at STATUS `Immediate`; the stale texts are in `reports/archive/routine_and_progress_stale_blocks_2026-10-23.md`. Nothing waits on code; the open items are the user's answers (Q21 to Q26).
