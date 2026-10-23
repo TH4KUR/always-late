@@ -1,6 +1,6 @@
 # Item-level result files of the functional study on Ada: sizes and sha256
 
-Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue, 35319) ended at 04:14 and its files were added at 04:16; the F5 jobs `f5-a` and `f5-b` follow. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40; the F5 full job A (`f5-a`, 35424) files at 06:32 ; the sensitivity job `f5-m8` at 07:13 ; job B (`f5-b`, 35435) at 07:57 ; `f5-m32` at 08:52 ; the fixed-amplitude job `f5-fa` at 11:37; the direction-swap control `f5-dir` at 09:52 (the K = all Belebele job follows). 96 files, 97.3 MB. A fetched copy can be checked with `sha256sum`.
+Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). These files are NOT in git (large artifacts) and not on Hugging Face; they are the inputs of every analysis under `reports/functional_validation/results/`. Paths are relative to `/home2/karma/duan-verify/out/phase1/` on Ada. The job `func-eval-d` (floor, 35314) ended 2026-10-23 02:56 and its files were added at 03:10; the job `func-rescue-a` (rescue, 35319) ended at 04:14 and its files were added at 04:16; the F5 jobs `f5-a` and `f5-b` follow. The F5 smoke job (`f5-smoke2`, 35399) files were added at 03:40; the F5 full job A (`f5-a`, 35424) files at 06:32 ; the sensitivity job `f5-m8` at 07:13 ; job B (`f5-b`, 35435) at 07:57 ; `f5-m32` at 08:52 ; the K = all Belebele job `func-mc-ksens` at 12:33; the fixed-amplitude job `f5-fa` at 11:37; the direction-swap control `f5-dir` at 09:52. 99 files, 101.7 MB. A fetched copy can be checked with `sha256sum`.
 
 | path | bytes | sha256 |
 |---|---|---|
@@ -82,6 +82,9 @@ Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). T
 | `func-pilot-a/func_lm_pilot_INT6.pt` | 2092449 | `96788a3cf503a34cbc7a642f3d3c06d3efa3623506ea3f9327b2ed9953ff90d8` |
 | `func-pilot-a/func_lm_pilot_INT7.pt` | 2092449 | `a3d7e88e9dabd473541ebf676933168e6f0b36b55ed41df7ced1d48aa541e991` |
 | `func-pilot-a/func_lm_pilot_INT8.pt` | 2092449 | `5c942fe33862e03438aee8b3d096c941b4b27b664f593e1257dbd33811d0039d` |
+| `func-mc-ksens/func_mc_eval_letter_FP.pt` | 2223231 | `836beaaba4626bf7b1a58608e11be3aa54f695daaba9380b6f00652cfa6fbf5b` |
+| `func-mc-ksens/func_mc_eval_letter_INT6.pt` | 2223495 | `ebfa069fb9ad39d2d4c35f7630bf677992b757428046ce3470eddf200475042c` |
+| `func-mc-ksens/meta_mc_eval.json` | 2154 | `0e517d5a955e0994e70ca6887ac7c001dbcf83d237f0bd41eeaf3a6a054741f9` |
 | `func-pilot-b/func_lm_pilot_INT12.pt` | 2093851 | `70075d0f2f00a160709462c783565e0ffb7647ee5b077f8a5bfccd456b6ef4d0` |
 | `func-pilot-b/func_lm_pilot_INT16.pt` | 2093851 | `4bc0e4e41feb0edabdfa42ca36e486738e35a15bb3cabd3f9f4cc01574501480` |
 | `func-pilot-b/func_lm_pilot_INT4.pt` | 2092449 | `57a7d78e4dddbb01c831149d3eeb98279ddd50ce91dc9a2abc9699382b2ab7f4` |
