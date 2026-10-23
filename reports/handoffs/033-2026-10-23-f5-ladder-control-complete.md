@@ -69,3 +69,7 @@ D-067: on the 1,449 F5-tested features that are established D-035 features, the 
 ## Addendum 6 (21:16): the A3 figure is done; nothing waits on code
 
 `results/margin-function/fig_margin_auroc_{light,dark}.{svg,png}` (module `scripts/g0/phase1_assoc_function_figures.py`, 19 tests, 20 mutants killed; torch suite 1220, stdlib 265). Every planned analysis and figure of the functional study is done. The next steps in STATUS "Immediate": the user's answers (Q21 to Q26; Q22 and Q26 unlock a second model), documentation consolidation (plan Task 9), a paper-facing digest map (claims, supporting figures, tables, decisions and limits; not prose). No job runs on Ada.
+
+## Addendum 7 (21:51): the claim map
+
+Section 3 of `reports/functional_validation/RESULTS_SUMMARY.md` is now a table of eleven claims with evidence and limits (the 'paper-facing digest' step). Nothing waits on code; remaining defaults: the user's answers (Q21 to Q26), documentation consolidation (plan Task 9: `reports/scheduled_routine.md`), re-running the dated prior-art search in about a week.
