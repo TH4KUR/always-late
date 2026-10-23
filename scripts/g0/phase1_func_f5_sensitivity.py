@@ -32,8 +32,9 @@ def compare_state(a, b, tau_a, tau_b):
             "flip_share": float(((x >= tau_a) != (y >= tau_b)).mean()) if x.size else float("nan")}
 
 
-def compare_runs(a, b, states, q=0.05, floor_state="INT16"):
-    """a, b: {"stage": stage_a, "states": states} of two runs (a = the reference). Compares every state of `states` that both runs have; the floor of each run is the q-quantile of W1 at `floor_state` over the common features."""
+def pair_arrays(a, b, states, q=0.05, floor_state="INT16"):
+    """The aligned per-feature W1 arrays of two runs for every state of `states` that both have ({"a": reference, "b": variant}, ascending feature id), the common count, the floor of each run (the q-quantile of W1 at
+    `floor_state` over the common features) and the states missing in one run."""
     ia, ib = align(a["stage"], b["stage"]); cos = lambda r, s, i: np.asarray(r["states"][s]["write"]["cos"], dtype=np.float64)[i]
     if floor_state not in a["states"] or floor_state not in b["states"]:
         raise ValueError(f"the floor state {floor_state} is missing in one of the runs")
@@ -41,8 +42,14 @@ def compare_runs(a, b, states, q=0.05, floor_state="INT16"):
     for s in states:
         if s not in a["states"] or s not in b["states"]:
             missing.append(s); continue
-        out[s] = compare_state(cos(a, s, ia), cos(b, s, ib), taus[0], taus[1])
+        out[s] = {"a": cos(a, s, ia), "b": cos(b, s, ib)}
     return {"n_common": int(len(ia)), "q": q, "floor_state": floor_state, "floor": {"tau_a": taus[0], "tau_b": taus[1]}, "states": out, "missing": missing}
+
+
+def compare_runs(a, b, states, q=0.05, floor_state="INT16"):
+    """a, b: {"stage": stage_a, "states": states} of two runs (a = the reference). Compares every state of `states` that both runs have; the floor of each run is the q-quantile of W1 at `floor_state` over the common features."""
+    pa = pair_arrays(a, b, states, q, floor_state); t = pa["floor"]
+    return {"n_common": pa["n_common"], "q": q, "floor_state": floor_state, "floor": t, "states": {s: compare_state(v["a"], v["b"], t["tau_a"], t["tau_b"]) for s, v in pa["states"].items()}, "missing": pa["missing"]}
 
 
 def report_text(cmp, label):
@@ -61,11 +68,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Compare W1 of the same features between a reference F5 run and a sensitivity run.")
     ap.add_argument("--main-run", action="append", required=True); ap.add_argument("--sens-run", action="append", required=True); ap.add_argument("--label", required=True)
     ap.add_argument("--states", nargs="*", default=["INT16", "INT4"]); ap.add_argument("--floor-state", default="INT16"); ap.add_argument("--q", type=float, default=0.05); ap.add_argument("--out", required=True)
+    ap.add_argument("--figures", action="store_true", help="also draw the paired figure (W1 of the reference run against the variant run, per state)"); ap.add_argument("--label-a", default="reference run"); ap.add_argument("--label-b", default="variant run")
+    ap.add_argument("--figure-note", default="exploratory"); ap.add_argument("--figure-title", default="Is W1 the same in the two runs?")
     a = ap.parse_args(argv)
     load = lambda dirs: dict(zip(("stage", "states", "meta"), an.load_runs(dirs)))
-    cmp = compare_runs(load(a.main_run), load(a.sens_run), a.states, a.q, a.floor_state)
+    ra, rb = load(a.main_run), load(a.sens_run); cmp = compare_runs(ra, rb, a.states, a.q, a.floor_state)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     (out / "sensitivity.json").write_text(json.dumps(an.to_jsonable(cmp), indent=1, allow_nan=False) + "\n"); (out / "sensitivity.md").write_text(report_text(cmp, a.label))
+    if a.figures:
+        import phase1_func_f5_figures as ff
+        ff.write_pair_figure(pair_arrays(ra, rb, a.states, a.q, a.floor_state), out, "pair", a.figure_note, a.figure_title, a.label_a, a.label_b)
     print("wrote", out, "|", a.label, "|", {s: (round(c["spearman"], 3), round(c["median_diff"], 4), round(c["flip_share"], 3)) for s, c in cmp["states"].items()})
 
 

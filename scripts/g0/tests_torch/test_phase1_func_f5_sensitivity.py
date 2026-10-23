@@ -67,6 +67,11 @@ class CompareRuns(unittest.TestCase):
         self.assertAlmostEqual(c["states"]["INT4"]["median_diff"], 0.01, places=9); self.assertAlmostEqual(c["states"]["INT16"]["median_diff"], -0.002, places=9)
         self.assertAlmostEqual(c["states"]["INT4"]["spearman"], 1.0)
 
+    def test_the_shares_at_or_above_the_floor_use_each_runs_own_floor(self):
+        rng = np.random.default_rng(5); ids = list(range(50)); a16 = rng.uniform(0.90, 1.0, 50); a4 = rng.uniform(0.6, 1.0, 50)
+        a = run(ids, {"INT16": a16, "INT4": a4}); b = run(ids, {"INT16": a16 - 0.05, "INT4": a4 - 0.03}); c = sn.compare_runs(a, b, ["INT4"]); ta, tb = c["floor"]["tau_a"], c["floor"]["tau_b"]
+        self.assertNotAlmostEqual(ta, tb, places=3); self.assertAlmostEqual(c["states"]["INT4"]["above_a"], float((a4 >= ta).mean())); self.assertAlmostEqual(c["states"]["INT4"]["above_b"], float(((a4 - 0.03) >= tb).mean()))
+
     def test_a_state_missing_in_one_run_is_skipped_and_listed(self):
         del self.sens["states"]["INT4"]; c = sn.compare_runs(self.main, self.sens, ["INT16", "INT4"]); self.assertEqual(sorted(c["states"]), ["INT16"]); self.assertEqual(c["missing"], ["INT4"])
 
@@ -80,6 +85,18 @@ class CompareRuns(unittest.TestCase):
         self.assertIn("M = 8 against M = 16", md); self.assertIn("| INT4 |", md); self.assertIn(f"{c['states']['INT4']['spearman']:.3f}", md); self.assertIn(f"{c['floor']['tau_a']:.4f}", md); self.assertIn("exploratory", md)
 
 
+class PairArrays(unittest.TestCase):
+    def test_the_aligned_arrays_the_floors_and_the_count_for_the_figure(self):
+        rng = np.random.default_rng(0); ids = list(range(100, 160)); main = run(ids, {"INT16": 1 - np.abs(rng.normal(0, 0.03, 60)), "INT4": 0.8 + rng.normal(0, 0.05, 60)}); sub = ids[::3]; k = [ids.index(i) for i in sub]
+        sens = run(sub[::-1], {"INT16": main["states"]["INT16"]["write"]["cos"][k][::-1] - 0.001, "INT4": main["states"]["INT4"]["write"]["cos"][k][::-1] + 0.02})                         # another order of the rows
+        pa = sn.pair_arrays(main, sens, ["INT16", "INT4"]); self.assertEqual(pa["n_common"], 20); np.testing.assert_allclose(pa["states"]["INT4"]["b"] - pa["states"]["INT4"]["a"], 0.02, atol=1e-12)
+        np.testing.assert_allclose(pa["states"]["INT4"]["a"], main["states"]["INT4"]["write"]["cos"][k]); self.assertEqual(sorted(pa["states"]), ["INT16", "INT4"])
+        c = sn.compare_runs(main, sens, ["INT16", "INT4"]); self.assertAlmostEqual(pa["floor"]["tau_a"], c["floor"]["tau_a"]); self.assertAlmostEqual(pa["floor"]["tau_b"], c["floor"]["tau_b"])
+
+    def test_a_state_missing_in_one_run_is_not_in_the_arrays(self):
+        a = run([1, 2, 3], {"INT16": [0.9, 0.95, 0.99], "INT4": [0.5, 0.6, 0.7]}); b = run([1, 2, 3], {"INT16": [0.9, 0.95, 0.99]}); self.assertEqual(sorted(sn.pair_arrays(a, b, ["INT16", "INT4"])["states"]), ["INT16"])
+
+
 class Main(unittest.TestCase):
     def test_the_command_line_writes_json_and_markdown(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -90,6 +107,9 @@ class Main(unittest.TestCase):
             sn.main(["--main-run", a, "--sens-run", b, "--label", "same run twice", "--states", "INT16", "INT4", "--out", str(Path(o) / "r")])
             j = json.loads((Path(o) / "r" / "sensitivity.json").read_text()); self.assertEqual(j["n_common"], len(w[0]["write_features"])); self.assertEqual(j["states"]["INT4"]["flip_share"], 0.0)
             self.assertTrue((Path(o) / "r" / "sensitivity.md").read_text().startswith("# F5 sensitivity"))
+            sn.main(["--main-run", a, "--sens-run", b, "--label", "same run twice", "--states", "INT16", "INT4", "--out", str(Path(o) / "r2"), "--figures", "--label-a", "run one", "--label-b", "run two", "--figure-note", "exploratory, test"])
+            self.assertEqual(sorted(p.name for p in (Path(o) / "r2").iterdir() if p.name.startswith("pair_")), ["pair_dark.png", "pair_dark.svg", "pair_light.png", "pair_light.svg"])
+            self.assertFalse(any(p.name.startswith("pair_") for p in (Path(o) / "r").iterdir()))                                                      # no figure unless asked
 
 
 if __name__ == "__main__":

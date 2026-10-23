@@ -217,6 +217,60 @@ class DrawnValues(unittest.TestCase):
         np.testing.assert_allclose(sorted(off[:, 0]), sorted(p.values())); order = np.argsort(off[:, 1]); self.assertEqual(list(off[order, 0]), sorted(off[:, 0]))                      # y grows with the INT4 difference
         labels = [t.get_text() for t in fig.axes[0].get_yticklabels()]; self.assertEqual(labels, sorted(p, key=p.get))
 
+class RunPairFigure(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import phase1_func_f5_sensitivity as sn
+        from test_phase1_func_f5_sensitivity import run as mkrun
+        rng = np.random.default_rng(1); ids = list(range(100, 400)); cls.a = mkrun(ids, {"INT16": 1 - np.abs(rng.normal(0, 0.02, 300)), "INT4": 0.84 + rng.normal(0, 0.05, 300)})
+        cls.b = mkrun(ids, {"INT16": cls.a["states"]["INT16"]["write"]["cos"] - np.abs(rng.normal(0, 0.005, 300)), "INT4": cls.a["states"]["INT4"]["write"]["cos"] * 0.5 + 0.4 + rng.normal(0, 0.03, 300)})
+        cls.pairs = sn.pair_arrays(cls.a, cls.b, ["INT16", "INT4"]); cls.sn = sn
+
+    def test_one_panel_per_state_with_the_reference_on_x_and_the_variant_on_y(self):
+        fig = ff.fig_run_pair(self.pairs, "light", "exploratory", "title", "feature (ordinary)", "swap control")
+        for s in ("INT16", "INT4"):
+            off = tagged(fig, f"pairs:{s}")[0].get_offsets(); np.testing.assert_allclose(off[:, 0], self.pairs["states"][s]["a"]); np.testing.assert_allclose(off[:, 1], self.pairs["states"][s]["b"])
+        self.assertEqual(len(tagged(fig, "diagonal")), 2)
+
+    def test_the_floors_of_the_two_runs_are_drawn_at_their_values(self):
+        fig = ff.fig_run_pair(self.pairs, "light", "x", "t", "a", "b")
+        self.assertEqual({round(float(g.get_xdata()[0]), 9) for g in tagged(fig, "floor_a")}, {round(self.pairs["floor"]["tau_a"], 9)}); self.assertEqual({round(float(g.get_ydata()[0]), 9) for g in tagged(fig, "floor_b")}, {round(self.pairs["floor"]["tau_b"], 9)})
+
+    def test_the_panel_text_gives_the_count_the_rank_correlation_and_the_median_difference(self):
+        fig = ff.fig_run_pair(self.pairs, "light", "x", "t", "a", "b")
+        for s in ("INT16", "INT4"):
+            c = self.sn.compare_state(self.pairs["states"][s]["a"], self.pairs["states"][s]["b"], self.pairs["floor"]["tau_a"], self.pairs["floor"]["tau_b"])
+            self.assertTrue(any(f"n = {c['n']}" in x and f"Spearman {c['spearman']:.2f}" in x and f"median b - a {c['median_diff']:+.3f}" in x for x in texts(fig)), s)
+
+    def test_undefined_pairs_are_not_drawn_and_are_counted_in_the_panel_text(self):
+        import copy
+        p = copy.deepcopy(self.pairs); p["states"]["INT4"]["b"][:7] = np.nan; fig = ff.fig_run_pair(p, "light", "x", "t", "a", "b")
+        self.assertTrue(any("7 undefined" in x for x in texts(fig))); self.assertTrue(any(f"n = {300 - 7}" in x for x in texts(fig))); self.assertEqual(len(tagged(fig, "pairs:INT4")[0].get_offsets()), 300 - 7)
+
+    def test_the_diagonal_runs_from_the_lower_left_to_the_upper_right_of_the_axis_and_the_floors_stay_inside_it(self):
+        import copy
+        fig = ff.fig_run_pair(self.pairs, "light", "x", "t", "a", "b"); d = tagged(fig, "diagonal")[0]; np.testing.assert_allclose(d.get_xdata(), d.get_ydata()); self.assertLess(d.get_xdata()[0], d.get_xdata()[1])
+        p = copy.deepcopy(self.pairs); p["floor"] = {"tau_a": 0.30, "tau_b": 0.35}; fig = ff.fig_run_pair(p, "light", "x", "t", "a", "b"); lo = fig.axes[0].get_xlim()[0]; self.assertLessEqual(lo, 0.30 - 0.03 + 1e-9)
+
+    def test_an_extreme_outlier_does_not_blow_up_the_axis_and_is_drawn_on_the_edge_and_counted(self):
+        import copy
+        p = copy.deepcopy(self.pairs); p["states"]["INT4"]["a"][0] = -0.9; p["states"]["INT4"]["b"][1] = -0.8; fig = ff.fig_run_pair(p, "light", "x", "t", "a", "b"); lo, hi = fig.axes[0].get_xlim()
+        self.assertGreater(lo, -0.5); self.assertLess(lo, 0.7); off = tagged(fig, "pairs:INT4")[0].get_offsets(); self.assertGreaterEqual(float(off.min()), lo - 1e-9)
+        self.assertEqual(float(off[0, 0]), lo); self.assertEqual(float(off[1, 1]), lo); self.assertTrue(any("2 on the edge" in x for x in texts(fig)))
+        none = ff.fig_run_pair(self.pairs, "light", "x", "t", "a", "b"); self.assertFalse(any("on the edge" in x for x in texts(none)))
+
+    def test_nothing_is_clipped_and_both_themes_render_to_files(self):
+        for theme in ("light", "dark"):
+            fig = ff.fig_run_pair(self.pairs, theme, "exploratory, direction-swap control against feature, 404 features", "Is the loss of similarity specific to the features?", "feature, own direction", "control, direction of another feature")
+            fig.canvas.draw(); r = fig.canvas.get_renderer(); shown = list(fig.texts) + [x for ax in fig.axes for x in list(ax.texts) + [ax.title, ax._left_title, ax._right_title, ax.xaxis.label, ax.yaxis.label]] + [x for lg in fig.legends for x in lg.get_texts()]
+            for x in [s for s in shown if s.get_text()]:
+                bb = x.get_window_extent(r); self.assertGreaterEqual(bb.x0, -1.0, x.get_text()); self.assertLessEqual(bb.x1, fig.bbox.width + 1.0, x.get_text())
+            titles = [(ax._left_title.get_window_extent(r), ax._right_title.get_window_extent(r)) for ax in fig.axes]
+            for l, rr in titles:
+                self.assertLess(l.x1, rr.x0)                                                                                              # the state and the statistics of a panel do not overlap
+        with tempfile.TemporaryDirectory() as d:
+            paths = ff.write_pair_figure(self.pairs, d, "pair", "exploratory", "title", "a", "b", themes=("light", "dark"), formats=("png", "svg")); self.assertEqual(len(paths), 4); self.assertTrue(all(Path(p).stat().st_size > 2000 for p in paths))
+
 
 if __name__ == "__main__":
     unittest.main()

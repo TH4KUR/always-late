@@ -226,6 +226,37 @@ def fig_paired(validity, theme, note):
     return fig
 
 
+def fig_run_pair(pairs, theme, note, title, label_a, label_b):
+    """W1 of the same features in two runs (see phase1_func_f5_sensitivity.pair_arrays): one panel per state, the reference run a on x and the variant run b on y, the diagonal (no difference) and the numerical floor of
+    each run; the panel text gives the number of features (undefined pairs are not drawn and are counted), the rank correlation and the median difference b - a."""
+    import phase1_func_f5_sensitivity as sn
+    t = base.theme_tokens(theme); states = list(pairs["states"])
+    if not states:
+        raise ValueError("no state in both runs")
+    n = len(states); fig = Figure(figsize=(max(8.2, 3.7 * n + 1.3), 5.2), facecolor=t["surface"]); FigureCanvasAgg(fig); axes = fig.subplots(1, n, sharex=True, sharey=True, squeeze=False)[0]
+    allv = np.concatenate([np.concatenate([v["a"], v["b"]]) for v in pairs["states"].values()] + [np.array([pairs["floor"]["tau_a"], pairs["floor"]["tau_b"]])]); allv = allv[~np.isnan(allv)]
+    lo = max(float(allv.min()) - 0.03, float(np.percentile(allv, 1)) - 0.15); lo = min(lo, pairs["floor"]["tau_a"] - 0.03, pairs["floor"]["tau_b"] - 0.03); lim = (lo, 1.03)      # a far outlier is drawn on the edge of the axis and counted, not allowed to squeeze the rest
+    for ax, s in zip(axes, states):
+        _style(ax, t); v = pairs["states"][s]; a, b = np.asarray(v["a"], dtype=float), np.asarray(v["b"], dtype=float); ok = ~(np.isnan(a) | np.isnan(b))
+        ax.plot(lim, lim, color=t["muted"], linewidth=1.2, gid="diagonal", zorder=1); out_n = int(((a[ok] < lo) | (b[ok] < lo)).sum()); ax.scatter(np.maximum(a[ok], lo), np.maximum(b[ok], lo), s=8, color=t["series"][0], alpha=0.4, linewidths=0, gid=f"pairs:{s}", zorder=3)
+        ax.axvline(pairs["floor"]["tau_a"], color=t["ink2"], linestyle="--", linewidth=1.1, gid="floor_a"); ax.axhline(pairs["floor"]["tau_b"], color=t["ink2"], linestyle=":", linewidth=1.1, gid="floor_b")
+        c = sn.compare_state(a, b, pairs["floor"]["tau_a"], pairs["floor"]["tau_b"]); und = (f", {c['n_undefined']} undefined" if c["n_undefined"] else "") + (f", {out_n} on the edge" if out_n else "")
+        ax.set_title(f"n = {c['n']}{und}\nSpearman {c['spearman']:.2f} \u00b7 median b - a {c['median_diff']:+.3f}", loc="right", fontsize=8.5, color=t["ink2"], linespacing=1.4)             # in the title row: no data are under it
+        ax.set_title(s, loc="left", fontsize=9.5, color=t["ink"]); ax.set_xlim(lim); ax.set_ylim(lim); ax.set_xlabel(f"W1, a: {label_a}", color=t["ink2"], fontsize=8.5)
+    axes[0].set_ylabel(f"W1, b: {label_b}", color=t["ink2"], fontsize=9)
+    w_in, h_in = fig.get_size_inches(); sub = textwrap.fill(f"one dot per feature present in both runs; the diagonal is no difference; dashed: floor of a ({pairs['floor']['tau_a']:.3f}), dotted: floor of b ({pairs['floor']['tau_b']:.3f}) \u00b7 {note}", width=max(40, int((w_in - 1.1) * 72 / 4.9)))
+    extra = 0.16 * sub.count("\n"); fig.subplots_adjust(left=0.85 / w_in, right=1 - 0.25 / w_in, top=1 - (1.1 + extra) / h_in, bottom=1.0 / h_in, wspace=0.08)
+    fig.text(0.85 / w_in, 1 - 0.32 / h_in, title, fontsize=10.5, color=t["ink"], ha="left", va="center"); fig.text(0.85 / w_in, 1 - 0.46 / h_in, sub, fontsize=8.5, color=t["muted"], ha="left", va="top", linespacing=1.3)
+    return fig
+
+
+def write_pair_figure(pairs, out_dir, stem, note, title, label_a, label_b, themes=("light", "dark"), formats=("svg", "png")):
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True); paths = []
+    for theme in themes:
+        paths += base.save_figure(fig_run_pair(pairs, theme, note, title, label_a, label_b), f"{stem}_{theme}", out, formats)
+    return paths
+
+
 def _nanify(x):
     if isinstance(x, dict):
         return {k: _nanify(v) for k, v in x.items()}
