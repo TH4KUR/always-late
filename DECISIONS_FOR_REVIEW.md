@@ -213,5 +213,13 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - ANSWER:
 - STATUS: open
 
+
+## Q26. Is a second supporting model other than Llama-3.2-1B wanted (Qwen3-1.7B-Base with Qwen-Scope), given that Llama stays gated? (D-052, D-065)  [LOW-MEDIUM, publishability; not blocking]
+- **Context.** Q22 (the Llama licence) is still open, so the F5 replication on a second model cannot start. The prior-art check of 2026-10-23 (D-065) found one public alternative: Qwen-Scope's SAEs for Qwen3-1.7B-Base (`Qwen/SAE-Res-Qwen3-1.7B-Base-W32K-L0_{50,100}`, residual stream, 28 layers, 32K features; licence shown as 'qwen' with a research-use caution; no gate visible on the repository page, not verified logged out). Cho et al. (arXiv 2607.20596) found that SAE families differ strongly in how causally anchored their features are, so a second model also tests whether F5 depends on the SAE family. **Cost:** everything model-specific has to be re-derived for a new model: the 27-language selectivity analysis, the association statuses of the earlier study (D-035) and the F5 sample, the hook and layer choice (mid depth, for example layer 14 of 28), the quantizer for the new layer names; about a day of coding with tests and some GPU hours; the FLORES text is shared.
+- **Options.** (a) default: keep your decision D-052 (Llama-3.2-1B) and wait for Q22; nothing is started for Qwen; (b) add Qwen3-1.7B-Base as an additional supporting model now (I would write the design and plan first and start only after you read them); (c) replace Llama by Qwen as the supporting model (no licence acceptance needed as far as the page shows).
+- **Default:** (a). Without an answer the second-model work stays idle; the Gemma study is complete without it, and the paper can state the single-model limit.
+- ANSWER:
+- STATUS: open
+
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.

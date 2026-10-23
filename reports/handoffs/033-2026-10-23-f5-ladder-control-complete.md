@@ -49,3 +49,7 @@ Q21 (upload item-level files to the private dataset?), Q22 (accept the Llama lic
 ## Addendum (16:45): the ladder figure is done
 
 Plan Task 15f is finished: `figures/f5/ladder_control_{light,dark}.{svg,png}` and `ladder_control_table.{csv,md}` (command in STATUS Log, `phase1_func_f5_figures.py ladder ...`); torch suite 1127, stdlib 265. Section 4 above is therefore done; the next step is STATUS "Immediate" (1): a dated prior-art check for Phase 2 (and the choice of a second model if Llama-3.2-1B stays blocked), then Llama after Q22, then consolidation (plan Task 9).
+
+## Addendum 2 (17:13): the Phase 2 prior-art check is done
+
+D-065: no work found that tests the function of SAE features under weight quantization; cite Hoang et al. (arXiv 2607.24645, the feature-effect cloud of logit changes: the F5 fingerprint is not claimed as new) and Cho et al. (2607.20596); Duan's causal step is still unpublished (Q18). New question Q26 (Qwen3-1.7B-Base with Qwen-Scope as a second model; default: keep Llama and wait for Q22). Nothing runs on Ada. The next step is in STATUS "Immediate": no code step waits; the open items are the user's answers (Q21 to Q26); documentation consolidation (plan Task 9) is the default work. For the team: full-text reading of P43 and P41 for the related-work section.
