@@ -5,6 +5,7 @@ Question: do the SAE features selected as language-selective before quantization
 | file | what it is |
 |---|---|
 | [`STATUS.md`](STATUS.md) | live status, NEXT STEP, gates, log (start here) |
+| [`RESULTS_SUMMARY.md`](RESULTS_SUMMARY.md) | **results summary for the paper team**: per question (F1 to F5, Belebele) the status (frozen, confirmatory, exploratory), the headline numbers, the evidence links, what can and cannot be claimed |
 | [design](../../docs/superpowers/specs/2026-10-21-functional-validation-design.md) | questions F1 to F4 and B, tasks, groups and controls, interventions, estimands, decision rules, freeze protocol, compute, risks |
 | [plan](../../docs/superpowers/plans/2026-10-21-functional-validation.md) | tasks 0 to 9 with tests, mutants, gates and the job queue order |
 | [`cron_prompt.md`](cron_prompt.md) | prompt and cron expressions of the 40-minute job |
