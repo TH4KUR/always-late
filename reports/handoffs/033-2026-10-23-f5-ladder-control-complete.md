@@ -57,3 +57,7 @@ D-065: no work found that tests the function of SAE features under weight quanti
 ## Addendum 3 (19:20): the association-loss analysis A2 is done
 
 D-066: within language, the feature's own full-precision margin predicts the loss of the D-035 association (AUROC 0.90 / 0.81 / 0.75 at INT6 / INT5 / INT4; scale and share add little; same without English); at INT4 even the best-separated fifth loses 7.3 % against 0.0 % at the rounding floor. New code `scripts/g0/phase1_assoc_margin.py` (29 tests, 26 mutants killed; torch suite 1156, stdlib 265), output `reports/association_retention/results/within-language/`, input checksum in `artifact_checksums.md` (the scratch copy of the file may be re-fetched from Ada `association-full/analysis-eq/feature_status.csv`). Next step in STATUS "Immediate" (1): a figure for A2; no job runs on Ada; the open items are the user's answers (Q21 to Q26).
+
+## Addendum 4 (19:56): the A2 figure is done
+
+`results/within-language/fig_loss_by_margin_{light,dark}.{svg,png}` (module `scripts/g0/phase1_assoc_margin_figures.py`, 18 tests, 20 mutants killed; torch suite 1174, stdlib 265; command in the module docstring). The next step is STATUS "Immediate" (1): A3, a CPU cross-check of function (F5 W1) against the full-precision margin, plan and prediction first. No job runs on Ada; the open items are the user's answers (Q21 to Q26).
