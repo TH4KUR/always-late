@@ -64,6 +64,67 @@ def report_text(cmp, label):
     return "\n".join(L) + "\n"
 
 
+LADDER_STATES = ["INT16", "INT8", "INT6", "INT5", "INT4"]
+
+
+def ladder_arrays(main, controls, states=LADDER_STATES, q=0.05, floor_state="INT16"):
+    """The swap control along the precision ladder (plan Task 15f): the W1 of the features (run `main`, merged jobs allowed) and of the swapped directions (the control runs, which may split the states between them, for
+    example the high precisions in one job and INT4 in another) on the features that EVERY control run tested, per state of `states`: {"n_common", "q", "floor_state", "floor": {"tau_a", "tau_b"}, "states": {s: {"a": features,
+    "b": control}}, "missing"}. A state is taken from the first control run that has it; the floors are those of `pair_arrays` for the first control run (the features' floor on the common features and the control's own
+    INT16 floor). Control runs that do not test the same features are an error (one set of features for the whole ladder)."""
+    if not controls:
+        raise ValueError("no control run")
+    pairs = [pair_arrays(main, c, states, q, floor_state) for c in controls]; rows = [align(main["stage"], c["stage"])[0] for c in controls]
+    for r in rows[1:]:
+        if len(r) != len(rows[0]) or not np.array_equal(r, rows[0]):
+            raise ValueError("the control runs do not test the same features")
+    out, missing = {}, []
+    for s in states:
+        src = next((p for p in pairs if s in p["states"]), None)
+        if src is None:
+            missing.append(s); continue
+        out[s] = src["states"][s]
+    return {"n_common": pairs[0]["n_common"], "q": q, "floor_state": floor_state, "floor": pairs[0]["floor"], "states": out, "missing": missing}
+
+
+def ladder_stats(la):
+    """Per state of `ladder_arrays`: the number of features with both values defined (`n`) and the number left out (`n_undefined`), median and quartiles of W1 for the features (`_a`) and the swapped directions (`_b`), the paired median
+    difference and the difference of the medians (control minus feature), the shortfall ratio (1 - control median) / (1 - feature median) (NaN when the feature median is 1) and the shares at or above each run's own floor. A state without
+    a defined pair has n = 0 and NaN values."""
+    nan = float("nan"); t = la["floor"]; out = {}
+    for s, v in la["states"].items():
+        a, b = np.asarray(v["a"], dtype=np.float64), np.asarray(v["b"], dtype=np.float64); d = ~(np.isnan(a) | np.isnan(b)); x, y = a[d], b[d]; r = {"n": int(d.sum()), "n_undefined": int((~d).sum())}
+        if x.size == 0:
+            r.update({k: nan for k in ("median_a", "q25_a", "q75_a", "median_b", "q25_b", "q75_b", "median_diff", "diff_of_medians", "shortfall_ratio", "above_a", "above_b")}); out[s] = r; continue
+        r.update({"median_a": float(np.median(x)), "q25_a": float(np.percentile(x, 25)), "q75_a": float(np.percentile(x, 75)), "median_b": float(np.median(y)), "q25_b": float(np.percentile(y, 25)), "q75_b": float(np.percentile(y, 75)),
+                  "median_diff": float(np.median(y - x)), "above_a": float((x >= t["tau_a"]).mean()), "above_b": float((y >= t["tau_b"]).mean())})
+        r["diff_of_medians"] = r["median_b"] - r["median_a"]; r["shortfall_ratio"] = (1 - r["median_b"]) / (1 - r["median_a"]) if r["median_a"] < 1 else nan; out[s] = r
+    return out
+
+
+LADDER_COLUMNS = [("state", None), ("n", "n"), ("n_undefined", "n_undefined"), ("median_features", "median_a"), ("q25_features", "q25_a"), ("q75_features", "q75_a"), ("median_control", "median_b"), ("q25_control", "q25_b"), ("q75_control", "q75_b"),
+                  ("diff_of_medians", "diff_of_medians"), ("median_paired_diff", "median_diff"), ("shortfall_ratio", "shortfall_ratio"), ("above_floor_features", "above_a"), ("above_floor_control", "above_b")]
+
+
+def ladder_csv_rows(la):
+    """One dict per state (the columns of LADDER_COLUMNS) for the table twin of the ladder figure."""
+    return [{name: (s if key is None else v[key]) for name, key in LADDER_COLUMNS} for s, v in ladder_stats(la).items()]
+
+
+def ladder_report_text(la, label):
+    st = ladder_stats(la); f = la["floor"]
+    L = [f"# F5 swap control along the precision ladder: {label}", "",
+         f"This comparison is exploratory. The features tested in the feature run and in every control run: {la['n_common']}. W1 is the cosine of the effect fingerprint in the quantized state with the one in full precision; the control ablates "
+         f"the decoder direction of a matched different feature at the same positions. Each run's numerical floor is the {int(la['q'] * 100)}th percentile of W1 at {la['floor_state']} over these features: {f['tau_a']:.4f} (features) and {f['tau_b']:.4f} (control). "
+         "The shortfall ratio is the control's shortfall below 1 (1 minus the median W1) over the features'.", "",
+         "| state | features | median features | quartiles features | median control | quartiles control | median difference (control - features) | paired median difference | shortfall ratio | at or above floor features | at or above floor control |", "|---|---|---|---|---|---|---|---|---|---|---|"]
+    for s, c in st.items():
+        L.append(f"| {s} | {c['n']} | {c['median_a']:.4f} | {c['q25_a']:.4f} to {c['q75_a']:.4f} | {c['median_b']:.4f} | {c['q25_b']:.4f} to {c['q75_b']:.4f} | {c['diff_of_medians']:+.4f} | {c['median_diff']:+.4f} | {c['shortfall_ratio']:.2f} | {c['above_a']:.3f} | {c['above_b']:.3f} |")
+    if la["missing"]:
+        L += ["", f"Not compared (no control run has them): {', '.join(la['missing'])}."]
+    return "\n".join(L) + "\n"
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Compare W1 of the same features between a reference F5 run and a sensitivity run.")
     ap.add_argument("--main-run", action="append", required=True); ap.add_argument("--sens-run", action="append", required=True); ap.add_argument("--label", required=True)

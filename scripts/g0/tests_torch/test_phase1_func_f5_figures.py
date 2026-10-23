@@ -272,5 +272,97 @@ class RunPairFigure(unittest.TestCase):
             paths = ff.write_pair_figure(self.pairs, d, "pair", "exploratory", "title", "a", "b", themes=("light", "dark"), formats=("png", "svg")); self.assertEqual(len(paths), 4); self.assertTrue(all(Path(p).stat().st_size > 2000 for p in paths))
 
 
+class LadderControlFigure(unittest.TestCase):
+    STATES = ["INT16", "INT8", "INT6", "INT5", "INT4"]
+
+    @classmethod
+    def setUpClass(cls):
+        rng = np.random.default_rng(3); n = 120; mid = {"INT16": 0.997, "INT8": 0.995, "INT6": 0.988, "INT5": 0.96, "INT4": 0.84}; sd = {"INT16": 0.005, "INT8": 0.006, "INT6": 0.01, "INT5": 0.02, "INT4": 0.05}
+        cls.a = {s: np.minimum(mid[s] + rng.normal(0, sd[s], n), 1.0) for s in cls.STATES}
+        cls.la = lambda cls_, gap: {"n_common": n, "q": 0.05, "floor_state": "INT16", "floor": {"tau_a": 0.985, "tau_b": 0.975},
+                                    "states": {s: {"a": cls.a[s], "b": cls.a[s] - gap + rng.normal(0, 0.001, n)} for s in cls.STATES}, "missing": []}
+        cls.generic = cls.la(cls, 0.0); cls.specific = cls.la(cls, 0.05)
+
+    def test_the_medians_are_drawn_for_both_series_the_ladder_is_joined_and_the_floor_state_is_a_separate_reference_marker(self):
+        import phase1_func_f5_sensitivity as sn
+        fig = ff.fig_ladder_control(self.generic, "light", "exploratory"); st = sn.ladder_stats(self.generic)
+        for key, tag in (("a", "ladder_a"), ("b", "ladder_b")):
+            line = tagged(fig, tag)[0]; np.testing.assert_allclose(line.get_ydata(), [st[s][f"median_{key}"] for s in self.STATES[1:]]); self.assertEqual(len(line.get_xdata()), 4)
+            ref = tagged(fig, tag + "_ref")[0]; np.testing.assert_allclose(ref.get_ydata(), [st["INT16"][f"median_{key}"]]); self.assertLess(float(ref.get_xdata()[0]), float(line.get_xdata()[0]))       # INT16 is left of the ladder and not joined to it
+        self.assertEqual([t.get_text() for t in fig.axes[0].get_xticklabels()], ["INT16", "INT8", "INT6", "INT5", "INT4"])
+
+    def test_the_states_sit_at_equal_integer_steps_inside_the_axis(self):
+        ax = ff.fig_ladder_control(self.generic, "light", "x").axes[0]; self.assertEqual([float(v) for v in ax.get_xticks()], [0.0, 1.0, 2.0, 3.0, 4.0]); lo, hi = ax.get_xlim(); self.assertLess(lo, 0.0); self.assertGreater(hi, 4.5)
+
+    def test_the_interval_bars_run_from_the_first_to_the_third_quartile(self):
+        import phase1_func_f5_sensitivity as sn
+        fig = ff.fig_ladder_control(self.specific, "light", "x"); st = sn.ladder_stats(self.specific)
+        for key, tag in (("a", "ladder_a_iqr"), ("b", "ladder_b_iqr")):
+            segs = np.array([seg for c in tagged(fig, tag) for seg in c.get_segments()]); lo = sorted(float(s[0][1]) for s in segs); hi = sorted(float(s[1][1]) for s in segs)
+            np.testing.assert_allclose(lo, sorted(st[s][f"q25_{key}"] for s in self.STATES)); np.testing.assert_allclose(hi, sorted(st[s][f"q75_{key}"] for s in self.STATES))
+
+    def test_the_two_floors_are_drawn_at_their_values(self):
+        fig = ff.fig_ladder_control(self.generic, "light", "x")
+        self.assertAlmostEqual(float(tagged(fig, "floor_a")[0].get_ydata()[0]), 0.985); self.assertAlmostEqual(float(tagged(fig, "floor_b")[0].get_ydata()[0]), 0.975)
+
+    def test_a_generic_drift_gives_the_same_curve_for_both_series_and_a_feature_specific_one_separates_them(self):
+        g = ff.fig_ladder_control(self.generic, "light", "x"); s = ff.fig_ladder_control(self.specific, "light", "x")
+        self.assertLess(float(np.max(np.abs(tagged(g, "ladder_a")[0].get_ydata() - tagged(g, "ladder_b")[0].get_ydata()))), 0.005)
+        np.testing.assert_allclose(tagged(s, "ladder_a")[0].get_ydata() - tagged(s, "ladder_b")[0].get_ydata(), 0.05, atol=0.005)
+
+    def test_a_state_without_a_defined_pair_is_not_drawn_and_is_named_in_the_subtitle(self):
+        import copy
+        la = copy.deepcopy(self.generic); la["states"]["INT5"]["b"][:] = np.nan; fig = ff.fig_ladder_control(la, "light", "x")
+        self.assertEqual([t.get_text() for t in fig.axes[0].get_xticklabels()], ["INT16", "INT8", "INT6", "INT4"]); self.assertEqual(len(tagged(fig, "ladder_a")[0].get_ydata()), 3)
+        self.assertTrue(any("not drawn: INT5" in x for x in texts(fig)))
+        none = ff.fig_ladder_control(self.generic, "light", "x"); self.assertFalse(any("not drawn" in x for x in texts(none)))
+
+    def test_the_axis_starts_just_below_the_lowest_drawn_value_and_never_below_zero(self):
+        lo, hi = ff.fig_ladder_control(self.generic, "light", "x").axes[0].get_ylim(); import phase1_func_f5_sensitivity as sn
+        low = min(v for s in sn.ladder_stats(self.generic).values() for v in (s["q25_a"], s["q25_b"])); self.assertLessEqual(lo, low); self.assertGreater(lo, low - 0.1); self.assertGreaterEqual(hi, 1.0)
+        import copy
+        la = copy.deepcopy(self.generic); la["states"]["INT4"]["a"] = np.full(120, 0.05); la["states"]["INT4"]["b"] = np.full(120, 0.02); self.assertGreaterEqual(ff.fig_ladder_control(la, "light", "x").axes[0].get_ylim()[0], 0.0)
+
+    def test_a_floor_below_every_interval_is_inside_the_axis(self):
+        import copy
+        la = copy.deepcopy(self.generic); la["floor"] = {"tau_a": 0.60, "tau_b": 0.55}; lo, hi = ff.fig_ladder_control(la, "light", "x").axes[0].get_ylim(); self.assertLessEqual(lo, 0.55 - 0.03 + 1e-9)
+
+    def test_each_series_is_named_at_its_own_last_median_to_the_right_of_the_last_state(self):
+        import phase1_func_f5_sensitivity as sn
+        fig = ff.fig_ladder_control(self.specific, "light", "x"); st = sn.ladder_stats(self.specific)["INT4"]; la_, lb_ = tagged(fig, "label_a")[0].get_position(), tagged(fig, "label_b")[0].get_position()
+        self.assertAlmostEqual(la_[1], st["median_a"]); self.assertAlmostEqual(lb_[1], st["median_b"]); self.assertGreater(la_[0], 4.0); self.assertGreater(lb_[0], 4.0)
+
+    def test_the_series_are_named_directly_and_in_the_legend_with_the_two_floors(self):
+        fig = ff.fig_ladder_control(self.generic, "light", "x", label_a="features", label_b="swapped directions"); leg = [x.get_text() for x in fig.legends[0].get_texts()]
+        self.assertEqual([x.get_text() for x in tagged(fig, "label_a")], ["features"]); self.assertEqual([x.get_text() for x in tagged(fig, "label_b")], ["swapped directions"])      # at the end of the lines ...
+        self.assertEqual(leg[:2], ["features", "swapped directions"]); self.assertEqual(len(leg), 4)                                                                                # ... and in the legend with the two floors
+        self.assertIn("floor of the features (0.985)", leg); self.assertIn("floor of the swapped directions (0.975)", leg)
+
+    def test_the_title_states_the_status_the_number_of_features_and_the_iqr(self):
+        tx = " ".join(" ".join(texts(ff.fig_ladder_control(self.generic, "light", "exploratory, 404 features"))).split())            # the subtitle is wrapped: compare with the line breaks as spaces
+        self.assertIn("exploratory", tx); self.assertIn("n = 120", tx); self.assertIn("25th to 75th percentile", tx); self.assertIn("INT16 is weight rounding only (the numerical floor state)", tx)
+
+    def test_nothing_is_clipped_in_either_theme_and_the_files_and_the_table_twin_are_written(self):
+        for theme in ("light", "dark"):
+            fig = ff.fig_ladder_control(self.specific, theme, "exploratory, direction-swap control, 404 features"); fig.canvas.draw(); r = fig.canvas.get_renderer()
+            shown = list(fig.texts) + [x for ax in fig.axes for x in list(ax.texts) + [ax.title, ax.xaxis.label, ax.yaxis.label]] + [x for lg in fig.legends for x in lg.get_texts()]
+            for x in [s for s in shown if s.get_text()]:
+                bb = x.get_window_extent(r); self.assertGreaterEqual(bb.x0, -1.0, x.get_text()); self.assertLessEqual(bb.x1, fig.bbox.width + 1.0, x.get_text()); self.assertGreaterEqual(bb.y0, -1.0, x.get_text()); self.assertLessEqual(bb.y1, fig.bbox.height + 1.0, x.get_text())
+        with tempfile.TemporaryDirectory() as d:
+            paths = ff.write_ladder_control(self.specific, d, "ladder_control", "exploratory", "swapped directions against features", themes=("light", "dark"), formats=("png", "svg"))
+            names = sorted(Path(p).name for p in paths); self.assertEqual(names, ["ladder_control_dark.png", "ladder_control_dark.svg", "ladder_control_light.png", "ladder_control_light.svg"])
+            self.assertTrue(all(Path(p).stat().st_size > 2000 for p in paths)); csv = (Path(d) / "ladder_control_table.csv").read_text().splitlines(); self.assertEqual(len(csv), 6); self.assertTrue(csv[0].startswith("state,n,"))
+            self.assertTrue((Path(d) / "ladder_control_table.md").read_text().startswith("# F5 swap control along the precision ladder"))
+
+    def test_the_command_line_draws_the_ladder_from_run_directories_with_the_controls_split_over_two_jobs(self):
+        from test_phase1_func_f5_analysis import make_world, save_run
+        w = make_world(per_lang=20, n_excluded_per_lang=0, cos_by_state={"INT4": lambda r, n: 0.8 + 0.1 * r.random(n), "INT5": lambda r, n: 0.95 + 0.04 * r.random(n)})
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as c1, tempfile.TemporaryDirectory() as c2, tempfile.TemporaryDirectory() as o:
+            save_run(w, a, ["FP", "INT16", "INT8", "INT6", "INT5", "INT4"]); save_run(w, c1, ["FP", "INT16", "INT8", "INT5"]); save_run(w, c2, ["FP", "INT16", "INT4"])
+            ff.main(["ladder", "--main-run", a, "--control-run", c1, "--control-run", c2, "--states", "INT16", "INT8", "INT5", "INT4", "--out", o, "--note", "exploratory, test", "--label", "test control"])
+            self.assertTrue((Path(o) / "ladder_control_light.png").exists()); self.assertTrue((Path(o) / "ladder_control_dark.svg").exists())
+            md = (Path(o) / "ladder_control_table.md").read_text(); self.assertIn("test control", md); self.assertIn("| INT4 |", md); self.assertIn("| INT8 |", md); self.assertNotIn("| INT6 |", md)
+
+
 if __name__ == "__main__":
     unittest.main()

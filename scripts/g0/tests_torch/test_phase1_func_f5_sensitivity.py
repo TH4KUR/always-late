@@ -112,5 +112,78 @@ class Main(unittest.TestCase):
             self.assertFalse(any(p.name.startswith("pair_") for p in (Path(o) / "r").iterdir()))                                                      # no figure unless asked
 
 
+class LadderArrays(unittest.TestCase):
+    def setUp(self):
+        rng = np.random.default_rng(0); self.ids = list(range(100, 160)); n = 60; self.sub = self.ids[::3]; self.k = [self.ids.index(i) for i in self.sub]
+        self.main = run(self.ids, {"INT16": 1 - np.abs(rng.normal(0, 0.02, n)), "INT8": 0.99 - np.abs(rng.normal(0, 0.02, n)), "INT5": 0.95 + rng.normal(0, 0.02, n), "INT4": 0.8 + rng.normal(0, 0.05, n)})
+        m = lambda s: self.main["states"][s]["write"]["cos"][self.k]
+        self.c1 = run(self.sub, {"INT16": m("INT16") - 0.004, "INT8": m("INT8") - 0.004, "INT5": m("INT5") - 0.01})                                  # the control run with the high precisions
+        self.c2 = run(self.sub[::-1], {"INT16": (m("INT16") - 0.0041)[::-1], "INT4": (m("INT4") - 0.012)[::-1]})                                         # the control run with INT4, another row order
+
+    def test_every_state_comes_from_the_first_control_run_that_has_it_on_the_features_common_to_all_runs(self):
+        la = sn.ladder_arrays(self.main, [self.c1, self.c2], ["INT16", "INT8", "INT5", "INT4"])
+        self.assertEqual(la["n_common"], len(self.sub)); self.assertEqual(list(la["states"]), ["INT16", "INT8", "INT5", "INT4"]); self.assertEqual(la["missing"], [])
+        m = lambda s: self.main["states"][s]["write"]["cos"][self.k]
+        np.testing.assert_allclose(la["states"]["INT8"]["a"], m("INT8")); np.testing.assert_allclose(la["states"]["INT8"]["b"], m("INT8") - 0.004)
+        np.testing.assert_allclose(la["states"]["INT4"]["a"], m("INT4")); np.testing.assert_allclose(la["states"]["INT4"]["b"], m("INT4") - 0.012)              # aligned by id although c2 has the rows reversed
+        np.testing.assert_allclose(la["states"]["INT16"]["b"], m("INT16") - 0.004)                                                                              # INT16 from the FIRST control run
+
+    def test_the_floors_are_those_of_the_features_and_of_the_first_control_run_at_int16(self):
+        la = sn.ladder_arrays(self.main, [self.c1, self.c2], ["INT16", "INT4"]); m16 = self.main["states"]["INT16"]["write"]["cos"][self.k]
+        self.assertAlmostEqual(la["floor"]["tau_a"], float(np.percentile(m16, 5))); self.assertAlmostEqual(la["floor"]["tau_b"], float(np.percentile(m16 - 0.004, 5)))
+
+    def test_a_state_that_no_control_run_has_is_listed_as_missing(self):
+        la = sn.ladder_arrays(self.main, [self.c1, self.c2], ["INT16", "INT6", "INT4"]); self.assertEqual(list(la["states"]), ["INT16", "INT4"]); self.assertEqual(la["missing"], ["INT6"])
+
+    def test_control_runs_that_do_not_test_the_same_features_are_an_error(self):
+        other = run(self.sub[:-2], {"INT16": self.c2["states"]["INT16"]["write"]["cos"][2:], "INT4": self.c2["states"]["INT4"]["write"]["cos"][2:]})
+        with self.assertRaises(ValueError):
+            sn.ladder_arrays(self.main, [self.c1, other], ["INT16", "INT4"])
+
+    def test_control_runs_with_the_same_number_of_features_but_other_ones_are_an_error(self):
+        ids = self.ids[1::3]; self.assertEqual(len(ids), len(self.sub)); other = run(ids, {"INT16": np.linspace(0.9, 1.0, len(ids)), "INT4": np.linspace(0.7, 0.9, len(ids))})
+        with self.assertRaises(ValueError):
+            sn.ladder_arrays(self.main, [self.c1, other], ["INT16", "INT4"])
+
+    def test_no_control_run_is_an_error(self):
+        with self.assertRaises(ValueError):
+            sn.ladder_arrays(self.main, [], ["INT16"])
+
+
+class LadderStats(unittest.TestCase):
+    def setUp(self):
+        a = {"INT16": np.array([0.99, 0.995, 0.998, 1.0, 0.97]), "INT4": np.array([0.7, 0.8, 0.9, 0.85, 0.6])}; b = {"INT16": a["INT16"] - 0.004, "INT4": a["INT4"] - 0.02}
+        self.la = {"n_common": 5, "q": 0.05, "floor_state": "INT16", "floor": {"tau_a": 0.98, "tau_b": 0.97}, "states": {s: {"a": a[s], "b": b[s]} for s in a}, "missing": []}; self.a, self.b = a, b
+
+    def test_medians_quartiles_and_differences_of_each_state(self):
+        s = sn.ladder_stats(self.la)["INT4"]
+        self.assertEqual(s["n"], 5); self.assertAlmostEqual(s["median_a"], 0.8); self.assertAlmostEqual(s["median_b"], 0.78); self.assertAlmostEqual(s["q25_a"], float(np.percentile(self.a["INT4"], 25))); self.assertAlmostEqual(s["q75_b"], float(np.percentile(self.b["INT4"], 75)))
+        self.assertAlmostEqual(s["q75_a"], float(np.percentile(self.a["INT4"], 75))); self.assertAlmostEqual(s["q25_b"], float(np.percentile(self.b["INT4"], 25)))
+        self.assertAlmostEqual(s["median_diff"], -0.02); self.assertAlmostEqual(s["diff_of_medians"], -0.02)
+
+    def test_the_shortfall_ratio_is_the_controls_shortfall_below_one_over_the_features(self):
+        s = sn.ladder_stats(self.la)["INT4"]; self.assertAlmostEqual(s["shortfall_ratio"], (1 - 0.78) / (1 - 0.8))
+        one = {**self.la, "states": {"INT16": {"a": np.ones(4), "b": np.array([1.0, 0.99, 1.0, 1.0])}}}; self.assertTrue(np.isnan(sn.ladder_stats(one)["INT16"]["shortfall_ratio"]))      # features exactly at 1: no ratio
+
+    def test_the_shares_at_or_above_the_floor_use_each_runs_own_floor(self):
+        s = sn.ladder_stats(self.la)["INT16"]; self.assertAlmostEqual(s["above_a"], float((self.a["INT16"] >= 0.98).mean())); self.assertAlmostEqual(s["above_b"], float((self.b["INT16"] >= 0.97).mean()))
+
+    def test_a_value_exactly_at_a_floor_counts_as_at_or_above_it_in_each_run(self):
+        la = {**self.la, "floor": {"tau_a": 0.98, "tau_b": 0.90}, "states": {"INT4": {"a": np.array([0.98, 0.5, 0.99, 0.97]), "b": np.array([0.90, 0.95, 0.5, 0.89])}}}; s = sn.ladder_stats(la)["INT4"]
+        self.assertAlmostEqual(s["above_a"], 0.5); self.assertAlmostEqual(s["above_b"], 0.5)
+
+    def test_undefined_pairs_are_left_out_and_counted_and_an_empty_state_is_all_nan(self):
+        la = {**self.la, "states": {"INT4": {"a": np.array([0.8, np.nan, 0.7]), "b": np.array([0.7, 0.6, np.nan])}, "INT5": {"a": np.array([np.nan]), "b": np.array([0.5])}}}; st = sn.ladder_stats(la)
+        self.assertEqual(st["INT4"]["n"], 1); self.assertEqual(st["INT4"]["n_undefined"], 2); self.assertEqual(st["INT5"]["n"], 0); self.assertTrue(np.isnan(st["INT5"]["median_a"]))
+
+
+class LadderReport(unittest.TestCase):
+    def test_the_table_has_a_row_per_state_the_floors_and_says_exploratory(self):
+        a = {"INT16": np.array([0.99, 0.995, 0.998]), "INT4": np.array([0.7, 0.8, 0.9])}; la = {"n_common": 3, "q": 0.05, "floor_state": "INT16", "floor": {"tau_a": 0.98, "tau_b": 0.97}, "states": {s: {"a": v, "b": v - 0.01} for s, v in a.items()}, "missing": ["INT6"]}
+        md = sn.ladder_report_text(la, "swapped directions against features"); self.assertIn("swapped directions against features", md); self.assertIn("exploratory", md); self.assertIn("| INT4 | 3 |", md); self.assertIn("| INT16 | 3 |", md)
+        self.assertIn("0.9800 (features) and 0.9700 (control)", md); self.assertIn("INT6", md.split("Not compared")[1]); self.assertIn("0.8000", md)
+        rows = sn.ladder_csv_rows(la); self.assertEqual([r["state"] for r in rows], ["INT16", "INT4"]); self.assertAlmostEqual(float(rows[1]["median_features"]), 0.8); self.assertAlmostEqual(float(rows[1]["median_control"]), 0.79)
+
+
 if __name__ == "__main__":
     unittest.main()

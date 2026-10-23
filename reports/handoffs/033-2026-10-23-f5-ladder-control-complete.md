@@ -45,3 +45,7 @@ Q21 (upload item-level files to the private dataset?), Q22 (accept the Llama lic
 ## 7. What I would check if something looks wrong
 
 `git status`, the link checker (last line ends " 0 broken"), `CronList` (three entries), `squeue -u karma`, the sham gate line and logit gates in each F5 log, the item-key hashes against the freeze for any T-MC file, and that jobs merged in an analysis share their stage A.
+
+## Addendum (16:45): the ladder figure is done
+
+Plan Task 15f is finished: `figures/f5/ladder_control_{light,dark}.{svg,png}` and `ladder_control_table.{csv,md}` (command in STATUS Log, `phase1_func_f5_figures.py ladder ...`); torch suite 1127, stdlib 265. Section 4 above is therefore done; the next step is STATUS "Immediate" (1): a dated prior-art check for Phase 2 (and the choice of a second model if Llama-3.2-1B stays blocked), then Llama after Q22, then consolidation (plan Task 9).

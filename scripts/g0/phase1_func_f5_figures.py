@@ -6,9 +6,12 @@ and dark themes from the validated palette tokens, one accent hue against gray, 
 
 Figures: 1 the distribution of W1 (cosine of the effect fingerprints against full precision) by state with the numerical floor and the matched negative control; 2 read side against write side per feature with
 the baseline survival cutoff and the floor, coloured by the D-035 status; 3 the three statements S1 to S3 with their rules and verdicts; 4 retrieval of a feature's own identity; 5 medians of the read side and the
-write side by state; 6 the paired difference of W1 between retained and lost features by language."""
+write side by state; 6 the paired difference of W1 between retained and lost features by language. Separate figures (not part of the six): the paired figure of two runs (`fig_run_pair`) and the ladder of the swap control
+(`fig_ladder_control`; `python phase1_func_f5_figures.py ladder --main-run <A> --main-run <B> --control-run <job> [--control-run <job 2>] --out <dir> --note ...`)."""
 import argparse
+import csv
 import json
+import sys
 import textwrap
 from pathlib import Path
 
@@ -257,6 +260,59 @@ def write_pair_figure(pairs, out_dir, stem, note, title, label_a, label_b, theme
     return paths
 
 
+def fig_ladder_control(la, theme, note, label_a="features", label_b="swapped directions"):
+    """The swap control along the precision ladder (see phase1_func_f5_sensitivity.ladder_arrays): the median W1 of the features and of the swapped directions by state with the 25th to 75th percentile over the features, and each
+    run's numerical floor. One axis. The noise-only reference state (INT16, weight rounding) is a separate marker, never joined to the precision ladder; a state without a defined pair is not drawn and is named in the subtitle."""
+    import phase1_func_f5_sensitivity as sn
+    st = sn.ladder_stats(la); order = [s for s in la["states"] if st[s]["n"] > 0]; dropped = [s for s in la["states"] if st[s]["n"] == 0]
+    if not order:
+        raise ValueError("no state with a defined pair")
+    fig, ax, t = base._new_fig(theme, 7.6, 4.8); x = np.arange(len(order), dtype=float); lad = [i for i, s in enumerate(order) if s not in REFERENCE_STATES]; ref = [i for i, s in enumerate(order) if s in REFERENCE_STATES]
+    for key, color, marker, dx, tag in (("a", t["series"][0], "o", -0.07, "ladder_a"), ("b", t["series"][1], "s", 0.07, "ladder_b")):
+        xs = x + dx; med = np.array([st[s][f"median_{key}"] for s in order]); lo = [st[s][f"q25_{key}"] for s in order]; hi = [st[s][f"q75_{key}"] for s in order]
+        ax.vlines(xs, lo, hi, color=color, linewidth=1.8, zorder=2, gid=tag + "_iqr")
+        if lad:
+            ax.plot(xs[lad], med[lad], color=color, marker=marker, markersize=6, linewidth=2, markeredgecolor=t["surface"], zorder=4, gid=tag)
+        if ref:
+            ax.plot(xs[ref], med[ref], color=color, marker=marker, markersize=6, linestyle="none", markeredgecolor=t["surface"], zorder=4, gid=tag + "_ref")
+    f = la["floor"]; ax.axhline(f["tau_a"], color=t["series"][0], linestyle="--", linewidth=1.1, alpha=0.9, zorder=1, gid="floor_a"); ax.axhline(f["tau_b"], color=t["series"][1], linestyle=":", linewidth=1.3, alpha=0.9, zorder=1, gid="floor_b")
+    last = len(order) - 1; ax.text(last + 0.16, st[order[last]]["median_a"], label_a, color=t["ink2"], fontsize=8.5, ha="left", va="bottom", gid="label_a"); ax.text(last + 0.16, st[order[last]]["median_b"], label_b, color=t["ink2"], fontsize=8.5, ha="left", va="top", gid="label_b")
+    ax.set_xticks(x); ax.set_xticklabels(order); ax.set_xlim(-0.5, last + 1.45)
+    low = min([v for s in order for v in (st[s]["q25_a"], st[s]["q25_b"])] + [f["tau_a"], f["tau_b"]]); ax.set_ylim(max(0.0, low - 0.03), 1.012)
+    base._axis_labels(ax, t, ylabel="W1, cosine of the effect fingerprints\n(1 = the same effect as in full precision)")
+    undefined = f"; not drawn: {', '.join(dropped)} (no feature with both values)" if dropped else ""
+    extra = base._title(ax, t, "Does a feature keep its effect better than another direction?", f"median W1 and its 25th to 75th percentile over n = {la['n_common']} features by precision; INT16 is weight rounding only (the numerical floor state){undefined} \u00b7 {note}")
+    handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["series"][1], marker="s", markersize=6, linewidth=2, markeredgecolor=t["surface"]),
+               Line2D([0], [0], color=t["series"][0], linestyle="--", linewidth=1.1), Line2D([0], [0], color=t["series"][1], linestyle=":", linewidth=1.3)]
+    base._legend_below(fig, t, handles, [label_a, label_b, f"floor of the {label_a} ({f['tau_a']:.3f})", f"floor of the {label_b} ({f['tau_b']:.3f})"], 1.0, 0.25)
+    base._margins(fig, left_in=1.0, bottom_in=1.15, extra=extra)
+    return fig
+
+
+def write_ladder_control(la, out_dir, stem, note, label, themes=("light", "dark"), formats=("svg", "png"), label_a="features", label_b="swapped directions"):
+    """The ladder figure in the requested themes and formats and its table twin (`<stem>_table.csv`, `<stem>_table.md`); returns the figure paths."""
+    import phase1_func_f5_sensitivity as sn
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True); paths = []
+    for theme in themes:
+        paths += base.save_figure(fig_ladder_control(la, theme, note, label_a, label_b), f"{stem}_{theme}", out, formats)
+    rows = sn.ladder_csv_rows(la)
+    with open(out / f"{stem}_table.csv", "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=[c for c, _ in sn.LADDER_COLUMNS]); w.writeheader(); w.writerows(rows)
+    (out / f"{stem}_table.md").write_text(sn.ladder_report_text(la, label))
+    return paths
+
+
+def main_ladder(argv):
+    import phase1_func_f5_sensitivity as sn
+    ap = argparse.ArgumentParser(prog="phase1_func_f5_figures.py ladder", description="The swap control along the precision ladder: figure and table from the runs of the features and of the control.")
+    ap.add_argument("--main-run", action="append", required=True, help="a job directory of the feature run (repeat to merge jobs, as in the analysis)"); ap.add_argument("--control-run", action="append", required=True, help="a job directory of a direction-control run (repeat: the first that has a state supplies it)")
+    ap.add_argument("--states", nargs="*", default=sn.LADDER_STATES); ap.add_argument("--out", required=True); ap.add_argument("--note", required=True); ap.add_argument("--label", default="swapped directions against features"); ap.add_argument("--stem", default="ladder_control")
+    ap.add_argument("--themes", nargs="*", default=["light", "dark"]); ap.add_argument("--formats", nargs="*", default=["svg", "png"]); a = ap.parse_args(argv)
+    load = lambda dirs: dict(zip(("stage", "states", "meta"), an.load_runs(dirs)))
+    la = sn.ladder_arrays(load(a.main_run), [load([d]) for d in a.control_run], a.states); paths = write_ladder_control(la, a.out, a.stem, a.note, a.label, tuple(a.themes), tuple(a.formats))
+    print("wrote", len(paths), "figure files and the table to", a.out, "| states", list(la["states"]), "| missing", la["missing"])
+
+
 def _nanify(x):
     if isinstance(x, dict):
         return {k: _nanify(v) for k, v in x.items()}
@@ -289,6 +345,9 @@ def write_figures(stage_a, states, sample, T, res, out_dir, note, themes=("light
 
 
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] == "ladder":
+        return main_ladder(argv[1:])
     ROOT = Path(__file__).resolve().parents[2]
     ap = argparse.ArgumentParser(description="Figures of the F5 study from the files of the runner and the analysis output.")
     ap.add_argument("--run", action="append", required=True); ap.add_argument("--sample", default=str(ROOT / "reports/functional_validation/f5/f5_sample.json"))
