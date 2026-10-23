@@ -91,6 +91,22 @@ class Figures(unittest.TestCase):
         fig = ff.fig_statements(res["validity"], "light", "x"); self.assertNotIn("point:S2", [g.get_gid() for g in fig.findobj()]); self.assertTrue(any("undefined" in x and "3 events" in x for x in texts(fig))); self.assertEqual(sum("0 features defined" in x for x in texts(fig)), 0)       # S1 and S3 had data here
         res["validity"]["statements"]["S1"].update({"verdict": "undefined", "n_defined": 4, "n_total": 99}); fig = ff.fig_statements(res["validity"], "light", "x"); self.assertTrue(any("4 features defined" in x for x in texts(fig)))
 
+    def test_the_statement_figure_does_not_clip_the_text_of_an_undefined_statement_at_the_right_edge(self):
+        sa, st, sm = build_world("sensible")[:3]; st["INT4"]["write"]["cos"][:] = 0.3; st["INT4"]["write"]["cos"][:2] = 0.99
+        w = st["INT4"]["write"]; S = np.asarray(w["S"]).astype(np.float64); S[np.arange(len(w["cos"])), np.arange(len(w["cos"]))] = w["cos"]; w["S"] = S.astype(np.float16)
+        res = an.analyse_f5(sa, st, sm, meta=None, n_boot=30, seed=0); fig = ff.fig_statements(res["validity"], "light", "exploratory, stratified subset (1,487 features)"); fig.canvas.draw(); r = fig.canvas.get_renderer()
+        shown = list(fig.texts) + [x for ax in fig.axes for x in list(ax.texts) + [ax.title, ax.xaxis.label, ax.yaxis.label]] + [x for lg in fig.legends for x in lg.get_texts()]
+        for t in [x for x in shown if x.get_text()]:
+            bb = t.get_window_extent(r); self.assertGreaterEqual(bb.x0, -1.0, t.get_text()); self.assertLessEqual(bb.x1, fig.bbox.width + 1.0, t.get_text())
+
+    def test_the_median_ladder_axis_starts_just_below_the_lowest_drawn_value_not_at_zero(self):
+        fig = ff.fig_median_ladder(self.res["tables"], self.res["floor"], "light", "x"); lo, hi = fig.axes[0].get_ylim(); drawn = []
+        for g in ("R1", "W1", "R1_repeat", "W1_repeat", "floor"):
+            drawn += [float(v) for v in np.ravel(tagged(fig, g)[0].get_ydata())]
+        for g in ("R1_ci", "W1_ci"):
+            drawn += [float(x) for seg in tagged(fig, g)[0].get_segments() for x in (seg[0][1], seg[1][1])]
+        self.assertAlmostEqual(lo, max(0.0, min(drawn) - 0.1), places=6); self.assertGreater(hi, 1.0)
+
     def test_the_retrieval_figure_has_the_overall_the_within_language_and_the_chance_level(self):
         fig = ff.fig_retrieval(self.res["tables"], "light", "x"); self.assertEqual(len(tagged(fig, "top1")), 1); self.assertEqual(len(tagged(fig, "within_top1")), 1); self.assertEqual(len(tagged(fig, "chance")), 1)
         qs = [s for s in ff.STATE_ORDER if s in self.res["tables"] and s not in ff.REFERENCE_STATES]; y = tagged(fig, "top1")[0].get_ydata(); self.assertEqual(len(y), len(qs))
@@ -109,6 +125,11 @@ class Figures(unittest.TestCase):
         arr = {k: {kk: (vv.copy() if hasattr(vv, "copy") else vv) for kk, vv in v.items()} for k, v in self.arrays.items()}; arr["INT4"]["control"][:] = -0.7; arr["INT4"]["control"][::2] = -0.9
         fig = ff.fig_w1_distribution(arr, self.res["floor"], "light", "x"); ax = fig.axes[0]; lo, hi = ax.get_xlim(); self.assertLessEqual(lo, -0.9)
 
+    def test_the_ladder_axis_never_goes_below_zero(self):
+        import copy
+        tables = copy.deepcopy(self.res["tables"]); tables["INT4"]["all"]["W1"].update({"median": 0.02, "median_lo": 0.01, "median_hi": 0.03})
+        self.assertEqual(ff.fig_median_ladder(tables, self.res["floor"], "light", "x").axes[0].get_ylim()[0], 0.0)
+
     def test_the_read_side_reference_markers_follow_the_order_of_the_reference_states(self):
         import copy
         tables = copy.deepcopy(self.res["tables"]); tables["INT16"]["all"]["R1"]["median"] = 0.7; tables["FP_rebatched"]["all"]["R1"]["median"] = 0.95
@@ -119,6 +140,11 @@ class Figures(unittest.TestCase):
         for lab in ("INT6", "INT5", "INT4"):
             d = tagged(fig, f"paired:{lab}")[0]; self.assertEqual(len(d.get_offsets()), len(p[lab]["by_language"]))
         self.assertEqual(len(tagged(fig, "zero")), 1)
+
+    def test_the_paired_legend_gives_the_medians_with_three_decimals(self):
+        fig = ff.fig_paired(self.res["validity"], "light", "x"); p = self.res["validity"]["paired"]
+        for lab in ("INT6", "INT5", "INT4"):
+            self.assertTrue(any(f"{lab}: median {p[lab]['median']:+.3f}, {p[lab]['sign']}" in x for x in texts(fig)), lab)
 
     def test_every_figure_renders_in_both_themes_and_the_files_are_written(self):
         with tempfile.TemporaryDirectory() as d:

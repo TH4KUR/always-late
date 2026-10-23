@@ -121,7 +121,7 @@ STATEMENT_ROWS = [("S1", "S1  INT6: retained by D-035\nshare with W1 at or above
 
 def fig_statements(validity, theme, note):
     """The three statements of the rule proposed in advance (Q23): value with its 95 % interval (languages resampled), the rule (diamond; S2 also the bound 0.5 for the interval) and the verdict as text."""
-    fig, ax, t = base._new_fig(theme, 8.4, 3.9); st = validity["statements"]; n = len(STATEMENT_ROWS)
+    fig, ax, t = base._new_fig(theme, 9.4, 3.9); st = validity["statements"]; n = len(STATEMENT_ROWS)
     for i, (k, label, key) in enumerate(STATEMENT_ROWS):
         y = n - 1 - i; s = st[k]; v, lo, hi = _f(s[key]), _f(s.get("lo")), _f(s.get("hi"))
         ax.scatter([0.8 if key == "share" else 0.6], [y], marker="D", s=46, color=t["muted"], zorder=3, gid=f"rule:{k}")
@@ -142,7 +142,7 @@ def fig_statements(validity, theme, note):
         ax.text(0.0, -0.2, validity["note"], transform=ax.transAxes, ha="left", va="top", fontsize=8, color=t["muted"], wrap=True)
     handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2, markeredgecolor=t["surface"]), Line2D([0], [0], color=t["muted"], marker="D", markersize=5, linewidth=0)]
     base._legend_below(fig, t, handles, ["value (95 % interval, languages resampled)", "the rule"], 2.1, 1.4)
-    base._margins(fig, left_in=2.3, right_in=1.3, bottom_in=1.45, extra=extra)
+    base._margins(fig, left_in=2.3, right_in=2.3, bottom_in=1.45, extra=extra)
     return fig
 
 
@@ -197,7 +197,7 @@ def fig_median_ladder(tables, floor, theme, note):
         ax.plot(np.array(ir, dtype=float) - 0.05, [_f(tables[order[i]]["all"]["R1"]["median"]) for i in ir], color=t["series"][0], marker="o", markersize=6, linestyle="none", markeredgecolor=t["surface"], gid="R1_repeat")
     ax.axhline(floor["tau"], color=t["ink2"], linestyle="--", linewidth=1.2, gid="floor")
     ax.set_xticks(range(len(order))); ax.set_xticklabels([PLAIN[s] for s in order]); ax.set_xlim(-0.4, len(order) - 0.6)
-    lo = min([v for v in w1lo + r1lo + [floor["tau"]] if not np.isnan(v)] + [0.0]); ax.set_ylim(min(0.0, lo - 0.05), 1.03)
+    lo = min([v for v in w1lo + r1lo + w1 + r1 + [floor["tau"]] if not np.isnan(v)] + [1.0]); ax.set_ylim(max(0.0, lo - 0.1), 1.03)
     base._axis_labels(ax, t, ylabel="median over the features")
     extra = base._title(ax, t, "Does the activation (survival) basis track the function?", f"median read-side correlation and median write-side W1 by state; dashed: numerical floor {floor['tau']:.3f} · {note}")
     handles = [Line2D([0], [0], color=t["series"][0], marker="o", markersize=6, linewidth=2), Line2D([0], [0], color=t["series"][1], marker="s", markersize=5.5, linewidth=2), Line2D([0], [0], color=t["ink2"], linestyle="--", linewidth=1.2)]
@@ -220,7 +220,7 @@ def fig_paired(validity, theme, note):
     base._axis_labels(ax, t, xlabel="median W1 of retained minus median W1 of lost features\n(right of zero: the retained features keep more of their effect)")
     extra = base._title(ax, t, "Do retained features keep their function better than lost ones?", f"F4 pairs (activity-matched), one dot per language · {note}")
     handles = [Line2D([0], [0], marker="o", color="none", markerfacecolor=cols[s], markeredgecolor=t["surface"], markersize=7) for s in order]
-    labels = [f"{s}: median {_f(p[s]['median']):+.2f}, {p[s]['sign']}" for s in order]
+    labels = [f"{s}: median {_f(p[s]['median']):+.3f}, {p[s]['sign']}" for s in order]
     base._legend_below(fig, t, handles, labels, 1.0, 0.25)
     base._margins(fig, left_in=1.1, bottom_in=1.5, extra=extra)
     return fig
