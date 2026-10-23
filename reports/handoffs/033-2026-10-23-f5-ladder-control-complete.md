@@ -65,3 +65,7 @@ D-066: within language, the feature's own full-precision margin predicts the los
 ## Addendum 5 (20:39): A3 is done
 
 D-067: on the 1,449 F5-tested features that are established D-035 features, the full-precision margin separates the association loss with AUROC 0.86 (INT6) / 0.77 (INT5) but the function event (W1 below the floor) with only 0.58 / 0.53; Spearman(margin, W1) about +0.10. New code `scripts/g0/phase1_assoc_function_link.py` (27 tests, 28 mutants killed; torch suite 1201, stdlib 265), output `reports/association_retention/results/margin-function/`; inputs: the F5 jobs A and B (scratch copies `f5a-partial/`, `f5b/`; Ada `f5-a`, `f5-b`) and the D-035 status file (Ada `association-full/analysis-eq/feature_status.csv`). Next step in STATUS "Immediate" (1): an A3 figure. No job runs on Ada; the open items are the user's answers (Q21 to Q26).
+
+## Addendum 6 (21:16): the A3 figure is done; nothing waits on code
+
+`results/margin-function/fig_margin_auroc_{light,dark}.{svg,png}` (module `scripts/g0/phase1_assoc_function_figures.py`, 19 tests, 20 mutants killed; torch suite 1220, stdlib 265). Every planned analysis and figure of the functional study is done. The next steps in STATUS "Immediate": the user's answers (Q21 to Q26; Q22 and Q26 unlock a second model), documentation consolidation (plan Task 9), a paper-facing digest map (claims, supporting figures, tables, decisions and limits; not prose). No job runs on Ada.
