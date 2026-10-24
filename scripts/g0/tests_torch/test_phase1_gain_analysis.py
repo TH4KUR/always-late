@@ -820,5 +820,47 @@ class Reliability(unittest.TestCase):
                 rows = list(csv.DictReader(fh))
         self.assertEqual(len(rows), 2 * (len(DOWN + UP + FINE) + 1))                       # states x (study ratios and zero-ablation)
 
+class MedianTolerance(unittest.TestCase):
+    """The monotone-median clause of H-G4: a fall larger than k bootstrap errors (the larger of the two states') is a violation. k = 1 is the pre-registered rule; k = 2 is reported as a labelled sensitivity."""
+    def test_a_fall_between_one_and_two_errors_violates_the_rule_but_not_the_sensitivity(self):
+        states = ["FP", "INT6", "INT4"]
+        med = {"FP": 0.1939, "INT6": 0.1861, "INT4": 0.3807}; se = {"FP": 0.0069, "INT6": 0.0063, "INT4": 0.0100}        # the preview of 2026-10-24: a dip of 0.0078
+        self.assertFalse(ga.median_not_falling(states, med, se, 1.0)); self.assertTrue(ga.median_not_falling(states, med, se, 2.0))
+
+    def test_equal_or_rising_medians_pass_and_a_large_fall_fails_both(self):
+        states = ["FP", "INT6", "INT4"]
+        se = {"FP": 0.01, "INT6": 0.01, "INT4": 0.01}
+        self.assertTrue(ga.median_not_falling(states, {"FP": 1.0, "INT6": 1.0, "INT4": 1.5}, se, 1.0))
+        self.assertFalse(ga.median_not_falling(states, {"FP": 1.0, "INT6": 0.5, "INT4": 1.5}, se, 2.0))
+
+    def test_the_tolerance_is_the_larger_of_the_two_errors_times_k(self):
+        states = ["A" if False else "FP", "INT6"]
+        self.assertTrue(ga.median_not_falling(states, {"FP": 1.0, "INT6": 0.985}, {"FP": 0.0, "INT6": 0.02}, 1.0))          # fall 0.015 within the larger error 0.02
+        self.assertFalse(ga.median_not_falling(states, {"FP": 1.0, "INT6": 0.985}, {"FP": 0.0, "INT6": 0.0}, 1.0))
+
+    def test_h_g4_reports_both_and_only_the_one_error_rule_enters_the_verdict(self):
+        g, t = table_of(ladder_runs((1.0, 1.1, 1.6)))
+        r = ga.h_g4(t, g)
+        self.assertIn("median_ok_2se", r); self.assertTrue(r["median_ok"]); self.assertTrue(r["median_ok_2se"])
+        e = np.random.default_rng(5).normal(0, 0.05, N)
+        g2, t2 = table_of(ladder_runs((1.0, 0.2, 1.6), noise=e), n_boot=400)
+        r2 = ga.h_g4(t2, g2)
+        self.assertFalse(r2["median_ok"]); self.assertFalse(r2["met"])
+
+    def test_a_fall_of_exactly_the_tolerance_is_allowed(self):
+        self.assertTrue(ga.median_not_falling(["FP", "INT6"], {"FP": 1.0, "INT6": 0.75}, {"FP": 0.25, "INT6": 0.0}, 1.0))              # binary-exact: fall 0.25 = one error
+        self.assertFalse(ga.median_not_falling(["FP", "INT6"], {"FP": 1.0, "INT6": 0.75}, {"FP": 0.125, "INT6": 0.0}, 1.0))
+
+    def test_h_g4_on_planted_data_with_a_fall_of_one_and_a_quarter_errors(self):
+        e = np.random.default_rng(5).normal(0, 0.05, N)
+        g, t = table_of(ladder_runs((1.0, 0.5, 1.6), noise=e), n_boot=400)
+        r = ga.h_g4(t, g)
+        self.assertFalse(r["median_ok"]); self.assertTrue(r["median_ok_2se"]); self.assertFalse(r["met"])
+
+    def test_the_report_names_the_sensitivity_next_to_the_verdict(self):
+        g, t = table_of(ladder_runs((1.0, 1.1, 1.6)))
+        text = ga.report_text(ga.evaluate(t, g, n_boot=50), t, g, {"runs": {}})
+        self.assertIn("post hoc sensitivity", text)
+
 if __name__ == "__main__":
     unittest.main()

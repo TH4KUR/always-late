@@ -155,6 +155,11 @@ def h_g3(table, gains, state="FP"):
             "met": bool(sum(inc.values()) >= required(n, 24) and sum(pos.values()) >= required(n, 20))}
 
 
+def median_not_falling(states, med, se, k=1.0):
+    """True when no state's median falls below the previous state's by more than k times the larger of the two bootstrap errors (k = 1 is the pre-registered clause of H-G4)."""
+    return all(med[b] >= med[a] - k * max(se[a], se[b]) for a, b in zip(states, states[1:]))
+
+
 def h_g4(table, gains):
     """Precision, down: along FP, INT8, ... the group harm at each chosen down ratio does not fall. Per language Kendall tau of (position on the ladder, harm); met when, at the deepest ratio, tau > 0 in at
     least 24 of 27 languages and the median over languages never falls by more than one bootstrap standard error (the larger of the two states' errors of the median)."""
@@ -173,10 +178,10 @@ def h_g4(table, gains):
     deepest = gains.down[-1]
     med = {s: float(np.median([table.get(s, c, deepest)["g"] for c in langs])) for s in states}
     se = {s: float(np.median(np.stack([table.get(s, c, deepest)["g_s"] for c in langs]), axis=0).std(ddof=1)) for s in states}
-    ok = all(med[b] >= med[a] - max(se[a], se[b]) for a, b in zip(states, states[1:]))
+    ok = median_not_falling(states, med, se, 1.0)
     count = per_ratio[deepest]["count_positive"]
-    return {"testable": True, "per_ratio": per_ratio, "median_by_state": med, "se_by_state": se, "median_ok": bool(ok), "count_positive": count, "n": len(langs),
-            "met": bool(count >= required(len(langs), 24) and ok)}
+    return {"testable": True, "per_ratio": per_ratio, "median_by_state": med, "se_by_state": se, "median_ok": bool(ok), "median_ok_2se": bool(median_not_falling(states, med, se, 2.0)),
+            "count_positive": count, "n": len(langs), "met": bool(count >= required(len(langs), 24) and ok)}
 
 
 def alpha_star(table, gains):
@@ -360,6 +365,10 @@ def report_text(res, table, gains, meta):
         out.append(f"| H-G5 alpha* against 1 / g_ratio (INT4) | Spearman above 0.3 | {_f(c['rho'], 3) if c else '-'} | {_verdict(v['H-G5-alpha'])} |")
     out.append(f"| H-G6 consistency | net harm positive at ratio {_f(g6['ratio'])} in at least {required(n, 24)} in every state and Spearman FP against INT4 above 0.5 | "
                f"{', '.join(f'{s} {x['count_positive']}' for s, x in g6['per_state'].items())}; rank correlation {_f(g6['rank_corr'], 3)} | {_verdict(v['H-G6'])} |")
+    if g4.get("testable"):
+        med = ", ".join(f"{s} {g4['median_by_state'][s]:.4f}" for s in g4["median_by_state"])
+        out += ["", f"H-G4, detail: median group harm at the deepest down ratio by state: {med}. The pre-registered clause allows a fall of the median of at most one bootstrap error (the larger of the two states'); "
+                f"result {g4['median_ok']}. **Labelled post hoc sensitivity, not part of the verdict:** with a tolerance of two bootstrap errors the clause gives {g4['median_ok_2se']} (the pre-registered rule is not changed)."]
     out += ["", "## Median over the languages by state and ratio (nats per token)", ""]
     ratios = sorted([0.0, 1.0] + list(gains.all_ratios))
     for s in gains.states:

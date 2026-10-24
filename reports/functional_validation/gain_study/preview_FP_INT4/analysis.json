@@ -469,6 +469,7 @@
     "INT4": 0.010028017471509075
    },
    "median_ok": true,
+   "median_ok_2se": true,
    "count_positive": 27,
    "n": 27,
    "met": true

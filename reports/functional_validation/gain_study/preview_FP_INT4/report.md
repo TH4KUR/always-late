@@ -17,6 +17,8 @@ Down ratios 0.3536, 0.1768, 0.0884 (plus zero-ablation); up ratios 2.8284, 5.656
 | H-G5 alpha* against 1 / g_ratio (INT4) | Spearman above 0.3 | -0.034 | **not met** |
 | H-G6 consistency | net harm positive at ratio 0.0884 in at least 24 in every state and Spearman FP against INT4 above 0.5 | FP 27, INT4 27; rank correlation 0.936 | **met** |
 
+H-G4, detail: median group harm at the deepest down ratio by state: FP 0.1939, INT4 0.3807. The pre-registered clause allows a fall of the median of at most one bootstrap error (the larger of the two states'); result True. **Labelled post hoc sensitivity, not part of the verdict:** with a tolerance of two bootstrap errors the clause gives True (the pre-registered rule is not changed).
+
 ## Median over the languages by state and ratio (nats per token)
 
 ### FP
