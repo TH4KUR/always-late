@@ -58,6 +58,7 @@
 | G4 main runs: 27 languages x FP, INT8, 7, 6, 5, 4 x 3 down + 3 up ratios (+ 2 fine), group and matched controls | RUNNING since 2026-10-24 09:12 | one job per state, about 3 GPU hours each: `gain-FP` 36925 and `gain-4` 36926 submitted 09:12; then INT6, INT5, INT7, INT8 as slots free |
 | G5 analysis (monotone in the ratio, monotone across precisions, consistent across languages) | not started | |
 | G6 figures and the written results | not started | |
+| Extension B: state-defined groups (the features that contribute at each precision, selected per precision on the 712 devtest sentences outside the evaluation) | DESIGNED 2026-10-24 10:32 (spec section 10, D-073, Q27); code and runs after the six main jobs | CPU route from the D-035 per-sentence sidecar; states FP (reference), INT6, INT4; hypotheses H-Gb1 to H-Gb4 |
 
 ## G1: baseline before and after each quantization (2026-10-24 07:12; descriptive; D-035 devtest profiles, equal-budget stream, 27,036 tokens per language)
 

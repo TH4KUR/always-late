@@ -221,5 +221,12 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - ANSWER:
 - STATUS: open
 
+## Q27. In Study G, which language-selective features are scaled at each precision: the full-precision ones (the main design) or the ones that are selective in THAT precision? (D-070, D-073)  [MEDIUM, methodology and publishability; not blocking]
+- **Context.** Your instruction of 2026-10-24 asks to measure 'which features contribute to a language, and which are general' before and after each quantization, and then to scale 'those features'. Two readings: (1) the features selected once, in full precision, and followed through the ladder (is the same set still doing the same thing?); (2) the features that contribute at each precision, re-selected in that precision (are the features that carry the language at INT4 as consequential as the full-precision ones were?). The main runs follow (1) because it is the cleaner dose-response across precisions and reuses the frozen groups and controls. Reading (2) needs groups selected per precision on sentences that the evaluation never sees; the D-035 per-sentence sidecar on Ada makes that possible on the CPU (the 712 devtest sentences outside the 300 evaluation sentences), at FP (as the reference), INT6 and INT4, plus three more GPU jobs of about 3 hours each (design: `docs/superpowers/specs/2026-10-24-graded-gain-study-design.md` section 10).
+- **Options.** (a) default: the main study stays FP-defined; extension B (state-defined groups at FP, INT6, INT4) runs after the main jobs if the GPU slots allow, as an exploratory second reading, reported next to the main one; (b) make state-defined groups the primary design (the main runs would then be redone with them: about 18 more GPU hours); (c) skip state-defined groups.
+- **Default:** (a). It costs about 9 GPU hours after the main jobs and answers both readings.
+- ANSWER:
+- STATUS: open
+
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
