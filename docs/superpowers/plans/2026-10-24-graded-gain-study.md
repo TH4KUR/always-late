@@ -65,8 +65,8 @@
 - [x] **Step 2:** Run and see them fail.
 - [x] **Step 3:** Implement; the wrapper changes behaviour only through the module-level names `PRESETS` and `build_configs` of the frozen module.
 - [x] **Step 4:** Tests pass; mutation check; `run_gain.sbatch` copied from `run_functional.sbatch` with the entry point replaced and a header comment (a new file, the old one untouched); a `bash -n` syntax check.
-- [ ] **Step 5:** Deploy a named snapshot (`ADA_SSH='ssh -o HostKeyAlias=ada-gw1 karma@10.4.24.30' bash scripts/g0/deploy_phase1.sh repo_<sha>`), run a smoke job (FP and INT4, three languages, 40 sentences, calibration grid) and read its log (gates passed, config count, speed).
-- [ ] **Step 6:** Commit and push.
+- [x] **Step 5:** Deploy a named snapshot (`ADA_SSH='ssh -o HostKeyAlias=ada-gw1 karma@10.4.24.30' bash scripts/g0/deploy_phase1.sh repo_<sha>`), run a smoke job (FP and INT4, three languages, 40 sentences, calibration grid) and read its log (gates passed, config count, speed).
+- [x] **Step 6:** Commit and push.
 
 ### Task 3: Ratio calibration on the pilot split (G3)
 
@@ -75,9 +75,9 @@
 **Interfaces:**
 - Produces: `grid() -> (down list, up list)` (the 8 + 8 values of spec section 3); `select_ratios(net_harm_by_ratio: dict[float, float], z: float) -> dict` implementing the rule of spec section 3 (down ratios by the targets 0.10/0.30/0.60 of z, ties to the next nearest, flat-response fallback 0.25/0.125/0.0625, up ratios the reciprocals) and returning the three down and three up ratios with the table.
 
-- [ ] **Step 1: Write failing tests** for the rule: a harness curve whose net harm is exactly `φ z` at three grid values returns them; two targets with the same nearest value return distinct ratios; a flat curve returns the fallback; the up ratios are the reciprocals and lie on the grid; identical results for a permuted input.
-- [ ] **Step 2-4:** Run to fail, implement, pass; mutation check.
-- [ ] **Step 5:** Submit the two calibration jobs on Ada (FP and INT4, pilot split, 150 sentences, ratio grid, two controls, zero-ablation; two slots at most), record Slurm ids in STATUS.
+- [x] **Step 1: Write failing tests** for the rule: a harness curve whose net harm is exactly `φ z` at three grid values returns them; two targets with the same nearest value return distinct ratios; a flat curve returns the fallback; the up ratios are the reciprocals and lie on the grid; identical results for a permuted input.
+- [x] **Step 2-4:** Run to fail, implement, pass; mutation check.
+- [~] **Step 5 (FP job 36834 submitted 2026-10-24 07:26; INT4 when a slot is free):** Submit the two calibration jobs on Ada (FP and INT4, pilot split, 150 sentences, ratio grid, two controls, zero-ablation; two slots at most), record Slurm ids in STATUS.
 - [ ] **Step 6:** When they finish: validate (gates, completeness, item keys), analyse with the calibration module, **apply the rule exactly as written**, append the chosen ratios, the table and the date to the decision log (D-071), update the README status.
 - [ ] **Step 7:** Commit and push.
 
@@ -121,4 +121,8 @@
 ## Amendment A1 (2026-10-24 07:12; after Task 1, before any intervention number)
 
 Task 1 is done (29 + 7 tests, 25 mutants all killed; baseline in `reports/functional_validation/gain_study/baseline/`). Its result changes the runs, as written in section 9 of the spec: **two fine up ratios (1.1, 1.2) are added** to the calibration jobs (Task 3: 18 ratios) and to the main jobs (Task 4: 38 configurations per language and state); `gain_configs` takes `ratios` as one list and the analysis (Task 5) separates the six study ratios (three down, three up) from the two fine ones; H-G5 is split into H-G5a and H-G5b (spec section 9); the verdict of H-G7 (not met) is recorded in the README of the study.
+
+## Amendment A2 (2026-10-24 07:26; measured cost, before any intervention number)
+
+The smoke job measured 1,500 to 1,530 token passes per second. The main job has 38 configurations per language (39 passes per token) over 442,613 evaluation tokens: about **3.0 GPU hours per state** (not the 1.5 to 2 estimated in the design): **one job per state** (six jobs, `-t 04:00:00`, two at a time), about 9 hours of wall time. The calibration uses 100 of the 150 pilot sentences (`--max-sentences 100`) and two control draws (59 passes per token, about 1.5 hours per state). Neither choice changes a rule or a hypothesis.
 
