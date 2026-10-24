@@ -46,12 +46,12 @@
 - Consumes: the D-035 `profiles.pt` (keys `languages`, `feature_ids`, `conditions{state: {n_tokens, positive_counts, activation_sums, activation_max}}`; fetched from Ada `/home2/karma/duan-verify/out/phase1/association-full/association/eq/profiles.pt`, sha256 recorded in `artifact_checksums.md`); the frozen groups manifest; the cohort's FP null cutoff and `selective`, `controls` flags (`selectivity.pt` of the cohort, sha256 `2f0422c2…`; copy from Ada if the cutoff is stored there, otherwise recompute from the FP profile and say so).
 - Produces: `class_masks(rates, counts, n_tokens, cutoff, min_positives=50, min_panel_rate=1e-5) -> dict[str, bool array [L, F]]` (per language: `own` selective for l at this state, `other` selective for another language, `general` supported and not selective, `unsupported`); `state_row(profile, state_groups, language_index) -> dict` (counts, overlap with `G_l`, mass shares, `group_mean_activation`, `g_ratio` against FP); `baseline_table(profiles, manifest, cutoff) -> list[dict]` with one row per (language, state).
 
-- [ ] **Step 1: Write failing tests** on toy profiles (3 languages, 6 features) for: every supported feature falls in exactly one class per language; shares of activation mass sum to 1; `g_ratio` of FP against itself is 1; a never-firing feature is `unsupported`; a feature tied at the peak is not `own` for any language; the toy FP-to-INT shift that halves a group's activations gives `g_ratio` 0.5.
-- [ ] **Step 2:** Run: `OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B -m unittest scripts.g0.tests_torch.test_phase1_gain_baseline`; expect failure (module missing).
-- [ ] **Step 3:** Implement the module as specified; mean activation = `activation_sums / n_tokens` (zeros included); rates = `positive_counts / n_tokens`; supported by the Phase 1 rule (`phase1_lib.supported_mask` semantics); `S = max_l r / mean_l r` (`phase1_lib.selectivity_S`).
-- [ ] **Step 4:** Tests pass; mutation check (`scripts/g0/mutcheck.py`) with at least 15 mutants; every survivor killed by an added test or explained.
-- [ ] **Step 5:** Fetch `profiles.pt` with one `scp` (sha256 against Ada), run the module, read the report, write the table into the README of the study (counts per language and state; `g_ratio`; mass shares; H-G7 verdict) and the baseline prediction for H-G5 (`1/g_ratio` per language at INT4) **before any GPU result exists**.
-- [ ] **Step 6:** Commit and push (explicit paths).
+- [x] **Step 1: Write failing tests** on toy profiles (3 languages, 6 features) for: every supported feature falls in exactly one class per language; shares of activation mass sum to 1; `g_ratio` of FP against itself is 1; a never-firing feature is `unsupported`; a feature tied at the peak is not `own` for any language; the toy FP-to-INT shift that halves a group's activations gives `g_ratio` 0.5.
+- [x] **Step 2:** Run: `OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B -m unittest scripts.g0.tests_torch.test_phase1_gain_baseline`; expect failure (module missing).
+- [x] **Step 3:** Implement the module as specified; mean activation = `activation_sums / n_tokens` (zeros included); rates = `positive_counts / n_tokens`; supported by the Phase 1 rule (`phase1_lib.supported_mask` semantics); `S = max_l r / mean_l r` (`phase1_lib.selectivity_S`).
+- [x] **Step 4:** Tests pass; mutation check (`scripts/g0/mutcheck.py`) with at least 15 mutants; every survivor killed by an added test or explained.
+- [x] **Step 5:** Fetch `profiles.pt` with one `scp` (sha256 against Ada), run the module, read the report, write the table into the README of the study (counts per language and state; `g_ratio`; mass shares; H-G7 verdict) and the baseline prediction for H-G5 (`1/g_ratio` per language at INT4) **before any GPU result exists**.
+- [x] **Step 6:** Commit and push (explicit paths).
 
 ### Task 2: Wrapper runner and its job script (G2)
 
@@ -117,3 +117,8 @@
 - Spec coverage: Q1 to Q3 and Q5 by Tasks 4 and 5; Q4 by the scaled controls (Tasks 2, 5); Q6 and H-G7 by Task 1; ratios by Task 3; figures and write-up by Task 6; extensions by Task 7.
 - Type consistency: `gain_configs` names (`scale{α}_K64@code`, `cscale{α}.{r}_K64@code`) are what Task 5 parses together with the ratios stored in the run's metadata.
 - Proportion: the plan fixes names, signatures, tests and values; bodies are left to the implementer.
+
+## Amendment A1 (2026-10-24 07:12; after Task 1, before any intervention number)
+
+Task 1 is done (29 + 7 tests, 25 mutants all killed; baseline in `reports/functional_validation/gain_study/baseline/`). Its result changes the runs, as written in section 9 of the spec: **two fine up ratios (1.1, 1.2) are added** to the calibration jobs (Task 3: 18 ratios) and to the main jobs (Task 4: 38 configurations per language and state); `gain_configs` takes `ratios` as one list and the analysis (Task 5) separates the six study ratios (three down, three up) from the two fine ones; H-G5 is split into H-G5a and H-G5b (spec section 9); the verdict of H-G7 (not met) is recorded in the README of the study.
+

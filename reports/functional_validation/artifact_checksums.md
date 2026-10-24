@@ -120,3 +120,12 @@ Written 2026-10-23 01:17 IST from `sha256sum` and `stat` on the cluster (Q21). T
 | `func-smoke-mc/func_mc_cal_letter_FP.pt` | 36097 | `e53433bfc09b66a2d22684b4498f6ea418a8b422dfc38be9a33c1d8b20a6af81` |
 | `func-smoke-mc/func_mc_cal_letter_INT6.pt` | 36233 | `f8d03aaea411cc6b6cc3a9a49134a5d385cf7152c371313abc9004d1a0a04f08` |
 | `func-smoke-mc/meta_mc_cal.json` | 1799 | `43906bc0694a551afe38f6f19ba7a519a619d54a311dc517f29f96f3c22cd866` |
+
+## Inputs of Study G (graded gain), added 2026-10-24
+
+Fetched from Ada with one `scp` per file, sha256 equal on both sides. Not in git (95.7 MB and 5.9 MB). Used by `scripts/g0/phase1_gain_baseline.py` (output `gain_study/baseline/`).
+
+| path (relative to `/home2/karma/duan-verify/out/phase1/`) | bytes | sha256 |
+|---|---|---|
+| `association-full/association/eq/profiles.pt` (D-035 per-state profiles, FLORES devtest) | 95695711 | `4ed15f779ca8d6d3892758322bda5f7b73a6be2c7fd52f135ca11397a9e12c83` |
+| `p1-mask/eq/selectivity.pt` (Phase 1 dev selectivity of the cohort) | 5893126 | `2f0422c2c4c4fdeae9024b8afa9c0b68a2baca926f0df5a16aac838e5a0db3f6` |
