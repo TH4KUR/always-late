@@ -29,6 +29,24 @@
 | live state and ordered next steps | `../STATUS.md` (`Immediate`, and the Log lines headed 'Study G') |
 | results | this directory (`baseline/`, `calibration/`, `results/`, `figures/` as they appear) |
 
+## Methodology in brief (the full design with every rule: the spec linked above; written before any number of the intervention study)
+
+**Question.** Does the loss on a language's own text depend monotonically on a gain applied to that language's selective features (three ratios down, three up), does that dependence grow monotonically as the weights are quantized, and do the 27 languages agree?
+
+**Objects.** Model Gemma-2-2B, layer-12 residual, the Gemma Scope 16k SAE; weights quantized by RTN per output channel (FP, INT8, INT7, INT6, INT5, INT4), SAE and activations in full precision; BOS masked. For language L: the **group** G_L = the 64 features selective for L on FLORES dev in full precision with the largest dev mean activation (frozen `groups_manifest.json`, the same set in every state); three **matched controls** C_L,r = 64 supported non-selective features matched one-to-one to G_L on dev activation and firing rate (frozen draws).
+
+**Intervention.** At every non-BOS position the SAE activations of a feature set are multiplied by a ratio alpha (`x' = x + (alpha - 1) * sum a_f W_dec[f]`; the SAE error term is kept; alpha = 1 is the identity, alpha = 0 zero-ablation). Not steering: nothing is added where a feature is silent. The same ratio is applied to G_L and to each control.
+
+**Measure.** Next-token loss (nats per token, token-weighted) on the language's own 300 held-out FLORES devtest sentences (the frozen evaluation ids). Harm = loss after the edit minus the unedited loss in the same state (paired per sentence); net harm = group harm minus the mean control harm at the same ratio; total change = edited loss minus the unedited FP loss; optimal gain alpha* = the ratio with the lowest loss. Uncertainty: paired bootstrap over sentences (2,000 draws).
+
+**Ratios.** Chosen from a calibration on the pilot sentences by a rule fixed before it ran (three down ratios at 10, 30 and 60 % of the FP zero-ablation net harm; the three up ratios are their reciprocals); two fine up ratios (1.1, 1.2) are added because the baseline shows a generic 15 % shrinkage of the activations at INT4 (amendment A1). Zero-ablation is kept as the endpoint.
+
+**Hypotheses (decision rules by counts of languages, out of 27).** H-G1 dose, down (net harm strictly ordered, 24 or more); H-G2 down is specific (interval above 0 at the deepest ratio, 24); H-G3 dose, up (group harm increasing, 24; beyond controls, 20); H-G4 precision (harm does not fall along FP to INT4, tau > 0 in 24 and the median not falling by more than one standard error); H-G5a / H-G5b generic and group-specific repair by turning up at INT4 (14 of 27 for the specific one) and alpha* against the inverse activation shrinkage; H-G6 consistency (sign in 24 languages, FP-INT4 rank correlation above 0.5); H-G7 the baseline of selectivity (not met, see G1 below).
+
+**Runs.** Wrapper `scripts/g0/phase1_gain_run.py` around the frozen runner (never edited); one Ada job per state, 38 configurations per language (about 3 GPU hours per state); analysis `phase1_gain_analysis.py`, figures `phase1_gain_figures.py`; every module has tests written first and a mutation check.
+
+**Status of the evidence.** Exploratory: the devtest sentences were examined in earlier studies (D-039). One model, one layer, one SAE, RTN only, loss not task accuracy.
+
 ## Status (update at every step; the date is the last update)
 
 | step | state | note |
