@@ -64,3 +64,16 @@ Method and trust. Eight web searches (standard mode, US-only engine, 2026-10-23)
 | Llama-3.2-1B: the base model stays gated (Q22); the SAEs of the branch (FaithfulSAE, P42) are public | earlier check of 2026-10-23 | unchanged |
 
 Verdict: **the novelty position stands**: no work combines weight quantization, language-selective SAE features and causal tests of their function; the two items to cite are FEGA (the fingerprint idea) and Cho et al. (matched controls, SAE-family differences). What the sources do not settle: whether the swapped-direction control is known under another name. Defaults unchanged; Q26 asks the user about the second model.
+
+## Update 2026-10-24 (07:56 IST; Study G, D-070): the prior-art check for the graded-gain study
+
+Three standard-mode web searches (language-specific SAE features amplified or suppressed; SAE features under weight quantization with steering; language-specific neurons amplified and quantization) and one page read (the arXiv abstract page of 2507.22581). Findings:
+
+| item | what it does | bearing on Study G |
+|---|---|---|
+| Rahmanisa et al., arXiv 2507.22581 (register P46) | amplifies language-specific neurons by a chosen factor in 18 languages and three models; evaluates steering toward the language and downstream tasks (XCOPA, XWinograd, Include, FLORES); self-language performance improves in some cases, cross-language results degrade; neurons, not SAE features; no quantization | the nearest work to our 'turn up' direction at full precision: **our novelty claim is not 'amplifying language-specific units' but amplification AND attenuation of SAE features in graded ratios, with matched controls, per language, across a weight-quantization ladder, on own-text loss**; also a prior that amplification need not hurt (H-G3 states that a decreasing curve would be the result) |
+| Deng et al. ACL 2025, Andrylie et al. arXiv 2507.11230, Chou et al. arXiv 2507.13410 | ablation and steering of language-specific SAE features (already in this register; D-065) | unchanged: single ablation or steering strengths, no precision ladder, no matched-control gain sweep |
+| Duan, arXiv 2606.03002 | per-feature survival under RTN, no causal intervention | unchanged (the causal step is still not in the abstract) |
+
+Verdict: **no work found that sweeps graded gains of language-selective SAE features across weight precisions**; 'not found' is not 'does not exist'. The searches were short (standard mode); a full-text check of Rahmanisa et al. (factors used, the perplexity claim) and a repeat of the search around 2026-10-30 remain open (STATUS Immediate).
+
