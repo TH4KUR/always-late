@@ -75,5 +75,34 @@ class Cli(unittest.TestCase):
         self.assertIn("-J gain-cal-FP", out.getvalue())
 
 
+class ExtensionC(unittest.TestCase):
+    def test_the_extension_command_has_the_larger_sample_and_no_zero_ablation(self):
+        cmd = gc.extc_command("INT4", "repo_abc")
+        self.assertIn("-J gainc-4", cmd); self.assertIn("run_gain.sbatch gainc-4 ", cmd); self.assertIn("-t 05:00:00", cmd)
+        self.assertIn("--ratios 1.1 1.2 1.4 1.7", cmd); self.assertIn("--n-controls 5", cmd); self.assertIn("--no-zero", cmd)
+        self.assertIn("--precisions 4 ", cmd + " "); self.assertIn("--n-pilot 450 --n-eval 562 --split eval --panel", cmd); self.assertIn("repo_abc", cmd)
+
+    def test_the_full_precision_state_and_an_unknown_state(self):
+        self.assertIn("-J gainc-FP", gc.extc_command("FP", "r")); self.assertIn("--precisions FP", gc.extc_command("FP", "r"))
+        with self.assertRaises(ValueError):
+            gc.extc_command("INT3", "r")
+
+    def test_the_sample_is_never_below_the_main_study(self):
+        cmd = gc.extc_command("INT6", "r")
+        self.assertGreater(562, 300); self.assertIn("--n-eval 562", cmd); self.assertIn("--n-controls 5", cmd)
+
+    def test_the_reserve_split_arguments_give_the_unused_sentences(self):
+        import phase1_func_tasks as ft
+        main_ids = ft.lm_ids(1012, 150, 300, 0); ext = ft.lm_ids(1012, 450, 562, 0)
+        self.assertEqual(ext["eval"], main_ids["reserve"])
+        self.assertFalse(set(ext["eval"]) & (set(main_ids["eval"]) | set(main_ids["pilot"])))
+
+    def test_main_prints_the_extension_command(self):
+        import contextlib, io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            gc.main(["extc", "--state", "INT5", "--repo", "repo_abc"])
+        self.assertIn("-J gainc-5", out.getvalue())
+
 if __name__ == "__main__":
     unittest.main()

@@ -211,5 +211,51 @@ class Main(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+class NoZero(unittest.TestCase):
+    """Extension C runs only scaled groups and scaled controls (no zero-ablation and no zeroed controls: they are not needed and cost a quarter of the run)."""
+    def setUp(self):
+        self.addCleanup(gr.unregister)
+
+    def test_the_default_preset_name_is_unchanged_and_the_no_zero_name_adds_a_suffix(self):
+        self.assertEqual(gr.preset_name([0.5, 2.0], 3, "K64"), "gain|0.5,2.0|c3|K64")
+        self.assertEqual(gr.preset_name([0.5, 2.0], 3, "K64", zero=False), "gain|0.5,2.0|c3|K64|nz")
+
+    def test_both_names_parse_to_the_same_ratios_and_the_flag_is_readable(self):
+        a, b = gr.preset_name([1.1, 1.2], 5, "K64"), gr.preset_name([1.1, 1.2], 5, "K64", zero=False)
+        self.assertEqual(gr.parse_preset(a), gr.parse_preset(b))
+        self.assertEqual(gr.parse_preset_full(a)[3], True); self.assertEqual(gr.parse_preset_full(b)[3], False)
+
+    def test_an_unknown_suffix_is_refused(self):
+        with self.assertRaises(ValueError):
+            gr.parse_preset("gain|0.5|c3|K64|zz")
+        with self.assertRaises(ValueError):
+            gr.parse_preset("gain|0.5|c3|K64|nz|x")
+
+    def test_the_no_zero_preset_has_no_zero_ablation_and_no_zeroed_controls(self):
+        name = gr.register([1.1, 1.2], n_controls=5, label="K64", zero=False)
+        fam = fr.PRESETS[name]
+        self.assertNotIn("zero", fam); self.assertNotIn("controls", fam)
+        self.assertEqual(fam["sham"], ["K64"]); self.assertEqual(fam["scale"], {"K64": [1.1, 1.2]})
+        cfgs = fr.build_configs(toy_manifest(n_draws=5), CODES, CODES, [], fam, "K64")
+        names = [c["name"] for c in cfgs]
+        self.assertEqual(len(cfgs), 3 * (1 + 2 + 5 * 2))
+        self.assertFalse([n for n in names if n.startswith("zero_") or n.startswith("ctrl")])
+        for code in CODES:
+            self.assertIn(f"sham_K64@{code}", names); self.assertIn(f"scale1.1_K64@{code}", names); self.assertIn(f"cscale1.2.4_K64@{code}", names)
+
+    def test_both_presets_can_be_registered_side_by_side(self):
+        a = gr.register([1.1], n_controls=3, label="K64"); b = gr.register([1.1], n_controls=3, label="K64", zero=False)
+        self.assertNotEqual(a, b); self.assertIn(a, fr.PRESETS); self.assertIn(b, fr.PRESETS)
+        gr.unregister()
+        self.assertNotIn(a, fr.PRESETS); self.assertNotIn(b, fr.PRESETS)
+
+    def test_main_passes_the_flag_through_the_preset_name(self):
+        calls = []
+        real = fr.main
+        fr.main = lambda argv=None: calls.append(list(argv))
+        self.addCleanup(lambda: setattr(fr, "main", real))
+        gr.main(["--ratios", "1.1", "1.2", "--n-controls", "5", "--no-zero", "--out", "o"])
+        self.assertEqual(calls[0], ["--out", "o", "--preset", gr.preset_name([1.1, 1.2], 5, "K64", zero=False)])
+
 if __name__ == "__main__":
     unittest.main()

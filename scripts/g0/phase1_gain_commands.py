@@ -3,7 +3,8 @@
 Nothing is submitted: the command is for `ssh karma@10.4.24.30` (see the plan's operational commands).
 
     python3 scripts/g0/phase1_gain_commands.py main --state INT4 --ratios-json <ratios.json> --repo repo_7fba511
-    python3 scripts/g0/phase1_gain_commands.py calibration --state FP --repo repo_7fba511"""
+    python3 scripts/g0/phase1_gain_commands.py calibration --state FP --repo repo_7fba511
+    python3 scripts/g0/phase1_gain_commands.py extc --state INT4 --repo repo_<sha>      (extension C, spec section 11)"""
 import argparse
 import json
 from pathlib import Path
@@ -44,13 +45,25 @@ def calibration_command(state, repo, hours="03:00:00", max_sentences=100, n_cont
     return _sbatch(f"gain-cal-{state}", hours, repo, f"--ratios {ratios} --n-controls {n_controls} --precisions {short} --split pilot --max-sentences {max_sentences} --panel")
 
 
+EXTC_RATIOS = (1.1, 1.2, 1.4, 1.7)
+
+
+def extc_command(state, repo, hours="05:00:00", n_controls=5):
+    """The command of an extension C job (spec section 11): the repair near ratio 1 on the 562 reserve sentences (`--n-pilot 450 --n-eval 562 --split eval` leaves exactly the sentences that no earlier run used),
+    all five control draws, only the scaled sets (no zero-ablation). A larger sample than the main study in every respect."""
+    short = _state(state)
+    ratios = " ".join(repr(r) for r in EXTC_RATIOS)
+    return _sbatch(f"gainc-{short}", hours, repo, f"--ratios {ratios} --n-controls {n_controls} --no-zero --precisions {short} --n-pilot 450 --n-eval 562 --split eval --panel")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Print the sbatch command of a Study G job.")
     sub = ap.add_subparsers(dest="kind", required=True)
     m = sub.add_parser("main"); m.add_argument("--state", required=True); m.add_argument("--ratios-json", required=True); m.add_argument("--repo", required=True); m.add_argument("--hours", default="04:00:00")
     c = sub.add_parser("calibration"); c.add_argument("--state", required=True); c.add_argument("--repo", required=True); c.add_argument("--hours", default="03:00:00")
+    e = sub.add_parser("extc"); e.add_argument("--state", required=True); e.add_argument("--repo", required=True); e.add_argument("--hours", default="05:00:00")
     a = ap.parse_args(argv)
-    print(main_command(a.state, a.ratios_json, a.repo, a.hours) if a.kind == "main" else calibration_command(a.state, a.repo, a.hours))
+    print(main_command(a.state, a.ratios_json, a.repo, a.hours) if a.kind == "main" else calibration_command(a.state, a.repo, a.hours) if a.kind == "calibration" else extc_command(a.state, a.repo, a.hours))
 
 
 if __name__ == "__main__":
