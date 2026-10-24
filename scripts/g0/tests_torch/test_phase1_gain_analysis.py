@@ -34,7 +34,7 @@ def planted_run(label, harm, langs=LANGS, n_controls=2, noise=None, base=3.0, dr
             put(code, rt.group_name(a, "K64", code), harm(code, a, "g"), True)
             for r in range(n_controls):
                 put(code, rt.control_name(a, r, "K64", code), harm(code, a, f"c{r}"))
-    return fa.Run(label, items, {}, {}, list(langs), list(range(N)))
+    return fa.Run(label, items, {}, {}, list(langs), {code: list(range(N)) for code in langs})          # ids as the runner stores them: {language: sentence ids}
 
 
 def simple_harm(code, a, kind):
@@ -78,7 +78,7 @@ class Construct(unittest.TestCase):
             gains(rs)
 
     def test_different_sentence_ids_are_refused(self):
-        rs = runs(); r = rs["INT4"]; rs["INT4"] = fa.Run("INT4", {f"{c}|{n}": {"nll": v[0], "ntok": v[1]} for (c, n), v in r._items.items()}, {}, {}, LANGS, list(range(1, N + 1)))
+        rs = runs(); r = rs["INT4"]; rs["INT4"] = fa.Run("INT4", {f"{c}|{n}": {"nll": v[0], "ntok": v[1]} for (c, n), v in r._items.items()}, {}, {}, LANGS, {c: list(range(1, N + 1)) for c in LANGS})
         with self.assertRaises(ValueError):
             gains(rs)
 
@@ -393,7 +393,7 @@ def save_state(d, run, preset, state=None, meta=None, complete=True, skipped=(),
     d = Path(d); d.mkdir(parents=True, exist_ok=True)
     state = state or run.label
     items = {f"{c}|{n}": {"nll": torch.tensor(v[0]), "ntok": torch.tensor(v[1])} for (c, n), v in run._items.items()}
-    torch.save({"precision": state, "split": "eval", "ids": list(run.ids), "languages": list(run.languages), "preset": preset, "items": items, "stats": {}, "fidelity": {}}, d / f"func_lm_eval_{state}.pt")
+    torch.save({"precision": state, "split": "eval", "ids": {k: list(v) for k, v in run.ids.items()}, "languages": list(run.languages), "preset": preset, "items": items, "stats": {}, "fidelity": {}}, d / f"func_lm_eval_{state}.pt")
     (d / "meta_lm_eval.json").write_text(json.dumps(meta or {"complete": complete, "skipped_for_time": list(skipped), "preset": preset,
                                                              "gates": gates or {"split_equals_full": True, "scale_one_identity": True, "donor_self_identity": True, "sham_identity": True}}))
 
@@ -701,6 +701,29 @@ class Survivors(unittest.TestCase):
             p = Path(d) / "baseline.csv"
             p.write_text("language,state,g_ratio\nl0,INT4,0.85\nl0,FP,1.0\nl1,INT4,0.9\nl1,FP,1.0\n")
             self.assertEqual(ga.load_baseline_g_ratio(p), {"l0": 0.85, "l1": 0.9})
+
+class IdsAsStoredByTheRunner(unittest.TestCase):
+    def test_the_number_of_sentences_is_read_from_the_id_lists_not_from_the_number_of_languages(self):
+        g = gains()
+        self.assertEqual(g.n_sentences, N)
+        e = np.zeros(N); e[N // 2:] = np.random.default_rng(1).normal(0, 0.1, N - N // 2)          # noise only in the second half of the sentences
+        t = ga.build_table(gains(runs(noise=e)), n_boot=100, seed=0)
+        self.assertGreater(float(np.std(t.get("FP", "l0", 0.5)["g_s"])), 0.0)                       # draws cover positions beyond the number of languages
+
+    def test_ids_that_differ_for_one_language_are_refused(self):
+        rs = runs(); r = rs["INT4"]
+        ids = {c: list(range(N)) for c in LANGS}; ids["l2"] = list(range(1, N + 1))
+        rs["INT4"] = fa.Run("INT4", {f"{c}|{n}": {"nll": v[0], "ntok": v[1]} for (c, n), v in r._items.items()}, {}, {}, LANGS, ids)
+        with self.assertRaises(ValueError):
+            gains(rs)
+
+    def test_languages_with_different_id_lists_inside_one_run_are_refused(self):
+        rs = runs(); r = rs["FP"]
+        ids = {c: list(range(N)) for c in LANGS}; ids["l1"] = list(range(1, N + 1))
+        rs["FP"] = fa.Run("FP", {f"{c}|{n}": {"nll": v[0], "ntok": v[1]} for (c, n), v in r._items.items()}, {}, {}, LANGS, ids)
+        rs["INT4"] = fa.Run("INT4", {f"{c}|{n}": {"nll": v[0], "ntok": v[1]} for (c, n), v in rs["INT4"]._items.items()}, {}, {}, LANGS, ids)
+        with self.assertRaises(ValueError):
+            gains(rs)
 
 if __name__ == "__main__":
     unittest.main()

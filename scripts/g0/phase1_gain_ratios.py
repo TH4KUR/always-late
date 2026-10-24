@@ -164,7 +164,7 @@ def main(argv=None):
     net = {g: [r for r in rows["FP"] if r["ratio"] == g][0]["net_median"] for g in down}
     sel = select_ratios(net, z)
     meta = {"states": states, "files": {s: {"name": runs[s][1].name, "sha256": _sha256(runs[s][1])} for s in states}, "z": z, "languages": languages, "n_controls": a.n_controls,
-            "label": a.label, "n_sentences": len(runs["FP"][0].ids)}
+            "label": a.label, "n_sentences": len(next(iter(runs["FP"][0].ids.values())))}
     write_outputs(a.out, rows, sel, meta)
     print(f"wrote {a.out}: down {sel['down']} up {sel['up']} branch {sel['branch']} z {z:.4f}")
 

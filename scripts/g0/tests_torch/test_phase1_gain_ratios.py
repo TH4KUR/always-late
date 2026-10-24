@@ -111,7 +111,7 @@ def planted_run(label, per_lang, ratios=(0.5,), n_controls=2, zero=None, ctrl_ze
             items[f"{code}|zero_K64@{code}"] = {"nll": 2.0 * nt + zero[code] * nt, "ntok": nt}
             for r, h in enumerate(ctrl_zero[code]):
                 items[f"{code}|ctrl{r}_K64@{code}"] = {"nll": 2.0 * nt + h * nt, "ntok": nt}
-    return fa.Run(label, items, {}, {}, list(langs), list(range(len(ntok))))
+    return fa.Run(label, items, {}, {}, list(langs), {code: list(range(len(ntok))) for code in langs})
 
 
 PL = {"l0": (0.5, [0.1, 0.3]), "l1": (0.2, [0.0, 0.1]), "l2": (1.0, [0.2, 0.2])}
@@ -195,7 +195,7 @@ class Outputs(unittest.TestCase):
     def _save(self, d, run, state):
         import torch
         items = {f"{text}|{name}": {"nll": torch.tensor(nll), "ntok": torch.tensor(ntok)} for (text, name), (nll, ntok) in run._items.items()}
-        torch.save({"precision": state, "split": "pilot", "ids": [0, 1], "languages": ["l0", "l1", "l2"], "preset": "x", "items": items, "stats": {}, "fidelity": {}}, d / f"func_lm_pilot_{state}.pt")
+        torch.save({"precision": state, "split": "pilot", "ids": {c: [0, 1] for c in ("l0", "l1", "l2")}, "languages": ["l0", "l1", "l2"], "preset": "x", "items": items, "stats": {}, "fidelity": {}}, d / f"func_lm_pilot_{state}.pt")
 
     def test_main_reads_pilot_files_and_writes_the_rule_result(self):
         other = planted_run("x", PL, ratios=tuple(rt.calibration_ratios()), zero={"l0": 4.0, "l1": 4.0, "l2": 4.0}, ctrl_zero={"l0": [0.2, 0.2], "l1": [0.1, 0.3], "l2": [0.5, 0.5]})
@@ -208,6 +208,7 @@ class Outputs(unittest.TestCase):
             self.assertEqual(len(js["down"]), 3); self.assertEqual(len(js["up"]), 3)
             self.assertEqual(js["meta"]["states"], ["FP", "ABC"])                  # FP first whatever the other labels sort to
             self.assertAlmostEqual(js["meta"]["z"], 1.8)                           # from the FP run, not from the other state (z 3.7)
+            self.assertEqual(js["meta"]["n_sentences"], 2)                         # sentences per language, not the number of languages
             with open(d / "out" / "calibration.csv") as fh:
                 rows = [r for r in csv.DictReader(fh) if r["state"] == "FP" and float(r["ratio"]) == 0.5]
             self.assertAlmostEqual(float(rows[0]["control_median"]), 0.2)          # the mean of two control draws, as asked by --n-controls 2

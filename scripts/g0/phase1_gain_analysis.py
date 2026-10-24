@@ -21,7 +21,7 @@ LADDER = ("FP", "INT8", "INT7", "INT6", "INT5", "INT4")
 
 
 class GainRuns:
-    """The item files of the states of one gain study. runs: {state label: fa.Run}; down, up: the three chosen ratios each (down in (0, 1), up above 1, shallow to deep); fine_up: the extra ratios above 1;
+    """The item files of the states of one gain study (`ids` of a run: {language: sentence ids}, the same list for every language, as the runner stores them). runs: {state label: fa.Run}; down, up: the three chosen ratios each (down in (0, 1), up above 1, shallow to deep); fine_up: the extra ratios above 1;
     n_controls: control draws per language; label: group size label. Refuses a set without the FP run, with an unknown state, with different languages or sentence ids, or with a missing configuration."""
     def __init__(self, runs, down, up, fine_up, n_controls, label="K64"):
         if "FP" not in runs:
@@ -36,11 +36,14 @@ class GainRuns:
         self.states = [s for s in LADDER if s in runs]
         ref = runs["FP"]
         self.languages = list(ref.languages)
+        if len({tuple(v) for v in ref.ids.values()}) != 1:
+            raise ValueError("the languages of the FP run were evaluated on different sentence ids")
+        self.n_sentences = len(next(iter(ref.ids.values())))
         for s in self.states:
             r = runs[s]
             if list(r.languages) != self.languages:
                 raise ValueError(f"{s}: languages differ from the FP run")
-            if list(r.ids) != list(ref.ids):
+            if r.ids != ref.ids:
                 raise ValueError(f"{s}: sentence ids differ from the FP run")
         self.all_ratios = sorted(set(self.down + self.up + self.fine_up))
         self.check_complete()
@@ -79,7 +82,7 @@ class Table:
 
 def build_table(gains, n_boot=2000, seed=0):
     """Cells for every state and language at the ratios of the study, at 0 (zero-ablation) and at 1 (the unedited model, all zeros)."""
-    n = len(gains.runs["FP"].ids)
+    n = gains.n_sentences
     D = fa.draws(n, n_boot, seed)
     cells, base = {}, {}
     zero = np.zeros(n_boot)
