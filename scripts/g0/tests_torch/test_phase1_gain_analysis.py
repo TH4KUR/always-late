@@ -725,5 +725,100 @@ class IdsAsStoredByTheRunner(unittest.TestCase):
         with self.assertRaises(ValueError):
             gains(rs)
 
+class Reliability(unittest.TestCase):
+    """The sample-size audit of the user's instruction (2026-10-24: never cut the samples so far that the results become unreliable): how large is the uncertainty from the sentences and from the few control draws."""
+    def setUp(self):
+        # control draws that differ: draw r has harm 0.1 * h * (1 + 0.5 r)
+        def h(c, a, k):
+            base = simple_harm(c, a, "g")
+            if k == "g":
+                return base
+            return 0.1 * base * (1.0 + 0.5 * int(k[1:]))
+        self.e = np.random.default_rng(2).normal(0, 0.02, N)
+        self.g = ga.GainRuns({s: planted_run(s, h, noise_group=self.e, n_controls=3) for s in ("FP", "INT4")}, DOWN, UP, FINE, n_controls=3)
+        self.t = ga.build_table(self.g, n_boot=200, seed=0)
+
+    def test_the_table_keeps_the_net_harm_of_every_control_draw(self):
+        cell = self.t.get("FP", "l1", 0.5)
+        self.assertEqual(len(cell["net_draws"]), 3)
+        self.assertAlmostEqual(float(np.mean(cell["net_draws"])), cell["net"])
+        self.assertEqual(len(set(np.round(cell["net_draws"], 9))), 3)
+
+    def test_the_ratio_one_cell_has_zero_net_in_every_draw(self):
+        self.assertEqual(list(self.t.get("FP", "l1", 1.0)["net_draws"]), [0.0, 0.0, 0.0])
+
+    def test_reliability_rows_state_both_sources_of_uncertainty_and_the_languages_that_clear_them(self):
+        rows = ga.reliability_rows(self.t, self.g)
+        r = [x for x in rows if x["state"] == "FP" and x["ratio"] == 0.125][0]
+        for k in ("median_abs_net", "median_se_sentences", "median_se_draws", "n_clear_sentences", "n_clear_both", "n_languages"):
+            self.assertIn(k, r)
+        self.assertEqual(r["n_languages"], 4)
+        self.assertGreater(r["median_se_sentences"], 0); self.assertGreater(r["median_se_draws"], 0)
+        self.assertLessEqual(r["n_clear_both"], r["n_clear_sentences"])
+        nets = [abs(self.t.get("FP", c, 0.125)["net"]) for c in LANGS]
+        self.assertAlmostEqual(r["median_abs_net"], float(np.median(nets)))
+
+    def test_the_draw_error_is_the_standard_deviation_between_draws_over_the_square_root_of_their_number(self):
+        r = [x for x in ga.reliability_rows(self.t, self.g) if x["state"] == "FP" and x["ratio"] == 0.125][0]
+        ses = [float(np.std(self.t.get("FP", c, 0.125)["net_draws"], ddof=1)) / np.sqrt(3) for c in LANGS]
+        self.assertAlmostEqual(r["median_se_draws"], float(np.median(ses)))
+
+    def test_the_counts_follow_the_stated_formulas_cell_by_cell(self):
+        rows = ga.reliability_rows(self.t, self.g)
+        for s in ("FP", "INT4"):
+            for a in (0.125, 8.0, 1.1):
+                cells = [self.t.get(s, c, a) for c in LANGS]
+                se_s = [float(np.std(x["net_s"], ddof=1)) for x in cells]
+                se_d = [float(np.std(x["net_draws"], ddof=1)) / np.sqrt(3) for x in cells]
+                r = [x for x in rows if x["state"] == s and x["ratio"] == a][0]
+                self.assertAlmostEqual(r["median_se_sentences"], float(np.median(se_s)))
+                self.assertEqual(r["n_clear_sentences"], sum(1 for x, e in zip(cells, se_s) if abs(x["net"]) > 2 * e))
+                self.assertEqual(r["n_clear_both"], sum(1 for x, e, d in zip(cells, se_s, se_d) if abs(x["net"]) > 2 * np.sqrt(e ** 2 + d ** 2)))
+
+    def test_a_threshold_between_the_two_errors_separates_the_two_counts(self):
+        # one language with a net harm of 2.5 sentence errors and a draw error as large as the sentence error: clear by the sentences alone, not by both
+        e = np.random.default_rng(4).normal(0, 0.02, N)
+        def h(c, a, k):
+            if a != 0.125:
+                return simple_harm(c, a, k)
+            return 0.002 if k == "g" else (0.0 if k == "c0" else (0.0 if k == "c1" else 0.0))
+        g = ga.GainRuns({s: planted_run(s, h, noise_group=e, n_controls=3) for s in ("FP", "INT4")}, DOWN, UP, FINE, n_controls=3)
+        t = ga.build_table(g, n_boot=300, seed=0)
+        r = [x for x in ga.reliability_rows(t, g) if x["state"] == "FP" and x["ratio"] == 0.125][0]
+        cell = t.get("FP", "l0", 0.125)
+        self.assertEqual(r["median_se_draws"], 0.0)                               # equal controls: no draw variation
+        self.assertEqual(r["n_clear_both"], r["n_clear_sentences"])
+
+    def test_clear_counts_separate_the_two_criteria(self):
+        self.assertEqual(ga.clear_counts([0.5, 1.5, 2.5, 3.5], [1, 1, 1, 1], [1, 1, 1, 1]), (2, 1))       # 2 x 1 = 2 and 2 x sqrt(2) = 2.83
+        self.assertEqual(ga.clear_counts([-2.5, 2.5], [1, 1], [0, 0]), (2, 2))                             # signs do not matter
+        self.assertEqual(ga.clear_counts([2.0], [1.0], [0.0]), (0, 0))                                      # exactly twice the error is not clear
+
+    def test_the_median_of_the_effect_size_ignores_the_sign(self):
+        def h(c, a, k):
+            if a == 0.125 and k == "g":
+                return {"l0": -0.04, "l1": -0.03, "l2": 0.03, "l3": 0.04}[c]
+            return 0.0 if a == 0.125 else simple_harm(c, a, k)
+        g = ga.GainRuns({s: planted_run(s, h, noise_group=self.e, n_controls=3) for s in ("FP", "INT4")}, DOWN, UP, FINE, n_controls=3)
+        t = ga.build_table(g, n_boot=100, seed=0)
+        r = [x for x in ga.reliability_rows(t, g) if x["state"] == "FP" and x["ratio"] == 0.125][0]
+        self.assertAlmostEqual(r["median_abs_net"], 0.035, places=2)
+
+    def test_a_language_whose_effect_is_inside_its_noise_is_not_counted(self):
+        g = ga.GainRuns({s: planted_run(s, lambda c, a, k: (0.0001 if k == "g" else 0.0) if (c == "l0" and a == 0.125) else simple_harm(c, a, k), noise_group=self.e, n_controls=3) for s in ("FP", "INT4")}, DOWN, UP, FINE, n_controls=3)
+        t = ga.build_table(g, n_boot=200, seed=0)
+        r = [x for x in ga.reliability_rows(t, g) if x["state"] == "FP" and x["ratio"] == 0.125][0]
+        self.assertEqual(r["n_clear_sentences"], 3)
+
+    def test_the_report_has_a_reliability_section_and_the_writer_a_csv(self):
+        res = ga.evaluate(self.t, self.g, n_boot=50)
+        text = ga.report_text(res, self.t, self.g, {"runs": {}})
+        self.assertIn("## Reliability of the sample", text); self.assertIn("control draws", text); self.assertIn(f"{N} held-out sentences per language", text)
+        with tempfile.TemporaryDirectory() as d:
+            ga.write_outputs(d, res, self.t, self.g, {"runs": {}})
+            with open(Path(d) / "reliability.csv") as fh:
+                rows = list(csv.DictReader(fh))
+        self.assertEqual(len(rows), 2 * (len(DOWN + UP + FINE) + 1))                       # states x (study ratios and zero-ablation)
+
 if __name__ == "__main__":
     unittest.main()

@@ -88,6 +88,31 @@ Down ratios 0.3536, 0.1768, 0.0884 (plus zero-ablation); up ratios 2.8284, 5.656
 | FP | 7 of 27 | 2 of 27 | 1.000 |
 | INT4 | 21 of 27 | 0 of 27 | 1.200 |
 
+## Reliability of the sample
+
+The sample is 300 held-out sentences per language, 3 matched-control draws per language and 27 languages in 2 states; it was not reduced to save time (user instruction 2026-10-24). The intervals of the decision rules come from the bootstrap over sentences and are conditional on the control draws; this table adds the second source of uncertainty (the variation between control draws). Per state and ratio (medians over the languages): |net harm|, the standard error from the sentences, the standard error from the control draws, and the number of languages whose |net harm| exceeds twice the sentence error alone / twice both errors combined.
+
+| state | ratio | median abs net harm | SE sentences | SE control draws | languages clear (sentences) | languages clear (both) |
+|---|---|---|---|---|---|---|
+| FP | 0 | 0.2624 | 0.0115 | 0.0024 | 27 of 27 | 27 of 27 |
+| FP | 0.0884 | 0.1687 | 0.0086 | 0.0020 | 26 of 27 | 26 of 27 |
+| FP | 0.177 | 0.0902 | 0.0065 | 0.0017 | 26 of 27 | 26 of 27 |
+| FP | 0.354 | 0.0223 | 0.0037 | 0.0012 | 24 of 27 | 23 of 27 |
+| FP | 1.1 | 0.0011 | 0.0005 | 0.0002 | 16 of 27 | 14 of 27 |
+| FP | 1.2 | 0.0024 | 0.0008 | 0.0003 | 21 of 27 | 21 of 27 |
+| FP | 2.83 | 0.0533 | 0.0048 | 0.0041 | 27 of 27 | 25 of 27 |
+| FP | 5.66 | 0.3328 | 0.0166 | 0.0358 | 26 of 27 | 22 of 27 |
+| FP | 11.3 | 1.2128 | 0.0416 | 0.1613 | 25 of 27 | 23 of 27 |
+| INT4 | 0 | 0.4316 | 0.0159 | 0.0069 | 27 of 27 | 27 of 27 |
+| INT4 | 0.0884 | 0.3233 | 0.0113 | 0.0056 | 27 of 27 | 27 of 27 |
+| INT4 | 0.177 | 0.2429 | 0.0087 | 0.0043 | 27 of 27 | 27 of 27 |
+| INT4 | 0.354 | 0.0771 | 0.0052 | 0.0024 | 26 of 27 | 26 of 27 |
+| INT4 | 1.1 | 0.0015 | 0.0006 | 0.0004 | 16 of 27 | 14 of 27 |
+| INT4 | 1.2 | 0.0029 | 0.0011 | 0.0006 | 15 of 27 | 15 of 27 |
+| INT4 | 2.83 | 0.0584 | 0.0069 | 0.0092 | 25 of 27 | 21 of 27 |
+| INT4 | 5.66 | 0.2645 | 0.0183 | 0.0473 | 27 of 27 | 22 of 27 |
+| INT4 | 11.3 | 0.8095 | 0.0436 | 0.1640 | 27 of 27 | 22 of 27 |
+
 ## Limits
 
 - Exploratory, already examined data; one model, one layer, one SAE, RTN weights only; the loss on the language's own text, not task accuracy.

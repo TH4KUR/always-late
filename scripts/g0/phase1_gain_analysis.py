@@ -95,10 +95,12 @@ def build_table(gains, n_boot=2000, seed=0):
             sets += [(a, rt.group_name(a, gains.label, code), [rt.control_name(a, r, gains.label, code) for r in range(gains.n_controls)]) for a in gains.all_ratios]
             for a, gname, cnames in sets:
                 dg, nt = run.delta(code, gname)
-                dc = np.mean([run.delta(code, c)[0] for c in cnames], axis=0)
+                dcs = [run.delta(code, c)[0] for c in cnames]
+                dc = np.mean(dcs, axis=0)
                 g_s, c_s = fa._boot(dg, nt, D), fa._boot(dc, nt, D)
-                cells[(s, code, a)] = {"g": fa.pooled(dg, nt), "c": fa.pooled(dc, nt), "net": fa.pooled(dg - dc, nt), "g_s": g_s, "c_s": c_s, "net_s": g_s - c_s}
-            cells[(s, code, 1.0)] = {"g": 0.0, "c": 0.0, "net": 0.0, "g_s": zero, "c_s": zero, "net_s": zero}
+                cells[(s, code, a)] = {"g": fa.pooled(dg, nt), "c": fa.pooled(dc, nt), "net": fa.pooled(dg - dc, nt), "g_s": g_s, "c_s": c_s, "net_s": g_s - c_s,
+                                       "net_draws": [fa.pooled(dg - d, nt) for d in dcs]}                          # the net harm against each control draw alone (their mean is `net`)
+            cells[(s, code, 1.0)] = {"g": 0.0, "c": 0.0, "net": 0.0, "g_s": zero, "c_s": zero, "net_s": zero, "net_draws": [0.0] * gains.n_controls}
     return Table(cells, base, n_boot)
 
 
@@ -225,6 +227,29 @@ def h_g6(table, gains):
     return {"ratio": d, "per_state": per_state, "rank_corr": corr, "iqr_fraction": iqr, "met": bool(all(v["met"] for v in per_state.values()) and (corr is None or corr > 0.5))}
 
 
+def clear_counts(net, se_sentences, se_draws):
+    """(number of languages with |net| above twice the sentence error, number above twice the sentence and draw errors combined in quadrature)."""
+    net, a, b = np.abs(np.asarray(net, dtype=float)), np.asarray(se_sentences, dtype=float), np.asarray(se_draws, dtype=float)
+    return int((net > 2 * a).sum()), int((net > 2 * np.sqrt(a ** 2 + b ** 2)).sum())
+
+
+def reliability_rows(table, gains):
+    """The sample-size audit: for every state and every ratio (zero-ablation included, the unedited model not), the median over languages of |net harm|, of the standard error from the sentences (the bootstrap
+    of the rules) and of the standard error from the few control draws (the standard deviation between the net harms against each draw over the square root of their number), and the number of languages
+    whose |net harm| exceeds twice the sentence error alone and twice both errors combined. The intervals of the decision rules are conditional on the control draws; the second count shows what the draws add."""
+    rows = []
+    for s in gains.states:
+        for a in sorted([0.0] + list(gains.all_ratios)):
+            cells = [table.get(s, c, a) for c in gains.languages]
+            net = np.array([x["net"] for x in cells])
+            se_s = np.array([float(np.std(x["net_s"], ddof=1)) for x in cells])
+            se_d = np.array([float(np.std(x["net_draws"], ddof=1)) / math.sqrt(len(x["net_draws"])) if len(x["net_draws"]) > 1 else float("nan") for x in cells])
+            n_sent, n_both = clear_counts(net, se_s, se_d)
+            rows.append({"state": s, "ratio": a, "median_abs_net": float(np.median(np.abs(net))), "median_se_sentences": float(np.median(se_s)), "median_se_draws": float(np.median(se_d)),
+                         "n_clear_sentences": n_sent, "n_clear_both": n_both, "n_languages": len(cells)})
+    return rows
+
+
 # ------------------------------------------------------------------------------------------------------------------------------ loading, evaluation, report
 def _sha256(path):
     h = hashlib.sha256()
@@ -299,6 +324,10 @@ def curve_rows(table, gains):
     return rows
 
 
+def ratio_text(a):
+    return "0" if a == 0 else f"{a:.3g}"
+
+
 def _verdict(v):
     return "not testable" if v is None else ("**met**" if v else "**not met**")
 
@@ -350,6 +379,14 @@ def report_text(res, table, gains, meta):
     for s in gains.states:
         vals = list(star[s].values())
         out.append(f"| {s} | {sum(1 for x in vals if x > 1)} of {n} | {sum(1 for x in vals if x < 1)} of {n} | {_f(float(np.median(vals)), 3)} |")
+    rel = reliability_rows(table, gains)
+    out += ["", "## Reliability of the sample", "",
+            f"The sample is {gains.n_sentences} held-out sentences per language, {gains.n_controls} matched-control draws per language and {n} languages in {len(gains.states)} states; it was not reduced to save time (user instruction 2026-10-24). "
+            "The intervals of the decision rules come from the bootstrap over sentences and are conditional on the control draws; this table adds the second source of uncertainty (the variation between control draws). "
+            "Per state and ratio (medians over the languages): |net harm|, the standard error from the sentences, the standard error from the control draws, and the number of languages whose |net harm| exceeds twice the sentence error alone / twice both errors combined.", "",
+            "| state | ratio | median abs net harm | SE sentences | SE control draws | languages clear (sentences) | languages clear (both) |", "|---|---|---|---|---|---|---|"]
+    for r in rel:
+        out.append(f"| {r['state']} | {ratio_text(r['ratio'])} | {_f(r['median_abs_net'])} | {_f(r['median_se_sentences'])} | {_f(r['median_se_draws'])} | {r['n_clear_sentences']} of {r['n_languages']} | {r['n_clear_both']} of {r['n_languages']} |")
     out += ["", "## Limits", "",
             "- Exploratory, already examined data; one model, one layer, one SAE, RTN weights only; the loss on the language's own text, not task accuracy.",
             "- The group is the frozen full-precision K64 group (small for most languages); the controls are activity-matched but not identical in function; alpha* is read on a coarse grid.",
@@ -362,6 +399,9 @@ def write_outputs(out_dir, res, table, gains, meta):
     rows = curve_rows(table, gains)
     with open(out / "curves.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
+    rel = reliability_rows(table, gains)
+    with open(out / "reliability.csv", "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(rel[0])); w.writeheader(); w.writerows(rel)
     with open(out / "alpha_star.csv", "w", newline="") as fh:
         w = csv.writer(fh); w.writerow(["state", "language", "alpha_star"])
         for s in gains.states:
