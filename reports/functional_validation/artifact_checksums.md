@@ -129,3 +129,13 @@ Fetched from Ada with one `scp` per file, sha256 equal on both sides. Not in git
 |---|---|---|
 | `association-full/association/eq/profiles.pt` (D-035 per-state profiles, FLORES devtest) | 95695711 | `4ed15f779ca8d6d3892758322bda5f7b73a6be2c7fd52f135ca11397a9e12c83` |
 | `p1-mask/eq/selectivity.pt` (Phase 1 dev selectivity of the cohort) | 5893126 | `2f0422c2c4c4fdeae9024b8afa9c0b68a2baca926f0df5a16aac838e5a0db3f6` |
+
+## Study G calibration job, added 2026-10-24 09:12
+
+Fetched from Ada one file at a time, sha256 equal on both sides (`/home2/karma/duan-verify/out/phase1/gain-cal-FP/`, job 36834). Not in git (3.5 MB item file). Input of `scripts/g0/phase1_gain_ratios.py` (output `gain_study/calibration/`).
+
+| path | bytes | sha256 |
+|---|---|---|
+| `gain-cal-FP/func_lm_pilot_FP.pt` | 3550109 | `4693ac57c6108782f2df05660f2a8b3d6b212bb4f804a5b4254ec582ec4cc051` |
+| `gain-cal-FP/meta_lm_pilot.json` | 2190 | `40f158c9c8c19acf49180c8dbcebc26f3068f02a7802c89519bf40e25422a21f` |
+

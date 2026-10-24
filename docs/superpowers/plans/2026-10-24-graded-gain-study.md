@@ -77,13 +77,13 @@
 
 - [x] **Step 1: Write failing tests** for the rule: a harness curve whose net harm is exactly `φ z` at three grid values returns them; two targets with the same nearest value return distinct ratios; a flat curve returns the fallback; the up ratios are the reciprocals and lie on the grid; identical results for a permuted input.
 - [x] **Step 2-4:** Run to fail, implement, pass; mutation check.
-- [~] **Step 5 (FP job 36834 submitted 2026-10-24 07:26; INT4 when a slot is free):** Submit the two calibration jobs on Ada (FP and INT4, pilot split, 150 sentences, ratio grid, two controls, zero-ablation; two slots at most), record Slurm ids in STATUS.
-- [ ] **Step 6:** When they finish: validate (gates, completeness, item keys), analyse with the calibration module, **apply the rule exactly as written**, append the chosen ratios, the table and the date to the decision log (D-071), update the README status.
-- [ ] **Step 7:** Commit and push.
+- [x] **Step 5 (FP job 36834 COMPLETED 09:01; the INT4 job is deferred, informational, run after the main jobs when a slot is free, D-071):** Submit the two calibration jobs on Ada (FP and INT4, pilot split, 150 sentences, ratio grid, two controls, zero-ablation; two slots at most), record Slurm ids in STATUS.
+- [x] **Step 6 (done 09:10 with the FP job alone, D-071):** When they finish: validate (gates, completeness, item keys), analyse with the calibration module, **apply the rule exactly as written**, append the chosen ratios, the table and the date to the decision log (D-071), update the README status.
+- [x] **Step 7:** Commit and push.
 
 ### Task 4: Main runs (G4)
 
-- [ ] **Step 1:** Submit job `gain-a` (FP, INT8, INT7) and `gain-b` (INT6, INT5, INT4): `--split eval --n-eval 300 --panel --ratios <the six>`, `-t 06:00:00`; record ids; snapshot hash check against the freeze.
+- [~] **Step 1 (FP 36925 and INT4 36926 submitted 2026-10-24 09:12; INT6, INT5, INT7, INT8 follow as slots free):** Submit job `gain-a` (FP, INT8, INT7) and `gain-b` (INT6, INT5, INT4): `--split eval --n-eval 300 --panel --ratios <the six>`, `-t 06:00:00`; record ids; snapshot hash check against the freeze.
 - [ ] **Step 2:** On completion (a later firing): sacct, checksums, `meta_lm_eval.json` (complete, nothing skipped for time, gates), config counts, item keys against the frozen eval ids; fetch files one by one; record in `artifact_checksums.md`.
 - [ ] **Step 3:** Commit and push.
 

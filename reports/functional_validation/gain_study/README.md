@@ -54,8 +54,8 @@
 | G0 design, hypotheses, ratios rule | DONE 2026-10-24 07:03 | spec and plan committed before any number; D-070 |
 | G1 baseline before and after each quantization (which features are selective for each language, which are general) | DONE 2026-10-24 07:12 | CPU, D-035 profiles; module `scripts/g0/phase1_gain_baseline.py` (36 tests, 25 mutants killed); results below and in `baseline/`; H-G7 not met |
 | G2 wrapper runner (frozen runner untouched), tests first | DONE 2026-10-24 07:26 | `scripts/g0/phase1_gain_run.py` (25 tests, 27 mutants killed), `run_gain.sbatch`; smoke job 36827 (3 languages, 40 sentences, FP and INT4) completed, gates passed, 51 configurations, about 1,500 token passes per second |
-| G3 ratio calibration on the pilot split | RUNNING since 2026-10-24 07:26 | rule module `scripts/g0/phase1_gain_ratios.py` (22 tests, 24 mutants killed); job `gain-cal-FP` 36834 (18 ratios, 100 pilot sentences, 2 control draws, about 1.5 h); the INT4 calibration job follows when a slot is free; then apply the rule and append the ratios to the decision log (D-071) |
-| G4 main runs: 27 languages x FP, INT8, 7, 6, 5, 4 x 3 down + 3 up ratios, group and matched controls | not started | |
+| G3 ratio calibration on the pilot split | DONE 2026-10-24 09:12 | FP job 36834 COMPLETED; the rule gave down 0.3536, 0.1768, 0.0884 and up 2.8284, 5.6569, 11.3137 (z = 0.2445); D-071; `calibration/`; the INT4 calibration is deferred as an informational check (it cannot change the ratios) |
+| G4 main runs: 27 languages x FP, INT8, 7, 6, 5, 4 x 3 down + 3 up ratios (+ 2 fine), group and matched controls | RUNNING since 2026-10-24 09:12 | one job per state, about 3 GPU hours each: `gain-FP` 36925 and `gain-4` 36926 submitted 09:12; then INT6, INT5, INT7, INT8 as slots free |
 | G5 analysis (monotone in the ratio, monotone across precisions, consistent across languages) | not started | |
 | G6 figures and the written results | not started | |
 
