@@ -159,3 +159,14 @@ Fetched from Ada one file at a time, sha256 equal on both sides (`/home2/karma/d
 | `gain-4/func_lm_eval_INT4.pt` | 5594871 | `eb1c3a7c1c1ee97283085371b7d043d313b00996682d07c75f45a57b53e26a3e` |
 | `gain-4/meta_lm_eval.json` | 2026 | `649f244bb68125a1520a5665b88185466fdbfc47d232cbb23d3ce7639dd43413` |
 
+## Study G main jobs INT6 and INT5, added 2026-10-24 23:21
+
+Fetched from Ada (slow link, one file at a time), sha256 equal on both sides. `gain-6` 37693 and `gain-5` 37694: COMPLETED 22:34 (2 h 53 min, exit 0, snapshot `repo_7fba511`, 999 configurations per state, gates passed, complete, nothing skipped, 300 sentences per language with the ids of the freeze: equal).
+
+| path | bytes | sha256 |
+|---|---|---|
+| `gain-6/func_lm_eval_INT6.pt` | 5594871 | `c4c2dc55a1088413f4ceac8613cfd2c0d8870ba972d7573277ab91238e30a061` |
+| `gain-6/meta_lm_eval.json` | 2025 | `896aa1c9a16733c3cbe4ebdbf6315d5099c645d2d40f63b75588103d5766380c` |
+| `gain-5/func_lm_eval_INT5.pt` | 5594871 | `46abf84a36623e4a8d8c271848159f780b466d4c99993ad063deedde0a9d9d85` |
+| `gain-5/meta_lm_eval.json` | 2025 | `bbfb17d30616b411cdb93ca1d852d9a2b6cc87752376bf64dbe99010743afd9b` |
+
