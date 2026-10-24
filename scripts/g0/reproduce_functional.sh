@@ -6,6 +6,7 @@
 #   rescue/     func-rescue-a files            f4-INT4/ f4-INT5/ f4-INT6/   func-f4-INT<b> files
 #   mc-eval/    func-mc-eval-a and -b files (their two meta_mc_eval.json renamed meta_mc_eval_a.json and meta_mc_eval_b.json)      mc-ksens/   func-mc-ksens files
 #   f5-a/ f5-b/ f5-smoke2/ f5-m8/ f5-m32/ f5-dir/ f5-dir2/ f5-fa/ f5-fa-dir/    the per-state files of the F5 jobs
+#   mc-pc-all/ mc-pc-1024/ mc-pc-256/   func-mc-pc-<dose> files func_mc_eval_letter_FP.pt and meta_mc_eval.json (the positive control, D-069)
 #   feature_status_eq.csv   Ada association-full/analysis-eq/feature_status.csv
 # Prints identical / DIFFERS / skipped (input missing) for every output file; exit 1 if anything DIFFERS. Needs the torch venv (numpy, scipy, statsmodels).
 # Known, benign differences are compared with the field ignored and say so: the run paths and the flags direction_control / fixed_amplitude (added to the F5 metadata after the main run), the figure links of f5/report.md, the free-text note of mc_ksens.
@@ -73,5 +74,16 @@ if have feature_status_eq.csv "the association analyses"; then
     $PY -B scripts/g0/phase1_assoc_rank_link.py --status "$IN/feature_status_eq.csv" --out "$OUT/assoc_rank" > /dev/null; cmpdir "$OUT/assoc_rank" "$RES/assoc_rank" assoc_rank $(ls "$RES/assoc_rank")
     $PY -B scripts/g0/phase1_assoc_margin.py --status "$IN/feature_status_eq.csv" --out "$OUT/within-language" > /dev/null; cmpdir "$OUT/within-language" reports/association_retention/results/within-language within-language analysis.json report.md loss_by_margin_quintile.csv
     if have f5-a "margin-function" && have f5-b "margin-function"; then $PY -B scripts/g0/phase1_assoc_function_link.py --status "$IN/feature_status_eq.csv" --run "$IN/f5-a" --run "$IN/f5-b" --out "$OUT/margin-function" > /dev/null; cmpdir "$OUT/margin-function" reports/association_retention/results/margin-function margin-function analysis.json report.md margin_vs_function.csv; fi
+fi
+for d in all 1024 256; do       # D-069, D-072: the positive control of the Belebele edit path, one run per dose (the committed analysis.json supplies the note of the run)
+    if have mc-pc-$d "results/mc_posctrl/dose_$d"; then
+        NOTE=$($PY -I -c "import json, sys; print(json.load(open(sys.argv[1]))['note'])" "$RES/mc_posctrl/dose_$d/analysis.json")
+        $PY -B scripts/g0/phase1_func_mc_analysis.py --runs "$IN/mc-pc-$d" --split eval --format letter --out "$OUT/mc_posctrl/dose_$d" --K K64 --n-boot 2000 --seed 0 --retention-level 0.99 --covered $COV --note "$NOTE" > /dev/null 2>&1
+        cmpdir "$OUT/mc_posctrl/dose_$d" "$RES/mc_posctrl/dose_$d" mc_posctrl/dose_$d analysis.json accuracy.csv effects_by_language.csv retention.csv report.md
+    fi
+done
+if [ -e "$OUT/mc_posctrl/dose_all/accuracy.csv" ] && [ -e "$OUT/mc_posctrl/dose_1024/accuracy.csv" ] && [ -e "$OUT/mc_posctrl/dose_256/accuracy.csv" ]; then
+    $PY -B scripts/g0/phase1_func_posctrl_summary.py --dose all "$OUT/mc_posctrl/dose_all/accuracy.csv" --dose 1024 "$OUT/mc_posctrl/dose_1024/accuracy.csv" --dose 256 "$OUT/mc_posctrl/dose_256/accuracy.csv" --out "$OUT/mc_posctrl" > /dev/null
+    cmpdir "$OUT/mc_posctrl" "$RES/mc_posctrl" mc_posctrl summary.md summary.json
 fi
 [ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }

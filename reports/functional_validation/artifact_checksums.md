@@ -139,3 +139,12 @@ Fetched from Ada one file at a time, sha256 equal on both sides (`/home2/karma/d
 | `gain-cal-FP/func_lm_pilot_FP.pt` | 3550109 | `4693ac57c6108782f2df05660f2a8b3d6b212bb4f804a5b4254ec582ec4cc051` |
 | `gain-cal-FP/meta_lm_pilot.json` | 2190 | `40f158c9c8c19acf49180c8dbcebc26f3068f02a7802c89519bf40e25422a21f` |
 
+## Positive control, third dose, added 2026-10-24 09:54
+
+Fetched from Ada one file at a time (`/home2/karma/duan-verify/out/phase1/func-mc-pc-256/`, job 36760), sha256 equal on both sides; the files of the other two doses fetched again for the reproduction check have the checksums recorded above.
+
+| path | bytes | sha256 |
+|---|---|---|
+| `func-mc-pc-256/func_mc_eval_letter_FP.pt` | 2223231 | `6369a6ad170f009cca121432a636a992f23dba5dc2549844c5375dd957ba58e7` |
+| `func-mc-pc-256/meta_mc_eval.json` | 2027 | `49a4f5e7d3cbec7f3e521af9cd73d14393cff35ce31a5a7c7df5019a1454a6d1` |
+

@@ -23,6 +23,7 @@ Files are fetched from Ada (`/home2/karma/duan-verify/out/phase1/<job>/<file>`) 
 | `f4-INT4/`, `f4-INT5/`, `f4-INT6/` | `func-f4-INT<b>` | `func_lm_eval_FP.pt`, `func_lm_eval_INT<b>.pt`, `meta_lm_eval.json` |
 | `mc-eval/` | `func-mc-eval-a`, `-b` | the six `func_mc_eval_letter_<p>.pt`; the two `meta_mc_eval.json` renamed `meta_mc_eval_a.json` and `meta_mc_eval_b.json` |
 | `mc-ksens/` | `func-mc-ksens` | `func_mc_eval_letter_{FP,INT6}.pt`, `meta_mc_eval.json` |
+| `mc-pc-all/`, `mc-pc-1024/`, `mc-pc-256/` | `func-mc-pc-all`, `func-mc-pc-1024`, `func-mc-pc-256` | `func_mc_eval_letter_FP.pt`, `meta_mc_eval.json` (the positive control, D-069, D-072) |
 | `f5-a/`, `f5-b/` | `f5-a`, `f5-b` | `f5_stage_a.pt`, `f5_state_<p>.pt`, `meta_f5.json` (A: FP, INT16, INT8; B: FP, INT6, INT5, INT4) |
 | `f5-smoke2/`, `f5-m8/`, `f5-m32/`, `f5-dir/`, `f5-dir2/`, `f5-fa/`, `f5-fa-dir/` | the F5 jobs of the same names | the same file types |
 | `feature_status_eq.csv` | `association-full/analysis-eq/feature_status.csv` | the D-035 per-feature statuses (16 MB; equal to `analysis-eq-rerun`) |
@@ -38,6 +39,7 @@ All commands from the repository root; `PY=~/.venvs/anlp-torch/bin/python`, `$FS
 | `results/rescue/` (D-058) | `$PY -B scripts/g0/phase1_func_analysis.py --runs <IN>/rescue --split eval --out results/rescue --K K64 --n-boot 2000` |
 | `results/f4/INT4`, `INT5`, `INT6` (D-048, D-049, D-051) | `$PY -B scripts/g0/phase1_func_f4_analysis.py --runs <IN>/f4-<b> --split eval --condition <b> --out results/f4/<b>` |
 | `results/mc_eval/` (D-047, D-050) | `$PY -B scripts/g0/phase1_func_mc_analysis.py --runs <IN>/mc-eval --split eval --format letter --out results/mc_eval --K K64 --n-boot 2000 --seed 0 --retention-level 0.99 --covered $COV --note "Held-out T-MC evaluation (devtest-origin passages); the confirmatory family of the design, settings frozen before scoring."`, then `python3 scripts/g0/phase1_func_mc_statements.py --freeze reports/functional_validation/evaluation_freeze_mc.json --analysis results/mc_eval/analysis.json --out results/mc_eval` |
+| `results/mc_posctrl/dose_all`, `dose_1024`, `dose_256` and `summary.*` (D-069, D-072) | the analysis command of `results/mc_eval/` with `--runs <IN>/mc-pc-<dose> --covered $COV` and the note stored in the committed `analysis.json` of the dose (K64 stands for the dose), then `$PY -B scripts/g0/phase1_func_posctrl_summary.py --dose all <accuracy.csv> --dose 1024 <accuracy.csv> --dose 256 <accuracy.csv> --out results/mc_posctrl` |
 | `results/mc_ksens/` (D-062) | the same analysis command with `--runs <IN>/mc-ksens` and the exploratory note (K64 stands for the whole group) |
 | `results/f5/` (D-059) | `$PY -B scripts/g0/phase1_func_f5_analysis.py --run <IN>/f5-a --run <IN>/f5-b --out results/f5` (the original run added `--figures ...` links) |
 | `results/f5_smoke/` | `$PY -B scripts/g0/phase1_func_f5_analysis.py --run <IN>/f5-smoke2 --out results/f5_smoke` |
