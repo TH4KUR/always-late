@@ -59,6 +59,7 @@
 | G5 analysis (monotone in the ratio, monotone across precisions, consistent across languages) | code DONE; PREVIEW on FP and INT4 run 2026-10-24 19:50 (D-074); the final analysis needs all six states | preview: H-G1, H-G2, H-G3, H-G4 (two states), H-G6 met; H-G5a, H-G5b (12 of 27 against 14) and the alpha* correlation not met; at INT4 turning the group up by 1.1 to 1.2 lowers the loss slightly (suggestive) |
 | G6 figures and the written results | not started | |
 | Extension B: state-defined groups (the features that contribute at each precision, selected per precision on the 712 devtest sentences outside the evaluation) | DESIGNED 2026-10-24 10:32 (spec section 10, D-073, Q27); code and runs after the six main jobs | CPU route from the D-035 per-sentence sidecar; states FP (reference), INT6, INT4; hypotheses H-Gb1 to H-Gb4 |
+| Extension C: the repair near ratio 1 with a larger sample (562 unused reserve sentences, 5 control draws, ratios 1.1, 1.2, 1.4, 1.7; INT4 and FP, then INT6 and INT5) | DESIGNED 2026-10-24 20:32 (spec section 11, rules H-Gc1 to H-Gc4 fixed before any run; plan task list C1 to C3) | motivated by the first look and the reliability audit (D-074, D-075) |
 
 ## G1: baseline before and after each quantization (2026-10-24 07:12; descriptive; D-035 devtest profiles, equal-budget stream, 27,036 tokens per language)
 
