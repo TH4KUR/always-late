@@ -93,3 +93,7 @@ The user asked (main chat) whether Gemma-2-2B supports all 27 languages and whet
 ## Addendum 12 (2026-10-24 00:43): the positive-control runs of Task 17 are submitted
 
 Slurm **36504** (`func-mc-pc-all`, K64 = the whole pool of 2,860 non-selective features) and **36505** (`func-mc-pc-1024`, K64 = 1,024 of them), snapshot `repo_5b9aa7f`, outputs `/home2/karma/duan-verify/out/phase1/func-mc-pc-*`, expected end about 03:00 to 03:30. Manifests: `scripts/g0/phase1_func_posctrl_manifest.py`; spec with hashes `reports/functional_validation/posctrl/posctrl_spec.json`; manifests rebuilt with `--from-spec` (not committed). Predictions P1 to P4 and how to read the results: plan Task 17 and its amendment; next steps: STATUS `Immediate`. **Pitfall: `phase1_func_run.py` is frozen (its hash is tested against the T-LM freeze): never edit it.**
+
+## Addendum 13 (2026-10-24 06:35): positive control analysed (D-069), third dose running
+
+36504 and 36505 COMPLETED, validated and analysed: whole pool (2,860 generic features) macro accuracy 0.4257 to 0.4038, random selective controls 0.3656; 1,024: 0.4137 and 0.4063; sham exact. P1 not met, P2 met, P3 met, P4 not met. The edit path registers effects in proportion to the set size; own groups are small (median 192), so the null excludes large effects only. `phase1_func_posctrl_summary.py` (17 tests, 16 mutants), outputs `results/mc_posctrl/`. Third dose **36760** (`func-mc-pc-256`, submitted 06:35). Next: STATUS `Immediate` (1): validate and analyse 36760, add the three runs to `reproduce_functional.sh`.
