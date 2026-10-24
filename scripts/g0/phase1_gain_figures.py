@@ -11,7 +11,7 @@ import textwrap
 from pathlib import Path
 
 import numpy as np
-from matplotlib.colors import LinearSegmentedColormap, to_rgb
+from matplotlib.colors import LinearSegmentedColormap, Normalize, SymLogNorm, to_rgb
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.lines import Line2D
@@ -117,12 +117,26 @@ def _head(fig, t, title, subtitle, top_in):
     fig.text(0.6 / w, 1 - 0.55 / h, sub, ha="left", va="top", fontsize=8.5, color=t["muted"], linespacing=1.3, gid="subtitle")
 
 
-RATIO_TICKS = (0.0, 0.25, 1.0, 4.0)
+FINE_RATIOS = (1.1, 1.2)
 
 
-def _ratio_ticks(ax, x, ratios):
-    ticks = [a for a in RATIO_TICKS if a in x] or sorted(x)[:1]
-    ax.set_xticks([x[a] for a in ticks]); ax.set_xticklabels(["0" if a == 0 else ("1/4" if a == 0.25 else f"{a:g}") for a in ticks])
+def ratio_label(a):
+    """A ratio as text: three significant digits (0, 0.0884, 0.354, 1, 2.83, 11.3)."""
+    return "0" if a == 0 else f"{a:.3g}"
+
+
+def chosen_ratios(ratios):
+    """(down ratios, deepest last, up ratios, largest last) of the study: the positive ratios other than 1 and the two fine up ratios."""
+    core = sorted(a for a in ratios if a > 0 and a != 1.0 and a not in FINE_RATIOS)
+    return [a for a in reversed([a for a in core if a < 1])], [a for a in core if a > 1]
+
+
+def _ratio_ticks(ax, x, ratios, short=False):
+    """Ticks and labels at the ratios of the study: 0, the down ratios, 1, the up ratios; `short` keeps 0, the deepest down ratio, 1, the mildest and the largest up ratio (for small panels)."""
+    down, up = chosen_ratios(ratios)
+    ticks = [0.0] + (down[-1:] if short else down) + [1.0] + (([up[0], up[-1]] if len(up) > 1 else up) if short else up)
+    ticks = [a for a in ticks if a in x]
+    ax.set_xticks([x[a] for a in ticks]); ax.set_xticklabels([ratio_label(a) for a in ticks], fontsize=6 if short else 8)
 
 
 # ------------------------------------------------------------------------------------------------------------------------------ figure 1: one panel per language (FP)
@@ -145,15 +159,15 @@ def fig_language_curves(rows, theme, note):
         ax.axhline(0.0, color=t["muted"], linewidth=0.8, zorder=1); ax.axhline(1.0, color=t["muted"], linewidth=0.8, linestyle="--", zorder=1)
         xs = [x[a] for a in ratios]
         ax.plot(xs, [norm[l][a] for a in ratios], color=t["series"][0], linewidth=1.4, marker="o", markersize=2.6, zorder=3, gid="net")
-        ax.set_ylim(*ylim); ax.set_xlim(min(xs) - 0.4, max(xs) + 0.4)
+        ax.set_yscale("symlog", linthresh=1.0); ax.set_ylim(*ylim); ax.set_xlim(min(xs) - 0.4, max(xs) + 0.4)
         ax.set_title(f"{l}  (z {z[l]:.3f})", loc="left", fontsize=7.5, color=t["ink2"], pad=2)
-        _ratio_ticks(ax, x, ratios)
+        _ratio_ticks(ax, x, ratios, short=True)
         if c_ != 0:
             ax.set_yticklabels([])
         if r_ != nrow - 1 and i + ncol < len(langs):
             ax.set_xticklabels([])
     _head(fig, t, "Net harm of scaling a language's selective features, full precision",
-          f"each panel: net harm (group minus matched controls) at each ratio as a fraction of the language's own zero-ablation net harm z (in nats per token, in the panel title); x: ratio on a log scale, 0 = zero-ablation; dashed line: 1 = removing the group; {note}", top)
+          f"each panel: net harm (group minus matched controls) at each ratio as a fraction of the language's own zero-ablation net harm z (in nats per token, in the panel title); x: ratio on a log scale, 0 = zero-ablation; dashed line: 1 = removing the group; the vertical scale is linear up to 1 and logarithmic beyond; {note}", top)
     fig.text(0.5, 0.2 / h, "ratio applied to the group's activations (log scale)", ha="center", va="bottom", fontsize=9, color=t["ink2"])
     return fig
 
@@ -174,9 +188,9 @@ def fig_macro(rows, theme, note):
         for s, c in zip(states, cols):
             ys = m[s][key]
             ax.plot([x[a] for a in m[s]["ratios"]], ys, color=c, linewidth=1.8, marker="o", markersize=3.6, zorder=3, gid=f"state:{s}")
+        ax.set_yscale("symlog", linthresh=0.02)
         ax.set_xlim(min(x.values()) - 0.4, max(x.values()) + 0.6)
-        ax.set_xticks([x[a] for a in ratios if a in (0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0)])
-        ax.set_xticklabels(["0" if a == 0 else f"{a:g}" for a in ratios if a in (0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0)])
+        _ratio_ticks(ax, x, ratios)
         ax.set_title(title, loc="left", fontsize=9, color=t["ink2"], pad=4)
         ax.set_xlabel("ratio applied to the group's activations (log scale, 0 = zero-ablation)", color=t["ink2"], fontsize=8.5)
         ax.set_ylabel("median over languages, nats per token", color=t["ink2"], fontsize=8.5)
@@ -186,7 +200,7 @@ def fig_macro(rows, theme, note):
     for tx in leg.get_texts():
         tx.set_color(t["ink2"])
     _head(fig, t, "Dose-response of the language-selective group across precisions",
-          f"median over the languages of the harm in nats per token (NLL after the edit minus before, same precision, on the language's own text); left: the group scaled, right: minus the same ratio on matched controls; {note}", 0.9)
+          f"median over the languages of the harm in nats per token (NLL after the edit minus before, same precision, on the language's own text); left: the group scaled, right: minus the same ratio on matched controls; vertical scale linear up to 0.02 and logarithmic beyond; {note}", 0.9)
     return fig
 
 
@@ -201,20 +215,21 @@ def fig_heatmap(rows, theme, note, down=None, up=None):
     ratios = sorted({r["ratio"] for r in rows if r["ratio"] > 0 and r["ratio"] not in (1.0, 1.1, 1.2)})
     down = down if down is not None else min(ratios); up = up if up is not None else max(ratios)
     langs0, states, _ = heat_matrix(rows, down)
-    fig, t = _fig(theme, 10.4, 0.23 * len(langs0) + 2.35)
+    fig, t = _fig(theme, 10.4, 0.23 * len(langs0) + 2.75)
     w, h = fig.get_size_inches()
     cmap = LinearSegmentedColormap.from_list("seq", t["ramp"])
-    for k, (ratio, gid, title) in enumerate(((down, "panel:down", f"ratio {down:g} (turned down)"), (up, "panel:up", f"ratio {up:g} (turned up)"))):
+    for k, (ratio, gid, title) in enumerate(((down, "panel:down", f"ratio {ratio_label(down)} (turned down)"), (up, "panel:up", f"ratio {ratio_label(up)} (turned up)"))):
         langs, st, mat = heat_matrix(rows, ratio)
         langs = langs0; _, _, mat = heat_matrix(rows, ratio); idx = [heat_matrix(rows, ratio)[0].index(l) for l in langs0]; mat = mat[idx]
-        ax = fig.add_axes([(1.35 + k * 4.55) / w, 0.55 / h, 3.7 / w, (h - 1.85) / h], gid=gid)
+        ax = fig.add_axes([(1.35 + k * 4.55) / w, 0.55 / h, 3.7 / w, (h - 2.25) / h], gid=gid)
         ax.set_facecolor(t["surface"])
-        vmax = float(np.nanmax(mat)) if np.isfinite(mat).any() else 1.0
-        ax.imshow(np.nan_to_num(mat, nan=0.0), cmap=cmap, vmin=0.0, vmax=max(vmax, 1e-9), aspect="auto")
+        vmax = max(float(np.nanmax(mat)) if np.isfinite(mat).any() else 1.0, 2.0)
+        norm = SymLogNorm(linthresh=1.0, vmin=0.0, vmax=vmax, clip=True)                                   # linear to 1 (the zero-ablation harm), logarithmic beyond: outlier languages do not wash out the rest
+        ax.imshow(np.clip(np.nan_to_num(mat, nan=0.0), 0.0, None), cmap=cmap, norm=norm, aspect="auto")
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):
                 v = mat[i, j]
-                col = _text_colour(t, to_rgb(cmap(0.0 if v != v else min(max(v / max(vmax, 1e-9), 0), 1))))
+                col = _text_colour(t, to_rgb(cmap(0.0 if v != v else float(norm(max(v, 0.0))))))
                 ax.text(j, i, "-" if v != v else f"{v:.2f}", ha="center", va="center", fontsize=6.5, color=col if v == v else t["ink2"], gid="cell")
         ax.set_xticks(range(len(st))); ax.set_xticklabels(st, fontsize=8, color=t["ink2"])
         ax.set_yticks(range(len(langs0))); ax.set_yticklabels(langs0 if k == 0 else [], fontsize=7, color=t["ink2"])
@@ -223,7 +238,7 @@ def fig_heatmap(rows, theme, note, down=None, up=None):
             sp.set_visible(False)
         ax.tick_params(length=0)
     _head(fig, t, "Net harm by language and precision, as a fraction of the full-precision zero-ablation net harm",
-          f"cell = net harm (group minus matched controls) at the stated ratio divided by the language's own FP zero-ablation net harm; rows sorted by the FP value of the left panel; a dash is a cell that was not measured; {note}", 0.9)
+          f"cell = net harm (group minus matched controls) at the stated ratio divided by the language's own FP zero-ablation net harm; rows sorted by the FP value of the left panel; a dash is a cell that was not measured; the colour scale is linear to 1 and logarithmic beyond, negative values take the lightest shade; {note}", 0.9)
     return fig
 
 
@@ -254,9 +269,13 @@ def fig_repair(rows, alpha_star, baseline_g_ratio, theme, note, fine=(1.1, 1.2))
         bx.set_xticks([]); bx.set_yticks([])
     else:
         xv = [1.0 / baseline_g_ratio[l] for l in langs]; yv = [alpha_star["INT4"][l] for l in langs]
-        bx.scatter(xv, yv, s=26, color=t["series"][0], edgecolor=t["surface"], linewidth=0.8, zorder=3)
-        lim = [min(xv + yv) - 0.05, max(xv + yv) + 0.05]
-        bx.plot(lim, lim, color=t["muted"], linewidth=0.9, linestyle="--", zorder=1); bx.set_xlim(*lim); bx.set_ylim(*lim)
+        off = [0.012 * ((i % 5) - 2) for i in range(len(yv))]                                              # small deterministic vertical offsets separate equal values (alpha* sits on a grid)
+        bx.scatter(xv, [y + o for y, o in zip(yv, off)], s=26, color=t["series"][0], edgecolor=t["surface"], linewidth=0.8, alpha=0.85, zorder=3)
+        xl = (min(xv) - 0.05, max(xv) + 0.05); yl = (min(yv) - 0.06, max(yv) + 0.06)
+        bx.set_xlim(*xl); bx.set_ylim(*yl)
+        lo_, hi_ = max(xl[0], yl[0]), min(xl[1], yl[1])
+        if lo_ < hi_:
+            bx.plot([lo_, hi_], [lo_, hi_], color=t["muted"], linewidth=0.9, linestyle="--", zorder=1)
         bx.set_xlabel("1 / (group activation at INT4 relative to FP), baseline G1", color=t["ink2"], fontsize=8.5); bx.set_ylabel("optimal gain alpha* at INT4", color=t["ink2"], fontsize=8.5)
     bx.set_title("optimal gain against the activation shrinkage", loc="left", fontsize=9, color=t["ink2"], pad=4)
     _head(fig, t, "Does turning the group up repair the quantized model?",

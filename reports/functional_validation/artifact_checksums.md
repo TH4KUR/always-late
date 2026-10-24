@@ -148,3 +148,14 @@ Fetched from Ada one file at a time (`/home2/karma/duan-verify/out/phase1/func-m
 | `func-mc-pc-256/func_mc_eval_letter_FP.pt` | 2223231 | `6369a6ad170f009cca121432a636a992f23dba5dc2549844c5375dd957ba58e7` |
 | `func-mc-pc-256/meta_mc_eval.json` | 2027 | `49a4f5e7d3cbec7f3e521af9cd73d14393cff35ce31a5a7c7df5019a1454a6d1` |
 
+## Study G main jobs, added 2026-10-24 19:50
+
+Fetched from Ada one file at a time, sha256 equal on both sides (`/home2/karma/duan-verify/out/phase1/gain-<S>/`). Not in git (5.6 MB item files). Inputs of `scripts/g0/phase1_gain_analysis.py`. `gain-FP` 36925 and `gain-4` 36926: COMPLETED 12:07 and 12:10 (2 h 55 min and 2 h 58 min, exit 0, snapshot `repo_7fba511`, 999 configurations per state = 37 x 27, gates passed, complete, nothing skipped, 300 sentences per language with the ids of the freeze).
+
+| path | bytes | sha256 |
+|---|---|---|
+| `gain-FP/func_lm_eval_FP.pt` | 5590755 | `5f88f1526b728eee45621138c05f60afe7f3a14243ec968a4632fcd188960d96` |
+| `gain-FP/meta_lm_eval.json` | 2028 | `d237279f8bb3bf4ecb6272cd364bad6c6820196700e424242fd27e925782802c` |
+| `gain-4/func_lm_eval_INT4.pt` | 5594871 | `eb1c3a7c1c1ee97283085371b7d043d313b00996682d07c75f45a57b53e26a3e` |
+| `gain-4/meta_lm_eval.json` | 2026 | `649f244bb68125a1520a5665b88185466fdbfc47d232cbb23d3ce7639dd43413` |
+

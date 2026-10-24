@@ -253,5 +253,51 @@ class Survivors(unittest.TestCase):
         a = [a for a in fig.axes if a.get_gid() == "panel:down"][0]
         self.assertGreater(len({t.get_color() for t in a.texts if t.get_gid() == "cell"}), 1)
 
+class RealDataFindings(unittest.TestCase):
+    """Defects found when the figures were first drawn from the real FP and INT4 runs (2026-10-24): heavy-tailed values, ticks at ratios that are not in the study, a scatter stretched by one language."""
+    def heavy_rows(self):
+        h = lambda c, a, k: (harm27(c, a, k) * (1.0 + (60.0 if (a == 8.0 and c in ("l3", "l9")) else 0.0)) if k == "g" else harm27(c, a, k))
+        return curve_rows(LANGS27, ("FP", "INT4"), h)
+
+    def test_the_language_panels_and_the_macro_panels_use_a_symmetric_log_vertical_scale(self):
+        rows, g = self.heavy_rows()
+        panels = [a for a in gf.fig_language_curves(rows, "light", "x").axes if a.get_gid() and a.get_gid().startswith("panel:")]
+        self.assertTrue(all(a.get_yscale() == "symlog" for a in panels))
+        panels = [a for a in gf.fig_macro(rows, "light", "x").axes if a.get_gid() and a.get_gid().startswith("panel:")]
+        self.assertTrue(all(a.get_yscale() == "symlog" for a in panels))
+
+    def test_the_x_ticks_are_the_ratios_of_the_study_not_fixed_numbers(self):
+        rows, g = self.heavy_rows()                                  # down 0.5 0.25 0.125, up 2 4 8
+        fig = gf.fig_language_curves(rows, "light", "x")
+        last = [a for a in fig.axes if a.get_gid() == "panel:l26"][0]
+        labels = [t.get_text() for t in last.get_xticklabels()]
+        self.assertIn("0.125", labels); self.assertIn("8", labels); self.assertIn("0", labels); self.assertIn("1", labels)
+        macro = [a for a in gf.fig_macro(rows, "light", "x").axes if a.get_gid() == "panel:group"][0]
+        ml = [t.get_text() for t in macro.get_xticklabels()]
+        for want in ("0", "0.125", "0.25", "0.5", "1", "2", "4", "8"):
+            self.assertIn(want, ml)
+        self.assertNotIn("1.1", ml)                                  # the fine ratios are drawn but not labelled
+
+    def test_heatmap_titles_show_the_ratio_to_three_significant_digits(self):
+        rows, g = curve_rows(LANGS27, ("FP", "INT4"), harm27)
+        rows = [dict(r, ratio=0.08838834764831845) if r["ratio"] == 0.125 else r for r in rows]          # a ratio of the real study
+        fig = gf.fig_heatmap(rows, "light", "x")
+        titles = [a.get_title(loc="left") for a in fig.axes if a.get_gid() and a.get_gid().startswith("panel:")]
+        self.assertTrue(any(t.startswith("ratio 0.0884 ") for t in titles)); self.assertTrue(any(t.startswith("ratio 8 ") for t in titles))
+
+    def test_heatmap_shades_stay_distinct_when_one_language_is_an_outlier(self):
+        rows, g = self.heavy_rows()
+        fig = gf.fig_heatmap(rows, "light", "x")
+        a = [a for a in fig.axes if a.get_gid() == "panel:up"][0]
+        pos = [float(a.images[0].norm(v)) for v in (0.2, 0.5, 1.0, 3.0, 20.0)]
+        self.assertTrue(all(b - a_ > 0.05 for a_, b in zip(pos, pos[1:])), pos)                    # each step is a visible step of the colour scale
+
+    def test_the_alpha_star_scatter_is_not_stretched_by_an_outlier_on_the_other_axis(self):
+        rows, g = curve_rows(LANGS, ("FP", "INT4"), simple_harm)
+        star = {"FP": {l: 1.0 for l in LANGS}, "INT4": {"l0": 1.2, "l1": 1.1, "l2": 1.1, "l3": 2.83}}
+        base = {"l0": 0.85, "l1": 0.9, "l2": 0.88, "l3": 0.92}
+        a = [a for a in gf.fig_repair(rows, star, base, "light", "x").axes if a.get_gid() == "panel:alpha"][0]
+        self.assertLess(a.get_xlim()[1], 1.4); self.assertGreater(a.get_ylim()[1], 2.83)
+
 if __name__ == "__main__":
     unittest.main()
