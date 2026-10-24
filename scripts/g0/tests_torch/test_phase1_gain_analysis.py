@@ -470,7 +470,10 @@ class Outputs(unittest.TestCase):
 
     def test_curve_rows_cover_every_state_language_and_ratio(self):
         rows = ga.curve_rows(self.t, self.g)
-        self.assertEqual(len(rows), 2 * 4 * (len(DOWN + UP + FINE) + 1))
+        self.assertEqual(len(rows), 2 * 4 * (len(DOWN + UP + FINE) + 2))                      # the study ratios, zero-ablation and the unedited model (ratio 1)
+        one = [x for x in rows if x["state"] == "INT4" and x["language"] == "l1" and x["ratio"] == 1.0][0]
+        self.assertEqual(one["group_harm"], 0.0); self.assertEqual(one["net"], 0.0)
+        self.assertAlmostEqual(one["total_change"], self.t.base_loss("INT4", "l1") - self.t.base_loss("FP", "l1"))    # at ratio 1 the total change is the effect of quantization alone
         r = [x for x in rows if x["state"] == "FP" and x["language"] == "l1" and x["ratio"] == 0.5][0]
         self.assertAlmostEqual(r["group_harm"], simple_harm("l1", 0.5, "g")); self.assertLess(r["net_lo"], r["net_hi"] + 1e-12)
         self.assertIn("total_change", r)

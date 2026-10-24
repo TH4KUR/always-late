@@ -284,11 +284,11 @@ def evaluate(table, gains, baseline_g_ratio=None, n_boot=2000, seed=0):
 
 
 def curve_rows(table, gains):
-    """One row per state, language and ratio (zero-ablation is ratio 0): harms with 95 % intervals, net harm and the total change against the unedited FP model."""
+    """One row per state, language and ratio (zero-ablation is ratio 0, the unedited model ratio 1, whose total change is the effect of quantization alone): harms with 95 % intervals, net harm and the total change against the unedited FP model."""
     rows = []
     for s in gains.states:
         for c in gains.languages:
-            for a in [0.0] + list(gains.all_ratios):
+            for a in sorted([0.0, 1.0] + list(gains.all_ratios)):
                 cell = table.get(s, c, a)
                 glo, ghi = fa._ci(cell["g_s"]); nlo, nhi = fa._ci(cell["net_s"])
                 rows.append({"state": s, "language": c, "ratio": a, "group_harm": cell["g"], "group_lo": glo, "group_hi": ghi, "control_harm": cell["c"], "net": cell["net"], "net_lo": nlo, "net_hi": nhi,
@@ -329,7 +329,7 @@ def report_text(res, table, gains, meta):
     out.append(f"| H-G6 consistency | net harm positive at ratio {_f(g6['ratio'])} in at least {required(n, 24)} in every state and Spearman FP against INT4 above 0.5 | "
                f"{', '.join(f'{s} {x['count_positive']}' for s, x in g6['per_state'].items())}; rank correlation {_f(g6['rank_corr'], 3)} | {_verdict(v['H-G6'])} |")
     out += ["", "## Median over the languages by state and ratio (nats per token)", ""]
-    ratios = [0.0] + list(gains.all_ratios)
+    ratios = sorted([0.0, 1.0] + list(gains.all_ratios))
     for s in gains.states:
         out += [f"### {s}", "", "| ratio | group harm | control harm | net harm | languages with net > 0 | total change vs unedited FP |", "|---|---|---|---|---|---|"]
         for a in ratios:

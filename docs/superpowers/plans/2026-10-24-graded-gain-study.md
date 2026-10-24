@@ -104,7 +104,7 @@
 
 **Files:** Create `scripts/g0/phase1_gain_figures.py` with tests; outputs `reports/functional_validation/gain_study/figures/`; modify the README of the study, `RESULTS_SUMMARY.md` (new claim row), `reproduce_functional.sh` and `REPRODUCE.md`, `artifact_checksums.md`, handoff 034.
 
-- [ ] **Step 1:** Figures of spec section 7 (consult the dataviz skill; tests for data layer and clipping first); render, look in both themes, fix defects.
+- [x] **Step 1 (code and tests done 2026-10-24; real-data render after Task 5 step 5):** Figures of spec section 7 (consult the dataviz skill; tests for data layer and clipping first); render, look in both themes, fix defects.
 - [ ] **Step 2:** Write the results section of the README of the study (the one page that answers Q1 to Q6 with the numbers and the limits), the claim map row, the reproduction commands.
 - [ ] **Step 3:** Commit and push.
 
