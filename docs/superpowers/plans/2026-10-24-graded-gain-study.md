@@ -95,8 +95,8 @@
 - Consumes: the run directories of Task 4 (files `func_lm_eval_<state>.pt`, `meta_lm_eval.json`) and the ratios.
 - Produces: `load_gain_runs(dirs) -> dict`, `curves(...) -> table of h, h_ctrl, h_net with bootstrap intervals`, `monotone_counts(...)` implementing H-G1 to H-G4, H-G6 literally as written in the spec, `alpha_star(...)`, `baseline_link(...)` for H-G5/H-G7, `report_text(...)` with the verdict line of every hypothesis (met / not met / reversed) and the limits.
 
-- [ ] **Step 1: Write failing tests** on planted data: a language whose harm is strictly ordered is counted, a tie is not, a missing state or configuration raises, a planted `α*` is recovered, the bootstrap is seeded and paired (a constant offset in the sentences does not change the interval of a difference), the verdict text names a hypothesis as reversed when the order is reversed.
-- [ ] **Step 2-4:** Fail, implement, pass; mutation check; reuse the bootstrap helper of `phase1_func_analysis.py` rather than rewriting it.
+- [x] **Step 1: Write failing tests** on planted data: a language whose harm is strictly ordered is counted, a tie is not, a missing state or configuration raises, a planted `α*` is recovered, the bootstrap is seeded and paired (a constant offset in the sentences does not change the interval of a difference), the verdict text names a hypothesis as reversed when the order is reversed.
+- [x] **Step 2-4:** Fail, implement, pass; mutation check; reuse the bootstrap helper of `phase1_func_analysis.py` rather than rewriting it.
 - [ ] **Step 5:** Run on the real runs, read the report against the pre-registered rules, write the verdicts and every deviation (none are allowed to change a rule) to the README of the study and a D-entry.
 - [ ] **Step 6:** Commit and push.
 
