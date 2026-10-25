@@ -1,0 +1,211 @@
+{
+ "primary": {
+  "language": "eng_Latn",
+  "n": 250,
+  "acc_frozen": 0.596,
+  "acc_harness": 0.516,
+  "diff": -0.07999999999999996,
+  "lo": -0.1321,
+  "hi": -0.02400000000000002,
+  "b": 37,
+  "c": 17,
+  "p_mcnemar": 0.009073340339587174,
+  "agreement": 0.672,
+  "label": "inconclusive"
+ },
+ "macro": {
+  "diff": -0.09999999999999999,
+  "lo": -0.10955555555555556,
+  "hi": -0.09044444444444445,
+  "n_languages": 18,
+  "label": "ours better"
+ },
+ "reproduction": {
+  "status": "exact",
+  "rows": [
+   {
+    "language": "eng_Latn",
+    "acc": 0.596,
+    "acc_stored": 0.596,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "deu_Latn",
+    "acc": 0.484,
+    "acc_stored": 0.484,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "spa_Latn",
+    "acc": 0.484,
+    "acc_stored": 0.484,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "fra_Latn",
+    "acc": 0.464,
+    "acc_stored": 0.464,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "por_Latn",
+    "acc": 0.484,
+    "acc_stored": 0.484,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "rus_Cyrl",
+    "acc": 0.488,
+    "acc_stored": 0.488,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "zho_Hans",
+    "acc": 0.484,
+    "acc_stored": 0.484,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "jpn_Jpan",
+    "acc": 0.412,
+    "acc_stored": 0.412,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "kor_Hang",
+    "acc": 0.432,
+    "acc_stored": 0.432,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "hin_Deva",
+    "acc": 0.376,
+    "acc_stored": 0.376,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "ben_Beng",
+    "acc": 0.38,
+    "acc_stored": 0.38,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "tur_Latn",
+    "acc": 0.412,
+    "acc_stored": 0.412,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "vie_Latn",
+    "acc": 0.448,
+    "acc_stored": 0.448,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "ind_Latn",
+    "acc": 0.46,
+    "acc_stored": 0.46,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "tha_Thai",
+    "acc": 0.46,
+    "acc_stored": 0.46,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "pol_Latn",
+    "acc": 0.424,
+    "acc_stored": 0.424,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "ukr_Cyrl",
+    "acc": 0.444,
+    "acc_stored": 0.444,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   },
+   {
+    "language": "kan_Knda",
+    "acc": 0.364,
+    "acc_stored": 0.364,
+    "n": 250,
+    "n_stored": 250,
+    "items_off": 0
+   }
+  ]
+ },
+ "margin": 0.05,
+ "n_boot": 2000,
+ "n_boot_languages": 5000,
+ "seed": 0,
+ "languages": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda"
+ ],
+ "meta": {
+  "frozen": {
+   "file": "func_mc_cal_letter_FP.pt",
+   "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/promptcheck/frozen",
+   "sha256": "1470272cf3d0adfcc80abb8f42e8d6e90b11198a91a00e1114d7f70c90888aff",
+   "meta_sha256": "ebb2e86686e49e2496b2c80ac7a0877dcaf2e1cc884006ac0032edd5cf8f7816"
+  },
+  "harness": {
+   "file": "func_mc_cal_letter_FP.pt",
+   "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/promptcheck/harness",
+   "sha256": "dd11c4b93e1edfd44d5441fced09b3a7c244402a2723aa514a1447af7f675a36",
+   "meta_sha256": "71e7294344f959ee1b92e3e7c1e452423d0c5042e478249470c6568f522038ea"
+  },
+  "calibration_sha256": "8c7c046ec91e03c13bbd858aaa1684b4bdc3fdd949bbda1ff09e7e3d0462a6c0"
+ }
+}

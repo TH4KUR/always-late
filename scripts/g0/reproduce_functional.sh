@@ -6,7 +6,7 @@
 #   rescue/     func-rescue-a files            f4-INT4/ f4-INT5/ f4-INT6/   func-f4-INT<b> files
 #   mc-eval/    func-mc-eval-a and -b files (their two meta_mc_eval.json renamed meta_mc_eval_a.json and meta_mc_eval_b.json)      mc-ksens/   func-mc-ksens files
 #   f5-a/ f5-b/ f5-smoke2/ f5-m8/ f5-m32/ f5-dir/ f5-dir2/ f5-fa/ f5-fa-dir/    the per-state files of the F5 jobs
-#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080); gainc-FP/ gainc-6/ gainc-5/ gainc-4b/   the extension C jobs (D-082); gain-sd-FP/ gain-sd-6/ gain-sd-4/ gain-sd-FPref-6/ gain-sd-FPref-4/   the extension B jobs (D-085)
+#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080); gainc-FP/ gainc-6/ gainc-5/ gainc-4b/   the extension C jobs (D-082); gain-sd-FP/ gain-sd-6/ gain-sd-4/ gain-sd-FPref-6/ gain-sd-FPref-4/   the extension B jobs (D-085); promptcheck-frozen/ promptcheck-harness/   the two variant directories of the Task 17 (b) job (D-086)
 #   mc-pc-all/ mc-pc-1024/ mc-pc-256/   func-mc-pc-<dose> files func_mc_eval_letter_FP.pt and meta_mc_eval.json (the positive control, D-069)
 #   feature_status_eq.csv   Ada association-full/analysis-eq/feature_status.csv
 # Prints identical / DIFFERS / skipped (input missing) for every output file; exit 1 if anything DIFFERS. Needs the torch venv (numpy, scipy, statsmodels).
@@ -135,5 +135,10 @@ if [ -d "$ROOT/$GS/state_defined/results" ]; then
         $PY -B scripts/g0/phase1_gain_extb_figures.py --compare "$G/state_defined_results/compare.csv" --out "$G/figures_state_defined" --formats svg --note "exploratory (devtest, one model, layer and quantizer); 300 held-out sentences per language, 3 matched-control draws" > /dev/null
         cmpdir "$G/figures_state_defined" "$ROOT/$GS/figures_state_defined" "$GS/figures_state_defined" fig_gb1_state_defined_light.svg fig_gb1_state_defined_dark.svg
     fi
+fi
+# Task 17 part (b) (D-086): the prompt cross-check; inputs promptcheck-frozen/ and promptcheck-harness/ (the frozen/ and harness/ directories of the Ada job `promptcheck`: func_mc_cal_letter_FP.pt and meta_mc_cal.json each) and the committed belebele_calibration.json
+if [ -d "$ROOT/reports/functional_validation/promptcheck" ] && have promptcheck-frozen "promptcheck" && have promptcheck-harness "promptcheck"; then
+    $PY -B scripts/g0/phase1_func_promptcheck_analysis.py --frozen-dir "$IN/promptcheck-frozen" --harness-dir "$IN/promptcheck-harness" --calibration-json reports/functional_validation/belebele_calibration.json --out "$OUT/promptcheck" > /dev/null
+    cmpdir "$OUT/promptcheck" "$RES/../promptcheck" promptcheck languages.csv report.md; jsoneq "$OUT/promptcheck/analysis.json" "$RES/../promptcheck/analysis.json" promptcheck/analysis.json meta.frozen,meta.harness
 fi
 [ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }

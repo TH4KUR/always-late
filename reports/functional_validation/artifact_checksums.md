@@ -235,3 +235,12 @@ Fetched 2026-10-26 00:32 IST from Ada, sha256 equal on both sides (2 files, 0 di
 |---|---|---|
 | `gain-sd-FPref-6/func_lm_eval_INT6.pt` | 5594871 | `d7d7b727a2a63f9eddcda17de12d9ef7f4d1961e6b885c506ea6765482573c0e` |
 | `gain-sd-FPref-6/meta_lm_eval.json` | 2133 | `d2563cccadc7e5458e6b1198e61853b5d7593838c712a4de1e378b87248b996b` |
+
+Fetched 2026-10-26 01:16 IST from Ada, sha256 equal on both sides (4 files, 0 differences): `promptcheck` 39406 (Task 17 part (b); RTX 2080 Ti on gnode049, 32 min 12 s, snapshot `repo_5ddf16e`, commit `5ddf16e`; calibration items, letter format, no edit, FP, 250 items per language for the 18 covered languages, item seed 0; gates passed, complete, nothing skipped, no CUDA warning). Variant `frozen` = the frozen letter prompt, variant `harness` = the lm-evaluation-harness prompt.
+
+| file | bytes | sha256 |
+|---|---|---|
+| `promptcheck/frozen/func_mc_cal_letter_FP.pt` | 546493 | `1470272cf3d0adfcc80abb8f42e8d6e90b11198a91a00e1114d7f70c90888aff` |
+| `promptcheck/frozen/meta_mc_cal.json` | 1965 | `ebb2e86686e49e2496b2c80ac7a0877dcaf2e1cc884006ac0032edd5cf8f7816` |
+| `promptcheck/harness/func_mc_cal_letter_FP.pt` | 546493 | `dd11c4b93e1edfd44d5441fced09b3a7c244402a2723aa514a1447af7f675a36` |
+| `promptcheck/harness/meta_mc_cal.json` | 1966 | `71e7294344f959ee1b92e3e7c1e452423d0c5042e478249470c6568f522038ea` |
