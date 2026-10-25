@@ -1,0 +1,71 @@
+{
+ "down": [
+  0.3535533905932738,
+  0.1767766952966369,
+  0.08838834764831845
+ ],
+ "up": [
+  2.82842712474619,
+  5.65685424949238,
+  11.31370849898476
+ ],
+ "fine_up": [
+  1.1,
+  1.2
+ ],
+ "branch": "targets",
+ "targets": [
+  0.1,
+  0.3,
+  0.6
+ ],
+ "meta": {
+  "states": [
+   "FP",
+   "INT4"
+  ],
+  "files": {
+   "FP": {
+    "name": "func_lm_pilot_FP.pt",
+    "sha256": "4693ac57c6108782f2df05660f2a8b3d6b212bb4f804a5b4254ec582ec4cc051"
+   },
+   "INT4": {
+    "name": "func_lm_pilot_INT4.pt",
+    "sha256": "9cae84832850183a3f6185b6cdc2c3fe510b0dd1ee21197dd086fd82b5bcbf8d"
+   }
+  },
+  "z": 0.24448586650763793,
+  "languages": [
+   "eng_Latn",
+   "deu_Latn",
+   "spa_Latn",
+   "fra_Latn",
+   "por_Latn",
+   "rus_Cyrl",
+   "zho_Hans",
+   "jpn_Jpan",
+   "kor_Hang",
+   "hin_Deva",
+   "ben_Beng",
+   "tam_Taml",
+   "tur_Latn",
+   "vie_Latn",
+   "ind_Latn",
+   "tha_Thai",
+   "pol_Latn",
+   "ukr_Cyrl",
+   "kan_Knda",
+   "tel_Telu",
+   "yor_Latn",
+   "sun_Latn",
+   "amh_Ethi",
+   "ibo_Latn",
+   "hau_Latn",
+   "khm_Khmr",
+   "lao_Laoo"
+  ],
+  "n_controls": 2,
+  "label": "K64",
+  "n_sentences": 100
+ }
+}

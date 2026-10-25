@@ -13,6 +13,7 @@ import phase1_gain_ratios as rt
 
 STATES = {"FP": "FP", "INT8": "8", "INT7": "7", "INT6": "6", "INT5": "5", "INT4": "4"}
 BASE = "/home2/karma/duan-verify/phase1"
+EXCLUDED_NODES = ("gnode068",)                                       # labelled 2080ti but holds an RTX 4070 (D-079): a job there is not comparable with the others
 
 
 def _state(s):
@@ -23,7 +24,7 @@ def _state(s):
 
 def _sbatch(name, hours, repo, args):
     r = f"{BASE}/{repo}"
-    return f"sbatch -t {hours} -J {name} --export=ALL,REPO={r} {r}/scripts/g0/run_gain.sbatch {name} {args}"
+    return f"sbatch --exclude={','.join(EXCLUDED_NODES)} -t {hours} -J {name} --export=ALL,REPO={r} {r}/scripts/g0/run_gain.sbatch {name} {args}"
 
 
 def main_command(state, ratios_json, repo, hours="04:00:00", n_controls=3):

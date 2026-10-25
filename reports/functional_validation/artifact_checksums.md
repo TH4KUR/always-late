@@ -170,3 +170,26 @@ Fetched from Ada (slow link, one file at a time), sha256 equal on both sides. `g
 | `gain-5/func_lm_eval_INT5.pt` | 5594871 | `46abf84a36623e4a8d8c271848159f780b466d4c99993ad063deedde0a9d9d85` |
 | `gain-5/meta_lm_eval.json` | 2025 | `bbfb17d30616b411cdb93ca1d852d9a2b6cc87752376bf64dbe99010743afd9b` |
 
+## Study G: INT7 and INT8 main states, the extension C jobs, the INT4 calibration, added 2026-10-25 13:06
+
+Fetched from Ada, sha256 equal on both sides (17 files compared, 0 differences). `gain-7` 37947 and `gain-8` 37948 (main states, 2 h 54 and 3 h 01, snapshot `repo_7fba511`, 999 configurations, 300 sentences with the ids of the freeze); `gainc-smoke` 38123 (mechanics check, 3 languages x 40 reserve sentences, FP and INT4); the extension C jobs on the 562 reserve sentences with five control draws and no zero-ablation (snapshot `repo_ab7790e`, 675 configurations each): `gainc-FP` 38125, `gainc-6` 38126, `gainc-5` 38127 and **`gainc-4` 38124, which ran on an RTX 4070 (node gnode068, labelled 2080ti by mistake) and is therefore a hardware sensitivity run only (D-079); the INT4 extension verdicts use `gainc-4b` 38720**; `gain-cal-INT4` 38128 (informational calibration, pilot split). Every other job of the study ran on an RTX 2080 Ti (checked in the logs).
+
+| path | bytes | sha256 |
+|---|---|---|
+| `gain-7/func_lm_eval_INT7.pt` | 5594871 | `c72a8dbb9c6b4b823be0e69db4d895c0f9983561b4c4fa82368155f098191ac9` |
+| `gain-7/meta_lm_eval.json` | 2027 | `16eb08930a51660b018c62620bef360ed35d44f62b3c45dfb43fd9ec286695fe` |
+| `gain-8/func_lm_eval_INT8.pt` | 5594871 | `bf5b74f4d2e694e257b2116d8127ef6fcfbb38be972f29e9c030859aa10491b2` |
+| `gain-8/meta_lm_eval.json` | 2027 | `1eccb4bae3a5a41124070de19735eb2d0c2285bf6d440d15c2e546a921ab6fc8` |
+| `gainc-smoke/func_lm_eval_FP.pt` | 104023 | `956cad7d5faf107596e50cd5eeddfcd02993ba2319be52bd4c415dfc46daad12` |
+| `gainc-smoke/func_lm_eval_INT4.pt` | 104347 | `c326ab6df5ba75cb20c4f3e65e273952119cf7ba686f7be5dec1df4cd2348e1d` |
+| `gainc-smoke/meta_lm_eval.json` | 1758 | `1115af836a57258dce047dab6d7d500f76add40efe6266b54ff82b1f739b5d76` |
+| `gainc-4/func_lm_eval_INT4.pt` | 6816367 | `1f2f866a09c1c798180e16727806e264f26c44a500cb05d395fbf9ac77b0d2c5` |
+| `gainc-4/meta_lm_eval.json` | 1853 | `ca278ed9bbe9299153e7c58db90d22c47ac7753e2a082caf3018c3005f9c9635` |
+| `gainc-FP/func_lm_eval_FP.pt` | 6813547 | `25647295e7c87fcc50940829e6abd4a21a73d8a950555fc24d409bbcf0f271bb` |
+| `gainc-FP/meta_lm_eval.json` | 1855 | `39cfdbcc7fb6148666729058f2c4d36eaf51c4ce58ca53f1e1fd2105e5c6d4be` |
+| `gainc-6/func_lm_eval_INT6.pt` | 6816367 | `93415b4ac23ade21dc3ba9da86ed961521887106f96dc9149ebc34dc7ef46138` |
+| `gainc-6/meta_lm_eval.json` | 1853 | `b72eb4d7ab3ba36bb426e220a3c359eae1eebe26d2dfc8866ac031bde65291e2` |
+| `gainc-5/func_lm_eval_INT5.pt` | 6816367 | `f085fd642a2a399bc48e741f05a534281cfa184f65fc7d59cacebbd08a9a8d18` |
+| `gainc-5/meta_lm_eval.json` | 1854 | `09517431713303f77c2e3d82783cffc53db4806e70c601b6d06f4032902452a1` |
+| `gain-cal-INT4/func_lm_pilot_INT4.pt` | 3556493 | `9cae84832850183a3f6185b6cdc2c3fe510b0dd1ee21197dd086fd82b5bcbf8d` |
+| `gain-cal-INT4/meta_lm_pilot.json` | 2193 | `a7cb945c8eff8f8e0ccfd6103316b553898951713f23b211e3d8c25a041070ea` |

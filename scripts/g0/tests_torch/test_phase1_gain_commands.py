@@ -104,5 +104,17 @@ class ExtensionC(unittest.TestCase):
             gc.main(["extc", "--state", "INT5", "--repo", "repo_abc"])
         self.assertIn("-J gainc-5", out.getvalue())
 
+class MislabelledNode(unittest.TestCase):
+    """D-079: node gnode068 is labelled 2080ti but holds at least one RTX 4070; every Study G job excludes it."""
+    def test_every_printed_command_excludes_the_node(self):
+        with tempfile.TemporaryDirectory() as d:
+            cmds = [gc.main_command("INT4", write(d), "r"), gc.calibration_command("FP", "r"), gc.extc_command("INT4", "r")]
+        for c in cmds:
+            self.assertIn("--exclude=gnode068", c)
+            self.assertTrue(c.startswith("sbatch --exclude=gnode068 -t "), c[:60])
+
+    def test_the_node_list_is_a_module_constant(self):
+        self.assertEqual(gc.EXCLUDED_NODES, ("gnode068",))
+
 if __name__ == "__main__":
     unittest.main()
