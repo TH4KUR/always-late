@@ -227,5 +227,103 @@ class Files(unittest.TestCase):
                 sd.load_shards(Path(d), "eq", "INT4", LANGS)
 
 
+class CommandLine(unittest.TestCase):
+    """B2: `main` reads the sidecar tree, the dev selectivity file, writes one manifest per state, the overlap table and the diagnostics."""
+    def tree(self, d, states=("FP", "INT6", "INT4"), shifted=(), cutoff=CUTOFF):
+        d = Path(d)
+        for s in states:
+            for i, l in enumerate(LANGS):
+                (d / "eq" / "sentences" / s).mkdir(parents=True, exist_ok=True)
+                c, m = dense(i, scale=1.5 if (s in shifted) else 1.0)
+                torch.save(shard(c, m), d / "eq" / "sentences" / s / f"{l}.pt")
+        torch.save({"languages": LANGS, "null_cutoff": cutoff, "selective": torch.tensor(np.zeros(NF, dtype=bool)), "controls": torch.tensor([0])}, d / "selectivity.pt")
+        (d / "reference_manifest.json").write_text(json.dumps({"languages": LANGS}))
+        return ["--sidecar", str(d), "--selectivity", str(d / "selectivity.pt"), "--reference-manifest", str(d / "reference_manifest.json"), "--out", str(d / "out"), "--states", *states,
+                "--K", "4", "--R", "3", "--n-features", str(NF), "--exclude-ids", "0,1,2"]
+
+    def run_main(self, argv):
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()):
+            sd.main(argv)
+
+    def test_one_manifest_per_state_and_the_overlap_and_diagnostic_tables(self):
+        import json, csv
+        with tempfile.TemporaryDirectory() as d:
+            self.run_main(self.tree(d))
+            out = Path(d) / "out"
+            for s in ("FP", "INT6", "INT4"):
+                man = json.loads((out / f"groups_manifest_{s}.json").read_text())
+                self.assertEqual(man["languages"], LANGS); self.assertEqual(man["sizes"]["l0"]["K4"], 4); self.assertEqual(len(man["controls"]["l1"]["K4"]), 3)
+            with open(out / "overlap.csv") as fh:
+                rows = list(csv.DictReader(fh))
+            self.assertEqual(len(rows), 2 * len(LANGS)); self.assertEqual({r["state"] for r in rows}, {"INT6", "INT4"})
+            self.assertTrue(all(float(r["jaccard"]) == 1.0 for r in rows))                  # identical toy profiles: the same groups
+            with open(out / "diagnostics.csv") as fh:
+                diag = list(csv.DictReader(fh))
+            self.assertEqual(len(diag), 3 * len(LANGS)); self.assertEqual({int(r["n_own"]) for r in diag}, {6})
+
+    def test_the_meta_records_the_inputs_and_the_excluded_sentences(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            self.run_main(self.tree(d))
+            meta = json.loads((Path(d) / "out" / "meta.json").read_text())
+            self.assertEqual(meta["exclude_ids"], [0, 1, 2]); self.assertEqual(meta["K"], 4); self.assertEqual(meta["R"], 3); self.assertEqual(len(meta["selectivity_sha256"]), 64)
+            self.assertEqual(set(meta["shards_sha256"]), {"FP", "INT6", "INT4"}); self.assertEqual(len(meta["shards_sha256"]["FP"]["l0"]), 64)
+            self.assertEqual(len(meta["manifest_sha256"]["INT4"]), 64)
+
+    def test_the_manifest_source_hash_changes_with_the_shards(self):
+        import json
+        with tempfile.TemporaryDirectory() as d1, tempfile.TemporaryDirectory() as d2:
+            self.run_main(self.tree(d1)); self.run_main(self.tree(d2, shifted=("INT4",)))
+            a = json.loads((Path(d1) / "out" / "groups_manifest_INT4.json").read_text()); b = json.loads((Path(d2) / "out" / "groups_manifest_INT4.json").read_text())
+            self.assertNotEqual(a["source"]["sha256"], b["source"]["sha256"])
+            self.assertEqual(json.loads((Path(d1) / "out" / "groups_manifest_FP.json").read_text())["source"]["sha256"], json.loads((Path(d2) / "out" / "groups_manifest_FP.json").read_text())["source"]["sha256"])
+
+    def test_the_source_hash_differs_between_states_and_between_excluded_sets(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            argv = self.tree(d)
+            self.run_main(argv)
+            srcs = {s: json.loads((Path(d) / "out" / f"groups_manifest_{s}.json").read_text())["source"]["sha256"] for s in ("FP", "INT6", "INT4")}
+            self.assertEqual(len(set(srcs.values())), 3)
+            argv2 = [x if x != "0,1,2" else "0,1,3" for x in argv]; argv2[argv2.index("--out") + 1] = str(Path(d) / "out2")
+            self.run_main(argv2)
+            self.assertNotEqual(srcs["FP"], json.loads((Path(d) / "out2" / "groups_manifest_FP.json").read_text())["source"]["sha256"])
+
+    def test_the_cutoff_of_the_selectivity_file_decides_which_features_are_selective(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError):                              # S = 3 for the own features: a cutoff of 3.5 leaves no language with a group
+                self.run_main(self.tree(d, cutoff=3.5))
+
+    def test_the_diagnostics_give_tokens_and_group_sizes_per_state_and_language(self):
+        import csv
+        with tempfile.TemporaryDirectory() as d:
+            self.run_main(self.tree(d))
+            with open(Path(d) / "out" / "diagnostics.csv") as fh:
+                rows = list(csv.DictReader(fh))
+        self.assertEqual({int(r["n_tokens"]) for r in rows}, {5 * TOK}); self.assertEqual({int(r["group_size"]) for r in rows}, {4})
+
+    def test_a_missing_state_or_a_language_order_mismatch_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            argv = self.tree(d, states=("FP", "INT4"))
+            with self.assertRaises(FileNotFoundError):
+                self.run_main(argv[:argv.index("--states")] + ["--states", "FP", "INT5"] + argv[argv.index("--K"):])
+        with tempfile.TemporaryDirectory() as d:
+            argv = self.tree(d)
+            torch.save({"languages": ["l1", "l0", "l2"], "null_cutoff": CUTOFF, "selective": torch.tensor(np.zeros(NF, dtype=bool)), "controls": torch.tensor([0])}, Path(d) / "selectivity.pt")
+            with self.assertRaises(ValueError):
+                self.run_main(argv)
+
+    def test_the_first_state_must_be_fp_because_it_is_the_overlap_reference(self):
+        with tempfile.TemporaryDirectory() as d:
+            argv = self.tree(d, states=("INT4", "FP"))
+            with self.assertRaises(ValueError):
+                self.run_main(argv)
+
+    def test_the_default_excluded_sentences_are_the_main_study_evaluation_sentences(self):
+        import phase1_func_tasks as ft
+        self.assertEqual(sd.default_exclude_ids(), ft.lm_ids(1012, 150, 300, 0)["eval"])
+        self.assertEqual(len(sd.default_exclude_ids()), 300)
+
 if __name__ == "__main__":
     unittest.main()

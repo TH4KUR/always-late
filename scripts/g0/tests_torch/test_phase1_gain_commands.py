@@ -116,5 +116,44 @@ class MislabelledNode(unittest.TestCase):
     def test_the_node_list_is_a_module_constant(self):
         self.assertEqual(gc.EXCLUDED_NODES, ("gnode068",))
 
+class StateDefined(unittest.TestCase):
+    """Extension B (D-073): the main-study design on groups selected in the state's own precision (manifests from the CPU job)."""
+    def test_the_gpu_command_uses_the_state_manifest_the_main_ratios_and_the_main_sample(self):
+        with tempfile.TemporaryDirectory() as d:
+            cmd = gc.statedef_command("INT4", write(d), "repo_abc")
+        self.assertIn("-J gain-sd-4", cmd); self.assertIn("run_gain.sbatch gain-sd-4 ", cmd)
+        self.assertIn("--manifest /home2/karma/duan-verify/out/phase1/gain-sd-manifests/groups_manifest_INT4.json", cmd)
+        self.assertIn("--ratios 0.5 0.25 0.125 2.0 4.0 8.0 1.1 1.2", cmd); self.assertIn("--n-controls 3", cmd); self.assertIn("--split eval --n-eval 300 --panel", cmd)
+        self.assertIn("--precisions 4 ", cmd + " "); self.assertIn("--exclude=gnode068", cmd)
+
+    def test_the_manifest_option_comes_after_the_script_name_so_that_it_overrides_the_default_one(self):
+        with tempfile.TemporaryDirectory() as d:
+            cmd = gc.statedef_command("FP", write(d), "repo_abc")
+        self.assertGreater(cmd.index("--manifest"), cmd.index("run_gain.sbatch")); self.assertIn("groups_manifest_FP.json", cmd)
+
+    def test_a_dependency_on_the_cpu_job_is_added_when_given(self):
+        with tempfile.TemporaryDirectory() as d:
+            cmd = gc.statedef_command("INT6", write(d), "repo_abc", after_job=12345)
+            self.assertIn("--dependency=afterok:12345", cmd); self.assertNotIn("--dependency", gc.statedef_command("INT6", write(d), "repo_abc"))
+
+    def test_only_the_states_with_manifests_are_accepted(self):
+        with tempfile.TemporaryDirectory() as d:
+            for bad in ("INT8", "INT5", "INT7"):
+                with self.assertRaises(ValueError, msg=bad):
+                    gc.statedef_command(bad, write(d), "repo_abc")
+
+    def test_the_cpu_job_command(self):
+        cmd = gc.statedef_cpu_command("repo_abc")
+        self.assertIn("run_gain_statedef.sbatch", cmd); self.assertIn("-J gain-sd-manifests", cmd); self.assertNotIn("gres", cmd); self.assertIn("repo_abc", cmd)
+
+    def test_main_prints_both(self):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as d:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                gc.main(["statedef", "--state", "INT4", "--ratios-json", str(write(d)), "--repo", "repo_abc", "--after-job", "77"])
+                gc.main(["statedef-cpu", "--repo", "repo_abc"])
+        self.assertIn("-J gain-sd-4", out.getvalue()); self.assertIn("--dependency=afterok:77", out.getvalue()); self.assertIn("gain-sd-manifests", out.getvalue())
+
 if __name__ == "__main__":
     unittest.main()

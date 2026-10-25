@@ -103,3 +103,54 @@ def overlap_table(manifests, label, ref="FP"):
             a = set(base["groups"][l]["all"][:base["sizes"][l][label]]); b = set(man["groups"][l]["all"][:man["sizes"][l][label]])
             rows.append({"language": l, "state": state, "ref": ref, "size": len(b), "shared": len(a & b), "jaccard": len(a & b) / len(a | b)})
     return rows
+
+
+def default_exclude_ids():
+    """The 300 evaluation sentences of the main study (`lm_ids(1012, 150, 300, 0)["eval"]`): never used for a selection."""
+    import phase1_func_tasks as ft
+    return ft.lm_ids(1012, 150, 300, 0)["eval"]
+
+
+def main(argv=None):
+    """CPU job on Ada: one groups manifest per state from the D-035 sidecar, the overlap table with FP, per-state diagnostics and the meta file (inputs, excluded sentences, sha256 of every shard and manifest).
+    python phase1_gain_statedef.py --sidecar <.../association> --selectivity <selectivity.pt> --reference-manifest reports/functional_validation/groups_manifest.json --out <dir> --states FP INT6 INT4"""
+    import argparse, csv, json
+    ap = argparse.ArgumentParser(description="Study G extension B: state-defined groups from the D-035 per-sentence sidecar (evaluation sentences excluded).")
+    ap.add_argument("--sidecar", required=True); ap.add_argument("--stream", default="eq"); ap.add_argument("--selectivity", required=True); ap.add_argument("--reference-manifest", required=True)
+    ap.add_argument("--out", required=True); ap.add_argument("--states", nargs="+", default=["FP", "INT6", "INT4"]); ap.add_argument("--K", type=int, default=64); ap.add_argument("--R", type=int, default=3)
+    ap.add_argument("--seed", type=int, default=0); ap.add_argument("--n-features", type=int, default=16384); ap.add_argument("--exclude-ids", help="comma-separated sentence ids (default: the main study's evaluation ids)")
+    a = ap.parse_args(argv)
+    if a.states[0] != "FP":
+        raise ValueError("the first state must be FP (the reference of the overlap table)")
+    sel0 = torch.load(a.selectivity, weights_only=False)
+    languages = list(sel0["languages"])
+    ref = json.loads(Path(a.reference_manifest).read_text())
+    if list(ref["languages"]) != languages:
+        raise ValueError("the selectivity file and the reference manifest list the languages in different orders")
+    exclude = [int(x) for x in a.exclude_ids.split(",")] if a.exclude_ids else default_exclude_ids()
+    cutoff = float(sel0["null_cutoff"]); sel_sha = _sha256(a.selectivity)
+    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    manifests, meta, diag = {}, {"exclude_ids": exclude, "K": a.K, "R": a.R, "seed": a.seed, "null_cutoff": cutoff, "n_features": a.n_features, "stream": a.stream, "selectivity_sha256": sel_sha,
+                                 "shards_sha256": {}, "manifest_sha256": {}}, []
+    for s in a.states:
+        shards, shas = load_shards(a.sidecar, a.stream, s, languages)
+        prof = profile_from_shards(shards, exclude, a.n_features)
+        sel = state_selectivity(prof, cutoff, languages)
+        source = hashlib.sha256(json.dumps([sel_sha, s, shas, exclude], sort_keys=True).encode()).hexdigest()
+        man = build_state_manifest(sel, K=a.K, R=a.R, seed=a.seed, source_sha256=source)
+        path = out / f"groups_manifest_{s}.json"
+        path.write_text(json.dumps(man, separators=(",", ":")) + "\n")
+        manifests[s] = man; meta["shards_sha256"][s] = shas; meta["manifest_sha256"][s] = _sha256(path)
+        cls = gb.state_classes(prof["positive_counts"], prof["n_tokens"], cutoff)
+        for l, name in enumerate(languages):
+            diag.append({"state": s, "language": name, "n_tokens": int(prof["n_tokens"][l]), "n_own": int(cls["own"][l].sum()), "group_size": man["sizes"][name][f"K{a.K}"]})
+    rows = overlap_table(manifests, f"K{a.K}", ref="FP")
+    for name, table in (("overlap.csv", rows), ("diagnostics.csv", diag)):
+        with open(out / name, "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(table[0])); w.writeheader(); w.writerows(table)
+    (out / "meta.json").write_text(json.dumps(meta, indent=1) + "\n")
+    print(f"wrote {out}: manifests for {', '.join(a.states)}; {len(rows)} overlap rows")
+
+
+if __name__ == "__main__":
+    main()
