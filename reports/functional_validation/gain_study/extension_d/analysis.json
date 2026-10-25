@@ -1,0 +1,47 @@
+{
+ "verdict": "not supported",
+ "rd1": {
+  "rho": -0.17017171588423358,
+  "p": 0.8036196380361964,
+  "constant": false
+ },
+ "rd2": {
+  "rho": -0.15140415140415142,
+  "p": 0.7758224177582241,
+  "constant": false
+ },
+ "rd3": {
+  "rho_placebo": 0.1858413029822293,
+  "diff": -0.35601301886646286,
+  "lo": -0.9515985095582655,
+  "hi": 0.2838435897646378,
+  "n_nan": 0
+ },
+ "rd4": {
+  "rho_half": 0.846203346203346,
+  "sb": 0.9166957127919134,
+  "corrected": -0.177735744560808
+ },
+ "n_perm": 10000,
+ "n_boot": 5000,
+ "seed": 0,
+ "n_languages": 27,
+ "ratios": [
+  1.1,
+  1.2,
+  1.4,
+  1.7
+ ],
+ "n_sentences": 562,
+ "meta": {
+  "runs": {
+   "INT4": {
+    "file": "func_lm_eval_INT4.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/gainc-4b",
+    "sha256": "4bc7251c0186bc86aee8b5a36914c59eab50e4f160b3b685a58a8b86403a8cff",
+    "meta_sha256": "b03c0db55bb37181517caceb5b32620dd035dd2ad46765784852b49b556ef7e0"
+   }
+  },
+  "baseline_sha256": "777f5d4041ca7d8e78fc685272f98750c143d6e274e624be4b3c934918415528"
+ }
+}
