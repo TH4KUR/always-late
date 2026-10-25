@@ -155,5 +155,30 @@ class StateDefined(unittest.TestCase):
                 gc.main(["statedef-cpu", "--repo", "repo_abc"])
         self.assertIn("-J gain-sd-4", out.getvalue()); self.assertIn("--dependency=afterok:77", out.getvalue()); self.assertIn("gain-sd-manifests", out.getvalue())
 
+class ReferenceManifestAtAnotherState(unittest.TestCase):
+    """H-Gb2 compares the INT4-defined group with the FP reference-text group AT INT4 (and INT6): the FP manifest must also run at those precisions."""
+    def test_the_fp_manifest_can_run_at_int4_under_its_own_job_name(self):
+        with tempfile.TemporaryDirectory() as d:
+            cmd = gc.statedef_command("INT4", write(d), "repo_abc", manifest_state="FP")
+        self.assertIn("-J gain-sd-FPref-4", cmd); self.assertIn("run_gain.sbatch gain-sd-FPref-4 ", cmd)
+        self.assertIn("groups_manifest_FP.json", cmd); self.assertNotIn("groups_manifest_INT4.json", cmd); self.assertIn("--precisions 4 ", cmd + " ")
+
+    def test_without_a_manifest_state_the_job_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIn("-J gain-sd-4 ", gc.statedef_command("INT4", write(d), "repo_abc") + " ")
+
+    def test_the_reference_manifest_must_be_a_known_state_manifest(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError):
+                gc.statedef_command("INT4", write(d), "repo_abc", manifest_state="INT5")
+
+    def test_main_accepts_the_manifest_state(self):
+        import contextlib, io
+        with tempfile.TemporaryDirectory() as d:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                gc.main(["statedef", "--state", "INT6", "--ratios-json", str(write(d)), "--repo", "repo_abc", "--manifest-state", "FP"])
+        self.assertIn("-J gain-sd-FPref-6", out.getvalue())
+
 if __name__ == "__main__":
     unittest.main()

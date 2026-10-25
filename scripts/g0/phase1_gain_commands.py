@@ -60,17 +60,21 @@ def extc_command(state, repo, hours="05:00:00", n_controls=5):
     return _sbatch(f"gainc-{short}", hours, repo, f"--ratios {ratios} --n-controls {n_controls} --no-zero --precisions {short} --n-pilot 450 --n-eval 562 --split eval --panel")
 
 
-def statedef_command(state, ratios_json, repo, hours="04:00:00", n_controls=3, after_job=None):
+def statedef_command(state, ratios_json, repo, hours="04:00:00", n_controls=3, after_job=None, manifest_state=None):
     """The command of an extension B job (spec section 10): the main-study design (the eight ratios, 300 evaluation sentences, three control draws) on the groups selected in the state's own precision
     (`--manifest` after the script name overrides the default manifest of the sbatch script); `after_job` makes it wait for the CPU job that writes the manifests."""
     if state not in SD_STATES:
         raise ValueError(f"extension B has manifests for {SD_STATES}, not {state!r}")
+    manifest = manifest_state or state                       # the manifest of another state (the FP reference text) run at this precision: job gain-sd-FPref-<precision>
+    if manifest not in SD_STATES:
+        raise ValueError(f"extension B has manifests for {SD_STATES}, not {manifest!r}")
     short = _state(state)
     dec = json.loads(Path(ratios_json).read_text())
     if len(dec.get("down", [])) != 3 or len(dec.get("up", [])) != 3 or not dec.get("fine_up"):
         raise ValueError("the ratios file must hold three down ratios, three up ratios and the fine up ratios")
     ratios = " ".join(repr(float(r)) for r in list(dec["down"]) + list(dec["up"]) + list(dec["fine_up"]))
-    return _sbatch(f"gain-sd-{short}", hours, repo, f"--manifest {SD_DIR}/groups_manifest_{state}.json --ratios {ratios} --n-controls {n_controls} --precisions {short} --split eval --n-eval 300 --panel", after_job)
+    name = f"gain-sd-{short}" if manifest == state else f"gain-sd-{manifest}ref-{short}"
+    return _sbatch(name, hours, repo, f"--manifest {SD_DIR}/groups_manifest_{manifest}.json --ratios {ratios} --n-controls {n_controls} --precisions {short} --split eval --n-eval 300 --panel", after_job)
 
 
 def statedef_cpu_command(repo, hours="01:00:00"):
@@ -85,11 +89,11 @@ def main(argv=None):
     m = sub.add_parser("main"); m.add_argument("--state", required=True); m.add_argument("--ratios-json", required=True); m.add_argument("--repo", required=True); m.add_argument("--hours", default="04:00:00")
     c = sub.add_parser("calibration"); c.add_argument("--state", required=True); c.add_argument("--repo", required=True); c.add_argument("--hours", default="03:00:00")
     e = sub.add_parser("extc"); e.add_argument("--state", required=True); e.add_argument("--repo", required=True); e.add_argument("--hours", default="05:00:00")
-    s = sub.add_parser("statedef"); s.add_argument("--state", required=True); s.add_argument("--ratios-json", required=True); s.add_argument("--repo", required=True); s.add_argument("--hours", default="04:00:00"); s.add_argument("--after-job", type=int)
+    s = sub.add_parser("statedef"); s.add_argument("--state", required=True); s.add_argument("--ratios-json", required=True); s.add_argument("--repo", required=True); s.add_argument("--hours", default="04:00:00"); s.add_argument("--after-job", type=int); s.add_argument("--manifest-state")
     q = sub.add_parser("statedef-cpu"); q.add_argument("--repo", required=True)
     a = ap.parse_args(argv)
     if a.kind == "statedef":
-        print(statedef_command(a.state, a.ratios_json, a.repo, a.hours, after_job=a.after_job))
+        print(statedef_command(a.state, a.ratios_json, a.repo, a.hours, after_job=a.after_job, manifest_state=a.manifest_state))
     elif a.kind == "statedef-cpu":
         print(statedef_cpu_command(a.repo))
     else:
