@@ -200,3 +200,10 @@ Fetched 2026-10-25 16:37 IST from Ada, sha256 equal on both sides (2 files, 0 di
 |---|---|---|
 | `gainc-4b/func_lm_eval_INT4.pt` | 6816367 | `4bc7251c0186bc86aee8b5a36914c59eab50e4f160b3b685a58a8b86403a8cff` |
 | `gainc-4b/meta_lm_eval.json` | 1855 | `b03c0db55bb37181517caceb5b32620dd035dd2ad46765784852b49b556ef7e0` |
+
+Fetched 2026-10-25 17:55 IST from Ada, sha256 equal on both sides (2 files, 0 differences): `gain-sd-4` 38816 (extension B, INT4-defined groups, RTX 2080 Ti on gnode061, 3 h 13 min, snapshot `repo_dad2760`, commit `dad2760`, 999 configurations, 300 evaluation sentences per language with ids equal to the freeze, three control draws, gates passed, complete, nothing skipped; the manifest it used is `gain-sd-manifests/groups_manifest_INT4.json`, sha256 `4e89ac3a...` equal to `state_defined/meta.json`, whose own source hash `aef62872...` is the `manifest_source_sha256` of the meta file below).
+
+| file | bytes | sha256 |
+|---|---|---|
+| `gain-sd-4/func_lm_eval_INT4.pt` | 5594871 | `0aada50213ba48477501f7a27beaadec95f1c95286929fe33c7c9027203741ba` |
+| `gain-sd-4/meta_lm_eval.json` | 2131 | `c070a217c92405bc1a7b48794df38db52b4aa961bcb27d2a4fab09cd56e1277b` |

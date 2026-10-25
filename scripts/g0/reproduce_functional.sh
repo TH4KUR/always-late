@@ -123,5 +123,7 @@ fi
 if [ -d "$ROOT/$GS/extension_d" ] && have gainc-4b "$GS/extension_d"; then
     $PY -B scripts/g0/phase1_gain_extd.py --runs "$IN/gainc-4b" --baseline-csv $GS/baseline/baseline.csv --out "$G/extension_d" > /dev/null
     cmpdir "$G/extension_d" "$ROOT/$GS/extension_d" "$GS/extension_d" alpha.csv report.md; jsoneq "$G/extension_d/analysis.json" "$ROOT/$GS/extension_d/analysis.json" "$GS/extension_d/analysis.json" meta.runs
+    $PY -B scripts/g0/phase1_gain_extd_figures.py --alpha "$G/extension_d/alpha.csv" --analysis "$G/extension_d/analysis.json" --out "$G/figures_extension_d" --formats svg --note "exploratory (post hoc in origin, D-083, D-084)" > /dev/null
+    cmpdir "$G/figures_extension_d" "$ROOT/$GS/figures_extension_d" "$GS/figures_extension_d" fig_gd1_alpha_light.svg fig_gd1_alpha_dark.svg
 fi
 [ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }
