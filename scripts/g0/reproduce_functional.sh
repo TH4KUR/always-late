@@ -6,6 +6,7 @@
 #   rescue/     func-rescue-a files            f4-INT4/ f4-INT5/ f4-INT6/   func-f4-INT<b> files
 #   mc-eval/    func-mc-eval-a and -b files (their two meta_mc_eval.json renamed meta_mc_eval_a.json and meta_mc_eval_b.json)      mc-ksens/   func-mc-ksens files
 #   f5-a/ f5-b/ f5-smoke2/ f5-m8/ f5-m32/ f5-dir/ f5-dir2/ f5-fa/ f5-fa-dir/    the per-state files of the F5 jobs
+#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080)
 #   mc-pc-all/ mc-pc-1024/ mc-pc-256/   func-mc-pc-<dose> files func_mc_eval_letter_FP.pt and meta_mc_eval.json (the positive control, D-069)
 #   feature_status_eq.csv   Ada association-full/analysis-eq/feature_status.csv
 # Prints identical / DIFFERS / skipped (input missing) for every output file; exit 1 if anything DIFFERS. Needs the torch venv (numpy, scipy, statsmodels).
@@ -86,4 +87,26 @@ if [ -e "$OUT/mc_posctrl/dose_all/accuracy.csv" ] && [ -e "$OUT/mc_posctrl/dose_
     $PY -B scripts/g0/phase1_func_posctrl_summary.py --dose all "$OUT/mc_posctrl/dose_all/accuracy.csv" --dose 1024 "$OUT/mc_posctrl/dose_1024/accuracy.csv" --dose 256 "$OUT/mc_posctrl/dose_256/accuracy.csv" --out "$OUT/mc_posctrl" > /dev/null
     cmpdir "$OUT/mc_posctrl" "$RES/mc_posctrl" mc_posctrl summary.md summary.json
 fi
+# Study G (graded gain, D-070 to D-080): baseline, calibration, the main analysis and the two previews; inputs d035/{profiles.pt,selectivity.pt}, gain-cal-FP, gain-cal-INT4, gain-FP, gain-8, gain-7, gain-6, gain-5, gain-4
+GS=reports/functional_validation/gain_study; G="$OUT/gain"
+if have d035 "$GS/baseline" && [ -e "$IN/d035/profiles.pt" ] && [ -e "$IN/d035/selectivity.pt" ]; then
+    $PY -B scripts/g0/phase1_gain_baseline.py --profiles "$IN/d035/profiles.pt" --selectivity "$IN/d035/selectivity.pt" --manifest reports/functional_validation/groups_manifest.json --out "$G/baseline" > /dev/null
+    cmpdir "$G/baseline" "$ROOT/$GS/baseline" "$GS/baseline" baseline.csv baseline.json report.md
+fi
+if have gain-cal-FP "$GS/calibration"; then
+    $PY -B scripts/g0/phase1_gain_ratios.py --runs "$IN/gain-cal-FP" --out "$G/calibration" --n-controls 2 > /dev/null
+    cmpdir "$G/calibration" "$ROOT/$GS/calibration" "$GS/calibration" calibration.csv calibration.md ratios.json
+    if have gain-cal-INT4 "$GS/calibration_int4_check"; then
+        $PY -B scripts/g0/phase1_gain_ratios.py --runs "$IN/gain-cal-FP" "$IN/gain-cal-INT4" --out "$G/calibration_int4_check" --n-controls 2 > /dev/null
+        cmpdir "$G/calibration_int4_check" "$ROOT/$GS/calibration_int4_check" "$GS/calibration_int4_check" calibration.csv calibration.md ratios.json
+    fi
+fi
+gain_an() { # name out-name dirs...   (the analysis lists the job directories in its metadata: that field is ignored)
+    name=$1; shift; runs=(); for d in "$@"; do have "$d" "$GS/$name" || return 0; runs+=("$IN/$d"); done
+    $PY -B scripts/g0/phase1_gain_analysis.py --runs "${runs[@]}" --ratios-json $GS/calibration/ratios.json --baseline-csv $GS/baseline/baseline.csv --out "$G/$name" > /dev/null
+    cmpdir "$G/$name" "$ROOT/$GS/$name" "$GS/$name" curves.csv alpha_star.csv reliability.csv report.md; jsoneq "$G/$name/analysis.json" "$ROOT/$GS/$name/analysis.json" "$GS/$name/analysis.json" meta.runs
+}
+gain_an results gain-FP gain-8 gain-7 gain-6 gain-5 gain-4
+gain_an preview_FP_INT4 gain-FP gain-4
+gain_an preview_FP_INT6_INT5_INT4 gain-FP gain-6 gain-5 gain-4
 [ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }
