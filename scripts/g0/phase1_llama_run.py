@@ -8,8 +8,8 @@ LAYER is 11 and the loaded SAE reports the alias as its hook (its original hook 
     python phase1_llama_run.py tag --out <dir> --flores-root <dir> [--sae fineweb42|faithful42]     dev tagging pass -> <dir>/eq/selectivity.pt (equal-budget stream) and meta.json
     python phase1_func_groups.py build --selectivity <dir>/eq/selectivity.pt --manifest <file>      the groups and controls (frozen, model free)
     python phase1_llama_run.py lm --out <dir> --flores-root <dir> --selectivity ... --manifest ... --precisions FP 8 6 5 4 --split eval --n-eval 300 --panel ...
-                                                                                                    the frozen T-LM runner with the Study G down-ratio preset (zero-ablation, three control draws, the
-                                                                                                    three down ratios of the group and of the controls, the sham)"""
+                                                                                                    the frozen T-LM runner with the Study G main preset (zero-ablation, three control draws, the eight
+                                                                                                    ratios of the group and of the controls, the sham)"""
 import contextlib
 from pathlib import Path
 
@@ -28,7 +28,7 @@ SAE_IDS = {"fineweb42": "Llama-3.2-1B_blocks.12.hook_resid_pre_14336_topk_48_0.0
 HOOK = "blocks.12.hook_resid_pre"
 HOOK_ALIAS = "blocks.11.hook_resid_post"
 LAYER = 11
-DOWN_RATIOS = (0.3535533905932738, 0.1767766952966369, 0.08838834764831845)          # the Study G ratios (D-071): no new calibration on Llama
+STUDY_RATIOS = (0.3535533905932738, 0.1767766952966369, 0.08838834764831845, 2.82842712474619, 5.65685424949238, 11.31370849898476, 1.1, 1.2)    # the Study G decision (D-071): down, up, fine; no new calibration on Llama
 
 
 @contextlib.contextmanager
@@ -131,7 +131,7 @@ def main(argv=None):
         if "--ratios" in rest or "--preset" in rest:
             ap.error("--ratios and --preset are fixed by this wrapper (the Study G down ratios, three control draws)")
         with llama_setting(a.sae):
-            gr.main(["--ratios", *[str(r) for r in DOWN_RATIOS], "--n-controls", "3", "--label", "K64"] + rest)
+            gr.main(["--ratios", *[str(r) for r in STUDY_RATIOS], "--n-controls", "3", "--label", "K64"] + rest)
     else:
         with llama_setting(a.sae):
             tag_main(rest, a.sae)

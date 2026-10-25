@@ -152,13 +152,17 @@ class Lm(unittest.TestCase):
         finally:
             gr.main = old
         a = seen["argv"]
-        self.assertEqual(a[a.index("--ratios") + 1:a.index("--ratios") + 4], [str(r) for r in lr.DOWN_RATIOS]); self.assertEqual(a[a.index("--n-controls") + 1], "3"); self.assertEqual(a[a.index("--label") + 1], "K64")
+        self.assertEqual(a[a.index("--ratios") + 1:a.index("--ratios") + 9], [str(r) for r in lr.STUDY_RATIOS]); self.assertEqual(a[a.index("--n-controls") + 1], "3"); self.assertEqual(a[a.index("--label") + 1], "K64")
+        self.assertEqual(a[a.index("--ratios") + 9], "--n-controls")                                           # exactly eight ratios
         self.assertEqual(a[-4:], ["--out", "o", "--split", "eval"]) if "--out" in a[-4:] else None
         self.assertIn("--out", a); self.assertEqual(seen["layer"], (11, 11)); self.assertEqual(seen["model"], ["meta-llama/Llama-3.2-1B"])
         self.assertEqual((pr.LAYER, fr.LAYER), (12, 12))                                                      # restored (the Gemma values)
 
-    def test_the_down_ratios_are_the_study_g_ratios(self):
-        self.assertEqual(lr.DOWN_RATIOS, (0.3535533905932738, 0.1767766952966369, 0.08838834764831845))
+    def test_the_ratios_are_the_study_g_decision_in_the_order_of_its_preset_name(self):
+        self.assertEqual(lr.STUDY_RATIOS, (0.3535533905932738, 0.1767766952966369, 0.08838834764831845, 2.82842712474619, 5.65685424949238, 11.31370849898476, 1.1, 1.2))
+        import json
+        dec = json.loads((Path(__file__).resolve().parents[3] / "reports/functional_validation/gain_study/calibration/ratios.json").read_text())
+        self.assertEqual(list(lr.STUDY_RATIOS), dec["down"] + dec["up"] + dec["fine_up"])                         # the committed decision of D-071
 
     def test_the_sae_choice_is_passed_to_the_setting(self):
         seen = {}
