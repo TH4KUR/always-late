@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -190,6 +191,56 @@ class Lm(unittest.TestCase):
         finally:
             lr.tag_main, gr.main = old_tag, old_gr
         self.assertEqual(called, [])
+
+
+class Manifest(unittest.TestCase):
+    """The Llama SAE marks most supported features as selective, so the pool of controls (supported non-selective features) can be smaller than the whole selective set of a language:
+    the frozen builder with its default `all` family then fails; the Llama manifest has the K16 and K64 families only."""
+    def selectivity(self, d, n_sel0=70, n_pool=66, n_sel1=20):
+        F = n_sel0 + n_sel1 + n_pool + 10
+        g = torch.Generator().manual_seed(3)
+        rates = torch.rand(2, F, generator=g) * 0.01 + 0.001; mean_act = torch.rand(2, F, generator=g) + 0.1
+        peak = torch.zeros(F, dtype=torch.long); peak[n_sel0:n_sel0 + n_sel1] = 1
+        selective = torch.zeros(F, dtype=torch.bool); selective[:n_sel0 + n_sel1] = True
+        supported = torch.ones(F, dtype=torch.bool); supported[-10:] = False
+        path = Path(d) / "selectivity.pt"; torch.save({"rates": rates, "mean_activation": mean_act, "peak": peak, "selective": selective, "supported": supported, "languages": ["aaa", "bbb"]}, path)
+        return path
+
+    def test_the_default_builder_fails_when_the_whole_group_exceeds_the_pool_and_the_llama_builder_does_not(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self.selectivity(d)
+            with self.assertRaises(ValueError):
+                fg.build_manifest(path)                                                                        # Ks = (16, 64, None): the whole group of 70 exceeds the pool of 66
+            out = Path(d) / "man.json"; lr.build_llama_manifest(path, out)
+            man = json.loads(out.read_text())
+            self.assertEqual(man["Ks"], [16, 64]); self.assertEqual(man["Rs"], [5, 5]); self.assertEqual(man["sizes"]["aaa"], {"K16": 16, "K64": 64}); self.assertEqual(man["sizes"]["bbb"], {"K16": 16, "K64": 20})
+            self.assertEqual(len(man["groups"]["aaa"]["all"]), 70)                                             # the members are kept whatever the family
+
+    def test_it_is_the_frozen_builder_with_two_families_and_the_frozen_serialisation(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self.selectivity(d); out = Path(d) / "man.json"; lr.build_llama_manifest(path, out)
+            want = fg.build_manifest(path, Ks=(16, 64), Rs=(5, 5), seed=0)
+            self.assertEqual(out.read_text(), json.dumps(want, separators=(",", ":")) + "\n")
+
+    def test_the_seed_is_passed_on_and_changes_the_control_draws(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self.selectivity(d)
+            a, b = Path(d) / "a.json", Path(d) / "b.json"; lr.build_llama_manifest(path, a, seed=0); lr.build_llama_manifest(path, b, seed=1)
+            self.assertNotEqual(json.loads(a.read_text())["controls"], json.loads(b.read_text())["controls"]); self.assertEqual(json.loads(b.read_text())["seed"], 1)
+
+    def test_a_k64_group_larger_than_the_pool_is_still_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self.selectivity(d, n_sel0=70, n_pool=40)
+            with self.assertRaises(ValueError):
+                lr.build_llama_manifest(path, Path(d) / "man.json")
+
+    def test_the_task_manifest_runs_without_the_model_setting(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self.selectivity(d); out = Path(d) / "man.json"
+            before = (pr.MODEL_CANDIDATES, pr.LAYER)
+            lr.main(["manifest", "--selectivity", str(path), "--manifest", str(out)])
+            self.assertTrue(out.exists()); self.assertEqual((pr.MODEL_CANDIDATES, pr.LAYER), before)
+            lr.main(["manifest", "--selectivity", str(path), "--manifest", str(out), "--seed", "4"]); self.assertEqual(json.loads(out.read_text())["seed"], 4)
 
 
 if __name__ == "__main__":

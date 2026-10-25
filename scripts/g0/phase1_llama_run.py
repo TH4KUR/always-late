@@ -6,7 +6,7 @@ The SAE hook `blocks.12.hook_resid_pre` is the residual that `blocks.11.hook_res
 LAYER is 11 and the loaded SAE reports the alias as its hook (its original hook is checked at load time).
 
     python phase1_llama_run.py tag --out <dir> --flores-root <dir> [--sae fineweb42|faithful42]     dev tagging pass -> <dir>/eq/selectivity.pt (equal-budget stream) and meta.json
-    python phase1_func_groups.py build --selectivity <dir>/eq/selectivity.pt --manifest <file>      the groups and controls (frozen, model free)
+    python phase1_llama_run.py manifest --selectivity <dir>/eq/selectivity.pt --manifest <file>    the groups and controls (the frozen builder, K16 and K64 families, model free)
     python phase1_llama_run.py lm --out <dir> --flores-root <dir> --selectivity ... --manifest ... --precisions FP 8 6 5 4 --split eval --n-eval 300 --panel ...
                                                                                                     the frozen T-LM runner with the Study G main preset (zero-ablation, three control draws, the eight
                                                                                                     ratios of the group and of the controls, the sham)"""
@@ -70,6 +70,17 @@ def save_selectivity(out_dir, report, names):
     return out / "selectivity.pt"
 
 
+def build_llama_manifest(selectivity_path, out_path, Ks=(16, 64), Rs=(5, 5), seed=0):
+    """The frozen group and control builder (`phase1_func_groups.build_manifest`) with the K16 and K64 families only and the frozen serialisation. The Gemma manifest also has the family `all` (the whole selective
+    set of a language); on the Llama SAE most supported features are selective (9,557 of 10,455 with the FineWeb SAE) and the pool of controls (898) is smaller than the whole set of English (1,569), so the
+    `all` family cannot be built; it is not used by any prediction. A K64 group larger than the pool is still refused by the frozen code."""
+    import json
+    import phase1_func_groups as fg
+    man = fg.build_manifest(selectivity_path, Ks=Ks, Rs=Rs, seed=seed)
+    Path(out_path).write_text(json.dumps(man, separators=(",", ":")) + "\n")
+    return man
+
+
 def tag_main(argv, sae_key):
     """The dev tagging pass of the Llama SAE (setup lines mirror `phase1_run.main`, which was exercised on the cluster)."""
     import argparse, gc, json, time
@@ -125,9 +136,14 @@ def tag_main(argv, sae_key):
 def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser(description="Llama-3.2-1B consistency check (D-087): the frozen runners with the Llama setting (the remaining arguments go to the frozen code).", allow_abbrev=False)
-    ap.add_argument("task", choices=["tag", "lm"]); ap.add_argument("--sae", choices=sorted(SAE_IDS), default="fineweb42")
+    ap.add_argument("task", choices=["tag", "lm", "manifest"]); ap.add_argument("--sae", choices=sorted(SAE_IDS), default="fineweb42")
     a, rest = ap.parse_known_args(argv)
-    if a.task == "lm":
+    if a.task == "manifest":
+        mp = argparse.ArgumentParser(); mp.add_argument("--selectivity", required=True); mp.add_argument("--manifest", required=True); mp.add_argument("--seed", type=int, default=0)
+        m = mp.parse_args(rest)
+        man = build_llama_manifest(m.selectivity, m.manifest, seed=m.seed)
+        print("wrote", m.manifest, {n: man["sizes"][n] for n in man["languages"]})
+    elif a.task == "lm":
         if "--ratios" in rest or "--preset" in rest:
             ap.error("--ratios and --preset are fixed by this wrapper (the Study G down ratios, three control draws)")
         with llama_setting(a.sae):
