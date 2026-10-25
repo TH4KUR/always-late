@@ -193,3 +193,10 @@ Fetched from Ada, sha256 equal on both sides (17 files compared, 0 differences).
 | `gainc-5/meta_lm_eval.json` | 1854 | `09517431713303f77c2e3d82783cffc53db4806e70c601b6d06f4032902452a1` |
 | `gain-cal-INT4/func_lm_pilot_INT4.pt` | 3556493 | `9cae84832850183a3f6185b6cdc2c3fe510b0dd1ee21197dd086fd82b5bcbf8d` |
 | `gain-cal-INT4/meta_lm_pilot.json` | 2193 | `a7cb945c8eff8f8e0ccfd6103316b553898951713f23b211e3d8c25a041070ea` |
+
+Fetched 2026-10-25 16:37 IST from Ada, sha256 equal on both sides (2 files, 0 differences): `gainc-4b` 38720 (extension C, INT4, re-run of `gainc-4` on a verified RTX 2080 Ti, D-079; gnode057, 3 h 33 min, snapshot `repo_ab7790e`, 675 configurations, 562 reserve sentences per language, five control draws, gates passed, complete, nothing skipped; analysed in D-082).
+
+| file | bytes | sha256 |
+|---|---|---|
+| `gainc-4b/func_lm_eval_INT4.pt` | 6816367 | `4bc7251c0186bc86aee8b5a36914c59eab50e4f160b3b685a58a8b86403a8cff` |
+| `gainc-4b/meta_lm_eval.json` | 1855 | `b03c0db55bb37181517caceb5b32620dd035dd2ad46765784852b49b556ef7e0` |

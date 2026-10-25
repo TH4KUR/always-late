@@ -299,16 +299,53 @@ class Outputs(unittest.TestCase):
         line = [l for l in text.split("\n") if l.startswith("| H-Gc1")][0]
         self.assertTrue(line.rstrip().endswith("**not met** |"))
 
+    def test_the_bands_are_the_median_intervals_of_the_rules_in_the_order_of_the_languages_of_the_analysis(self):
+        rows = self.res["bands"]
+        self.assertEqual(len(rows), 2 * 4)                                                      # states x ratios
+        for r in rows:
+            nets = [self.cells[(r["state"], l, r["ratio"])]["net"] for l in self.e.languages]
+            lo, hi = ec.median_interval(nets, 300, 0)
+            self.assertEqual((r["lo"], r["hi"]), (lo, hi)); self.assertAlmostEqual(r["median"], float(np.median(nets)))
+            self.assertEqual(r["n_negative"], sum(1 for x in nets if x < 0)); self.assertEqual(r["n_languages"], 4)
+        h1 = self.res["rules"]["H-Gc1"]["per_ratio"]
+        for r in rows:
+            if r["state"] == "INT4" and r["ratio"] in h1:
+                self.assertEqual((r["lo"], r["hi"], r["median"]), (h1[r["ratio"]]["lo"], h1[r["ratio"]]["hi"], h1[r["ratio"]]["median"]))
+
+    def test_the_interval_depends_on_the_order_of_the_languages_so_the_roster_order_is_the_one_used(self):
+        langs = [f"l{i}" for i in reversed(range(27))]                                           # a roster that is not in alphabetical order
+        vals = np.random.default_rng(1).normal(-0.0005, 0.003, 27); vals[5] = 0.0                  # one distinct value per language, one language exactly at zero
+        def harm(code, a, kind):
+            return float(vals[int(code[1:])]) * (a - 1.0) * 10 if kind == "g" else 0.0
+        e = ec.ExtRuns({"INT4": planted_run("INT4", harm, langs=langs)}, RATIOS, n_controls=5, label="K64")
+        cells = ec.build_cells(e, n_boot=20, seed=0)
+        rows = ec.band_rows(cells, e.languages, e.states, e.ratios, 2000, 0)
+        other = ec.band_rows(cells, sorted(e.languages), e.states, e.ratios, 2000, 0)
+        self.assertEqual(e.languages, langs)
+        self.assertTrue(any((a["lo"], a["hi"]) != (b["lo"], b["hi"]) for a, b in zip(rows, other)))
+        res = ec.evaluate(cells, e, n_boot=2000, seed=0)
+        self.assertEqual([(r["lo"], r["hi"]) for r in res["bands"]], [(r["lo"], r["hi"]) for r in rows])
+        for r in res["bands"]:                                                                      # every number of every row, recomputed with the stated draws, seed and order
+            nets = [cells[(r["state"], l, r["ratio"])]["net"] for l in langs]
+            self.assertEqual((r["lo"], r["hi"]), ec.median_interval(nets, 2000, 0)); self.assertAlmostEqual(r["median"], float(np.median(nets)))
+            self.assertEqual(r["n_negative"], sum(1 for x in nets if x < 0)); self.assertEqual(r["n_languages"], 27)
+        self.assertTrue(any(sum(1 for l in langs if cells[("INT4", l, a)]["net"] == 0.0) for a in e.ratios))        # the language at zero is really at zero
+        self.assertTrue(any(abs(r["median"] - float(np.mean([cells[(r["state"], l, r["ratio"])]["net"] for l in langs]))) > 1e-6 for r in res["bands"]))   # median and mean differ here
+
     def test_write_outputs_and_main(self):
         with tempfile.TemporaryDirectory() as d:
             ec.write_outputs(d, self.res, self.cells, self.e, {"runs": {}})
-            for f in ("analysis.json", "cells.csv", "reliability.csv", "optimum.csv", "report.md"):
+            for f in ("analysis.json", "cells.csv", "reliability.csv", "optimum.csv", "bands.csv", "report.md"):
                 self.assertTrue((Path(d) / f).exists(), f)
             js = json.loads((Path(d) / "analysis.json").read_text())
             self.assertEqual(js["verdicts"]["H-Gc1"], True)
             with open(Path(d) / "cells.csv") as fh:
                 rows = list(csv.DictReader(fh))
             self.assertEqual(len(rows), 2 * 4 * 4)                                        # states x languages x ratios
+            with open(Path(d) / "bands.csv") as fh:
+                b = list(csv.DictReader(fh))
+            self.assertEqual(list(b[0]), ["state", "ratio", "median", "lo", "hi", "n_negative", "n_languages"]); self.assertEqual(len(b), 2 * 4)
+            self.assertAlmostEqual(float(b[0]["lo"]), self.res["bands"][0]["lo"])
 
     def test_main_runs_on_files(self):
         with tempfile.TemporaryDirectory() as d:

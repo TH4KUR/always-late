@@ -181,6 +181,18 @@ def reliability_rows(cells, e):
     return rows
 
 
+def band_rows(cells, langs, states, ratios, n_boot=5000, seed=0):
+    """Per state and ratio the median net harm over the languages, its 97.5 % interval (the function of the rules, the languages in the order given: the percentile of a bootstrap of 27 values moves with that
+    order, so the figure reads these numbers and never recomputes them), the number of negative languages and the number of languages."""
+    rows = []
+    for s in states:
+        for a in ratios:
+            nets = [cells[(s, l, a)]["net"] for l in langs]
+            lo, hi = median_interval(nets, n_boot, seed)
+            rows.append({"state": s, "ratio": a, "median": float(np.median(nets)), "lo": lo, "hi": hi, "n_negative": sum(1 for x in nets if x < 0), "n_languages": len(nets)})
+    return rows
+
+
 def evaluate(cells, e, n_boot=5000, seed=0, ratios=PRIMARY):
     """All rules: H-Gc1 and H-Gc3 need INT4, H-Gc2 needs INT4 and FP; a rule whose state is missing has verdict None."""
     langs = e.languages
@@ -189,7 +201,7 @@ def evaluate(cells, e, n_boot=5000, seed=0, ratios=PRIMARY):
     r3 = h_gc3(cells, langs, "INT4", r1, ratios, n_boot, seed) if r1 is not None else None
     rules = {"H-Gc1": r1, "H-Gc2": r2, "H-Gc3": r3, "H-Gc4": h_gc4_rows(cells, langs, e.states, e.ratios)}
     verdicts = {"H-Gc1": r1["met"] if r1 else None, "H-Gc2": r2["met"] if r2 else None, "H-Gc3": r3["specific"] if r3 else None}
-    return {"rules": rules, "verdicts": verdicts, "reliability": reliability_rows(cells, e)}
+    return {"rules": rules, "verdicts": verdicts, "reliability": reliability_rows(cells, e), "bands": band_rows(cells, langs, e.states, e.ratios, n_boot, seed)}
 
 
 def _verdict(v):
@@ -239,7 +251,7 @@ def write_outputs(out_dir, res, cells, e, meta):
         for s, l, a in keys:
             c = cells[(s, l, a)]
             w.writerow([s, l, a, c["g"], c["c"], c["net"], float(np.percentile(c["net_s"], 2.5)), float(np.percentile(c["net_s"], 97.5)), float(np.std(c["net_draws"], ddof=1))])
-    for name, rows in (("reliability.csv", res["reliability"]), ("optimum.csv", res["rules"]["H-Gc4"])):
+    for name, rows in (("reliability.csv", res["reliability"]), ("optimum.csv", res["rules"]["H-Gc4"]), ("bands.csv", res["bands"])):
         with open(out / name, "w", newline="") as fh:
             w = csv.DictWriter(fh, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
     (out / "analysis.json").write_text(json.dumps({"verdicts": res["verdicts"], "rules": ga._jsonable({k: v for k, v in res["rules"].items() if k != "H-Gc4"}), "states": e.states, "languages": e.languages,

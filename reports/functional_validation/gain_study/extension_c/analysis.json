@@ -1,0 +1,152 @@
+{
+ "verdicts": {
+  "H-Gc1": true,
+  "H-Gc2": true,
+  "H-Gc3": true
+ },
+ "rules": {
+  "H-Gc1": {
+   "state": "INT4",
+   "per_ratio": {
+    "1.1": {
+     "median": -0.0013466371116229404,
+     "lo": -0.001972125374502873,
+     "hi": -0.00032277046389623637,
+     "n_negative": 20,
+     "n": 27,
+     "sign_p": 0.0095786452293396,
+     "interval_ok": true,
+     "count_ok": true
+    },
+    "1.2": {
+     "median": -0.0016864723969664834,
+     "lo": -0.0031133471260831394,
+     "hi": 0.0002689213675949034,
+     "n_negative": 18,
+     "n": 27,
+     "sign_p": 0.06103906035423279,
+     "interval_ok": false,
+     "count_ok": false
+    }
+   },
+   "ratio_met": {
+    "1.1": true,
+    "1.2": false
+   },
+   "met": true
+  },
+  "H-Gc2": {
+   "states": [
+    "INT4",
+    "FP"
+   ],
+   "per_ratio": {
+    "1.1": {
+     "median_diff": -0.0024120707937002354,
+     "lo": -0.004247649315698361,
+     "hi": -0.001234518041781003,
+     "ok": true
+    },
+    "1.2": {
+     "median_diff": -0.004096255599352774,
+     "lo": -0.007056563296511361,
+     "hi": -0.0024827612444624,
+     "ok": true
+    }
+   },
+   "met": true
+  },
+  "H-Gc3": {
+   "state": "INT4",
+   "per_ratio": {
+    "1.1": {
+     "median": -0.00015129091914388527,
+     "lo": -0.00036457173186133987,
+     "hi": 3.735330532233503e-05,
+     "entirely_below_zero": false
+    },
+    "1.2": {
+     "median": 0.0001334838537924153,
+     "lo": -0.00035963436245411556,
+     "hi": 0.0008166763675967228,
+     "entirely_below_zero": false
+    }
+   },
+   "specific": true
+  }
+ },
+ "states": [
+  "FP",
+  "INT6",
+  "INT5",
+  "INT4"
+ ],
+ "languages": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tam_Taml",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda",
+  "tel_Telu",
+  "yor_Latn",
+  "sun_Latn",
+  "amh_Ethi",
+  "ibo_Latn",
+  "hau_Latn",
+  "khm_Khmr",
+  "lao_Laoo"
+ ],
+ "ratios": [
+  1.1,
+  1.2,
+  1.4,
+  1.7
+ ],
+ "n_sentences": 562,
+ "n_controls": 5,
+ "meta": {
+  "runs": {
+   "FP": {
+    "file": "func_lm_eval_FP.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/gainc-FP",
+    "sha256": "25647295e7c87fcc50940829e6abd4a21a73d8a950555fc24d409bbcf0f271bb",
+    "meta_sha256": "39cfdbcc7fb6148666729058f2c4d36eaf51c4ce58ca53f1e1fd2105e5c6d4be"
+   },
+   "INT6": {
+    "file": "func_lm_eval_INT6.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/gainc-6",
+    "sha256": "93415b4ac23ade21dc3ba9da86ed961521887106f96dc9149ebc34dc7ef46138",
+    "meta_sha256": "b72eb4d7ab3ba36bb426e220a3c359eae1eebe26d2dfc8866ac031bde65291e2"
+   },
+   "INT5": {
+    "file": "func_lm_eval_INT5.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/gainc-5",
+    "sha256": "f085fd642a2a399bc48e741f05a534281cfa184f65fc7d59cacebbd08a9a8d18",
+    "meta_sha256": "09517431713303f77c2e3d82783cffc53db4806e70c601b6d06f4032902452a1"
+   },
+   "INT4": {
+    "file": "func_lm_eval_INT4.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/gainc-4b",
+    "sha256": "4bc7251c0186bc86aee8b5a36914c59eab50e4f160b3b685a58a8b86403a8cff",
+    "meta_sha256": "b03c0db55bb37181517caceb5b32620dd035dd2ad46765784852b49b556ef7e0"
+   }
+  },
+  "n_boot": 2000,
+  "boot_languages": 5000,
+  "seed": 0
+ }
+}

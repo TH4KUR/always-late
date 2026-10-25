@@ -6,7 +6,7 @@
 #   rescue/     func-rescue-a files            f4-INT4/ f4-INT5/ f4-INT6/   func-f4-INT<b> files
 #   mc-eval/    func-mc-eval-a and -b files (their two meta_mc_eval.json renamed meta_mc_eval_a.json and meta_mc_eval_b.json)      mc-ksens/   func-mc-ksens files
 #   f5-a/ f5-b/ f5-smoke2/ f5-m8/ f5-m32/ f5-dir/ f5-dir2/ f5-fa/ f5-fa-dir/    the per-state files of the F5 jobs
-#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080)
+#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080); gainc-FP/ gainc-6/ gainc-5/ gainc-4b/   the extension C jobs (D-082)
 #   mc-pc-all/ mc-pc-1024/ mc-pc-256/   func-mc-pc-<dose> files func_mc_eval_letter_FP.pt and meta_mc_eval.json (the positive control, D-069)
 #   feature_status_eq.csv   Ada association-full/analysis-eq/feature_status.csv
 # Prints identical / DIFFERS / skipped (input missing) for every output file; exit 1 if anything DIFFERS. Needs the torch venv (numpy, scipy, statsmodels).
@@ -109,4 +109,14 @@ gain_an() { # name out-name dirs...   (the analysis lists the job directories in
 gain_an results gain-FP gain-8 gain-7 gain-6 gain-5 gain-4
 gain_an preview_FP_INT4 gain-FP gain-4
 gain_an preview_FP_INT6_INT5_INT4 gain-FP gain-6 gain-5 gain-4
+# Study G extension C (D-082): the repair near ratio 1 with 562 reserve sentences and five control draws; inputs gainc-FP, gainc-6, gainc-5, gainc-4b (func_lm_eval_<state>.pt and meta_lm_eval.json of the jobs of the same names); the figure is recomputed from bands.csv
+if [ -d "$ROOT/$GS/extension_c" ]; then
+    ok=1; runs=(); for d in gainc-FP gainc-6 gainc-5 gainc-4b; do have "$d" "$GS/extension_c" || { ok=0; break; }; runs+=("$IN/$d"); done
+    if [ $ok -eq 1 ]; then
+        $PY -B scripts/g0/phase1_gain_extc.py --runs "${runs[@]}" --out "$G/extension_c" > /dev/null
+        cmpdir "$G/extension_c" "$ROOT/$GS/extension_c" "$GS/extension_c" cells.csv bands.csv optimum.csv reliability.csv report.md; jsoneq "$G/extension_c/analysis.json" "$ROOT/$GS/extension_c/analysis.json" "$GS/extension_c/analysis.json" meta.runs
+        $PY -B scripts/g0/phase1_gain_extc_figures.py --bands "$G/extension_c/bands.csv" --out "$G/figures_extension_c" --formats svg --note "exploratory (devtest, one model, layer and quantizer); 562 held-out sentences per language, 5 matched-control draws" > /dev/null
+        cmpdir "$G/figures_extension_c" "$ROOT/$GS/figures_extension_c" "$GS/figures_extension_c" fig_gc1_repair_light.svg fig_gc1_repair_dark.svg
+    fi
+fi
 [ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }
