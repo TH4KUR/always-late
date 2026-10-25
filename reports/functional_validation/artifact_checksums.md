@@ -214,3 +214,10 @@ Fetched 2026-10-25 19:52 IST from Ada, sha256 equal on both sides (2 files, 0 di
 |---|---|---|
 | `gain-sd-FP/func_lm_eval_FP.pt` | 5590755 | `49ddcfd9cc0f573293566deb8efbfb90ba0f94013f6fbaca6bfe7aa8618e7e07` |
 | `gain-sd-FP/meta_lm_eval.json` | 2129 | `bdefe20e47f265a0344ea02102b6b0b30e8f75ef562e814b66ad64506ccf90e4` |
+
+Fetched 2026-10-25 21:12 IST from Ada, sha256 equal on both sides (2 files, 0 differences): `gain-sd-6` 38818 (extension B, INT6-defined groups; RTX 2080 Ti on gnode061, 3 h 15 min 24 s, snapshot `repo_dad2760`, commit `dad2760`, 999 configurations, 300 evaluation sentences per language with ids equal to the freeze, three control draws, gates passed, complete, nothing skipped; its manifest `gain-sd-manifests/groups_manifest_INT6.json` has sha256 `08cc1c49...` equal to `state_defined/meta.json`, whose own source hash `e44c072b...` is the `manifest_source_sha256` of the meta file below).
+
+| file | bytes | sha256 |
+|---|---|---|
+| `gain-sd-6/func_lm_eval_INT6.pt` | 5594871 | `919dfc1011dbf838bf2e357318d72dd6a3e84ec89926c83a0aa225dcd3003329` |
+| `gain-sd-6/meta_lm_eval.json` | 2130 | `37901c9c16c44a8a1c179d7520541f4aa467b1c6278cc808c750bfa51ac05186` |
