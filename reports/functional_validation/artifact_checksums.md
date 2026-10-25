@@ -221,3 +221,10 @@ Fetched 2026-10-25 21:12 IST from Ada, sha256 equal on both sides (2 files, 0 di
 |---|---|---|
 | `gain-sd-6/func_lm_eval_INT6.pt` | 5594871 | `919dfc1011dbf838bf2e357318d72dd6a3e84ec89926c83a0aa225dcd3003329` |
 | `gain-sd-6/meta_lm_eval.json` | 2130 | `37901c9c16c44a8a1c179d7520541f4aa467b1c6278cc808c750bfa51ac05186` |
+
+Fetched 2026-10-25 22:33 IST from Ada, sha256 equal on both sides (2 files, 0 differences): `gain-sd-FPref-4` 38869 (extension B, the FP reference groups run at INT4; RTX 2080 Ti on gnode048, 2 h 59 min 05 s, snapshot `repo_dad2760`, commit `dad2760`, 999 configurations, 300 evaluation sentences per language with ids equal to the freeze, three control draws, gates passed, complete, nothing skipped; it used `gain-sd-manifests/groups_manifest_FP.json` (sha256 `c0bb1b58...` equal to `state_defined/meta.json`; its source hash `637480d4...` is the `manifest_source_sha256` of the meta file below, the same as `gain-sd-FP`)).
+
+| file | bytes | sha256 |
+|---|---|---|
+| `gain-sd-FPref-4/func_lm_eval_INT4.pt` | 5594871 | `a3af8c8b2c802a342e59d13510cf6f8d2c6eb9bd87fef5a868e824d544b13e1a` |
+| `gain-sd-FPref-4/meta_lm_eval.json` | 2134 | `231194388b34990c08824b8490279ee65b67808b49bbdeb03529638c4d9df66c` |
