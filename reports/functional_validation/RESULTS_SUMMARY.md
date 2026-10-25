@@ -51,6 +51,8 @@ Gemma-2-2B, the layer-12 residual, the Gemma Scope 16,384-feature SAE (`blocks.1
 
 A ladder figure of the control (features against swapped directions across the precisions; planned, plan Task 15f); Llama-3.2-1B as a supporting model (waits for the user to accept the model licence, Q22); the user's choices Q21 to Q24 (all with defaults in force).
 
+**Update 2026-10-26:** the ladder figure of the control exists ([`figures/f5/ladder_control`](figures/f5/ladder_control_light.png), claim 6); Study G (claims 12 to 15) and the Belebele prompt cross-check (claim 16) are finished and no job is queued; Llama-3.2-1B still waits for Q22; Q21 to Q27 are open with their defaults. A map of all finished figures with the claim each supports: [`FIGURE_INDEX.md`](FIGURE_INDEX.md).
+
 ## 5. Where everything is
 
 Design and plan: [`../../docs/superpowers/specs/`](../../docs/superpowers/specs/) and [`../../docs/superpowers/plans/2026-10-21-functional-validation.md`](../../docs/superpowers/plans/2026-10-21-functional-validation.md); freezes: [`evaluation_freeze_lm.json`](evaluation_freeze_lm.json), [`evaluation_freeze_mc.json`](evaluation_freeze_mc.json); code: `scripts/g0/phase1_func_*.py` (tests in `scripts/g0/tests*`); item-level files live only on the cluster (sizes and checksums in [`artifact_checksums.md`](artifact_checksums.md)); **every analysis in this summary re-runs from those files to byte-identical outputs with one command ([`REPRODUCE.md`](REPRODUCE.md), verified 2026-10-23);** the newest handoff is in [`../handoffs/`](../handoffs/).

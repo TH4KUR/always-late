@@ -15,6 +15,7 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 | [`functional_validation/gain_study/README.md`](functional_validation/gain_study/README.md) | **STUDY G, the user's major study (2026-10-24): graded gain of language-selective features, per language, across the precision ladder; the request verbatim, the status table, links to its design, plan and results; read first at every run** |
 | [`functional_validation/STATUS.md`](functional_validation/STATUS.md) | the ordered next steps (`Immediate`) and the dated Log of the functional study |
 | [`functional_validation/RESULTS_SUMMARY.md`](functional_validation/RESULTS_SUMMARY.md) | the results on one page, with a claim map (evidence and the limit to state with each claim) |
+| [`functional_validation/FIGURE_INDEX.md`](functional_validation/FIGURE_INDEX.md) | every finished figure of the functional study and Study G: file, the question its title asks, the claim it supports, status and limit (no new numbers) |
 | [`functional_validation/REPRODUCE.md`](functional_validation/REPRODUCE.md) | one command re-runs every analysis of the functional study and compares with the committed outputs |
 | [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) | the questions for the user (Q1 to Q26) with their options, defaults and answers |
 
