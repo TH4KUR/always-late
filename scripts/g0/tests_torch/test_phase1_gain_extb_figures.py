@@ -88,6 +88,18 @@ class Figure(unittest.TestCase):
         self.assertTrue(all(a.get_yscale() == "symlog" for a in panels))
         self.assertEqual(len({tuple(round(v, 9) for v in a.get_ylim()) for a in panels}), 1)
 
+    def test_the_vertical_axis_has_plain_decimal_ticks_inside_the_range_with_a_zero_and_never_crowded(self):
+        fig = ef.fig_state_defined(self.rows, "light", "x")
+        for a in [a for a in fig.axes if a.get_gid() and a.get_gid().startswith("panel:")]:
+            fig.canvas.draw()
+            lo, hi = a.get_ylim(); ticks = list(a.get_yticks()); labels = [t.get_text() for t in a.get_yticklabels()]
+            self.assertTrue(all(lo <= y <= hi for y in ticks)); self.assertIn(0.0, ticks); self.assertGreaterEqual(len(ticks), 3); self.assertEqual(len(ticks), len(labels))
+            self.assertTrue(all("e" not in l and "^" not in l and "{" not in l for l in labels), labels)
+            self.assertEqual([float(l.replace("\u2212", "-")) for l in labels], ticks)
+            pix = sorted(a.transData.transform((0, y))[1] for y in ticks)
+            self.assertGreaterEqual(min(q - p for p, q in zip(pix, pix[1:])), 0.2 * fig.dpi)
+            self.assertEqual(len(a.yaxis.get_minorticklocs()), 0)
+
     def test_the_x_ticks_are_the_ratios_of_the_study(self):
         fig = ef.fig_state_defined(self.rows, "light", "x")
         a = fig.axes[0]

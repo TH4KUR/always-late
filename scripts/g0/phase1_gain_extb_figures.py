@@ -9,9 +9,13 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.ticker import NullLocator
 
 import phase1_func_figures as base
 import phase1_gain_figures as gf
+
+
+SYM_TICKS = sorted({s * m for s in (-1, 1) for m in (0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0)} | {0.0})        # plain decimals on the symmetric log axis, never closer than a fifth of an inch
 
 
 def load_compare(path):
@@ -55,6 +59,8 @@ def fig_state_defined(rows, theme, note):
         ax.plot(xs, data[s]["reference"], color=t["muted"], linewidth=1.8, linestyle="--", marker="o", markersize=3.4, zorder=2, gid="reference")
         ax.plot(xs, data[s]["state_defined"], color=t["series"][0], linewidth=1.8, marker="o", markersize=3.6, zorder=3, gid="state_defined")
         ax.set_yscale("symlog", linthresh=0.02); ax.set_ylim(*ylim); ax.set_xlim(min(xs) - 0.4, max(xs) + 0.6)
+        ticks = [y for y in SYM_TICKS if ylim[0] <= y <= ylim[1]]
+        ax.set_yticks(ticks); ax.set_yticklabels([f"{y:g}" for y in ticks]); ax.yaxis.set_minor_locator(NullLocator())
         gf._ratio_ticks(ax, x, ratios)
         ax.set_title(s, loc="left", fontsize=9, color=t["ink2"], pad=4)
         ax.set_xlabel("ratio applied to the group's activations (log scale, 0 = zero-ablation)", color=t["ink2"], fontsize=8.5)
