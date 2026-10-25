@@ -6,7 +6,7 @@
 #   rescue/     func-rescue-a files            f4-INT4/ f4-INT5/ f4-INT6/   func-f4-INT<b> files
 #   mc-eval/    func-mc-eval-a and -b files (their two meta_mc_eval.json renamed meta_mc_eval_a.json and meta_mc_eval_b.json)      mc-ksens/   func-mc-ksens files
 #   f5-a/ f5-b/ f5-smoke2/ f5-m8/ f5-m32/ f5-dir/ f5-dir2/ f5-fa/ f5-fa-dir/    the per-state files of the F5 jobs
-#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080); gainc-FP/ gainc-6/ gainc-5/ gainc-4b/   the extension C jobs (D-082)
+#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080); gainc-FP/ gainc-6/ gainc-5/ gainc-4b/   the extension C jobs (D-082); gain-sd-FP/ gain-sd-6/ gain-sd-4/ gain-sd-FPref-6/ gain-sd-FPref-4/   the extension B jobs (D-085)
 #   mc-pc-all/ mc-pc-1024/ mc-pc-256/   func-mc-pc-<dose> files func_mc_eval_letter_FP.pt and meta_mc_eval.json (the positive control, D-069)
 #   feature_status_eq.csv   Ada association-full/analysis-eq/feature_status.csv
 # Prints identical / DIFFERS / skipped (input missing) for every output file; exit 1 if anything DIFFERS. Needs the torch venv (numpy, scipy, statsmodels).
@@ -125,5 +125,15 @@ if [ -d "$ROOT/$GS/extension_d" ] && have gainc-4b "$GS/extension_d"; then
     cmpdir "$G/extension_d" "$ROOT/$GS/extension_d" "$GS/extension_d" alpha.csv report.md; jsoneq "$G/extension_d/analysis.json" "$ROOT/$GS/extension_d/analysis.json" "$GS/extension_d/analysis.json" meta.runs
     $PY -B scripts/g0/phase1_gain_extd_figures.py --alpha "$G/extension_d/alpha.csv" --analysis "$G/extension_d/analysis.json" --out "$G/figures_extension_d" --formats svg --note "exploratory (post hoc in origin, D-083, D-084)" > /dev/null
     cmpdir "$G/figures_extension_d" "$ROOT/$GS/figures_extension_d" "$GS/figures_extension_d" fig_gd1_alpha_light.svg fig_gd1_alpha_dark.svg
+fi
+# Study G extension B (D-085): state-defined groups; inputs gain-sd-FP, gain-sd-6, gain-sd-4 (state-defined) and gain-sd-FPref-6, gain-sd-FPref-4 (the FP reference groups at INT6 and INT4; the FP reference at FP is gain-sd-FP), with the committed ratios.json and overlap.csv
+if [ -d "$ROOT/$GS/state_defined/results" ]; then
+    ok=1; for d in gain-sd-FP gain-sd-6 gain-sd-4 gain-sd-FPref-6 gain-sd-FPref-4; do have "$d" "$GS/state_defined/results" || { ok=0; break; }; done
+    if [ $ok -eq 1 ]; then
+        $PY -B scripts/g0/phase1_gain_extb.py --state-defined "$IN/gain-sd-FP" "$IN/gain-sd-6" "$IN/gain-sd-4" --reference "$IN/gain-sd-FP" "$IN/gain-sd-FPref-6" "$IN/gain-sd-FPref-4" --ratios-json $GS/calibration/ratios.json --overlap $GS/state_defined/overlap.csv --out "$G/state_defined_results" > /dev/null
+        cmpdir "$G/state_defined_results" "$ROOT/$GS/state_defined/results" "$GS/state_defined/results" compare.csv report.md; jsoneq "$G/state_defined_results/analysis.json" "$ROOT/$GS/state_defined/results/analysis.json" "$GS/state_defined/results/analysis.json" meta.state_defined_runs,meta.reference_runs
+        $PY -B scripts/g0/phase1_gain_extb_figures.py --compare "$G/state_defined_results/compare.csv" --out "$G/figures_state_defined" --formats svg --note "exploratory (devtest, one model, layer and quantizer); 300 held-out sentences per language, 3 matched-control draws" > /dev/null
+        cmpdir "$G/figures_state_defined" "$ROOT/$GS/figures_state_defined" "$GS/figures_state_defined" fig_gb1_state_defined_light.svg fig_gb1_state_defined_dark.svg
+    fi
 fi
 [ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }

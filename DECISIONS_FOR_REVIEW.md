@@ -226,6 +226,7 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Options.** (a) default: the main study stays FP-defined; extension B (state-defined groups at FP, INT6, INT4) runs after the main jobs if the GPU slots allow, as an exploratory second reading, reported next to the main one; (b) make state-defined groups the primary design (the main runs would then be redone with them: about 18 more GPU hours); (c) skip state-defined groups.
 - **Default:** (a). It costs about 9 GPU hours after the main jobs and answers both readings.
 - ANSWER:
+- **Update 2026-10-26 (no answer needed; evidence for your choice):** the default (a) was carried out: extension B ran (five jobs, D-085). Result: the groups selected in each precision differ from the full-precision ones (42 of 64 features shared at INT4) but are NOT more consequential in that precision (H-Gb2 not met, opposite sign: median net harm difference -0.0098 nats per token at INT4; the dose-response curves coincide). So the choice between the two readings does not change Study G's conclusions at this resolution; the main design (full-precision groups) stands. You may still answer if you want the other reading reported as the headline.
 - STATUS: open
 
 ---

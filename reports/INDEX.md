@@ -25,7 +25,7 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 | decisions and anomalies (append-only; D-, A-, V- ids) | [`decisions_and_anomalies.md`](decisions_and_anomalies.md) |
 | questions with the options considered, the defaults and the answers | [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) |
 | dated logs | [`progress_log.md`](progress_log.md); the Log of [`functional_validation/STATUS.md`](functional_validation/STATUS.md) (from 2026-10-23); [`archive/status_log_2026-10-21_to_22.md`](archive/status_log_2026-10-21_to_22.md); [`association_retention/STATUS.md`](association_retention/STATUS.md) |
-| handoffs, one per step (001 to 037 and their addenda; the only record of each chat) | [`handoffs/`](handoffs/) |
+| handoffs, one per step (001 to 038 and their addenda; the only record of each chat) | [`handoffs/`](handoffs/) |
 | progress and plan pages | [`../PROGRESS.md`](../PROGRESS.md), [`../PLAN.md`](../PLAN.md) |
 | designs and plans written before the data, with their hypotheses and predictions | [`../docs/superpowers/specs/`](../docs/superpowers/specs/), [`../docs/superpowers/plans/`](../docs/superpowers/plans/) |
 | options considered, including those not selected | [`association_retention/next_steps.md`](association_retention/next_steps.md) (options A to F of Q16), [`survival_method_reassessment.md`](survival_method_reassessment.md), [`association_retention/plan_verification.md`](association_retention/plan_verification.md) |

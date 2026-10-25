@@ -228,3 +228,10 @@ Fetched 2026-10-25 22:33 IST from Ada, sha256 equal on both sides (2 files, 0 di
 |---|---|---|
 | `gain-sd-FPref-4/func_lm_eval_INT4.pt` | 5594871 | `a3af8c8b2c802a342e59d13510cf6f8d2c6eb9bd87fef5a868e824d544b13e1a` |
 | `gain-sd-FPref-4/meta_lm_eval.json` | 2134 | `231194388b34990c08824b8490279ee65b67808b49bbdeb03529638c4d9df66c` |
+
+Fetched 2026-10-26 00:32 IST from Ada, sha256 equal on both sides (2 files, 0 differences): `gain-sd-FPref-6` 38870 (extension B, the FP reference groups run at INT6; RTX 2080 Ti on gnode049, 2 h 48 min 56 s, snapshot `repo_dad2760`, commit `dad2760`, 999 configurations, 300 evaluation sentences per language with ids equal to the freeze, three control draws, gates passed, complete, nothing skipped, no CUDA warning in the log; it used `gain-sd-manifests/groups_manifest_FP.json` (sha256 `c0bb1b58...`, source hash `637480d4...`, the same as `gain-sd-FP` and `gain-sd-FPref-4`)). With it the five jobs of extension B are in.
+
+| file | bytes | sha256 |
+|---|---|---|
+| `gain-sd-FPref-6/func_lm_eval_INT6.pt` | 5594871 | `d7d7b727a2a63f9eddcda17de12d9ef7f4d1961e6b885c506ea6765482573c0e` |
+| `gain-sd-FPref-6/meta_lm_eval.json` | 2133 | `d2563cccadc7e5458e6b1198e61853b5d7593838c712a4de1e378b87248b996b` |
