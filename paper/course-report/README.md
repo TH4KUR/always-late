@@ -89,8 +89,11 @@ compiler, is the basis of any recorded compilation success.
   appendix table of the pre-specified rules and outcomes with the transfer
   rows. After an independent fact-check against the committed results the
   wording was corrected (no number changed; D-094 Update, commit `542c246`).
-  The six-language Wikipedia panel paragraph is marked `[PENDING ...]` until
-  its six runs are validated and analysed once. Official checker: `All Clear!`
+  Update 2026-10-27: the six-language Wikipedia panel (external-panel
+  paragraph, one abstract sentence, one appendix row, the cross-corpus
+  numbers; D-095) was added after its six runs were validated and analysed once
+  (`reports/intervention_transfer/results/external/`); `make_transfer_figures.py`
+  also renders `figures/transfer-*-ext.*` for that panel. Official checker: `All Clear!`
   (11 pages: the body ends at the top of page 8, then the limitations section,
   references on page 9, two appendix pages 10 and 11). Revision 2 is in the
   committed history.

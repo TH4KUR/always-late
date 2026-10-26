@@ -1,3 +1,17 @@
+# Course-report validation: revision 3 (2026-10-27 02:38 IST, 2026-10-27)
+
+Status: complete draft for team review; not a submitted course ZIP. Revision 3 rewrites the report around the intervention-transfer study (Section 7 with the main matrix and the external Wikipedia panel); the revision 2 record is kept verbatim below.
+
+- Built with the installed pdfLaTeX and BibTeX (no unresolved references or citations; no `[PENDING]` marker is left in `main.tex`).
+- 11 PDF pages: the main content ends at the top of page 8 and the limitations section follows on the same page, so the main content and the limitations together fit in eight pages; references are on page 9; the appendix is pages 10 and 11 (two pages).
+- The official checker printed `All Clear!` with an empty JSON report with the pinned version (`check.sh`) and with the newest upstream version (the upstream HEAD is the pinned commit `f626497`) on the final PDF. Earlier builds of revision 3 had been flagged for the appendix table bleeding into the bottom margin (fixed by shortening it and setting it in `\scriptsize`, not ignored) and one build of the external paragraph had pushed the limitations tail onto page 9 (fixed by condensing the paragraph, not by changing the layout).
+- The ACL files `acl.sty` and `acl_natbib.bst` and the official template copies are unchanged (sha256 in `manifest.json`); no margin, spacing, font-size or caption overrides are used for the body; the appendix table is set in `\scriptsize` inside the appendix.
+- All fonts are embedded and none is Type 3 (`fonts.txt`); the page size is A4 (`pdfinfo.txt`).
+- Independent fact-check of the transfer sections: a separate agent read `main.tex` against `reports/intervention_transfer/results/main/` and its verified findings were applied before this build (wording only, no number changed; D-094 Update, commit 542c246). The external-panel paragraph, the abstract sentence, the appendix row and the cross-corpus numbers were written afterwards from `reports/intervention_transfer/results/external/` (D-095) and have not had an independent review; every number in them was compared with the committed tables when written.
+- Not verified and not claimed: author names and order (taken from the project roster); the course AI-use disclosure (the team must check the course text). The optional online reference check of the checker (`check_full.py`) was not rerun (the external service returned a web page instead of BibTeX before); the bibliography (16 entries) was checked against the primary sources.
+
+Revision 2 record (kept verbatim):
+
 # Course-report validation: revision 2 (2026-10-26 09:13 IST, 26 October 2026)
 
 Status: complete draft for team review; not a submitted course ZIP.
