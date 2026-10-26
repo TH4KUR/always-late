@@ -310,5 +310,73 @@ class ComponentSummary(unittest.TestCase):
         a = find(ta.component_summary(rows, n_boot=20, seed=1, eligible_only=False), kind="real", split="all", metric="scalar_normalized_error"); self.assertEqual((a["n"], a["n_missing"]), (1, 1))
 
 
+def pool_gram(ff, qq, native=None):
+    """The Gram of an averaged fingerprint: FP effect `ff`, Q/Q effect `qq` (the Q/FP and FP/Q cells copy the nearer end, the native cell the Q/Q cell)."""
+    return {"gram": gram_of([ff, ff, ff, qq, native if native is not None else qq]), "n_rows": 2, "n_contexts": 2}
+
+
+class AveragedFingerprints(unittest.TestCase):
+    """H4: the transfer of the averaged fingerprint of a feature against the transfer of its single contexts, on the SAME feature-context pairs."""
+    def setUp(self):
+        two = lambda a, b, c, d: {(10, 1000, "real"): {**item(1, 1), "gram": gram_of([a, a, a, b, b])}, (10, 2000, "real"): {**item(1, 1), "gram": gram_of([c, c, c, d, d])}}
+        # feature 10: contexts FP (1,0) and (0,1), quantized (0,1) and (1,0): each context has cosine 0, the average (.5,.5) is identical in both states
+        self.items = two([1.0, 0.0], [0.0, 1.0], [0.0, 1.0], [1.0, 0.0])
+        self.pooled = {(10, "real"): pool_gram([0.5, 0.5], [0.5, 0.5])}
+        self.rows = floored(self.items, {"real": 1.0})
+
+    def test_the_averaged_fingerprint_can_look_identical_while_every_context_is_orthogonal(self):
+        h = ta.averaged_fingerprints(self.rows, self.pooled)[(10, "real")]
+        self.assertAlmostEqual(h["pooled_cos"], 1.0); self.assertAlmostEqual(h["item_cos"], 0.0); self.assertAlmostEqual(h["cos_gap"], 1.0); self.assertAlmostEqual(h["pooled_error"], 0.0)
+        self.assertAlmostEqual(h["pooled_normalized_error"], 0.0); self.assertAlmostEqual(h["item_normalized_error"], float(np.sqrt(2.0)) / (1.0 + 1.0)); self.assertEqual(h["n_contexts"], 2)
+
+    def test_opposing_contexts_give_a_zero_mean_cloud_with_large_context_effects(self):
+        items = {(10, 1000, "real"): {**item(1, 1), "gram": gram_of([[3.0, 0.0]] * 5)}, (10, 2000, "real"): {**item(1, 1), "gram": gram_of([[-3.0, 0.0]] * 5)}}
+        h = ta.averaged_fingerprints(floored(items, {"real": 1.0}), {(10, "real"): pool_gram([0.0, 0.0], [0.0, 0.0])})[(10, "real")]
+        self.assertIsNone(h["pooled_cos"]); self.assertIsNone(h["cos_gap"]); self.assertAlmostEqual(h["coherence_fp"], 0.0); self.assertAlmostEqual(h["item_cos"], 1.0)
+
+    def test_coherence_is_the_norm_of_the_average_over_the_average_norm_weighted_by_rows(self):
+        h = ta.averaged_fingerprints(self.rows, self.pooled)[(10, "real")]
+        self.assertAlmostEqual(h["coherence_fp"], float(np.hypot(0.5, 0.5)) / 1.0); self.assertAlmostEqual(h["coherence_qq"], float(np.hypot(0.5, 0.5)))
+        items = {(10, 1000, "real"): {**item(1, 1), "gram": gram_of([[2.0, 0.0]] * 5), "n_rows": 3}, (10, 2000, "real"): {**item(1, 1), "gram": gram_of([[1.0, 0.0]] * 5), "n_rows": 1}}      # 3 rows of 2 and 1 row of 1: average (7/4), norms 7/4: coherent
+        g = ta.averaged_fingerprints(floored(items, {"real": 1.0}), {(10, "real"): {"gram": gram_of([[1.75, 0.0]] * 5), "n_rows": 4, "n_contexts": 2}})[(10, "real")]
+        self.assertAlmostEqual(g["coherence_fp"], 1.0); self.assertAlmostEqual(g["item_cos"], 1.0)
+
+    def test_a_tie_between_the_pooled_and_the_context_error_does_not_count_for_the_average_and_the_interval_resamples_features_only(self):
+        mk = lambda f, pe, ie, gap: {"feature": f, "kind": "real", "cos_gap": gap, "coherence_fp": 0.5, "coherence_qq": 0.5, "pooled_normalized_error": pe, "item_normalized_error": ie, "pooled_cos": 0.1, "item_cos": 0.1}
+        self.assertEqual(find(ta.averaged_summary({(1, "real"): mk(1, 0.2, 0.2, 0.0)}, n_boot=10, seed=0), kind="real", metric="averaged_looks_better")["point"], 0.0)
+        rng = np.random.default_rng(4); gaps = rng.normal(size=14); hs = {(f, "real"): mk(f, 0.1, 0.2, float(gaps[f])) for f in range(14)}
+        r = find(ta.averaged_summary(hs, n_boot=60, seed=7), kind="real", metric="cos_gap"); ref = ta.crossed_bootstrap(gaps, np.arange(14), np.zeros(14, dtype=int), "median", 60, 7)
+        self.assertEqual((r["low"], r["high"], r["point"]), (ref["low"], ref["high"], ref["point"]))
+
+    def test_the_pool_is_read_at_the_fixed_q_q_cell_and_the_pooled_error_is_normalized_by_the_pooled_fp_norm_plus_the_floor(self):
+        items = {(10, 1000, "real"): {**item(1, 1), "gram": gram_of([[2.0, 0.0], [2.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 0.0]])}}
+        h = ta.averaged_fingerprints(floored(items, {"real": 1.0}), {(10, "real"): {"gram": gram_of([[2.0, 0.0], [2.0, 0.0], [2.0, 0.0], [2.0, 2.0], [5.0, 5.0]]), "n_rows": 2, "n_contexts": 1}})[(10, "real")]
+        self.assertAlmostEqual(h["pooled_error"], 2.0); self.assertAlmostEqual(h["pooled_normalized_error"], 2.0 / 3.0); self.assertAlmostEqual(h["pooled_cos"], float(4.0 / (2.0 * np.hypot(2.0, 2.0)))); self.assertAlmostEqual(h["item_normalized_error"], 2.0 / 3.0)
+
+    def test_coherence_in_each_state_uses_the_norms_of_that_state(self):
+        items = {(10, 1000, "real"): {**item(1, 1), "gram": gram_of([[2.0, 0.0]] * 3 + [[0.0, 4.0]] * 2)}, (10, 2000, "real"): {**item(1, 1), "gram": gram_of([[2.0, 0.0]] * 3 + [[0.0, -4.0]] * 2)}}
+        h = ta.averaged_fingerprints(floored(items, {"real": 1.0}), {(10, "real"): {"gram": gram_of([[2.0, 0.0]] * 3 + [[0.0, 0.0]] * 2), "n_rows": 4, "n_contexts": 2}})[(10, "real")]
+        self.assertAlmostEqual(h["coherence_fp"], 1.0); self.assertAlmostEqual(h["coherence_qq"], 0.0)
+
+    def test_the_context_mean_is_weighted_by_rows_and_a_missing_pool_or_a_count_mismatch_is_an_error(self):
+        items = {(10, 1000, "real"): {**item(1, 1), "gram": gram_of([[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]]), "n_rows": 3}, (10, 2000, "real"): {**item(1, 1), "gram": gram_of([[1.0, 0.0]] * 5), "n_rows": 1}}
+        pool = {"gram": gram_of([[1.0, 0.0]] * 5), "n_rows": 4, "n_contexts": 2}
+        self.assertAlmostEqual(ta.averaged_fingerprints(floored(items, {"real": 1.0}), {(10, "real"): pool})[(10, "real")]["item_cos"], (3 * 0.0 + 1 * 1.0) / 4)
+        with self.assertRaisesRegex(ValueError, "pool"):
+            ta.averaged_fingerprints(floored(items, {"real": 1.0}), {})
+        with self.assertRaisesRegex(ValueError, "contexts"):
+            ta.averaged_fingerprints(floored(items, {"real": 1.0}), {(10, "real"): {**pool, "n_contexts": 3}})
+
+    def test_the_summary_is_over_features_with_the_gap_and_the_share_of_features_where_the_average_overstates_the_transfer(self):
+        hs = {(10, "real"): {"feature": 10, "kind": "real", "cos_gap": 1.0, "coherence_fp": 0.5, "coherence_qq": 0.5, "pooled_normalized_error": 0.1, "item_normalized_error": 0.4, "pooled_cos": 1.0, "item_cos": 0.0},
+              (11, "real"): {"feature": 11, "kind": "real", "cos_gap": -0.2, "coherence_fp": 0.9, "coherence_qq": 0.8, "pooled_normalized_error": 0.5, "item_normalized_error": 0.3, "pooled_cos": 0.5, "item_cos": 0.7},
+              (12, "real"): {"feature": 12, "kind": "real", "cos_gap": None, "coherence_fp": 0.0, "coherence_qq": 0.0, "pooled_normalized_error": 0.3, "item_normalized_error": 0.2, "pooled_cos": None, "item_cos": 0.5}}
+        rec = ta.averaged_summary(hs, n_boot=30, seed=1)
+        g = find(rec, kind="real", metric="cos_gap"); self.assertEqual((g["n"], g["n_missing"]), (2, 1)); self.assertAlmostEqual(g["point"], -0.2)                                  # lower median of -0.2 and 1.0
+        e = find(rec, kind="real", metric="error_gap"); self.assertAlmostEqual(e["point"], 0.1)                                                                                              # pooled minus context-mean normalized error: -0.3, +0.2, +0.1
+        self.assertAlmostEqual(find(rec, kind="real", metric="averaged_looks_better")["point"], 1.0 / 3.0)                                                               # one feature of three: pooled error below the context mean by more than nothing
+        ref = ta.crossed_bootstrap(np.array([1.0, -0.2]), np.array([10, 11]), np.zeros(2, dtype=int), "median", 30, 1); self.assertEqual((g["low"], g["high"], g["n_features"]), (ref["low"], ref["high"], 3))   # features only, no cluster level
+
+
 if __name__ == "__main__":
     unittest.main()

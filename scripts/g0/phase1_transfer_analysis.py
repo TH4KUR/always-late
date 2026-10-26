@@ -247,3 +247,46 @@ def component_summary(rows, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, me
                 fn, stat = METRICS[name]; vals = np.array([np.nan if (x := fn(r)) is None else x for r in sel], dtype=float)
                 out.append({"kind": kind, "split": split, "metric": name, "n_items": len(group), **crossed_bootstrap(vals, fidx, cidx, stat, n_boot, seed)})
     return out
+
+
+def averaged_fingerprints(rows, pooled):
+    """H4, on the SAME feature-context pairs: per (feature, direction kind) the transfer of the averaged fingerprint (the stored Gram of the row-weighted mean of the context effect vectors) and the row-weighted
+    mean of the transfer of the single contexts: cosine between the FP and the Q/Q effect, normalized error, and the coherence (norm of the average over the row-weighted average norm: 1 when the contexts agree,
+    0 when they cancel). All contexts of the feature enter (the pool cannot be split by eligibility). rows: apply_floor(item_table(...)); pooled: the stored pools. A pool that is missing, or that counts another
+    number of contexts than the items of the feature, is an error (nothing is joined away)."""
+    by = {}
+    for r in rows.values():
+        by.setdefault((r["feature"], r["kind"]), []).append(r)
+    out = {}
+    for key, rs in sorted(by.items()):
+        if key not in pooled:
+            raise ValueError(f"no pool for the feature and kind {key}")
+        if pooled[key]["n_contexts"] != len(rs):
+            raise ValueError(f"{key}: {len(rs)} contexts among the items but the pool counts {pooled[key]['n_contexts']}")
+        P = np.asarray(pooled[key]["gram"], dtype=np.float64); w = np.array([r["n_rows"] for r in rs], dtype=float); floor = rs[0]["floor"]
+        ff, qq, fq = P[0, 0], P[3, 3], P[0, 3]; p_fp, p_q = np.sqrt(max(ff, 0.0)), np.sqrt(max(qq, 0.0)); err = np.sqrt(max(qq - 2 * fq + ff, 0.0))
+        pooled_cos = float(fq / (p_fp * p_q)) if p_fp > 0 and p_q > 0 else None
+        defined = [(r["cosine"], wi) for r, wi in zip(rs, w) if r["cosine"] is not None]; item_cos = float(sum(c * wi for c, wi in defined) / sum(wi for _, wi in defined)) if defined else None
+        mean_fp, mean_q = float((w * [r["fp_norm"] for r in rs]).sum() / w.sum()), float((w * [r["q_norm"] for r in rs]).sum() / w.sum())
+        out[key] = {"feature": key[0], "kind": key[1], "split": rs[0]["split"], "n_contexts": len(rs), "pooled_cos": pooled_cos, "item_cos": item_cos,
+                    "cos_gap": None if pooled_cos is None or item_cos is None else pooled_cos - item_cos, "pooled_error": float(err), "pooled_normalized_error": float(err / (p_fp + floor)),
+                    "item_normalized_error": float((w * [r["normalized_error"] for r in rs]).sum() / w.sum()), "coherence_fp": float(p_fp / mean_fp) if mean_fp > 0 else None, "coherence_qq": float(p_q / mean_q) if mean_q > 0 else None}
+    return out
+
+
+def averaged_summary(hs, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, splits=("all", "calibration", "heldout")):
+    """The H4 table: per direction kind and split, over features (the pooled quantities have no sentence structure, so the bootstrap resamples features only): the median gap of the cosines (averaged minus
+    context mean), the median gap of the normalized errors, the share of features whose averaged fingerprint transfers better than its contexts (lower normalized error), and the coherence in both states."""
+    metrics = {"cos_gap": (lambda h: h["cos_gap"], "median"), "error_gap": (lambda h: h["pooled_normalized_error"] - h["item_normalized_error"], "median"),
+               "averaged_looks_better": (lambda h: float(h["pooled_normalized_error"] < h["item_normalized_error"]), "mean"), "coherence_fp": (lambda h: h["coherence_fp"], "median"), "coherence_qq": (lambda h: h["coherence_qq"], "median")}
+    out = []
+    for kind in sorted({h["kind"] for h in hs.values()}):
+        for split in splits:
+            sel = [h for h in hs.values() if h["kind"] == kind and (split == "all" or h.get("split") == split)]
+            if not sel:
+                continue
+            fidx = np.array([h["feature"] for h in sel], dtype=np.int64); cidx = np.zeros(len(sel), dtype=np.int64)
+            for name, (fn, stat) in metrics.items():
+                vals = np.array([np.nan if (x := fn(h)) is None else x for h in sel], dtype=float)
+                out.append({"kind": kind, "split": split, "metric": name, "n_features": len(sel), **{k: v for k, v in crossed_bootstrap(vals, fidx, cidx, stat, n_boot, seed).items() if k != "n_features"}})
+    return out
