@@ -244,6 +244,60 @@ def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, 
     return meta
 
 
+def run_group(states, setup, lower, suffix, encode, W_dec, man, languages, eval_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, label="K64", n_controls=3, max_sentences=None):
+    """The group-level panel of the study for the quantized states `states`: the zero-ablation of each language's feature group (`label`, K64: the first K features of the manifest's list) and of its first
+    `n_controls` matched control draws on the language's own evaluation sentences, in the cells of the crossed design. man: the frozen groups manifest; languages: codes in the order of the roster;
+    eval_tokens: {code: [token ids per evaluation sentence]}; the other arguments as in `run_transfer`. The SAE activations of a sentence are those of its CACHED residual in each state (the SAE does not depend on the
+    model weights), so the edits are exact functions of the caches. A chunk is `per_chunk` sentences (all their items), written to `group_<state>_c<NNN>.pt` and resumable. Returns the metadata."""
+    import time
+    t0 = time.time(); languages = list(languages); sets = {}
+    for code in languages:
+        if code not in man["groups"] or code not in man["controls"] or code not in eval_tokens:
+            raise ValueError(f"language {code} is not in the manifest or in the evaluation sentences")
+        draws = man["controls"][code][label][:n_controls]
+        if len(draws) < n_controls:
+            raise ValueError(f"{code} has {len(draws)} control draws of size {label}, {n_controls} asked")
+        sets[code] = {"group": man["groups"][code]["all"][:man["sizes"][code][label]], **{f"control{r}": d for r, d in enumerate(draws)}}
+    cut = (lambda xs: xs[:max_sentences]) if max_sentences is not None else (lambda xs: xs)
+    sents = [(code, j) for code in languages for j in range(len(cut(eval_tokens[code])))]; toks = [eval_tokens[c][j] for c, j in sents]
+    batches = batcher(toks); out = Path(out_dir); out.mkdir(parents=True, exist_ok=True); W_cpu = W_dec.detach().float().cpu(); gates = {"sham_exact": True, "sham_max_abs": 0.0}
+
+    def cache():
+        res = {}
+        for b in batches:
+            tokens, valid = b["tokens"].to(device), b["valid"].to(device); r = lower(tokens)
+            for i in range(tokens.shape[0]):
+                res[int(b["sent"][i])] = r[i, :int(valid[i].sum()) + 1].detach().cpu()
+        return res
+
+    def sham(resid):
+        for g in range(min(2, len(sents))):
+            e = tc.effect(resid[g].float(), torch.tensor([1]), torch.zeros(1, resid[g].shape[1]), suffix, context_targets(toks[g]))
+            worst = max(float(e["vector"].abs().max()), abs(e["dloss"])); gates["sham_max_abs"] = max(gates["sham_max_abs"], worst); gates["sham_exact"] = gates["sham_exact"] and worst == 0.0
+
+    acts = lambda h: encode(h[1:].to(device)).float().cpu()
+    setup("FP"); cache_fp = cache(); sham(cache_fp)
+    meta = {"n_sentences": len(sents), "n_languages": len(languages), "label": label, "n_controls": n_controls, "states": {}, "gates": gates}
+    log("FP caches:", len(sents), "evaluation sentences of", len(languages), "languages")
+    for state in states:
+        setup(state); cache_q = cache(); sham(cache_q); chunks = plan_chunks(list(range(len(sents))), per_chunk)
+        st = {"chunks": len(chunks), "resumed": 0, "items": 0, "skipped": 0, "seconds": 0.0}; meta["states"][state] = st
+        for ci, chunk in enumerate(chunks):
+            key = chunk_key(freeze_sha, f"group-{label}-{state}", chunk); path = out / f"group_{state}_c{ci:03d}.pt"
+            if load_chunk(path, key) is not None:
+                st["resumed"] += 1; continue
+            t1 = time.time(); items, skipped = [], []
+            for g in chunk:
+                code, j = sents[g]; h_fp, h_q = cache_fp[g].float(), cache_q[g].float()
+                its, sk = group_items(code, j, h_fp, h_q, acts(h_fp), acts(h_q), W_cpu, sets[code], context_targets(toks[g])); items += its; skipped += sk
+            res = process_items(items, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=state: setup(l)})
+            res["skipped"] = skipped + res["skipped"]
+            atomic_save({**res, "sentences": chunk}, path, key); st["items"] += len(res["items"]); st["skipped"] += len(res["skipped"]); st["seconds"] += time.time() - t1
+            log(f"group state {state} chunk {ci + 1}/{len(chunks)}: {len(res['items'])} items, {time.time() - t1:.0f} s")
+    setup("FP"); meta["seconds"] = time.time() - t0
+    return meta
+
+
 class GateError(RuntimeError):
     pass
 

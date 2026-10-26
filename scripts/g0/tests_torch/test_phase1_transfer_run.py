@@ -343,6 +343,108 @@ class RunTransfer(unittest.TestCase):
             self.assertTrue(meta["gates"]["sham_exact"]); self.assertEqual(meta["gates"]["sham_max_abs"], 0.0)
 
 
+def fake_manifest():
+    return {"languages": ["l0", "l1"], "sizes": {"l0": {"K64": 3}, "l1": {"K64": 3}},
+            "groups": {"l0": {"all": [0, 1, 2, 3, 4, 5]}, "l1": {"all": [3, 4, 5, 6, 7, 0]}},
+            "controls": {"l0": {"K64": [[5, 6, 7], [4, 6, 7], [3, 6, 7], [2, 6, 7]]}, "l1": {"K64": [[0, 1, 2], [1, 2, 4], [2, 4, 5], [0, 4, 5]]}}}
+
+
+def fake_eval():
+    dev = fake_dev()
+    return {"l0": dev[:3], "l1": dev[6:9]}
+
+
+def run_fake_group(model, out, states=("INT6",), per_chunk=2, freeze_sha="f", **kw):
+    import phase1_lib as p1
+    batcher = lambda sents: p1.make_batches({0: sents}, 1, "mask", 0, 256, 4, None)
+    return tr.run_group(list(states), model.setup, model.lower, model.suffix, model.encode, model.W_dec, fake_manifest(), ["l0", "l1"], fake_eval(), batcher, out, freeze_sha, per_chunk, **kw)
+
+
+def read_group(out, label):
+    items, pooled = {}, {}
+    for p in sorted(Path(out).glob(f"group_{label}_c*.pt")):
+        d = torch.load(p, weights_only=False)["payload"]; items.update(d["items"]); pooled.update(d["pooled"])
+    return items, pooled
+
+
+class RunGroup(unittest.TestCase):
+    def test_every_sentence_has_the_group_and_three_control_items_and_the_pools_are_per_language_and_kind(self):
+        with tempfile.TemporaryDirectory() as out:
+            meta = run_fake_group(FakeModel(), out); items, pooled = read_group(out, "INT6")
+            keys = {(c, j, k) for c in ("l0", "l1") for j in range(3) for k in ("group", "control0", "control1", "control2")}
+            self.assertTrue(set(items) <= keys and len(items) >= 20)                                                       # a sentence in which a set has no active feature is skipped, never invented
+            self.assertEqual(set(pooled), {(c, k) for c in ("l0", "l1") for k in ("group", "control0", "control1", "control2")})
+            self.assertEqual(meta["states"]["INT6"]["chunks"], 3); self.assertEqual(meta["n_sentences"], 6); self.assertTrue(meta["gates"]["sham_exact"])
+
+    def test_only_the_first_n_controls_of_the_manifest_are_used(self):
+        with tempfile.TemporaryDirectory() as out:
+            run_fake_group(FakeModel(), out, n_controls=2); items, _ = read_group(out, "INT6")
+            self.assertFalse(any(k[2] == "control2" for k in items)); self.assertTrue(any(k[2] == "control1" for k in items))
+
+    def test_identical_states_give_zero_error_and_a_suffix_only_change_gives_no_context_term(self):
+        with tempfile.TemporaryDirectory() as out:
+            run_fake_group(FakeModel(prefix_differs=False, suffix_differs=False), out)
+            for it in read_group(out, "INT6")[0].values():
+                self.assertAlmostEqual(tc.decomposition_norms(torch.tensor(it["gram"]))["total"], 0.0, places=5)
+        with tempfile.TemporaryDirectory() as out:
+            run_fake_group(FakeModel(prefix_differs=False, suffix_differs=True), out)
+            n = [tc.decomposition_norms(torch.tensor(i["gram"])) for i in read_group(out, "INT6")[0].values()]
+            self.assertTrue(all(x["C"] < 1e-5 for x in n)); self.assertTrue(any(x["W"] > 1e-3 for x in n))
+
+    def test_an_item_equals_the_cells_computed_by_hand_from_the_fake_model(self):
+        m = FakeModel(); man = fake_manifest(); code, j, kind = "l0", 1, "control1"; toks = fake_eval()[code][j]
+        with tempfile.TemporaryDirectory() as out:
+            run_fake_group(m, out); got = read_group(out, "INT6")[0][(code, j, kind)]
+        x = torch.tensor([[1] + toks])
+        def prefix(state):
+            m.state = state; return m.lower(x)[0]
+        h_fp, h_q = prefix("FP"), prefix("INT6")
+        a_fp, a_q = m.encode(h_fp[1:]), m.encode(h_q[1:]); idx = man["controls"][code]["K64"][1]
+        rows, e_fp, e_q = tr.group_edit(a_fp, a_q, m.W_dec, idx); tg = tr.context_targets(toks)
+        def cell(h, state, edit):
+            m.state = state; return tc.effect(h, rows, edit, m.suffix, tg)
+        cells = {"FP/FP": cell(h_fp, "FP", e_fp), "Q/FP": cell(h_q, "FP", e_fp), "FP/Q": cell(h_fp, "INT6", e_fp), "Q/Q": cell(h_q, "INT6", e_fp), "Q/Q-native": cell(h_q, "INT6", e_q)}
+        self.assertTrue(np.allclose(got["gram"], tc.gram(cells).numpy(), atol=1e-6))
+        for i, c in enumerate(tc.CELLS):
+            self.assertAlmostEqual(got["dloss"][i], cells[c]["dloss"], places=5)
+        self.assertEqual(got["n_target_rows"], len(toks))
+        with tempfile.TemporaryDirectory() as out2:                                                                       # the group itself: the first K = 3 features of the list, not one fewer or more
+            run_fake_group(FakeModel(), out2); grp = read_group(out2, "INT6")[0][(code, j, "group")]
+        idx = man["groups"][code]["all"][:3]; rows, e_fp, e_q = tr.group_edit(a_fp, a_q, m.W_dec, idx)
+        cells = {"FP/FP": cell(h_fp, "FP", e_fp), "Q/FP": cell(h_q, "FP", e_fp), "FP/Q": cell(h_fp, "INT6", e_fp), "Q/Q": cell(h_q, "INT6", e_fp), "Q/Q-native": cell(h_q, "INT6", e_q)}
+        self.assertTrue(np.allclose(grp["gram"], tc.gram(cells).numpy(), atol=1e-6))
+
+    def test_a_set_without_an_active_feature_is_reported_in_the_chunk_file_and_has_no_item(self):
+        class Dead7(FakeModel):
+            def encode(self, x):
+                a = super().encode(x).clone(); a[:, 7] = 0.0; return a
+        man = fake_manifest(); man["controls"]["l0"]["K64"][0] = [7]
+        import phase1_lib as p1
+        batcher = lambda sents: p1.make_batches({0: sents}, 1, "mask", 0, 256, 4, None); m = Dead7()
+        with tempfile.TemporaryDirectory() as out:
+            tr.run_group(["INT6"], m.setup, m.lower, m.suffix, m.encode, m.W_dec, man, ["l0", "l1"], fake_eval(), batcher, out, "f", 2)
+            skipped = [s for p in sorted(Path(out).glob("group_INT6_c*.pt")) for s in torch.load(p, weights_only=False)["payload"]["skipped"]]
+            items = read_group(out, "INT6")[0]
+        self.assertEqual(sorted(k for k, r in skipped if k[0] == "l0"), [("l0", 0, "control0"), ("l0", 1, "control0"), ("l0", 2, "control0")]); self.assertTrue(all(r == "no_active_group_feature" for k, r in skipped))
+        self.assertFalse(any(k[:3] == ("l0", 0, "control0") for k in items))
+
+    def test_resume_and_stale_keys_work_as_in_the_feature_level_run(self):
+        with tempfile.TemporaryDirectory() as out:
+            run_fake_group(FakeModel(), out); m = FakeModel(); meta = run_fake_group(m, out)
+            self.assertEqual(meta["states"]["INT6"]["resumed"], 3); self.assertEqual(m.calls, ["FP", "INT6", "FP"])
+            with self.assertRaisesRegex(ValueError, "stale"):
+                run_fake_group(FakeModel(), out, freeze_sha="other")
+
+    def test_a_language_missing_from_the_manifest_or_the_wrong_number_of_controls_is_an_error(self):
+        import phase1_lib as p1
+        batcher = lambda sents: p1.make_batches({0: sents}, 1, "mask", 0, 256, 4, None); m = FakeModel()
+        with tempfile.TemporaryDirectory() as out:
+            with self.assertRaises(ValueError):
+                tr.run_group(["INT6"], m.setup, m.lower, m.suffix, m.encode, m.W_dec, fake_manifest(), ["l0", "zz"], {"l0": fake_eval()["l0"], "zz": fake_eval()["l1"]}, batcher, out, "f", 2)
+            with self.assertRaises(ValueError):
+                tr.run_group(["INT6"], m.setup, m.lower, m.suffix, m.encode, m.W_dec, fake_manifest(), ["l0", "l1"], fake_eval(), batcher, out, "f", 2, n_controls=9)
+
+
 class NoisyQ(FakeModel):
     """The suffix of the quantized state is not deterministic: the unedited and the edited row would take different computations, so the sham gate must report it."""
     def suffix(self, x):
@@ -384,6 +486,14 @@ class NoisyBOS(FakeModel):
 
 
 class ShamGate(unittest.TestCase):
+    def test_the_group_level_run_has_the_same_sham_gate_in_both_suffixes_and_a_sentence_limit(self):
+        with tempfile.TemporaryDirectory() as out:
+            self.assertFalse(run_fake_group(NoisyQ(), out)["gates"]["sham_exact"])
+        with tempfile.TemporaryDirectory() as out:
+            self.assertFalse(run_fake_group(NoisyFP(), out)["gates"]["sham_exact"])
+        with tempfile.TemporaryDirectory() as out:
+            meta = run_fake_group(FakeModel(), out, max_sentences=1); self.assertEqual(meta["n_sentences"], 2); self.assertEqual({k[:2] for k in read_group(out, "INT6")[0]}, {("l0", 0), ("l1", 0)})
+
     def test_a_nondeterministic_quantized_suffix_fails_the_sham_gate(self):
         with tempfile.TemporaryDirectory() as out:
             meta = run_fake(NoisyQ(), out, states=("INT6",), per_chunk=4)
