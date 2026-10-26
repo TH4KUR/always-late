@@ -217,8 +217,13 @@ def build_run(root, f, upload_commit):
         check_file(root, rel)
         if not rel.lower().endswith(".png"):
             raise SpecError(f"{rel}: figures are uploaded as png")
-        stem = Path(rel).stem
-        images.append({"key": f"fig/{stem}", "path": rel, "caption": stem})
+        images.append({"key": None, "path": rel, "caption": Path(rel).stem})
+    stems = [Path(i["path"]).stem for i in images]
+    for i, s in zip(images, stems):                                                                           # a stem used twice (pair_light.png in four folders) is prefixed with its folder
+        i["key"] = f"fig/{s}" if stems.count(s) == 1 else f"fig/{Path(i['path']).parent.name}-{s}"
+        i["caption"] = s if stems.count(s) == 1 else f"{Path(i['path']).parent.name}/{s}"
+    if len({i["key"] for i in images}) != len(images):
+        raise SpecError(f"{slug}: two figures get the same key")
     paths = set(f["files"]) | {t["file"] for t in tables.values()} | {i["path"] for i in images} | ({f["freeze"]} if f.get("freeze") else set())
     files = []
     for rel in sorted(paths):
@@ -305,6 +310,9 @@ def upload(payload, root, wandb, only=None, entity=ENTITY, project=PROJECT, out=
             raise SpecError(f"unknown slugs {unknown}")
         runs = [r for r in runs if r["id"][3:] in only]
     for r in runs:                                               # everything is checked before the first run starts
+        keys = [i["key"] for i in r["images"]] + [f"table/{k}" for k in r["tables"]]
+        if len(set(keys)) != len(keys):
+            raise SpecError(f"{r['id']}: duplicate table or figure keys")
         if not r["id"].startswith("v2-"):
             raise SpecError(f"{r['id']}: only v2 run ids may be written, the older runs stay untouched")
         for x in r["files"]:
@@ -317,7 +325,7 @@ def upload(payload, root, wandb, only=None, entity=ENTITY, project=PROJECT, out=
         media.update({i["key"]: wandb.Image(str(root / i["path"]), caption=i["caption"]) for i in r["images"]})
         run = wandb.init(project=project, entity=entity, id=r["id"], name=r["name"], group=r["group"], job_type=r["job_type"], tags=r["tags"], config=r["config"], resume="allow")
         try:
-            first = getattr(run, "step", 0) == 0
+            first = not getattr(run, "resumed", False)
             if r["history"] and first:
                 run.define_metric("bits")
                 for k in sorted({k for row in r["history"] for k in row if k != "bits"}):

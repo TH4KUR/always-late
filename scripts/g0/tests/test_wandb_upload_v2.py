@@ -223,6 +223,20 @@ class BuildRun(Fixture):
     def test_the_run_is_json_serialisable(self):
         json.dumps(wu.build_run(self.root, fam(), "c"))
 
+    def test_images_with_the_same_file_stem_get_distinct_keys_from_their_folder(self):
+        for d in ("a", "b"):
+            (self.root / "reports" / d).mkdir(); (self.root / "reports" / d / "pair_light.png").write_bytes(b"\x89PNG")
+        r = wu.build_run(self.root, fam(images=["reports/a/pair_light.png", "reports/b/pair_light.png", "reports/x/fig_light.png"]), "c")
+        self.assertEqual([i["key"] for i in r["images"]], ["fig/a-pair_light", "fig/b-pair_light", "fig/fig_light"])
+        self.assertEqual(len({i["key"] for i in r["images"]}), 3)
+        self.assertEqual([i["caption"] for i in r["images"]], ["a/pair_light", "b/pair_light", "fig_light"])
+
+    def test_two_images_with_the_same_stem_and_folder_name_are_refused(self):
+        for d in ("p/a", "q/a"):
+            (self.root / "reports" / d).mkdir(parents=True); (self.root / "reports" / d / "pair_light.png").write_bytes(b"\x89PNG")
+        with self.assertRaises(wu.SpecError):
+            wu.build_run(self.root, fam(images=["reports/p/a/pair_light.png", "reports/q/a/pair_light.png"]), "c")
+
     def test_the_status_must_be_exploratory_or_confirmatory(self):
         with self.assertRaises(wu.SpecError):
             wu.build_run(self.root, fam(status="preliminary"), "c")
@@ -364,7 +378,8 @@ class FakeArtifact:
 
 class FakeRun:
     def __init__(self, step, rid):
-        self.step, self.id, self.url = step, rid, f"https://wandb.example/{rid}"
+        self.step, self.starting_step, self.resumed = 0, step, step > 0                                          # as the real run: step is this process's counter, resumed and starting_step tell that the run existed
+        self.id, self.url = rid, f"https://wandb.example/{rid}"
         self.logged, self.summary, self.defined, self.artifacts, self.finished = [], {}, [], [], False
 
     def log(self, d, step=None, commit=None): self.logged.append(d)
@@ -424,6 +439,20 @@ class Upload(Fixture):
         rows = [d for d in r.logged if "bits" in d]; self.assertEqual([d["bits"] for d in rows], [32, 4]); self.assertTrue(r.defined)
         self.assertTrue(any(a[0] == "bits" for a, _ in r.defined) or any(a == ("bits",) for a, _ in r.defined))
         self.assertEqual([d for d in wb.runs[1].logged if "bits" in d], [])
+
+    def test_a_payload_with_duplicate_media_keys_is_refused_before_any_run_starts(self):
+        self.payload["runs"][0]["images"] = [{"key": "fig/a", "path": "reports/x/fig_light.png", "caption": "a"}, {"key": "fig/a", "path": "reports/x/fig_light.png", "caption": "b"}]
+        wb = FakeWandb()
+        with self.assertRaises(wu.SpecError):
+            self.run_upload(wb)
+        self.assertEqual(wb.inits, [])
+
+    def test_a_run_counts_as_resumed_from_the_resumed_flag_not_from_the_step_counter(self):
+        class StepOnly(FakeWandb):
+            def init(self, **kw):
+                r = super().init(**kw); r.step = 5                                                                # a fresh run whose counter already moved: not resumed
+                return r
+        wb, _, _ = self.run_upload(StepOnly()); self.assertTrue([d for d in wb.runs[0].logged if "bits" in d])
 
     def test_a_resumed_run_does_not_get_its_history_again(self):
         wb, _, _ = self.run_upload(FakeWandb({"v2-demo": 7})); r = wb.runs[0]
