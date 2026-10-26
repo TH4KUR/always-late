@@ -1,0 +1,40 @@
+{
+ "id": "R4",
+ "kind": "intervention-transfer-revision-amendment",
+ "schema": 1,
+ "created": "2026-10-27 04:32 IST",
+ "title": "Native versus fixed edit at the group level: paired per-language contrasts with sentence resampling (publication recovery plan, task 1, last bullet): protocol fixed before the code and the run",
+ "status": "POST HOC (selected after D-094). Written before the code and the run. The D-094 and D-095 group-level tables (cell medians, A3 and its interval) are unchanged.",
+ "honesty_note": "The group-level results had been analysed under the original rules and the cell medians (fixed edit 0.8479, native 0.4325, weights-only 0.4284 at INT4 on FLORES) had been read and quoted in the report, so the direction of the expected finding is known (the native net harm is close to the weights-only cell). The statistics below are fixed from the plan's wording without reference to any paired per-language difference.",
+ "source": "docs/superpowers/plans/2026-10-26-publication-recovery-after-results.md Task 1: 'Report group native-versus-fixed contrasts per language: native_total = W + native_remainder. Use paired differences and sentence resampling from group chunks, not differences of medians. The .4325 native versus .8479 fixed median is not a license to claim amplitude causes half the harm.'",
+ "question": "For the same sentences and the same groups, how does the harm with the quantized state's own activation (the native edit) differ from the harm with the fixed full-precision edit and from the weights-only harm, language by language, and how large is the native remainder (native total minus weights-only effect)?",
+ "inputs": {
+  "group_chunk_directories": {
+   "flores_main": [
+    "transfer-group-int16",
+    "transfer-group-int6",
+    "transfer-group-int4r"
+   ],
+   "wikipedia_external": [
+    "transfer-ext-group-int16",
+    "transfer-ext-group-int6",
+    "transfer-ext-group-int4"
+   ]
+  },
+  "meta_transfer_sha256": {
+   "transfer-group-int16": "9e226a59ca0db681e9284ae123a831ed199a788d5130982741b8af61462087b1",
+   "transfer-group-int6": "7b67edb7c5b2e715faf123a63d03aef3e5211bb6b8c9e0c13a3e3623ecc59920",
+   "transfer-group-int4r": "4a666db2d5d9e5d1a13927c2d841738da9711ca0c7b2bcd41c3de83cb2610492",
+   "transfer-ext-group-int16": "372677708fdc4bbfadee8e8b0c3491643a09e578c7ff6729ea5af225050413aa",
+   "transfer-ext-group-int6": "ceff97d2d92b7a7e07b08c89fc4d1b75e7d319443ccbbdb7c3c1a9e8659071d7",
+   "transfer-ext-group-int4": "42f424b8f972e7b9f5911ba8230017e59454d2bbbd2eedcde9cbe8ea5d97d801"
+  },
+  "languages": "flores_main: the 27 languages of reports/intervention_transfer/core_sample.json; wikipedia_external: eng_Latn, hin_Deva, rus_Cyrl, spa_Latn, yor_Latn, zho_Hans (the order of the group chunks); 300 sentences (passages) and 3 matched control draws per language; the planned item counts are checked as in phase1_transfer_report.py"
+ },
+ "cells_and_quantities": "from the net harm (group minus the mean of the control draws, pooled over the sentences of a language by target-row count; a sentence with a missing set is left out and counted) in the five cells FF, QF, FQ, QQ, QN: context C = QF - FF; weights W = FQ - FF; interaction I = QQ - QF - FQ + FF; fixed total F = QQ - FF; native total N = QN - FF; NATIVE REMAINDER R = QN - FQ (= N - W, an identity asserted to 1e-12 per language and state); amplitude difference D = QN - QQ (= N - F)",
+ "per_language": "for every language and state: the five cells and C, W, I, F, N, R, D with sentence-bootstrap percentile intervals (95 %) for W, F, N, R, D",
+ "summaries_over_languages": "per corpus and state, each as a median over languages of PAIRED per-language values (never a ratio of medians): median R, median D, median N, median F, median W; the median over languages of |R| - |W| and the number of languages with |R| > |W|; the number of languages with D < 0 (the native harm is smaller than the fixed-edit harm) and with R > 0; point estimate on the data and 95 % percentile interval over the replicates",
+ "bootstrap": "sentences (passages) resampled with replacement once per replicate, the same multiplicities for every language and cell (the pairing: both cells of a paired difference see the same resampled sentences), the scheme and seed of bootstrap_a3 (np.random.default_rng(20261026), multiplicities = np.bincount(rng.integers(0, S, S), minlength=S)), 2,000 replicates; the groups and control draws are fixed, so the interval covers sentence sampling only",
+ "reading_rules": "No statement of the form 'amplitude causes X % of the harm' and no ratio of cell medians. D and R are paired per-language differences of the same sentences. The INT16 state is the rounding reference (D and R there are numerical noise of the five cells). The context term C belongs to the fixed edit and has no native counterpart; the interaction between amplitude and weights is inside R. A median of paired differences that is close to zero with an interval that includes zero is 'not separated from zero', never 'equal'.",
+ "code": "scripts/g0/phase1_transfer_native_fixed.py with scripts/g0/tests_torch/test_phase1_transfer_native_fixed.py (tests first, mutation checked); outputs in reports/intervention_transfer/results/recovery/ (native_fixed_per_language.csv, native_fixed_summary.csv, native_fixed.json)"
+}
