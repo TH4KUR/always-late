@@ -305,6 +305,13 @@ class ComponentSummary(unittest.TestCase):
         self.assertAlmostEqual(find(rec, kind="real", split="all", metric="interaction_share")["point"], r["I_norm"] / (r["C_norm"] + r["W_norm"]))
         a = find(rec, kind="real", split="all", metric="normalized_error"); self.assertEqual((a["n_features"], a["n_clusters"]), (2, 2))                          # sentences 1000 and 1997 share the source cluster 3; 1001 is cluster 4
 
+    def test_h1_shares_are_the_error_left_after_a_rescaling_and_after_the_native_amplitude_relative_to_the_error(self):
+        mine = {"gram": gram_of([[10.0, 0.0], [10.0, 1.0], [10.0, 2.0], [10.0, 4.0], [10.0, 1.0]]), "cells": list(tc.CELLS), "dloss": [0.1] * 5, "loss_base": [2.0] * 5, "n_rows": 2, "n_target_rows": 5, "n_active_q": 1, "n_positions": 2}
+        same = {**mine, "gram": gram_of([[10.0, 0.0], [10.0, 0.0], [10.0, 0.0], [10.0, 0.0], [10.0, 0.0]])}                                      # no error at all: the shares are undefined
+        rows = floored({(10, 1000, "real"): mine, (10, 2000, "real"): same}, {"real": 1.0}); rec = ta.component_summary(rows, n_boot=20, seed=1, eligible_only=False)
+        s = find(rec, kind="real", split="all", metric="scalar_residual_share"); n = find(rec, kind="real", split="all", metric="native_error_share")
+        self.assertAlmostEqual(s["point"], 4.0 / 4.0); self.assertAlmostEqual(n["point"], 1.0 / 4.0); self.assertEqual((s["n"], s["n_missing"], n["n"], n["n_missing"]), (1, 1, 1, 1))
+
     def test_a_metric_that_is_undefined_for_an_item_is_counted_as_missing(self):
         rows = floored({(10, 1000, "real"): item(10, 10), (10, 2000, "real"): {**item(10, 10), "gram": gram_of([[0, 0], [0, 0], [0, 0], [1, 1], [0, 1]])}}, {"real": 0.0001})
         a = find(ta.component_summary(rows, n_boot=20, seed=1, eligible_only=False), kind="real", split="all", metric="scalar_normalized_error"); self.assertEqual((a["n"], a["n_missing"]), (1, 1))
@@ -485,7 +492,12 @@ class Diagnostic(unittest.TestCase):
     def test_a_generic_sensitivity_that_carries_the_signal_beats_both_baselines_and_meets_the_criterion(self):
         r = ta.diagnostic(synthetic_design(signal="B"), n_boot=200, seed=1)
         self.assertEqual((r["n_calibration"], r["n_heldout"]), (96, 72)); self.assertEqual(set(r["models"]), {"A", "A+G", "A+B", "A+B+G"}); self.assertEqual(r["diagnostic"], "A+B")
-        self.assertGreater(r["improvement"]["point"], 0.5); self.assertGreater(r["improvement"]["low"], 0.0); self.assertTrue(r["criterion_met"]); self.assertLess(r["models"]["A+B"]["heldout_mae"], r["models"]["A"]["heldout_mae"])
+        self.assertGreater(r["improvement"]["point"], 0.5); self.assertGreater(r["improvement"]["low"], 0.0); self.assertGreater(r["improvement_over_A"]["low"], 0.0); self.assertTrue(r["criterion_met"]); self.assertLess(r["models"]["A+B"]["heldout_mae"], r["models"]["A"]["heldout_mae"])
+
+    def test_the_improvement_over_the_activation_baseline_alone_is_the_h3_quantity_and_uses_a_not_the_strongest_baseline(self):
+        d = synthetic_design(signal="G", seed=5); r = ta.diagnostic(d, n_boot=50, seed=1); self.assertEqual(r["strongest_baseline"], "A+G")
+        held = d["split"] == "heldout"; ref = ta.paired_relative_improvement(r["models"]["A"]["abs_error"], r["models"]["A+B"]["abs_error"], d["feature"][held], d["cluster"][held], 50, 1)
+        self.assertEqual(r["improvement_over_A"], ref); self.assertNotEqual(r["improvement_over_A"], r["improvement"])
 
     def test_pure_noise_gives_no_utility_and_the_null_model_is_the_calibration_median(self):
         r = ta.diagnostic(synthetic_design(signal=None, seed=3), n_boot=200, seed=1); self.assertFalse(r["criterion_met"]); self.assertLess(r["improvement"]["point"], 0.1)

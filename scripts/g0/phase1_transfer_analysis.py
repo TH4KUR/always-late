@@ -230,6 +230,8 @@ METRICS = {
     "C_rel": (lambda r: _rel(r, "C_norm"), "median"), "W_rel": (lambda r: _rel(r, "W_norm"), "median"), "I_rel": (lambda r: _rel(r, "I_norm"), "median"), "total_rel": (lambda r: _rel(r, "total_norm"), "median"),
     "c_gt_w": (lambda r: float(r["C_norm"] > r["W_norm"]), "mean"),
     "interaction_share": (lambda r: r["I_norm"] / (r["C_norm"] + r["W_norm"]) if r["C_norm"] + r["W_norm"] > 0 else None, "median"),
+    "scalar_residual_share": (lambda r: r["scalar_residual_norm"] / r["error_norm"] if r["scalar_residual_norm"] is not None and r["error_norm"] > 0 else None, "median"),
+    "native_error_share": (lambda r: r["native_error_norm"] / r["error_norm"] if r["error_norm"] > 0 else None, "median"),
     "cosine": (lambda r: r["cosine"], "median"), "norm_ratio": (lambda r: r["norm_ratio"], "median"), "error_over_floor": (lambda r: r["error_over_floor"], "median"),
 }
 
@@ -400,4 +402,5 @@ def diagnostic(d, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, lams=RIDGE_S
     strongest = min(BASELINES, key=lambda n: models[n]["cv_mae"]); fh, ch_ = d["feature"][held], d["cluster"][held]
     imp = paired_relative_improvement(models[strongest]["abs_error"], models[DIAGNOSTIC]["abs_error"], fh, ch_, n_boot, seed)
     imp_all = paired_relative_improvement(models[strongest]["abs_error"], models["A+B+G"]["abs_error"], fh, ch_, n_boot, seed)
-    return {**out, "status": "fitted", "models": models, "null_mae": float(np.abs(y_held - np.median(y_cal)).mean()), "strongest_baseline": strongest, "improvement": imp, "improvement_with_gradient": imp_all, "criterion_met": utility_criterion(imp)}
+    imp_a = paired_relative_improvement(models["A"]["abs_error"], models[DIAGNOSTIC]["abs_error"], fh, ch_, n_boot, seed)
+    return {**out, "status": "fitted", "models": models, "null_mae": float(np.abs(y_held - np.median(y_cal)).mean()), "strongest_baseline": strongest, "improvement": imp, "improvement_over_A": imp_a, "improvement_with_gradient": imp_all, "criterion_met": utility_criterion(imp)}
