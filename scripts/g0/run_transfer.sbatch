@@ -25,6 +25,7 @@ export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=6 PYTORCH_CUDA_ALLOC_CONF=expandable_s
 OUT=$BASE/out/phase1/$NAME; mkdir -p "$OUT"
 REPO=${REPO:-$BASE/phase1/repo}; COMMIT=$(cat $REPO/COMMIT)      # REPO may point to a snapshot deployed under another name (deploy_phase1.sh DEST)
 nvidia-smi -L; date
+nvidia-smi -L | grep -q 'GPU 0' || { echo 'no GPU visible on this node: refusing to run on the CPU (job 40402 did, 2026-10-26)'; exit 4; }     # a node whose CUDA fails would run on the CPU and still pass every gate
 nvidia-smi --query-gpu=timestamp,index,memory.used,memory.total,utilization.gpu --format=csv,noheader -l 10 > "$OUT/gpu_mem.log" &
 MONPID=$!
 cd $REPO/scripts/g0
