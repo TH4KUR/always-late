@@ -189,3 +189,118 @@ def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, 
             log(f"state {label} chunk {ci + 1}/{len(chunks)}: {len(res['items'])} items, {time.time() - t1:.0f} s")
     setup("FP"); meta["seconds"] = time.time() - t0
     return meta
+
+
+class GateError(RuntimeError):
+    pass
+
+
+def check_core_against_freeze(freeze, core):
+    """The core sample the job reads and the spec in the code must be the frozen ones (the hashes of the feature ids, the matched directions and the contexts, and the whole spec)."""
+    import phase1_transfer_freeze as tf
+    now, was = tf._core_block(core), freeze["core"]; problems = []
+    for key, label in (("feature_ids_sha256", "feature_ids"), ("direction_ids_sha256", "direction_ids"), ("contexts_sha256", "contexts"), ("n_features", "n_features"), ("n_feature_context_pairs", "n_pairs")):
+        if now[key] != was.get(key):
+            problems.append(label)
+    if json.loads(json.dumps(tf.SPEC)) != freeze["spec"]:
+        problems.append("spec")
+    if problems:
+        raise ValueError("the core sample or the spec of the code differ from the freeze in: " + ", ".join(problems))
+
+
+def main(argv=None):
+    import argparse, gc, time
+    ROOT = Path(__file__).resolve().parents[2]
+    ap = argparse.ArgumentParser(description="Intervention-transfer study (D-088): the feature-level core, Gemma-2-2B layer 12, states FP and the quantized ones (instrument job or full run).")
+    ap.add_argument("--out", required=True); ap.add_argument("--flores-root", required=True); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
+    ap.add_argument("--freeze", default=str(ROOT / "reports/intervention_transfer/freeze.json")); ap.add_argument("--core", default=str(ROOT / "reports/intervention_transfer/core_sample.json"))
+    ap.add_argument("--states", nargs="+", default=["16", "6", "4"], help="quantized states (bit widths; FP is always the reference); 16 = the rounding-only floor")
+    ap.add_argument("--chunk-features", type=int, default=25); ap.add_argument("--max-features", type=int, help="evenly spaced subset of the core (instrument job)"); ap.add_argument("--max-contexts", type=int, help="first contexts of each feature (instrument job)")
+    ap.add_argument("--dev-per-language", type=int, default=997); ap.add_argument("--max-len", type=int, default=256); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024)
+    ap.add_argument("--commit", default="unknown")
+    a = ap.parse_args(argv)
+    t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
+    freeze_text = Path(a.freeze).read_text(); freeze = json.loads(freeze_text); core = json.loads(Path(a.core).read_text()); check_core_against_freeze(freeze, core)
+    freeze_sha = hashlib.sha256(freeze_text.encode()).hexdigest()
+
+    from tqdm.auto import tqdm
+    from transformer_lens import HookedTransformer
+    from sae_lens import SAE
+    import their_code as their
+    import phase1_data as pd_
+    import phase1_func_run as fr
+    import phase1_func_f5_run as fr5
+    import phase1_lib as p1
+    torch.set_grad_enabled(False)
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    LAYER = fr.LAYER
+    env = {"torch": torch, "np": np, "tqdm": tqdm, "gc": gc, "HookedTransformer": HookedTransformer, "SAE": SAE, "DEVICE": DEVICE, "WORK_DEVICE": DEVICE, "BATCH_SIZE": 1, "FIRING_THRESHOLD": 0.001}
+    ex = their.extract_functions(their.PRISTINE, their.THEIR_FUNCTIONS); their.verify_hashes(ex, json.loads(their.MANIFEST.read_text())["functions"]); their.build_namespace(ex, env)
+    log("their functions verified against the frozen manifest")
+    import phase1_run as pr
+    model, model_name = env["load_gemma_tl_model"](pr.MODEL_CANDIDATES)
+    sae = env["load_sae_compat"](pr.SAE_RELEASE, pr.SAE_ID, DEVICE)
+    hook = getattr(sae.cfg, "hook_name", None) or f"blocks.{LAYER}.hook_resid_post"
+    assert hook == f"blocks.{LAYER}.hook_resid_post", f"unexpected SAE hook {hook}"
+    assert sae.cfg.d_in == model.cfg.d_model
+    env["model_work"] = model; env["original_state_cpu"] = env["clone_state_to_cpu"](model)
+    tok = model.tokenizer; bos = tok.bos_token_id; pad = tok.pad_token_id if tok.pad_token_id is not None else 0
+    lower = lambda tokens: model(tokens, stop_at_layer=LAYER + 1)
+    upper = lambda resid: model(resid, start_at_layer=LAYER + 1)
+    upper_final, logits_fn = fr5.make_upper_final(model, LAYER), fr5.make_logits_fn(model)
+    encode = lambda x: env["encode_sae"](sae, x)
+    restore = env["restore_model_work"]
+    suffix = lambda x: logits_fn(upper_final(x.to(DEVICE)))
+    log("model", model_name, "hook", hook, "d_sae", int(sae.cfg.d_sae), "V", int(model.cfg.d_vocab), "soft cap", model.cfg.output_logits_soft_cap)
+
+    labels = [fr5.state_label(x) for x in a.states]
+    if "FP" in labels or "FP_rebatched" in labels:
+        raise SystemExit("--states are the quantized states; FP is the reference and is always run")
+    setup_seconds = {}
+
+    def setup(label):
+        s = time.time(); restore()
+        if fr5.state_bits(label) is not None:
+            env["quantize_rtn_per_output_channel_tl"](model, bits=fr5.state_bits(label))
+        d = setup_seconds.setdefault(label, {"calls": 0, "seconds": 0.0}); d["calls"] += 1; d["seconds"] += time.time() - s
+
+    names = [r["code"] for r in pd_.load_roster(a.roster)]
+    if list(core["languages"]) != names:
+        raise ValueError("the core sample was built for another language order")
+    dev_tokens, truncated = [], 0
+    for code in names:
+        for s in pd_.encode_sentences(tok, pd_.read_flores_split(a.flores_root, code, "dev", 997)[:a.dev_per_language]):
+            truncated += len(s) > a.max_len; dev_tokens.append(s[:a.max_len])
+    if len(dev_tokens) != len(names) * a.dev_per_language:
+        raise ValueError(f"{len(dev_tokens)} dev sentences, expected {len(names) * a.dev_per_language}: the dev pool is not the one of the core sample")
+    batcher = lambda sents: p1.make_batches({0: sents}, bos, "mask", pad, a.max_len, a.batch_size, a.max_tokens)
+    log("dev sentences", len(dev_tokens), "truncated", truncated, "features in the core", len(core["feature_ids"]), "states", labels)
+
+    setup("FP")
+    probe = batcher(dev_tokens[:8])[0]; tokens, valid = probe["tokens"][:4].to(DEVICE), probe["valid"][:4].to(DEVICE)
+    resid = lower(tokens); z_ref = upper(resid)
+    gates = {"split_equals_full": bool(torch.equal(model(tokens), z_ref))}
+    z_ref = z_ref[valid][:256].float()
+    gates["logits_native_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid)[valid][:256]), min_top1=0.95, max_abs=2.0)
+    gates["logits_float32_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid.float())[valid][:256]), min_top1=0.95, max_abs=2.0)
+    del resid, z_ref; gc.collect(); torch.cuda.empty_cache()
+    log("gates:", gates)
+    if not gates["split_equals_full"] or not gates["logits_native_residual"]["ok"] or not gates["logits_float32_residual"]["ok"]:
+        raise GateError(f"the split or the float32 logits do not reproduce the model: {gates}")
+
+    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    meta = {"task": "transfer", "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_features": a.max_features, "max_contexts": a.max_contexts,
+            "freeze_sha256": freeze_sha, "core_sha256": hashlib.sha256(Path(a.core).read_bytes()).hexdigest(), "gates": gates, "dev_sentences": len(dev_tokens), "truncated": truncated,
+            "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "complete": False}
+    (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
+    res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts)
+    if not res["gates"]["sham_exact"]:
+        raise GateError(f"the sham edit is not exactly zero (max abs {res['gates']['sham_max_abs']}): the unedited and the edited rows do not take identical computations")
+    setup("FP")
+    meta.update({"run": res, "setup_seconds": setup_seconds, "complete": True, "seconds": time.time() - t0, "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0})
+    (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
+    log("done; items per state", {k: v["items"] for k, v in res["states"].items()}, "peak GPU GB", meta["peak_gpu_gb"])
+
+
+if __name__ == "__main__":
+    main()

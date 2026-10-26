@@ -339,6 +339,39 @@ class ShamGate(unittest.TestCase):
         self.assertEqual(meta["states"]["INT6"]["chunks"], 4); self.assertEqual(m.calls.count("INT6"), 1 + 4)
 
 
+class FreezeCheck(unittest.TestCase):
+    def setUp(self):
+        import json as _json
+        import phase1_transfer_freeze as tf
+        self.tf = tf; self.tmp = tempfile.TemporaryDirectory(); d = Path(self.tmp.name); (d / "f").write_text("x")
+        self.core = {"feature_ids": [3, 5], "direction_ids": [5, 3], "feature_language_index": [0, 0], "contexts": [[1, 2], [2, 3]], "excluded_features": [], "parameters": {"M": 2}}
+        self.freeze = _json.loads(_json.dumps(tf.build_freeze({"f": d / "f"}, self.core, "abc", "now", root=d)))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_the_committed_core_and_the_spec_of_the_code_must_equal_the_freeze(self):
+        tr.check_core_against_freeze(self.freeze, self.core)
+        for key, mutate in (("feature_ids", lambda c: c["feature_ids"].__setitem__(0, 4)), ("direction_ids", lambda c: c["direction_ids"].__setitem__(0, 6)), ("contexts", lambda c: c["contexts"][0].append(9))):
+            import json as _json
+            c = _json.loads(_json.dumps(self.core)); mutate(c)
+            with self.assertRaisesRegex(ValueError, key):
+                tr.check_core_against_freeze(self.freeze, c)
+
+    def test_a_changed_spec_in_the_code_is_reported(self):
+        self.freeze["spec"]["bootstrap"]["replicates"] = 5
+        with self.assertRaisesRegex(ValueError, "spec"):
+            tr.check_core_against_freeze(self.freeze, self.core)
+
+    def test_the_sbatch_wrapper_and_the_deploy_script_name_the_frozen_files(self):
+        root = Path(__file__).resolve().parents[3]
+        wrapper = (root / "scripts/g0/run_transfer.sbatch").read_text(); deploy = (root / "scripts/g0/deploy_phase1.sh").read_text()
+        for needle in ("phase1_transfer_run.py", "reports/intervention_transfer/freeze.json", "reports/intervention_transfer/core_sample.json", "HF_HUB_OFFLINE=1"):
+            self.assertIn(needle, wrapper)
+        for needle in ("reports/intervention_transfer/freeze.json", "reports/intervention_transfer/core_sample.json"):
+            self.assertIn(needle, deploy)
+
+
 class Constants(unittest.TestCase):
     def test_the_direction_kinds_and_seeds_are_those_of_the_frozen_spec(self):
         import phase1_transfer_freeze as tf
