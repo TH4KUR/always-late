@@ -240,7 +240,7 @@ Regeneration checks: the Phase 1 reproduction compared 89 output files against c
 \label{app:rules}
 The upper part of Table~\ref{tab:rules} lists the rules of Study G and its three extensions (B, C, D) as written before the data were scored, with their outcomes; the unsupported ones are named below it.
 \begin{table*}[!t]
-\centering\footnotesize
+\centering\scriptsize
 \begin{tabular}{p{1.4cm}p{6.0cm}p{5.3cm}p{1.3cm}}
 \toprule
 Rule & Condition fixed beforehand (languages counted out of 27) & Outcome & Verdict\\
@@ -276,12 +276,11 @@ Fine amplification & 1.1 at INT4: net harm $-0.00135$ $[-0.00197,-0.00032]$, 20 
 Optimum and groups & optimum reliable (0.92), not related to shrinkage in this sample ($-0.17$); state-defined groups not more consequential ($-0.0098$) & exploratory, post hoc in origin\\
 Second model & Llama-3.2-1B: P1 not met (21 of 27), flat through INT6, no INT4 amplification; verdict not consistent & exploratory, pre-specified rule\\
 Transfer, group level & net harm 0.85 against 0.26 at INT4; $|C|=0.310$, $|W|=0.104$ (difference $[+0.022,+0.073]$, context larger in 19 of 27); INT6 $0.0091$ and $0.0092$ & A3 supported at INT4, undecided at INT6\\
-Transfer, feature level & 2,203 eligible items of 235 features; cosine 0.984 and 0.768, error 0.165 and 0.664 at INT6 and INT4; 97--99\% of the error orthogonal to the FP effect; weight term above context term; real direction not clearly above controls & H1 supported; rest exploratory\\
-Averaged fingerprints & cosine gap $+0.126$ at INT4 against $+0.0145$ at INT16 (features-only interval) & H4 supported\\
-Prediction & 21.5\% $[12.7,29.4]$ at INT4, 10.9\% $[-1.2,21.4]$ at INT6, 23.4\% at INT16; gradient and Pearson survival add nothing & H3 mixed; utility not met\\
+Transfer, feature level & 2,203 eligible items; cosine 0.984 and 0.768, error 0.165 and 0.664 at INT6 and INT4, 97--99\% orthogonal to the FP effect; weight above context term; real direction not above controls; averaged-fingerprint gap $+0.126$ at INT4 ($+0.0145$ at INT16) & H1 and H4 supported; rest exploratory\\
+Prediction & error reduction 21.5\% $[12.7,29.4]$ at INT4, 10.9\% $[-1.2,21.4]$ at INT6, 23.4\% at INT16; gradient and survival add nothing & H3 mixed; utility not met\\
 \bottomrule
 \end{tabular}
-\caption{Upper part: pre-specified rules of Study G and its extensions with outcomes (net harm: group harm minus matched controls scaled by the same multiplier, nats per token). Lower part: every result block with its status (``frozen'': fixed in a committed file before scoring; ``confirmatory'': fixed in advance, reported whatever the outcome).}
+\caption{Upper: pre-specified rules of Study G and its extensions with outcomes (net harm: group minus matched controls, nats per token). Lower: every result block with its status.}
 \label{tab:rules}
 \end{table*}
 
