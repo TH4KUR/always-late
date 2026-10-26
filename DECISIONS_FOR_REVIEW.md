@@ -229,5 +229,12 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Update 2026-10-26 (no answer needed; evidence for your choice):** the default (a) was carried out: extension B ran (five jobs, D-085). Result: the groups selected in each precision differ from the full-precision ones (42 of 64 features shared at INT4) but are NOT more consequential in that precision (H-Gb2 not met, opposite sign: median net harm difference -0.0098 nats per token at INT4; the dose-response curves coincide). So the choice between the two readings does not change Study G's conclusions at this resolution; the main design (full-precision groups) stands. You may still answer if you want the other reading reported as the headline.
 - STATUS: open
 
+## Q28. Intervention-transfer study: only FP, INT16 (floor), INT6 and INT4 as in Codex's plan, or also INT8 and INT5? (D-088)  [LOW-MEDIUM, scope; not blocking]
+- **Context.** The new study (verified 2026-10-26, see `reports/intervention_transfer/verification_2026-10-26.md`) is not Study G, so the six-state floor of D-075 does not bind it; it keeps 27 languages x 300 sentences x 3 control draws for the group panel. Extra states would show where the context/weights split changes along the ladder, at roughly +50 % GPU time.
+- **Options.** (a) default: plan as written (INT6, INT4); (b) add INT8 and INT5 as extra cells after the core matrix if the 32 GPU-hour ceiling allows; (c) add them to the core.
+- **Default:** (a), with (b) if the measured throughput leaves room.
+- ANSWER:
+- STATUS: open
+
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
