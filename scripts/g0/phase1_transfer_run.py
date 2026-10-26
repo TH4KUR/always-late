@@ -81,11 +81,29 @@ def load_chunk(path, key):
     return d["payload"]
 
 
-def process_items(items, suffixes, switches, center=True):
+def _batches(jobs, max_rows):
+    """Group the items by context ("ctx"; an item without one is its own context) and cut each group into sub-batches whose largest suffix call (the quantized suffix with the fixed AND the native edits of the quantized
+    prefix: 1 + 2K sequences of L rows) stays within `max_rows` rows (at least one item per sub-batch). Items of one context must share the residuals and the targets."""
+    groups = {}
+    for it in jobs:
+        groups.setdefault(it.get("ctx", ("single", it["key"])), []).append(it)
+    out = []
+    for g in groups.values():
+        first = g[0]
+        if any(it["h_fp"] is not first["h_fp"] or it["h_q"] is not first["h_q"] or it["targets"] is not first["targets"] for it in g[1:]):
+            raise ValueError(f"items of the context {first.get('ctx', first['key'])} must share the residuals and the targets")
+        kmax = max(1, ((max_rows // first["h_fp"].shape[0]) - 1) // 2)
+        out += [g[i:i + kmax] for i in range(0, len(g), kmax)]
+    return out
+
+
+def process_items(items, suffixes, switches, center=True, max_rows=768, observer=None):
     """The five cells of the crossed design for a list of items, each with its OWN edits (the feature-level run builds them from one feature's amplitude times a direction, the group-level run from the sum over a
     feature group). item: {"key" (unique), "rows" (edited rows of the cached context), "h_fp", "h_q" ([L, d] float32 prefix residuals), "edit_fp" (the FP edit at those rows, used in the cells FP/FP, Q/FP, FP/Q,
-    Q/Q), "edit_native" (the quantized state's own edit, cell Q/Q-native), "targets" ([L], -1 = none), "pool" (key of the pool the item belongs to, or None), "n_active_q" (optional count)}.
-    Order of work: switches["FP"](), the FP-suffix cells of every item (vectors kept on the host), switches["Q"](), the Q-suffix cells, then the Gram matrices.
+    Q/Q), "edit_native" (the quantized state's own edit, cell Q/Q-native), "targets" ([L], -1 = none), "pool" (key of the pool the item belongs to, or None), "ctx" (items of one context: the same residual and
+    target objects; they share the unedited run in ONE suffix call per cell, see `_batches`), "n_active_q" (optional count)}.
+    Order of work: switches["FP"](), the FP-suffix cells of every context batch (vectors kept on the host), switches["Q"](), the Q-suffix cells (the cells Q/Q and Q/Q-native of a batch share one call and one
+    unedited run), then the Gram matrices. observer: see `phase1_transfer_core.effect_many` (the tag is (cell, [item keys]); for the call 'Q/Q+Q/Q-native' the first K edits are Q/Q, the next K Q/Q-native).
     -> {"items": {key: {"gram" (5 x 5 float64), "dloss", "loss_base" (five values each), "n_rows", "n_target_rows", "n_active_q", "n_positions"}}, "pooled": {pool: {"gram", "n_rows", "n_contexts"}}, "skipped": [(key, reason)]}."""
     keys = [it["key"] for it in items]
     if len(set(keys)) != len(keys):
@@ -96,32 +114,35 @@ def process_items(items, suffixes, switches, center=True):
             skipped.append((it["key"], "no_edited_row"))
         else:
             jobs.append(it)
-    fp_vectors = {}
+    batches = _batches(jobs, max_rows); fp_vectors = {}
     switches["FP"]()
-    for it in jobs:
+    for b in batches:
+        f0, ks = b[0], [it["key"] for it in b]; edits = [(it["rows"], it["edit_fp"]) for it in b]
         try:
-            fp_vectors[it["key"]] = {"FP/FP": _cpu(tc.effect(it["h_fp"], it["rows"], it["edit_fp"], suffixes["FP"], it["targets"], center)),
-                                     "Q/FP": _cpu(tc.effect(it["h_q"], it["rows"], it["edit_fp"], suffixes["FP"], it["targets"], center))}
+            ff = tc.effect_many(f0["h_fp"], edits, suffixes["FP"], f0["targets"], center, observer, ("FP/FP", ks)); qf = tc.effect_many(f0["h_q"], edits, suffixes["FP"], f0["targets"], center, observer, ("Q/FP", ks))
         except ValueError as e:
-            raise ValueError(f"context {it['key']}: {e}") from None
+            raise ValueError(f"context {ks[0]} (batch of {len(ks)}): {e}") from None
+        for it, x, y in zip(b, ff, qf):
+            fp_vectors[it["key"]] = {"FP/FP": _cpu(x), "Q/FP": _cpu(y)}
     out, sums, nrows, counts = {}, {}, {}, {}
     switches["Q"]()
-    for it in jobs:
-        key = it["key"]
+    for b in batches:
+        f0, ks = b[0], [it["key"] for it in b]; edits = [(it["rows"], it["edit_fp"]) for it in b]; native = [(it["rows"], it["edit_native"]) for it in b]
         try:
-            cells = dict(fp_vectors.pop(key))
-            cells["FP/Q"] = _cpu(tc.effect(it["h_fp"], it["rows"], it["edit_fp"], suffixes["Q"], it["targets"], center)); cells["Q/Q"] = _cpu(tc.effect(it["h_q"], it["rows"], it["edit_fp"], suffixes["Q"], it["targets"], center))
-            cells["Q/Q-native"] = _cpu(tc.effect(it["h_q"], it["rows"], it["edit_native"], suffixes["Q"], it["targets"], center))
+            fq = tc.effect_many(f0["h_fp"], edits, suffixes["Q"], f0["targets"], center, observer, ("FP/Q", ks))
+            qq = tc.effect_many(f0["h_q"], edits + native, suffixes["Q"], f0["targets"], center, observer, ("Q/Q+Q/Q-native", ks))
         except ValueError as e:
-            raise ValueError(f"context {key}: {e}") from None
-        n = cells["FP/FP"]["n_rows"]
-        out[key] = {"gram": tc.gram(cells).numpy().astype(np.float64), "dloss": [cells[c]["dloss"] for c in tc.CELLS], "loss_base": [cells[c]["loss_base"] for c in tc.CELLS], "n_rows": n,
-                    "n_target_rows": int((it["targets"] >= 0).sum()), "n_active_q": it.get("n_active_q"), "n_positions": int(len(it["rows"]))}
-        pool = it.get("pool")
-        if pool is not None:
-            acc = sums.setdefault(pool, {c: 0 for c in tc.CELLS}); nrows[pool] = nrows.get(pool, 0) + n; counts[pool] = counts.get(pool, 0) + 1
-            for c in tc.CELLS:
-                acc[c] = acc[c] + n * cells[c]["vector"].double()
+            raise ValueError(f"context {ks[0]} (batch of {len(ks)}): {e}") from None
+        for i, it in enumerate(b):
+            key = it["key"]; cells = dict(fp_vectors.pop(key)); cells["FP/Q"] = _cpu(fq[i]); cells["Q/Q"] = _cpu(qq[i]); cells["Q/Q-native"] = _cpu(qq[len(b) + i])
+            n = cells["FP/FP"]["n_rows"]
+            out[key] = {"gram": tc.gram(cells).numpy().astype(np.float64), "dloss": [cells[c]["dloss"] for c in tc.CELLS], "loss_base": [cells[c]["loss_base"] for c in tc.CELLS], "n_rows": n,
+                        "n_target_rows": int((it["targets"] >= 0).sum()), "n_active_q": it.get("n_active_q"), "n_positions": int(len(it["rows"]))}
+            pool = it.get("pool")
+            if pool is not None:
+                acc = sums.setdefault(pool, {c: 0 for c in tc.CELLS}); nrows[pool] = nrows.get(pool, 0) + n; counts[pool] = counts.get(pool, 0) + 1
+                for c in tc.CELLS:
+                    acc[c] = acc[c] + n * cells[c]["vector"].double()
     pooled = {}
     for pool, acc in sums.items():
         avg = {c: {"vector": acc[c] / nrows[pool]} for c in tc.CELLS}
@@ -129,7 +150,7 @@ def process_items(items, suffixes, switches, center=True):
     return {"items": out, "pooled": pooled, "skipped": skipped}
 
 
-def process_chunk(features, contexts, caches, positions, amplitudes, dirs, tokens, suffixes, switches, center=True):
+def process_chunk(features, contexts, caches, positions, amplitudes, dirs, tokens, suffixes, switches, center=True, max_rows=768, observer=None):
     """The items of one chunk of the feature-level run: for every feature, context (dev sentence) and direction kind the edit is the activation of the feature at its FP-active positions times the direction (FP
     activation in the fixed cells, the quantized state's own activation in the native cell).
     features: feature ids; contexts: {feature: [dev sentence index]}; caches: {"FP": {sentence: [n+1, d] residual}, "Q": {...}} (any float dtype; converted to float32);
@@ -151,8 +172,8 @@ def process_chunk(features, contexts, caches, positions, amplitudes, dirs, token
             for kind in DIRECTION_KINDS:
                 d = dirs[f][kind].float()
                 items.append({"key": (f, s, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": amplitudes["FP"][(f, s)].float()[:, None] * d[None, :], "edit_native": amplitudes["Q"][(f, s)].float()[:, None] * d[None, :],
-                              "targets": tg, "pool": (f, kind), "n_active_q": n_act})
-    res = process_items(items, suffixes, switches, center)
+                              "targets": tg, "pool": (f, kind), "ctx": (f, s), "n_active_q": n_act})
+    res = process_items(items, suffixes, switches, center, max_rows, observer)
     return {"items": res["items"], "pooled": res["pooled"], "skipped": skipped}
 
 
@@ -174,7 +195,7 @@ def group_items(code, sentence, h_fp, h_q, act_fp, act_q, W_dec, sets, targets):
         if len(rows) == 0:
             skipped.append(((code, sentence, kind), "no_active_group_feature")); continue
         n_act = int((act_q[:, torch.as_tensor(idx, dtype=torch.long)][rows - 1] > 0).any(1).sum())
-        items.append({"key": (code, sentence, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": e_fp, "edit_native": e_q, "targets": targets, "pool": (code, kind), "n_active_q": n_act})
+        items.append({"key": (code, sentence, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": e_fp, "edit_native": e_q, "targets": targets, "pool": (code, kind), "ctx": (code, sentence), "n_active_q": n_act})
     return items, skipped
 
 
@@ -202,7 +223,7 @@ def subset_core(core, max_features, max_contexts):
     return out
 
 
-def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, max_features=None, max_contexts=None):
+def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, max_features=None, max_contexts=None, max_rows=768):
     """The feature-level core of the study for the quantized states `states` (labels, FP excluded: the FP prefix cache is built once). setup(label) puts the model weights in that state ('FP' or a quantized label);
     lower(tokens) -> [B, L, d] prefix residual; suffix([B, L, d] float32) -> [B, L, V] float32 logits (upper layers, final norm, unembedding, soft cap); encode(rows) -> SAE activations;
     W_dec [F, d]; core: the committed core sample (feature ids, matched direction ids, contexts as dev-sentence indices); dev_tokens: token ids of every dev sentence; batcher(sentences) -> batches (as the F5 runner).
@@ -237,14 +258,14 @@ def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, 
                 st["resumed"] += 1; continue
             t1 = time.time()
             res = process_chunk(chunk, {f: ctxs[f] for f in chunk}, caches, pos_f, amps, {f: build_directions(W_cpu, f, matched[f], RANDOM_SEEDS) for f in chunk},
-                                {s: dev_tokens[s] for f in chunk for s in ctxs[f]}, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=label: setup(l)})
+                                {s: dev_tokens[s] for f in chunk for s in ctxs[f]}, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=label: setup(l)}, max_rows=max_rows)
             atomic_save({**res, "features": chunk}, path, key); st["items"] += len(res["items"]); st["skipped"] += len(res["skipped"]); st["seconds"] += time.time() - t1
             log(f"state {label} chunk {ci + 1}/{len(chunks)}: {len(res['items'])} items, {time.time() - t1:.0f} s")
     setup("FP"); meta["seconds"] = time.time() - t0
     return meta
 
 
-def run_group(states, setup, lower, suffix, encode, W_dec, man, languages, eval_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, label="K64", n_controls=3, max_sentences=None):
+def run_group(states, setup, lower, suffix, encode, W_dec, man, languages, eval_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, label="K64", n_controls=3, max_sentences=None, max_rows=768):
     """The group-level panel of the study for the quantized states `states`: the zero-ablation of each language's feature group (`label`, K64: the first K features of the manifest's list) and of its first
     `n_controls` matched control draws on the language's own evaluation sentences, in the cells of the crossed design. man: the frozen groups manifest; languages: codes in the order of the roster;
     eval_tokens: {code: [token ids per evaluation sentence]}; the other arguments as in `run_transfer`. The SAE activations of a sentence are those of its CACHED residual in each state (the SAE does not depend on the
@@ -290,7 +311,7 @@ def run_group(states, setup, lower, suffix, encode, W_dec, man, languages, eval_
             for g in chunk:
                 code, j = sents[g]; h_fp, h_q = cache_fp[g].float(), cache_q[g].float()
                 its, sk = group_items(code, j, h_fp, h_q, acts(h_fp), acts(h_q), W_cpu, sets[code], context_targets(toks[g])); items += its; skipped += sk
-            res = process_items(items, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=state: setup(l)})
+            res = process_items(items, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=state: setup(l)}, max_rows=max_rows)
             res["skipped"] = skipped + res["skipped"]
             atomic_save({**res, "sentences": chunk}, path, key); st["items"] += len(res["items"]); st["skipped"] += len(res["skipped"]); st["seconds"] += time.time() - t1
             log(f"group state {state} chunk {ci + 1}/{len(chunks)}: {len(res['items'])} items, {time.time() - t1:.0f} s")
@@ -337,7 +358,7 @@ def main(argv=None):
     ap.add_argument("--task", choices=["feature", "group"], default="feature", help="feature: the feature-level core (404 features); group: the group-level panel (K64 group and control draws on the 27 x 300 evaluation sentences)")
     ap.add_argument("--manifest", default=str(ROOT / "reports/functional_validation/groups_manifest.json")); ap.add_argument("--eval-freeze", default=str(ROOT / "reports/functional_validation/evaluation_freeze_lm.json"))
     ap.add_argument("--chunk-sentences", type=int, default=60); ap.add_argument("--max-sentences", type=int, help="first n evaluation sentences of each language (group smoke)"); ap.add_argument("--max-languages", type=int, help="first n languages (group smoke)")
-    ap.add_argument("--chunk-features", type=int, default=25); ap.add_argument("--max-features", type=int, help="evenly spaced subset of the core (instrument job)"); ap.add_argument("--max-contexts", type=int, help="first contexts of each feature (instrument job)")
+    ap.add_argument("--max-rows", type=int, default=768, help="largest suffix call in rows (sequences x length); a context batch is cut to stay within it"); ap.add_argument("--chunk-features", type=int, default=25); ap.add_argument("--max-features", type=int, help="evenly spaced subset of the core (instrument job)"); ap.add_argument("--max-contexts", type=int, help="first contexts of each feature (instrument job)")
     ap.add_argument("--dev-per-language", type=int, default=997); ap.add_argument("--max-len", type=int, default=256); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024)
     ap.add_argument("--commit", default="unknown")
     a = ap.parse_args(argv)
@@ -414,18 +435,18 @@ def main(argv=None):
         raise GateError(f"the split or the float32 logits do not reproduce the model: {gates}")
 
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    meta = {"task": "transfer-" + a.task, "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_features": a.max_features, "max_contexts": a.max_contexts,
+    meta = {"task": "transfer-" + a.task, "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_rows": a.max_rows, "max_features": a.max_features, "max_contexts": a.max_contexts,
             "freeze_sha256": freeze_sha, "core_sha256": hashlib.sha256(Path(a.core).read_bytes()).hexdigest(), "gates": gates, "dev_sentences": len(dev_tokens), "truncated": truncated,
             "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "complete": False}
     (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
     if a.task == "feature":
-        res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts)
+        res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts, max_rows=a.max_rows)
     else:
         man = json.loads(Path(a.manifest).read_text()); eval_ids = fr5.frozen_eval_ids(json.loads(Path(a.eval_freeze).read_text())); langs = names[:a.max_languages] if a.max_languages else names; eval_tokens = {}
         for code in langs:
             lines = pd_.read_flores_split(a.flores_root, code, "devtest", 1012)
             eval_tokens[code] = [s[:a.max_len] for s in pd_.encode_sentences(tok, [lines[j] for j in eval_ids])]
-        res = run_group(labels, setup, lower, suffix, encode, sae.W_dec, man, langs, eval_tokens, batcher, out, freeze_sha, a.chunk_sentences, device=DEVICE, log=log, max_sentences=a.max_sentences)
+        res = run_group(labels, setup, lower, suffix, encode, sae.W_dec, man, langs, eval_tokens, batcher, out, freeze_sha, a.chunk_sentences, device=DEVICE, log=log, max_sentences=a.max_sentences, max_rows=a.max_rows)
     if not res["gates"]["sham_exact"]:
         raise GateError(f"the sham edit is not exactly zero (max abs {res['gates']['sham_max_abs']}): the unedited and the edited rows do not take identical computations")
     setup("FP")

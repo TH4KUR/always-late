@@ -15,37 +15,56 @@ _BASE = ("FP/FP", "Q/FP", "FP/Q", "Q/Q")
 _COEF = {"C": (-1, 1, 0, 0, 0), "W": (-1, 0, 1, 0, 0), "I": (1, -1, -1, 1, 0), "total": (-1, 0, 0, 1, 0), "native_minus_fixed": (0, 0, 0, -1, 1)}
 
 
-def effect(residual, rows, edit, suffix, targets=None, center=True):
-    """One context, one edit, one cell. residual [L, d] float32; rows: the edited row indices (distinct, inside the context); edit [len(rows), d]: the vector subtracted from those rows; targets [L] long (-1: no
-    target at that row), optional. -> {"vector": [V] mean over the edited rows of the (centered) logit change, "dloss": mean over the rows with a target of the NLL change or None, "loss_base": the unedited
-    mean NLL or None, "n_rows": number of edited rows}."""
+def effect_many(residual, edits, suffix, targets=None, center=True, observer=None, tag=None):
+    """Several edits of ONE context in ONE suffix call: the unedited residual and every edited residual form one batch [1 + K, L, d], so that the unedited run is shared (fewer sequences, and the unembedding
+    of the readout is converted once per call instead of once per edit) while base and edits still take the same computation (a zero edit is exactly zero).
+    residual [L, d] float32; edits: a list of (rows, edit): the edited row indices (distinct, inside the context; they may differ between the edits) and the [len(rows), d] vector subtracted from them;
+    targets [L] long (-1: no target at that row), optional. -> a list of {"vector": [V] mean over the edited rows of the (centered) logit change, "dloss": mean over the rows with a target of the NLL change or
+    None, "loss_base": the unedited mean NLL or None, "n_rows": number of edited rows}, one per edit.
+    observer (optional, off by default): observer(tag, z, rows_list, targets) is called once with the raw float32 logits z [1 + K, L, V] (row 0 the unedited run) before they are reduced to effect vectors, for
+    sidecar measurements such as decision margins; it must not change z, and it does not change any result."""
     if residual.dtype != torch.float32:
         raise ValueError(f"the residual must be float32 (got {residual.dtype}): a lower precision would round the edit")
-    rows = torch.as_tensor(rows, dtype=torch.long); L, d = residual.shape
-    if rows.numel() == 0:
-        raise ValueError("no edited row")
-    if int(rows.min()) < 0 or int(rows.max()) >= L:
-        raise ValueError(f"edited rows {rows.tolist()} outside the context of {L} rows")
-    if len(torch.unique(rows)) != len(rows):
-        raise ValueError("a row is edited twice")
-    if tuple(edit.shape) != (len(rows), d):
-        raise ValueError(f"the edit has shape {tuple(edit.shape)}, expected {(len(rows), d)}")
-    edited = residual.clone(); edited[rows] = residual[rows] - edit.to(torch.float32)
-    z = suffix(torch.stack([residual, edited])).float()
+    if len(edits) == 0:
+        raise ValueError("no edit")
+    L, d = residual.shape; prepared = []
+    for i, (rows, edit) in enumerate(edits):
+        rows = torch.as_tensor(rows, dtype=torch.long)
+        if rows.numel() == 0:
+            raise ValueError(f"edit {i}: no edited row")
+        if int(rows.min()) < 0 or int(rows.max()) >= L:
+            raise ValueError(f"edit {i}: edited rows {rows.tolist()} outside the context of {L} rows")
+        if len(torch.unique(rows)) != len(rows):
+            raise ValueError(f"edit {i}: a row is edited twice")
+        if tuple(edit.shape) != (len(rows), d):
+            raise ValueError(f"edit {i}: the edit has shape {tuple(edit.shape)}, expected {(len(rows), d)}")
+        edited = residual.clone(); edited[rows] = residual[rows] - edit.to(torch.float32); prepared.append((rows, edited))
+    z = suffix(torch.stack([residual] + [e for _, e in prepared])).float()
     if not bool(torch.isfinite(z).all()):
         raise ValueError("the suffix produced a non-finite value")
-    dev = z.device; zb, ze = z[0], z[1]; diff = ze[rows.to(dev)] - zb[rows.to(dev)]
-    if center:
-        diff = diff - diff.mean(-1, keepdim=True)
-    out = {"vector": diff.mean(0), "dloss": None, "loss_base": None, "n_rows": int(len(rows))}
+    if observer is not None:
+        observer(tag, z, [r for r, _ in prepared], targets)
+    dev = z.device; zb = z[0]; nb = valid = tg = ar = None
     if targets is not None:
-        valid = targets >= 0
+        valid = (targets >= 0).to(dev)
         if not bool(valid.any()):
             raise ValueError("no row of the context has a target")
-        ar = torch.arange(L, device=dev); tg = targets.clamp(min=0).to(dev); valid = valid.to(dev)
-        nb = -torch.log_softmax(zb, -1)[ar, tg]; ne = -torch.log_softmax(ze, -1)[ar, tg]
-        out["dloss"] = float((ne - nb)[valid].mean()); out["loss_base"] = float(nb[valid].mean())
+        ar = torch.arange(L, device=dev); tg = targets.clamp(min=0).to(dev); nb = -torch.log_softmax(zb, -1)[ar, tg]
+    out = []
+    for k, (rows, _) in enumerate(prepared):
+        ze = z[k + 1]; diff = ze[rows.to(dev)] - zb[rows.to(dev)]
+        if center:
+            diff = diff - diff.mean(-1, keepdim=True)
+        o = {"vector": diff.mean(0), "dloss": None, "loss_base": None, "n_rows": int(len(rows))}
+        if nb is not None:
+            ne = -torch.log_softmax(ze, -1)[ar, tg]; o["dloss"] = float((ne - nb)[valid].mean()); o["loss_base"] = float(nb[valid].mean())
+        out.append(o)
     return out
+
+
+def effect(residual, rows, edit, suffix, targets=None, center=True):
+    """One context, one edit, one cell (effect_many with a single edit: the unedited and the edited residual as a batch of two)."""
+    return effect_many(residual, [(rows, edit)], suffix, targets, center)[0]
 
 
 def factorial_effects(residuals, suffixes, rows, fp_edit, native_edit=None, targets=None, center=True):

@@ -206,6 +206,57 @@ class ProcessItems(Fixture, unittest.TestCase):
         out = tr.process_items(its, self.suf, self.switches); self.assertEqual(out["skipped"], [((2, 11, "real"), "no_edited_row")]); self.assertEqual(len(out["items"]), 1)
 
 
+class SharedBase(Fixture, unittest.TestCase):
+    """Items of one context (the five directions of a feature, or the group and its controls) share the unedited run: fewer sequences and fewer readout conversions, the same results."""
+    def counting(self):
+        self.shapes = []
+        base = self.suf
+        def make(state):
+            def f(x):
+                self.shapes.append((state, tuple(x.shape))); return base[state](x)
+            return f
+        return {"FP": make("FP"), "Q": make("Q")}
+
+    def test_a_context_of_one_feature_takes_four_suffix_calls_for_all_five_directions(self):
+        suf = self.counting(); self.run_chunk_with(suf, features=(2,), contexts_only=[10])
+        self.assertEqual(self.shapes, [("FP", (6, 4, D)), ("FP", (6, 4, D)), ("Q", (6, 4, D)), ("Q", (11, 4, D))])         # base plus five edits; at Q the fixed and the native edits of h_q share one base
+
+    def run_chunk_with(self, suf, features, contexts_only=None, **kw):
+        ctx = {f: (contexts_only if contexts_only else self.contexts[f]) for f in features}
+        return tr.process_chunk(list(features), ctx, self.caches, self.positions, self.amps, self.dirs, self.tokens, suf, self.switches, **kw)
+
+    def test_the_results_do_not_depend_on_how_the_items_are_batched(self):
+        a = self.run_chunk_with(self.suf, (2, 4)); b = self.run_chunk_with(self.suf, (2, 4), max_rows=1)
+        self.assertEqual(set(a["items"]), set(b["items"]))
+        for k in a["items"]:
+            self.assertTrue(np.allclose(a["items"][k]["gram"], b["items"][k]["gram"], atol=1e-6)); self.assertTrue(np.allclose(a["items"][k]["dloss"], b["items"][k]["dloss"], atol=1e-6))
+
+    def test_a_small_row_budget_splits_the_calls_and_a_large_one_keeps_them_together(self):
+        suf = self.counting(); self.run_chunk_with(suf, (2,), contexts_only=[10], max_rows=1)
+        self.assertGreater(len(self.shapes), 4); self.assertTrue(all(s[1][0] <= 3 for s in self.shapes))                    # one fixed and one native edit at most: 3 sequences
+        suf = self.counting(); self.run_chunk_with(suf, (2,), contexts_only=[10], max_rows=10_000); self.assertEqual(len(self.shapes), 4)
+
+    def test_the_row_budget_bounds_every_suffix_call_including_the_combined_quantized_call(self):
+        suf = self.counting(); self.run_chunk_with(suf, (2,), contexts_only=[10], max_rows=28)                              # L = 4 rows: 7 sequences per call at most, so at most three items (1 + 2 x 3) per batch
+        self.assertTrue(all(s[1][0] * s[1][1] <= 28 for s in self.shapes)); self.assertEqual(len(self.shapes), 8)            # five directions: batches of three and two, four calls each
+
+    def test_items_that_share_a_context_key_must_share_the_residuals(self):
+        its = ProcessItems.items(self)
+        for it in its:
+            it["ctx"] = "same"
+        its[1]["h_fp"] = its[1]["h_fp"].clone()
+        with self.assertRaisesRegex(ValueError, "share"):
+            tr.process_items(its, self.suf, self.switches)
+
+    def test_the_observer_sees_every_call_with_its_cell_and_item_keys_and_changes_no_result(self):
+        seen = []
+        out = tr.process_items(ProcessItems.items(self), self.suf, self.switches, observer=lambda tag, z, rows, targets: seen.append(tag))
+        plain = tr.process_items(ProcessItems.items(self), self.suf, self.switches)
+        self.assertEqual(sorted(t[0] for t in seen), sorted(["FP/FP", "Q/FP", "FP/Q", "Q/Q+Q/Q-native"] * 2)); self.assertTrue(all(len(t[1]) >= 1 for t in seen))
+        for k in out["items"]:
+            self.assertTrue(np.array_equal(out["items"][k]["gram"], plain["items"][k]["gram"]))
+
+
 class GroupEdits(unittest.TestCase):
     def setUp(self):
         g = torch.Generator().manual_seed(8); self.W = torch.randn(6, D, generator=g)
@@ -228,6 +279,7 @@ class GroupEdits(unittest.TestCase):
         its, skipped = tr.group_items("eng", 7, h_fp, h_q, self.act_fp, self.act_q, self.W, sets, tg)
         self.assertEqual([i["key"] for i in its], [("eng", 7, "group"), ("eng", 7, "control0"), ("eng", 7, "control1")]); self.assertEqual(skipped, [(("eng", 7, "control2"), "no_active_group_feature")])
         self.assertTrue(all(i["h_fp"] is h_fp and i["h_q"] is h_q for i in its)); self.assertTrue(all(i["pool"] == ("eng", i["key"][2]) for i in its)); self.assertEqual(its[0]["rows"].tolist(), [1, 2])
+        self.assertTrue(all(i["ctx"] == ("eng", 7) for i in its))                                                          # the group and its controls of one sentence share the unedited run
         self.assertEqual(its[0]["n_active_q"], 2)                                                                     # counted over the edited rows only (the Q-only activation at content row 3 does not count)
 
 
@@ -325,6 +377,22 @@ class RunTransfer(unittest.TestCase):
             second = read_chunks(out, "INT6"); self.assertEqual(set(first), set(second))
             for k in first:
                 self.assertTrue(np.array_equal(first[k]["gram"], second[k]["gram"]))
+
+    def test_the_row_budget_reaches_the_processor_in_both_runs_and_changes_no_result(self):
+        class Counting(FakeModel):
+            def __init__(self):
+                super().__init__(); self.shapes = []
+
+            def suffix(self, x):
+                self.shapes.append(x.shape[0]); return super().suffix(x)
+        with tempfile.TemporaryDirectory() as o1, tempfile.TemporaryDirectory() as o2:
+            m1, m2 = Counting(), Counting(); run_fake(m1, o1); run_fake(m2, o2, max_rows=1); a, b = read_chunks(o1, "INT6"), read_chunks(o2, "INT6")
+            self.assertEqual(set(a), set(b)); self.assertTrue(all(np.allclose(a[k]["gram"], b[k]["gram"], atol=1e-6) for k in a))
+            self.assertGreater(max(m1.shapes), 3); self.assertLessEqual(max(m2.shapes), 3)                                  # with the budget of one row every call has at most 1 + 2 sequences
+        with tempfile.TemporaryDirectory() as o1, tempfile.TemporaryDirectory() as o2:
+            m1, m2 = Counting(), Counting(); run_fake_group(m1, o1); run_fake_group(m2, o2, max_rows=1); a, b = read_group(o1, "INT6")[0], read_group(o2, "INT6")[0]
+            self.assertEqual(set(a), set(b)); self.assertTrue(all(np.allclose(a[k]["gram"], b[k]["gram"], atol=1e-6) for k in a))
+            self.assertGreater(max(m1.shapes), 3); self.assertLessEqual(max(m2.shapes), 3)
 
     def test_a_chunk_file_of_another_freeze_is_a_stale_error(self):
         with tempfile.TemporaryDirectory() as out:

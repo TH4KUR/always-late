@@ -199,6 +199,73 @@ class Loss(unittest.TestCase):
         self.assertTrue(torch.allclose(e["vector"], torch.tensor([-0.25, 0.25]), atol=1e-6))                            # the logit change (-0.5, 0), centered
 
 
+class Many(unittest.TestCase):
+    """effect_many: several edits of ONE context in ONE call, sharing the unedited row (fewer sequences, the same exactness: base and edits take the same computation)."""
+    def setUp(self):
+        g = torch.Generator().manual_seed(4); self.d, self.V, self.L = 6, 9, 5
+        self.h = torch.randn(self.L, self.d, generator=g); W = torch.randn(self.d, self.V, generator=g)
+        self.calls = []
+        def suffix(x):
+            self.calls.append(tuple(x.shape)); return torch.tanh(x @ W) * 2.0
+        self.suf = suffix; self.targets = torch.tensor([0, 4, 2, 7, -1])
+        self.edits = [(torch.tensor([1, 3]), torch.randn(2, self.d, generator=g) * 0.4), (torch.tensor([0]), torch.randn(1, self.d, generator=g) * 0.3), (torch.tensor([2, 3, 4]), torch.randn(3, self.d, generator=g) * 0.2)]
+
+    def test_each_result_equals_the_single_effect_of_that_edit(self):
+        many = tc.effect_many(self.h, self.edits, self.suf, self.targets)
+        for (rows, e), m in zip(self.edits, many):
+            one = tc.effect(self.h, rows, e, self.suf, self.targets)
+            self.assertTrue(torch.allclose(m["vector"], one["vector"], atol=1e-6)); self.assertAlmostEqual(m["dloss"], one["dloss"], places=5); self.assertAlmostEqual(m["loss_base"], one["loss_base"], places=5); self.assertEqual(m["n_rows"], one["n_rows"])
+
+    def test_the_unedited_row_is_shared_in_one_suffix_call(self):
+        tc.effect_many(self.h, self.edits, self.suf, self.targets)
+        self.assertEqual(self.calls, [(1 + 3, self.L, self.d)])                                                           # one call with the base and three edited residuals
+
+    def test_the_single_effect_is_a_batch_of_two_as_before(self):
+        tc.effect(self.h, self.edits[0][0], self.edits[0][1], self.suf); self.assertEqual(self.calls, [(2, self.L, self.d)])
+
+    def test_a_zero_edit_among_other_edits_is_exactly_zero(self):
+        edits = [self.edits[0], (torch.tensor([1, 2]), torch.zeros(2, self.d)), self.edits[2]]
+        res = tc.effect_many(self.h, edits, self.suf, self.targets)
+        self.assertEqual(float(res[1]["vector"].abs().max()), 0.0); self.assertEqual(res[1]["dloss"], 0.0); self.assertGreater(float(res[0]["vector"].abs().max()), 0.0)
+
+    def test_empty_lists_and_bad_edits_are_errors_naming_the_edit(self):
+        with self.assertRaises(ValueError):
+            tc.effect_many(self.h, [], self.suf)
+        bad = [self.edits[0], (torch.tensor([1, 1]), torch.zeros(2, self.d))]
+        with self.assertRaisesRegex(ValueError, "edit 1"):
+            tc.effect_many(self.h, bad, self.suf)
+        bad = [self.edits[0], (torch.tensor([9]), torch.zeros(1, self.d))]
+        with self.assertRaisesRegex(ValueError, "edit 1"):
+            tc.effect_many(self.h, bad, self.suf)
+        bad = [(torch.tensor([1]), torch.zeros(2, self.d))]
+        with self.assertRaisesRegex(ValueError, "edit 0"):
+            tc.effect_many(self.h, bad, self.suf)
+
+    def test_a_float32_residual_is_required_and_a_nonfinite_output_is_an_error(self):
+        with self.assertRaises(ValueError):
+            tc.effect_many(self.h.to(torch.bfloat16), self.edits, self.suf)
+        with self.assertRaises(ValueError):
+            tc.effect_many(self.h, self.edits, lambda x: x[..., :1] / 0.0 + torch.zeros(*x.shape[:-1], self.V))
+
+
+class Observer(Many):
+    """An optional observer sees the raw logits of a call (for sidecar measurements such as decision margins) and changes nothing."""
+    def test_the_observer_is_called_once_per_call_with_the_raw_logits_the_rows_and_the_tag(self):
+        seen = []
+        res = tc.effect_many(self.h, self.edits, self.suf, self.targets, observer=lambda tag, z, rows, targets: seen.append((tag, z.shape, [r.tolist() for r in rows], targets)), tag=("cell", ["a", "b", "c"]))
+        self.assertEqual(len(seen), 1); tag, shape, rows, targets = seen[0]
+        self.assertEqual(tag, ("cell", ["a", "b", "c"])); self.assertEqual(tuple(shape), (4, self.L, self.V)); self.assertEqual(rows, [[1, 3], [0], [2, 3, 4]]); self.assertTrue(torch.equal(targets, self.targets))
+        plain = tc.effect_many(self.h, self.edits, self.suf, self.targets)
+        for a, b in zip(res, plain):
+            self.assertTrue(torch.equal(a["vector"], b["vector"])); self.assertEqual(a["dloss"], b["dloss"])
+
+    def test_the_observer_gets_the_uncentered_logits_of_the_base_in_row_zero(self):
+        got = []
+        tc.effect_many(self.h, self.edits, self.suf, observer=lambda tag, z, rows, targets: got.append(z.clone()))
+        W_free = self.suf(torch.stack([self.h]))[0]
+        self.assertTrue(torch.allclose(got[0][0], W_free, atol=1e-6))
+
+
 class Constants(unittest.TestCase):
     def test_the_cells_are_those_of_the_frozen_spec(self):
         import phase1_transfer_freeze as tf
