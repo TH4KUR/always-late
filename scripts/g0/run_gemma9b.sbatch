@@ -1,6 +1,7 @@
 #!/bin/bash
 # Gemma-2-9B confirmation (D-089, handoff 040): the frozen Gemma runners through scripts/g0/phase1_gemma9b_run.py on ONE GPU with >= 40 GB (A100, A6000, L40S, H100).
-# The 9B weights are 18.5 GB in bf16 and do not fit an 11 GB RTX 2080 Ti; if your cluster has several GPU types pass --constraint=<type> or --gres=gpu:<type>:1 on the command line.
+# The 9B weights are 18.5 GB in bf16 and do not fit one 11 GB RTX 2080 Ti: there, split the model over 4 cards (export GEMMA9B_N_DEVICES=4 and submit with --gres=gpu:4 --constraint=2080ti);
+# on a card of >= 40 GB leave GEMMA9B_N_DEVICES unset (1). Pass the partition, GPU type and count on the command line.
 # Usage: sbatch [-t HH:MM:SS] [--constraint=..] scripts/g0/run_gemma9b.sbatch <name> tag [extra args of phase1_gemma9b_run.py tag]
 #        sbatch [-t HH:MM:SS] scripts/g0/run_gemma9b.sbatch <name> manifest <tag job name> [--families full|k]          (CPU work; rebuilds the manifest, e.g. with --families k)
 #        sbatch [-t HH:MM:SS] scripts/g0/run_gemma9b.sbatch <name> lm <tag job name> [args of phase1_func_run.py without --preset, --ratios, --selectivity, --manifest]
@@ -9,11 +10,12 @@
 #   BASE      work directory holding hf_cache/, data/ (with flores200_dataset/) and out/phase1/   (default $HOME/gemma9b)
 #   REPO      checkout of this repo                                                              (default: the repository of this script; under sbatch pass REPO explicitly, the script is copied)
 #   PY        python of the environment with torch, transformer-lens 3.9.0, sae-lens, transformers (default python)
+#   GEMMA9B_N_DEVICES  GPUs the model is split over, 1 (default) or 4 (Ada 2080 Ti); must match --gres=gpu:N
 #   HF_TOKEN  Hugging Face token with the Gemma licence accepted (needed on the first, online, download)
 #SBATCH --gres=gpu:1
 #SBATCH -c 8
-#SBATCH --mem=96G
-#SBATCH -t 12:00:00
+#SBATCH --mem=80G
+#SBATCH -t 30:00:00
 #SBATCH -J gemma9b
 #SBATCH -o logs/%x-%j.out
 set -euo pipefail
@@ -22,6 +24,7 @@ BASE=${BASE:-$HOME/gemma9b}
 REPO=${REPO:-${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}}
 PY=${PY:-python}
 export HF_HOME=${HF_HOME:-$BASE/hf_cache}
+export GEMMA9B_N_DEVICES=${GEMMA9B_N_DEVICES:-1}
 export PYTHONUNBUFFERED=1 OMP_NUM_THREADS=8 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 mkdir -p "$BASE/out/phase1" logs
 COMMIT=$(cat "$REPO/COMMIT" 2>/dev/null || git -C "$REPO" rev-parse HEAD)

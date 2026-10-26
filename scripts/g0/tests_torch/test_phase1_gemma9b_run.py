@@ -1,5 +1,7 @@
+import os
 import sys
 import unittest
+import torch
 from pathlib import Path
 from unittest import mock
 
@@ -90,6 +92,93 @@ class Routing(unittest.TestCase):
         with mock.patch.object(g9, "build_manifest", return_value={"languages": ["a"], "sizes": {"a": {}}}) as bm:
             g9.main(["manifest", "--selectivity", "s", "--manifest", "m", "--families", "k"])
         bm.assert_called_once_with("s", "m", families="k", seed=0)
+
+
+class FakeHT:
+    """HookedTransformer stand-in: records the load call; its forward returns a CPU tensor."""
+    calls = []
+
+    class Cfg:
+        n_layers, d_model = 42, 3584
+
+    @classmethod
+    def from_pretrained_no_processing(cls, name, **kw):
+        cls.calls.append((name, kw))
+        if name == "bad":
+            raise OSError("no such model")
+        m = cls()
+        m.cfg = cls.Cfg()
+        return m
+
+    def eval(self):
+        return self
+
+    def forward(self, tokens, stop_at_layer=None):
+        return torch.ones(2, 3)
+
+
+class MultiDevice(unittest.TestCase):
+    def setUp(self):
+        FakeHT.calls = []
+
+    def test_the_loader_passes_n_devices_and_bf16_and_tries_every_candidate(self):
+        load = g9.make_multi_device_loader(4, FakeHT, device="cpu")
+        model, name = load(["bad", "google/gemma-2-9b"])
+        self.assertEqual(name, "google/gemma-2-9b")
+        self.assertEqual([c[0] for c in FakeHT.calls], ["bad", "google/gemma-2-9b"])
+        kw = FakeHT.calls[1][1]
+        self.assertEqual((kw["n_devices"], kw["dtype"], kw["device"]), (4, torch.bfloat16, "cpu"))
+
+    def test_the_loader_fails_loudly_when_no_candidate_loads(self):
+        with self.assertRaises(RuntimeError):
+            g9.make_multi_device_loader(2, FakeHT, device="cpu")(["bad"])
+
+    def test_a_single_device_is_not_a_multi_device_load(self):
+        with self.assertRaises(ValueError):
+            g9.make_multi_device_loader(1, FakeHT)
+
+    def test_outputs_are_returned_on_the_first_device(self):
+        m = FakeHT(); g9.first_device_outputs(m, "meta")
+        self.assertEqual(m.forward(torch.zeros(1), stop_at_layer=21).device.type, "meta")
+
+    def test_non_tensor_outputs_are_untouched(self):
+        m = FakeHT(); m.forward = lambda *a, **k: ("x", 1)
+        g9.first_device_outputs(m, "meta")
+        self.assertEqual(m.forward(), ("x", 1))
+
+    def test_the_setting_replaces_only_the_model_loader_when_n_devices_is_above_one(self):
+        before = tc.build_namespace
+        seen = {}
+
+        def fake_build(ex, env):
+            env["load_gemma_tl_model"] = "frozen loader"; env["load_sae_compat"] = "frozen sae loader"
+        with mock.patch.object(tc, "build_namespace", fake_build):
+            outer = tc.build_namespace
+            with g9.gemma9b_setting(3):
+                env = {"HookedTransformer": FakeHT, "DEVICE": "cpu"}
+                tc.build_namespace(None, env)
+                seen["loader"], seen["sae"] = env["load_gemma_tl_model"], env["load_sae_compat"]
+            self.assertIs(tc.build_namespace, outer)
+        self.assertNotEqual(seen["loader"], "frozen loader"); self.assertTrue(callable(seen["loader"]))
+        self.assertEqual(seen["sae"], "frozen sae loader")
+        self.assertIs(tc.build_namespace, before)
+
+    def test_n_devices_one_leaves_the_frozen_loader_alone(self):
+        before = tc.build_namespace
+        with g9.gemma9b_setting(1):
+            self.assertIs(tc.build_namespace, before)
+
+    def test_main_routes_n_devices_and_the_environment_default(self):
+        seen = {}
+        with mock.patch.object(g9.gr, "main", lambda args: seen.update(patched=tc.build_namespace is not seen.get("orig"))):
+            seen["orig"] = tc.build_namespace
+            g9.main(["lm", "--n-devices", "4", "--out", "o"])
+        self.assertTrue(seen["patched"])
+        with mock.patch.dict(os.environ, {"GEMMA9B_N_DEVICES": "4"}):
+            self.assertEqual(g9.default_n_devices(), 4)
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("GEMMA9B_N_DEVICES", None)
+            self.assertEqual(g9.default_n_devices(), 1)
 
 
 if __name__ == "__main__":
