@@ -530,6 +530,18 @@ class FreezeCheck(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, key):
                 tr.check_core_against_freeze(self.freeze, c)
 
+    def test_the_manifest_and_the_evaluation_freeze_of_the_group_panel_must_be_the_frozen_files(self):
+        d = Path(self.tmp.name); (d / "gm").write_text("manifest"); (d / "ef").write_text("evalfreeze")
+        freeze = self.tf.build_freeze({"groups_manifest": d / "gm", "evaluation_freeze_lm": d / "ef"}, self.core, "abc", "now", root=d)
+        tr.check_inputs_against_freeze(freeze, {"groups_manifest": d / "gm", "evaluation_freeze_lm": d / "ef"})
+        (d / "gm").write_text("manifest2")
+        with self.assertRaisesRegex(ValueError, "groups_manifest"):
+            tr.check_inputs_against_freeze(freeze, {"groups_manifest": d / "gm", "evaluation_freeze_lm": d / "ef"})
+        with self.assertRaisesRegex(ValueError, "evaluation_freeze_lm"):
+            (d / "gm").write_text("manifest"); (d / "ef").write_text("x"); tr.check_inputs_against_freeze(freeze, {"groups_manifest": d / "gm", "evaluation_freeze_lm": d / "ef"})
+        with self.assertRaisesRegex(ValueError, "not in the freeze"):
+            tr.check_inputs_against_freeze(freeze, {"groups_manifest": d / "gm", "plan": d / "ef"})
+
     def test_a_changed_spec_in_the_code_is_reported(self):
         self.freeze["spec"]["bootstrap"]["replicates"] = 5
         with self.assertRaisesRegex(ValueError, "spec"):

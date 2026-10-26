@@ -315,6 +315,18 @@ def check_core_against_freeze(freeze, core):
         raise ValueError("the core sample or the spec of the code differ from the freeze in: " + ", ".join(problems))
 
 
+def check_inputs_against_freeze(freeze, paths):
+    """The input files of the group panel (the groups manifest, the evaluation freeze) must be the files whose hashes the freeze recorded. paths: {name: path} with names as in freeze["files"]."""
+    problems = []
+    for name, path in paths.items():
+        if name not in freeze["files"]:
+            problems.append(f"{name} is not in the freeze"); continue
+        if hashlib.sha256(Path(path).read_bytes()).hexdigest() != freeze["files"][name]["sha256"]:
+            problems.append(f"{name} differs from the freeze")
+    if problems:
+        raise ValueError("; ".join(problems))
+
+
 def main(argv=None):
     import argparse, gc, time
     ROOT = Path(__file__).resolve().parents[2]
@@ -322,6 +334,9 @@ def main(argv=None):
     ap.add_argument("--out", required=True); ap.add_argument("--flores-root", required=True); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
     ap.add_argument("--freeze", default=str(ROOT / "reports/intervention_transfer/freeze.json")); ap.add_argument("--core", default=str(ROOT / "reports/intervention_transfer/core_sample.json"))
     ap.add_argument("--states", nargs="+", default=["16", "6", "4"], help="quantized states (bit widths; FP is always the reference); 16 = the rounding-only floor")
+    ap.add_argument("--task", choices=["feature", "group"], default="feature", help="feature: the feature-level core (404 features); group: the group-level panel (K64 group and control draws on the 27 x 300 evaluation sentences)")
+    ap.add_argument("--manifest", default=str(ROOT / "reports/functional_validation/groups_manifest.json")); ap.add_argument("--eval-freeze", default=str(ROOT / "reports/functional_validation/evaluation_freeze_lm.json"))
+    ap.add_argument("--chunk-sentences", type=int, default=60); ap.add_argument("--max-sentences", type=int, help="first n evaluation sentences of each language (group smoke)"); ap.add_argument("--max-languages", type=int, help="first n languages (group smoke)")
     ap.add_argument("--chunk-features", type=int, default=25); ap.add_argument("--max-features", type=int, help="evenly spaced subset of the core (instrument job)"); ap.add_argument("--max-contexts", type=int, help="first contexts of each feature (instrument job)")
     ap.add_argument("--dev-per-language", type=int, default=997); ap.add_argument("--max-len", type=int, default=256); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024)
     ap.add_argument("--commit", default="unknown")
@@ -329,6 +344,8 @@ def main(argv=None):
     t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
     freeze_text = Path(a.freeze).read_text(); freeze = json.loads(freeze_text); core = json.loads(Path(a.core).read_text()); check_core_against_freeze(freeze, core)
     freeze_sha = hashlib.sha256(freeze_text.encode()).hexdigest()
+    if a.task == "group":
+        check_inputs_against_freeze(freeze, {"groups_manifest": a.manifest, "evaluation_freeze_lm": a.eval_freeze})
 
     from tqdm.auto import tqdm
     from transformer_lens import HookedTransformer
@@ -381,7 +398,7 @@ def main(argv=None):
     if len(dev_tokens) != len(names) * a.dev_per_language:
         raise ValueError(f"{len(dev_tokens)} dev sentences, expected {len(names) * a.dev_per_language}: the dev pool is not the one of the core sample")
     batcher = lambda sents: p1.make_batches({0: sents}, bos, "mask", pad, a.max_len, a.batch_size, a.max_tokens)
-    log("dev sentences", len(dev_tokens), "truncated", truncated, "features in the core", len(core["feature_ids"]), "states", labels)
+    log("dev sentences", len(dev_tokens), "truncated", truncated, "features in the core", len(core["feature_ids"]), "states", labels, "task", a.task)
 
     setup("FP")
     probe = batcher(dev_tokens[:GATE_PROBE_SENTENCES])[0]; tokens, valid = probe["tokens"][:GATE_PROBE_SENTENCES].to(DEVICE), probe["valid"][:GATE_PROBE_SENTENCES].to(DEVICE)
@@ -397,11 +414,18 @@ def main(argv=None):
         raise GateError(f"the split or the float32 logits do not reproduce the model: {gates}")
 
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    meta = {"task": "transfer", "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_features": a.max_features, "max_contexts": a.max_contexts,
+    meta = {"task": "transfer-" + a.task, "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_features": a.max_features, "max_contexts": a.max_contexts,
             "freeze_sha256": freeze_sha, "core_sha256": hashlib.sha256(Path(a.core).read_bytes()).hexdigest(), "gates": gates, "dev_sentences": len(dev_tokens), "truncated": truncated,
             "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "complete": False}
     (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
-    res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts)
+    if a.task == "feature":
+        res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts)
+    else:
+        man = json.loads(Path(a.manifest).read_text()); eval_ids = fr5.frozen_eval_ids(json.loads(Path(a.eval_freeze).read_text())); langs = names[:a.max_languages] if a.max_languages else names; eval_tokens = {}
+        for code in langs:
+            lines = pd_.read_flores_split(a.flores_root, code, "devtest", 1012)
+            eval_tokens[code] = [s[:a.max_len] for s in pd_.encode_sentences(tok, [lines[j] for j in eval_ids])]
+        res = run_group(labels, setup, lower, suffix, encode, sae.W_dec, man, langs, eval_tokens, batcher, out, freeze_sha, a.chunk_sentences, device=DEVICE, log=log, max_sentences=a.max_sentences)
     if not res["gates"]["sham_exact"]:
         raise GateError(f"the sham edit is not exactly zero (max abs {res['gates']['sham_max_abs']}): the unedited and the edited rows do not take identical computations")
     setup("FP")
