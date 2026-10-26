@@ -1,0 +1,23 @@
+{
+ "id": "A14",
+ "kind": "intervention-transfer-analysis-amendment",
+ "schema": 1,
+ "created": "2026-10-26 17:30 IST",
+ "amends_freeze_sha256": "3226c94b7e4dff30dda0166eac01fac01813facbdb62654cb36672dc66dbbf5f",
+ "title": "Analysis rules tightened after an independent review of the analysis code, before any outcome of the full runs was read",
+ "status": "written BEFORE the report driver was run on any full-run output (the only real-data runs of the driver were pipe checks of the instrument jobs, the external group smoke and the first full-run chunk; no claim status was read)",
+ "reviewer": "a separate agent with read-only access, given the frozen design and the code but not my conclusions; its report is summarized here, the findings were checked against the code before acting",
+ "changes": {
+  "H1": "supported only if, besides both shares exceeding one half, the lower end of the median error over the numerical floor exceeds 1 (a rounding-noise error leaves a share near 1 whatever the quantization does: confirmed by the reviewer with a synthetic error of norm 24 on an effect of norm 130); the INT16 intervals of the three quantities are printed next to the status",
+  "H4": "supported only if the interval of the median cosine gap excludes zero AND does not overlap the INT16 interval of the same quantity (independent noise averages out in the pooled fingerprint and gives a positive gap in a rounding-only state: reviewer reproduction, median gap +0.054 for pure noise); the interval is labelled features only (the pooled fingerprint cannot be resampled by source-sentence cluster)",
+  "A3": "supported needs the paired interval above zero AND median |C| above median |W| (the two readings of the frozen wording); reversed needs both reversed; medians are lower medians; a language without a value is left out and counted; replicates without any language are left out and counted",
+  "UTILITY": "overall is met only if every judged state is met, not met if any is not met, else insufficient (too few items to fit) or not evaluated (state not run); neither is a failed criterion",
+  "completeness": "the feature-level run must hold exactly the planned items (5 directions x the contexts of the core; a skipped context counts 5, a skipped item 1) and the group-level run the planned grid (languages x sentences x (1 + controls)) in every state, and the chunk files must be contiguous; an incomplete run stops the report",
+  "eligibility": "fixed from the INT16 reference state for all states (the FP/FP cell is recomputed in every job); the normalized error still uses the row's own norm",
+  "non-finite values": "NaN or infinite covariates, targets or survival values drop the item and are counted by reason",
+  "reporting": "the signed loss changes of the five cells and the unedited hybrid losses are carried into the item table and the component table (frozen primary-endpoint reporting that was missing); POPULATION gives the eligible features; the claim output carries the scope (feature-held-out, bootstrap units, specificity caveat) and the analysis parameters (min items 20 and 10, ridge strengths, folds, utility reduction)",
+  "external runs": "an external core requires --cluster-mod and, at the group level, --group-languages on the report command line"
+ },
+ "not changed": "the frozen definitions (floor, eligibility multiple, normalized error, split, bootstrap replicates and seed, ridge strengths, the 10 percent rule, the hypotheses H1 to H4 and A3 as hypotheses)",
+ "known and accepted": "there is no document holdout: 88 percent of the held-out clusters also occur among calibration contexts, so 'held-out' means feature-held-out (the freeze only requires the clusters for the bootstrap); the control directions of the specificity contrast are not eligibility-filtered; the group-level bootstrap resamples source sentences only; baselines are standardized on the calibration half as frozen"
+}
