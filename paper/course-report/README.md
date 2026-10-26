@@ -77,6 +77,23 @@ compiler, is the basis of any recorded compilation success.
   newest upstream version): `All Clear!` with an empty JSON report; a
   deliberately non-ACL PDF was also run as a negative control and the checker
   flagged it (page size and font), so the check is not vacuous.
+- **Revision 3 (26 October 2026, at the user's request, AI-report rule lifted,
+  D-093):** the report was rewritten around the intervention-transfer study
+  (new Section 7: crossed prefix/suffix decomposition at the group and the
+  feature level, averaged fingerprints, prediction of the transfer error,
+  claim rules fixed before the outcomes, main matrix analysed once, D-094).
+  `main.tex` is the only source (`draft/` holds the working copies of the
+  rewrite, see `draft/README.md`). New: `make_transfer_figures.py` (Figures 1
+  and 2 from `reports/intervention_transfer/results/main/*.csv`, run with
+  `~/.venvs/anlp-torch/bin/python`), the reference Vaidyanathan 2026, an
+  appendix table of the pre-specified rules and outcomes with the transfer
+  rows. After an independent fact-check against the committed results the
+  wording was corrected (no number changed; D-094 Update, commit `542c246`).
+  The six-language Wikipedia panel paragraph is marked `[PENDING ...]` until
+  its six runs are validated and analysed once. Official checker: `All Clear!`
+  (11 pages: the body ends at the top of page 8, then the limitations section,
+  references on page 9, two appendix pages 10 and 11). Revision 2 is in the
+  committed history.
 
 ## Official assets
 
