@@ -17,7 +17,8 @@ CODE = ("scripts/g0/phase1_gemma9b_run.py", "scripts/g0/run_gemma9b.sbatch", "sc
 
 
 def sha(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    """sha256 of the file with LF line endings (a Windows checkout has CRLF; the repository and the cluster copy have LF)."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def section(text, number):

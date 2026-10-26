@@ -2,7 +2,7 @@
  "schema": 1,
  "kind": "gemma9b_freeze",
  "decision": "D-089",
- "created": "2026-10-26 15:57",
+ "created": "2026-10-26 15:59",
  "base_commit_of_main": "5b51ba6a20e9f1caf691ab3d458f615b9f7e0006",
  "model": "google/gemma-2-9b",
  "sae_release": "gemma-scope-9b-pt-res-canonical",
@@ -35,7 +35,7 @@
    1.2
   ],
   "ratios_source": "reports\\functional_validation\\gain_study\\calibration\\ratios.json",
-  "ratios_sha256": "51ded03a93d4e6e725a16add6cefe9291a300ac176a4e07c6d7cd932f16d33ba",
+  "ratios_sha256": "63c5baa1f83ad378ec44c114f55df4939e2ebbcaed2cab52cc26774c9278c3de",
   "recalibrated_on_9b": false,
   "n_controls": 3,
   "label": "K64",
@@ -62,10 +62,10 @@
  },
  "compute_note": "Ada has only 11 GB GPUs: the model is split over 4 RTX 2080 Ti with TransformerLens n_devices=4 (GEMMA9B_N_DEVICES=4); outputs are returned on the first device; one state job at a time (QOS 4 GPUs per user); numerics are those of bf16 on that hardware",
  "code_sha256": {
-  "scripts/g0/phase1_gemma9b_run.py": "4b6912b80a5f88abd7b9eac756f1d1b51515098b5980c9e54c3d4c59a3122b54",
+  "scripts/g0/phase1_gemma9b_run.py": "0a69b2639a9145281a14a76e3bef4a516155fe72d4b643e397ea61467efd0ba0",
   "scripts/g0/run_gemma9b.sbatch": "f14898c5ad1446ea61544b130da4a8acadb21835eacc9d5273e95fc8febc6bc9",
-  "scripts/g0/tests_torch/test_phase1_gemma9b_run.py": "e239bcf4dbc6e873dcb7d71372425ad77ee8ff850d31719d318b5d842c61b1b2",
-  "reports/g0/phase1_languages.json": "befb8ba3dd843f438ac3d308b05e2824f33a5693260a6801dd69fe313348cb88"
+  "scripts/g0/tests_torch/test_phase1_gemma9b_run.py": "1c81435efab69c6b44f754e6b0dc2adefe6e5db2a21070a898a68557217ab380",
+  "reports/g0/phase1_languages.json": "56cd6d761832a910f9e0ff687635e2a67a0f8e566b4136bff9042b65a2497b61"
  },
  "rules": [
   "no frozen file edited",
