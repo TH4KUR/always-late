@@ -1,0 +1,113 @@
+{
+ "claims": {
+  "A3": {
+   "overall": "mixed",
+   "per_state": {
+    "INT4": "supported",
+    "INT6": "inconclusive"
+   }
+  },
+  "H1": {
+   "overall": "supported",
+   "per_state": {
+    "INT4": "supported",
+    "INT6": "supported"
+   },
+   "reference": {
+    "error_over_floor": [
+     0.6711956168067303,
+     0.749416274334953
+    ],
+    "native_error_share": [
+     0.9961106433151594,
+     1.0056312018147415
+    ],
+    "scalar_residual_share": [
+     0.9959993401372051,
+     0.9971431269215352
+    ]
+   }
+  },
+  "H2": {
+   "per_state": {
+    "INT4": {
+     "intervals_overlap": true,
+     "overlap_by_component": {
+      "C_rel": true,
+      "I_rel": true,
+      "W_rel": true
+     }
+    },
+    "INT6": {
+     "intervals_overlap": true,
+     "overlap_by_component": {
+      "C_rel": true,
+      "I_rel": true,
+      "W_rel": true
+     }
+    }
+   },
+   "status": "descriptive"
+  },
+  "H3": {
+   "overall": "mixed",
+   "per_state": {
+    "INT4": "supported",
+    "INT6": "inconclusive"
+   }
+  },
+  "H4": {
+   "interval": "features only: the pooled fingerprint cannot be resampled by source-sentence cluster",
+   "overall": "supported",
+   "per_state": {
+    "INT4": "supported",
+    "INT6": "supported"
+   },
+   "reference": [
+    0.01067279961612233,
+    0.01697401099250806
+   ]
+  },
+  "POPULATION": {
+   "INT4": {
+    "eligible_features": 235,
+    "eligible_fraction": 0.3408106435643564,
+    "eligible_real_items": 2203,
+    "real_items": 6464
+   },
+   "INT6": {
+    "eligible_features": 235,
+    "eligible_fraction": 0.3408106435643564,
+    "eligible_real_items": 2203,
+    "real_items": 6464
+   }
+  },
+  "UTILITY": {
+   "overall": "not met",
+   "per_state": {
+    "INT4": "met",
+    "INT6": "not met"
+   }
+  }
+ },
+ "population": "Gemma-2-2B, layer-12 Gemma Scope 16k SAE, RTN per-output-channel; INT16 is the rounding reference",
+ "rules": "CLAIM_RULES of phase1_transfer_report.py (fixed 2026-10-26 before any full-run output; tightened the same day after an independent review, before any outcome was read: amendment A14)",
+ "scope": {
+  "analysis_parameters": {
+   "folds": 5,
+   "h1_floor_multiple": 1.0,
+   "min_calibration": 20,
+   "min_heldout": 10,
+   "ridge_strengths": [
+    0.1,
+    1,
+    10
+   ],
+   "utility_reduction": 0.1
+  },
+  "feature_bootstrap": "features and source-sentence clusters crossed (2,000 replicates); the pooled quantities of H4: features only",
+  "group_bootstrap": "source sentences only (the groups and the matched control draws are fixed)",
+  "held_out": "feature-held-out: the held-out half are other FEATURES; their contexts share source sentences with the calibration half (no document holdout), so sentence-level covariates can carry sentence-specific signal",
+  "specificity": "the control directions are not eligibility-filtered and have a small full-precision effect, so their normalized error is dominated by the floor: the real-minus-control gap mixes scale and specificity"
+ }
+}
