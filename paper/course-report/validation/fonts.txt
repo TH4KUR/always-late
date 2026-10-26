@@ -2,7 +2,7 @@ name                                 type              encoding         emb sub 
 ------------------------------------ ----------------- ---------------- --- --- --- ---------
 GGVWDI+NimbusRomNo9L-Medi            Type 1            Custom           yes yes yes     67  0
 PDQDRB+NimbusRomNo9L-Regu            Type 1            Custom           yes yes yes     68  0
-CSJUMJ+CMSY10                        Type 1            Builtin          yes yes yes     70  0
+HIPSAQ+CMSY10                        Type 1            Builtin          yes yes yes     70  0
 MFPIGD+CMMI10                        Type 1            Builtin          yes yes yes     71  0
 KRYAOH+CMR10                         Type 1            Builtin          yes yes yes     72  0
 MSKQIC+NimbusRomNo9L-ReguItal        Type 1            Custom           yes yes yes     74  0
