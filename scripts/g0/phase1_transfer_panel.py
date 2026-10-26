@@ -153,12 +153,17 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Build and freeze the external panel of the intervention-transfer study (run on Ada).")
     ap.add_argument("--shards-dir", required=True); ap.add_argument("--flores-root", required=True); ap.add_argument("--tokenizer", default="google/gemma-2-2b"); ap.add_argument("--text-dir", required=True)
     ap.add_argument("--freeze-out", required=True); ap.add_argument("--commit", default="unknown")
+    ap.add_argument("--download", action="store_true", help="download each pinned shard into --shards-dir (the disk of Ada has about 3 GB free: a shard is deleted after its language is built unless --keep-shards)")
+    ap.add_argument("--keep-shards", action="store_true")
     a = ap.parse_args(argv)
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(a.tokenizer); count = lambda t: len(tok(t, add_special_tokens=False)["input_ids"])
     text_dir = Path(a.text_dir); text_dir.mkdir(parents=True, exist_ok=True); results, files, shards = {}, {}, {}
     for code, cfg in PANEL.items():
         sh = SHARDS[cfg["config"]]; path = Path(a.shards_dir) / Path(sh["file"]).name
+        if a.download:
+            from huggingface_hub import hf_hub_download
+            path = Path(hf_hub_download("wikimedia/wikipedia", sh["file"], repo_type="dataset", revision=REVISION, local_dir=a.shards_dir))
         digest = sha256_file(path)
         if digest != sh["sha256"]:
             raise ValueError(f"{path} has sha256 {digest}, the pinned shard has {sh['sha256']}")
@@ -173,6 +178,8 @@ def main(argv=None):
         fp = text_dir / f"passages_{code}.jsonl"
         fp.write_text("".join(json.dumps({k: p[k] for k in ("article_id", "rank", "split", "text", "sha256", "n_tokens")}, ensure_ascii=False) + "\n" for p in res["passages"]))
         files[code] = {"file": fp.name, "sha256": sha256_file(fp)}
+        if a.download and not a.keep_shards:
+            path.unlink()
         print(code, "passages", len(res["passages"]), "missing" if res["missing"] else "complete", res["rejected"])
     rec = {"schema": 1, "kind": "intervention-transfer-external-panel", "created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M IST"), "commit": a.commit,
            "corpus": {"dataset": "wikimedia/wikipedia", "config_date": "20231101", "revision": REVISION, "licences": ["cc-by-sa-3.0", "gfdl"]}, "shards": shards,
