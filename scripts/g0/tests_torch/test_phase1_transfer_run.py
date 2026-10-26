@@ -372,6 +372,27 @@ class FreezeCheck(unittest.TestCase):
             self.assertIn(needle, deploy)
 
 
+class MakeSuffix(unittest.TestCase):
+    def test_the_readout_of_f5_takes_rows_so_the_suffix_flattens_batch_and_length_and_restores_them(self):
+        g = torch.Generator().manual_seed(2); W = torch.randn(D, V, generator=g)
+
+        def logits_fn(h):                                                       # like the F5 readout: rows [n, d] only
+            if h.dim() != 2:
+                raise ValueError("rows expected")
+            return h @ W
+        suffix = tr.make_suffix(lambda x: x * 2.0, logits_fn, "cpu"); x = torch.randn(2, 4, D, generator=g)
+        z = suffix(x)
+        self.assertEqual(tuple(z.shape), (2, 4, V)); self.assertTrue(torch.allclose(z, (x * 2.0) @ W, atol=1e-6))
+
+    def test_the_input_is_moved_to_the_device_of_the_model(self):
+        seen = []
+        suffix = tr.make_suffix(lambda x: seen.append(x.device.type) or x, lambda h: h, "meta"); suffix(torch.zeros(1, 2, 3)); self.assertEqual(seen, ["meta"])             # a device that is not the input's own
+
+    def test_main_builds_the_suffix_with_the_helper(self):
+        src = (Path(__file__).resolve().parents[1] / "phase1_transfer_run.py").read_text()
+        self.assertIn("suffix = make_suffix(upper_final, logits_fn, DEVICE)", src); self.assertNotIn("suffix = lambda x: logits_fn(upper_final", src)
+
+
 class GateConstants(unittest.TestCase):
     def test_the_instrument_gate_thresholds_are_the_amended_ones_and_not_looser_than_documented(self):
         self.assertEqual((tr.GATE_MIN_TOP1, tr.GATE_MAX_ABS, tr.GATE_PROBE_SENTENCES, tr.GATE_ROWS), (0.90, 2.0, 8, 512))

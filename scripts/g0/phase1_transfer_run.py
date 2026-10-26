@@ -143,6 +143,15 @@ def _cpu(e):
     return {**e, "vector": e["vector"].detach().cpu()}
 
 
+def make_suffix(upper_final, logits_fn, device):
+    """suffix([B, L, d] float32 residual) -> [B, L, V] float32 logits: the layers above the SAE site, then the float32 readout. The readout of the F5 runner (`make_logits_fn`) takes ROWS [n, d] (it concatenates the
+    vocabulary slices along dimension 1), so batch and length are flattened for it and restored afterwards (the first real run failed here: a [B, L, d] input made the slices disagree)."""
+    def suffix(x):
+        h = upper_final(x.to(device)); B, L, d = h.shape
+        return logits_fn(h.reshape(B * L, d)).reshape(B, L, -1)
+    return suffix
+
+
 def subset_core(core, max_features, max_contexts):
     """The smoke subset of the instrument job: evenly spaced features (first and last included), the first `max_contexts` contexts of each (the full core when both are None)."""
     n = len(core["feature_ids"]); idx = list(range(n))
@@ -255,7 +264,7 @@ def main(argv=None):
     upper_final, logits_fn = fr5.make_upper_final(model, LAYER), fr5.make_logits_fn(model)
     encode = lambda x: env["encode_sae"](sae, x)
     restore = env["restore_model_work"]
-    suffix = lambda x: logits_fn(upper_final(x.to(DEVICE)))
+    suffix = make_suffix(upper_final, logits_fn, DEVICE)
     log("model", model_name, "hook", hook, "d_sae", int(sae.cfg.d_sae), "V", int(model.cfg.d_vocab), "soft cap", model.cfg.output_logits_soft_cap)
 
     labels = [fr5.state_label(x) for x in a.states]
