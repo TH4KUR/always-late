@@ -290,3 +290,37 @@ def averaged_summary(hs, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, split
                 vals = np.array([np.nan if (x := fn(h)) is None else x for h in sel], dtype=float)
                 out.append({"kind": kind, "split": split, "metric": name, "n_features": len(sel), **{k: v for k, v in crossed_bootstrap(vals, fidx, cidx, stat, n_boot, seed).items() if k != "n_features"}})
     return out
+
+
+CONTROL_KINDS = ("matched_swapped", "random1", "random2", "random3")
+COLUMNS = {"A": ["act_cos", "log_amp_fp", "firing", "log_fp_norm", "log_resid_norm"], "B": ["generic_sensitivity"], "G": ["g_log_shift_native", "g_log_fp", "g_log_q_native", "g_log_norm_ratio"]}
+_REQUIRED = ("act_cos", "amp_fp_mean", "firing", "fp_norm", "resid_norm_fp", "g_shift_native", "g_pred_fp", "g_pred_q_native", "g_norm_fp", "g_norm_q")
+SENSITIVITY_OFFSET = 0.01
+GRADIENT_OFFSET = 1e-6
+
+
+def design(rows, kind="real", eligible_only=True):
+    """The design of the predictive diagnostic of one quantized state (the target is the normalized transfer error of the direction `kind`): one entry per item of that kind (eligible ones unless asked
+    otherwise), sorted by (feature, sentence). Columns, in three groups (names in COLUMNS): A, the activation baseline (activation cosine of the FP and quantized amplitudes, log FP activation, firing share
+    in the quantized state, log FP effect norm, log residual norm); B, the generic sensitivity measured with the OTHER directions of the same feature and context (log of the mean normalized error of the
+    matched swapped and random directions that exist, plus 0.01: the item's own direction never enters); G, the gradient baseline of amendment A9 (logs of the absolute first-order loss shift, the FP and quantized
+    first-order loss predictions, and the ratio of the gradient norms). An item with a missing value, or without any control direction, is dropped and counted by reason (never filled)."""
+    controls = {}
+    for r in rows.values():
+        if r["kind"] in CONTROL_KINDS:
+            controls.setdefault((r["feature"], r["sentence"]), []).append(r["normalized_error"])
+    keys, y, A, B, G, split, feature, cluster, dropped = [], [], [], [], [], [], [], [], {}
+    for r in sorted((r for r in rows.values() if r["kind"] == kind and (r["eligible"] or not eligible_only)), key=lambda r: (r["feature"], r["sentence"])):
+        missing = next((n for n in _REQUIRED if r.get(n) is None), None)
+        if missing is not None:
+            dropped[f"missing:{missing}"] = dropped.get(f"missing:{missing}", 0) + 1; continue
+        ctrl = controls.get((r["feature"], r["sentence"]))
+        if not ctrl:
+            dropped["no_control"] = dropped.get("no_control", 0) + 1; continue
+        keys.append((r["feature"], r["sentence"])); y.append(r["normalized_error"]); split.append(r["split"]); feature.append(r["feature"]); cluster.append(r["cluster"])
+        A.append([r["act_cos"], np.log(max(r["amp_fp_mean"], 1e-12)), r["firing"], np.log(max(r["fp_norm"], 1e-12)), np.log(max(r["resid_norm_fp"], 1e-12))])
+        B.append([np.log(np.mean(ctrl) + SENSITIVITY_OFFSET)])
+        G.append([np.log(abs(r["g_shift_native"]) + GRADIENT_OFFSET), np.log(abs(r["g_pred_fp"]) + GRADIENT_OFFSET), np.log(abs(r["g_pred_q_native"]) + GRADIENT_OFFSET), np.log(max(r["g_norm_q"], 1e-12)) - np.log(max(r["g_norm_fp"], 1e-12))])
+    arr = lambda x, w: np.array(x, dtype=float).reshape(len(x), w)
+    return {"keys": keys, "y": np.array(y, dtype=float), "A": arr(A, 5), "B": arr(B, 1), "G": arr(G, 4), "split": np.array(split), "feature": np.array(feature, dtype=np.int64), "cluster": np.array(cluster, dtype=np.int64),
+            "columns": {k: list(v) for k, v in COLUMNS.items()}, "n_dropped": int(sum(dropped.values())), "dropped_reasons": dropped}

@@ -378,5 +378,48 @@ class AveragedFingerprints(unittest.TestCase):
         ref = ta.crossed_bootstrap(np.array([1.0, -0.2]), np.array([10, 11]), np.zeros(2, dtype=int), "median", 30, 1); self.assertEqual((g["low"], g["high"], g["n_features"]), (ref["low"], ref["high"], 3))   # features only, no cluster level
 
 
+def prow(feature, sentence, kind="real", err=1.0, split=None, eligible=True, **kw):
+    """A row with the fields of the predictive design (the output of item_table and apply_floor, by hand)."""
+    r = {"feature": feature, "sentence": sentence, "kind": kind, "cluster": sentence % 997, "split": split or ("calibration" if feature in SPLIT["calibration"] else "heldout"), "eligible": eligible, "normalized_error": err,
+         "act_cos": 0.5, "amp_fp_mean": 2.0, "firing": 0.5, "fp_norm": 10.0, "resid_norm_fp": 100.0, "g_shift_native": 0.5, "g_pred_fp": 0.25, "g_pred_q_native": 0.75, "g_norm_fp": 2.0, "g_norm_q": 4.0}
+    r.update(kw); return r
+
+
+class Design(unittest.TestCase):
+    def setUp(self):
+        self.rows = {}
+        for f in (10, 11):
+            for s in (1000, 2000):
+                self.rows[(f, s, "real")] = prow(f, s, "real", err=1.0 + f / 100)
+                for k, e in (("matched_swapped", 0.5), ("random1", 0.2), ("random2", 0.3), ("random3", 0.4)):
+                    self.rows[(f, s, k)] = prow(f, s, k, err=e)
+
+    def test_one_row_per_eligible_real_item_with_the_baseline_columns_and_the_generic_sensitivity_from_the_controls_of_the_same_context(self):
+        d = ta.design(self.rows)
+        self.assertEqual(len(d["y"]), 4); self.assertEqual(d["keys"][0], (10, 1000)); self.assertAlmostEqual(d["y"][0], 1.10); self.assertEqual(list(d["split"]), ["calibration", "calibration", "heldout", "heldout"])
+        self.assertEqual(d["columns"]["A"], ["act_cos", "log_amp_fp", "firing", "log_fp_norm", "log_resid_norm"]); self.assertEqual(d["columns"]["B"], ["generic_sensitivity"]); self.assertEqual(len(d["columns"]["G"]), 4)
+        self.assertTrue(np.allclose(d["A"][0], [0.5, np.log(2.0), 0.5, np.log(10.0), np.log(100.0)])); self.assertAlmostEqual(d["B"][0, 0], float(np.log(np.mean([0.5, 0.2, 0.3, 0.4]) + 0.01)))
+        self.assertTrue(np.allclose(d["G"][0], [np.log(0.5 + 1e-6), np.log(0.25 + 1e-6), np.log(0.75 + 1e-6), np.log(4.0) - np.log(2.0)])); self.assertEqual(d["n_dropped"], 0)
+
+    def test_the_real_item_itself_never_enters_its_own_generic_sensitivity_and_the_average_uses_the_controls_that_exist(self):
+        del self.rows[(10, 1000, "random1")]; del self.rows[(10, 1000, "random2")]; d = ta.design(self.rows)
+        self.assertAlmostEqual(d["B"][0, 0], float(np.log(np.mean([0.5, 0.4]) + 0.01)))
+        rows = {k: v for k, v in self.rows.items() if not (k[:2] == (10, 1000) and k[2] != "real")}; d = ta.design(rows)
+        self.assertEqual(len(d["y"]), 3); self.assertEqual(d["n_dropped"], 1); self.assertEqual(d["dropped_reasons"], {"no_control": 1})
+
+    def test_ineligible_items_are_left_out_unless_asked_for_and_items_with_a_missing_baseline_value_are_dropped_with_the_reason(self):
+        self.rows[(10, 1000, "real")]["eligible"] = False
+        self.assertEqual(len(ta.design(self.rows)["y"]), 3); self.assertEqual(len(ta.design(self.rows, eligible_only=False)["y"]), 4)
+        del self.rows[(11, 2000, "real")]["act_cos"]; d = ta.design(self.rows); self.assertEqual(len(d["y"]), 2); self.assertEqual(d["dropped_reasons"], {"missing:act_cos": 1})
+        self.rows[(11, 1000, "real")]["g_pred_fp"] = None; d = ta.design(self.rows); self.assertEqual(d["dropped_reasons"], {"missing:act_cos": 1, "missing:g_pred_fp": 1})
+
+    def test_the_gradient_columns_use_absolute_values(self):
+        self.rows[(10, 1000, "real")].update(g_shift_native=-0.5, g_pred_fp=-0.25, g_pred_q_native=-0.75); d = ta.design(self.rows)
+        self.assertTrue(np.allclose(d["G"][0], [np.log(0.5 + 1e-6), np.log(0.25 + 1e-6), np.log(0.75 + 1e-6), np.log(2.0)]))
+
+    def test_the_cluster_and_the_feature_of_every_row_come_with_the_design(self):
+        d = ta.design(self.rows); self.assertEqual(list(d["feature"]), [10, 10, 11, 11]); self.assertEqual(list(d["cluster"]), [1000 % 997, 2000 % 997] * 2)
+
+
 if __name__ == "__main__":
     unittest.main()
