@@ -65,4 +65,27 @@ a03961cbec9b36580493e6ec6750373e1cb76ad07409ccab31c5f99b06a8804d  survival.pt
 
 ## Full jobs
 
-None validated yet at the time of writing.
+### `transfer-feature-int4` (Slurm 40399, main feature level INT4, snapshot `repo_9184825`, gnode085, COMPLETED 0:0 in 2 h 56 min; validated 19:08 IST with `phase1_transfer_validate.py`: GPU line, 0 CUDA warnings, meta complete, gates passed, sham exact, items 32320 + skipped 0 = 32,320 planned, 17 chunks and none resumed, peak GPU 10.40 GB; sha256 of all files equal to Ada's)
+```
+8d27a3fef96c04db5d229b058abe754b30dd7bce4341f7a91be2176319fb994b  gpu_mem.log
+6edf52e2e958aad10c0bc9785adafd97d925c346d003df2f5b591065e07b2023  meta_transfer.json
+367e1ebb59df072bcbbe9326a18ffb084009971e743b254378b0f33594ac75c6  transfer_INT4_c000.pt
+d0cd66beb65afbcc51894ca4cf7d3800b5132c8432dc18213f132ac75df69aca  transfer_INT4_c001.pt
+dc1f72edeb446cd1df97177961ea54bb2cdf342fda78400386b8f22075abc3fe  transfer_INT4_c002.pt
+ab86477f206e331eb5d99b080b3b63cdffa1a304a82fd1f99474998f526fab50  transfer_INT4_c003.pt
+e64178d7ca34e5466123f519dff0f49f5b42fa6e34c6b315c0009eb2190f05c2  transfer_INT4_c004.pt
+65897b6575dbbc427a7a27f3d0b56582e1c2260f0370affc2e6e151676c9f3d0  transfer_INT4_c005.pt
+b1a708bf2599539b63fd644ee8d6fc8ab441f4bebd37c18b9377cd3c6e71c5f7  transfer_INT4_c006.pt
+e2af2879f1bcd11a7359872e924796d423e86262d7a21899cf125f6f00bbd914  transfer_INT4_c007.pt
+ea8cbdb105205f7157111d1a398c03ff52cb272652b41c064d618d4e0a661c1f  transfer_INT4_c008.pt
+5252d539664feaf4bb762208bf13188e882bb06f1cd2260ea6ac1ba40937e18b  transfer_INT4_c009.pt
+0e02561f24807aa7a73179db4783f12c8b3fa513b4a729701c1e2c2450bdbc71  transfer_INT4_c010.pt
+cc47d289d97f57358d0a8eff61c322a21034ae6b7b526b7485ee0ec650183f27  transfer_INT4_c011.pt
+19645592ec5eaeaebb3cb61ed6f2db712d3b42157352187dd81a772d974a21bf  transfer_INT4_c012.pt
+a67fec907242e53efecd469a710a397e9726481fd5b0199eae1d35c280697471  transfer_INT4_c013.pt
+cb5343f4557de22b265eaa92d46c966e32f04c171c2b1803c114303ac8189a36  transfer_INT4_c014.pt
+4304e41117b4a751077ce19697c08c1fb92cab38fb73264b282af9716b24b8aa  transfer_INT4_c015.pt
+c824b45b5d26f34d228c1c4fb7d488293dea230b770aa2fa801be9eda862f849  transfer_INT4_c016.pt
+```
+
+Other full jobs: appended here when each is validated.
