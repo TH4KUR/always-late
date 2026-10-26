@@ -13,9 +13,9 @@
  "negative_control": "validation/pubcheck-negative-control.txt: a non-ACL PDF is flagged (page size, font)",
  "date": "2026-10-27",
  "revision": 3,
- "validated_at_ist": "2026-10-27 02:49",
- "pdf_sha256": "a18fed52bc3059460ee5583570246ee2460a24557cc20c6e8a543179c38066c5",
- "source_sha256": "9e163c8615515fc13a64b450e04ce63309388f680148a54e5ca61830dfa3e903",
+ "validated_at_ist": "2026-10-27 03:19",
+ "pdf_sha256": "fc9b5ad1cb78863f8a15d67a3f67e8873d3032bfdd40d923957b6c0f77a0b2de",
+ "source_sha256": "ee4037c11259df1c96aeddb1458f52c933455ee9c76d9fb5fbd5936275a9a40e",
  "total_pages": 11,
  "main_content_end_page": 8,
  "limitations_page": 8,
@@ -29,7 +29,7 @@
  "embedded_fonts": true,
  "type3_fonts": false,
  "optional_online_reference_check": "An earlier compiled draft attempt failed because Scholarcy returned a Cloudflare HTML challenge; not completed. Primary-source bibliography verification performed separately.",
- "independent_fact_check": "revision 3: read-only review by a separate agent against the committed result files (reports/intervention_transfer/results/main/); its findings were applied (D-094 Update, commit 542c246); the external-panel paragraph, abstract sentence and appendix row were written afterwards from reports/intervention_transfer/results/external/ and were not independently reviewed; update 2026-10-27 02:49: one clause was added to the external paragraph (the INT6 cross-corpus reduction against the calibration median, 15.8 % [-2.7, 28.7], D-096) and four phrases were shortened to keep the page layout; not independently reviewed",
+ "independent_fact_check": "revision 3: read-only review by a separate agent against the committed result files (reports/intervention_transfer/results/main/); its findings were applied (D-094 Update, commit 542c246); the external-panel paragraph, abstract sentence and appendix row were written afterwards from reports/intervention_transfer/results/external/ and were not independently reviewed; update 2026-10-27 02:49: one clause was added to the external paragraph (the INT6 cross-corpus reduction against the calibration median, 15.8 % [-2.7, 28.7], D-096) and four phrases were shortened to keep the page layout; not independently reviewed; update 2026-10-27 03:19: the limitations sentence on the gradient baseline gained the post hoc numbers of D-097 (r 0.63 and 0.58) and one hardware phrase was shortened; not independently reviewed",
  "rendered": "validation/rendered/ holds the page screenshots of revision 2; revision 3 was inspected on rendered pages but the screenshots were not kept",
  "previous_revisions": {
   "2": {

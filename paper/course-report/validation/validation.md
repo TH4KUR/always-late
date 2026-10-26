@@ -12,6 +12,8 @@ Status: complete draft for team review; not a submitted course ZIP. Revision 3 r
 
 - Update 2026-10-27 02:49 IST: the report was rebuilt after one clause (the INT6 cross-corpus reduction against the calibration median, D-096) was added to the external paragraph and four phrases were shortened; 11 pages, main content and limitations still end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!` again; `pdfinfo.txt`, `fonts.txt` and the hashes in `manifest.json` are those of this build.
 
+- Update 2026-10-27 03:19 IST: rebuilt after the limitations sentence on the gradient baseline gained the post hoc numbers of D-097 and one phrase was shortened; 11 pages, main content and limitations end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!`; `pdfinfo.txt`, `fonts.txt` and the manifest hashes are those of this build.
+
 Revision 2 record (kept verbatim):
 
 # Course-report validation: revision 2 (2026-10-26 09:13 IST, 26 October 2026)
