@@ -163,6 +163,15 @@ class Spec(unittest.TestCase):
         self.assertEqual(e["corpus"], {"dataset": "wikimedia/wikipedia", "config_date": "20231101", "revision": "b04c8d1ceb2f5cd4588862100d08de323dccfbaa"})
 
 
+class PanelConsistency(unittest.TestCase):
+    def test_the_panel_module_and_the_frozen_spec_describe_the_same_panel(self):
+        import phase1_transfer_panel as tp
+        e = tf.SPEC["external_panel"]
+        self.assertEqual(tp.TRADITIONAL_ONLY, "".join(tf.TRADITIONAL_ONLY)); self.assertEqual(list(tp.PANEL), e["languages"]); self.assertEqual(tp.REVISION, e["corpus"]["revision"])
+        self.assertEqual((tp.N_CALIBRATION, tp.N_EVALUATION, tp.MAX_TOKENS), (e["calibration_passages"], e["evaluation_passages"], e["max_tokens"]))
+        self.assertEqual(tp.PANEL["zho_Hans"]["filter_characters"], e["zho_Hans_filter_characters"])
+
+
 class Build(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); d = Path(self.tmp.name); self.dir = d
