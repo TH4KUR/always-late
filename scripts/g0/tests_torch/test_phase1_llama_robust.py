@@ -134,6 +134,95 @@ class Summary(unittest.TestCase):
             lrb.evaluate({"FP": run_with(G, D)}, [])
 
 
+G_FP = {"a": 0.5, "b": 0.2, "c": 0.1, "d": 0.1, "e": 0.3}
+D_FP = {"a": [0.1] * 3, "b": [0.1] * 3, "c": [0.09] * 3, "d": [0.2] * 3, "e": [0.1] * 3}
+G_Q = {"a": 0.8, "b": 0.3, "c": 0.9, "d": 0.5, "e": 0.3}
+D_Q = {l: [0.1] * 3 for l in LANGS}
+
+
+def ret_runs(noise_group=None):
+    def one(state, g, d):
+        def harm(code, a, kind):
+            return (g[code] if kind == "g" else d[code][int(kind[1:])]) if a == 0.0 else 0.0
+        return planted_run(state, harm, langs=LANGS, n_controls=3, noise_group=noise_group)
+    return {"FP": one("FP", G_FP, D_FP), "INT4": one("INT4", G_Q, D_Q)}
+
+
+class Retention(unittest.TestCase):
+    """Post hoc (plan section 8, R6): the frozen macro retention is the MEAN of the per-language ratios E(state) / E(FP) over the languages whose FP effect is credibly above zero; on this SAE a language with a
+    tiny FP effect dominates it, so the table adds the median of the ratios (the frozen function returns it too), the number of languages that enter, and the language with the largest ratio.
+    FP effects: a 0.4, b 0.1, c 0.01, d -0.1 (does not enter), e 0.2; INT4 effects: a 0.7, b 0.2, c 0.8, d 0.4, e 0.2; so the ratios are a 1.75, b 2.0, c 80, e 1.0."""
+    def test_the_mean_and_the_median_of_the_ratios_over_the_languages_with_a_positive_fp_effect(self):
+        r = lrb.retention_variants(ret_runs(), LANGS, n_boot=50)["INT4"]
+        self.assertEqual(r["languages"], ["a", "b", "c", "e"]); self.assertEqual(r["n_languages"], 4)
+        self.assertAlmostEqual(r["mean_ratio"], (1.75 + 2.0 + 80.0 + 1.0) / 4, places=3); self.assertAlmostEqual(r["median_ratio"], (1.75 + 2.0) / 2, places=4)
+        self.assertAlmostEqual(r["per_language"]["a"], 1.75, places=5); self.assertAlmostEqual(r["per_language"]["e"], 1.0, places=5); self.assertNotIn("d", r["per_language"])
+
+    def test_the_language_with_the_largest_ratio_is_named(self):
+        r = lrb.retention_variants(ret_runs(), LANGS, n_boot=50)["INT4"]
+        self.assertEqual(r["largest_ratio_language"], "c"); self.assertAlmostEqual(r["largest_ratio"], 80.0, places=3)
+
+    def test_only_the_states_other_than_fp_are_listed_in_the_order_given(self):
+        rr = ret_runs(); rr["INT8"] = rr["INT4"]
+        res = lrb.retention_variants({"FP": rr["FP"], "INT4": rr["INT4"], "INT8": rr["INT8"]}, LANGS, n_boot=20)
+        self.assertEqual(list(res), ["INT4", "INT8"])
+
+    def test_only_the_tested_languages_enter(self):
+        r = lrb.retention_variants(ret_runs(), ["a", "b", "d"], n_boot=20)["INT4"]
+        self.assertEqual(r["languages"], ["a", "b"]); self.assertAlmostEqual(r["mean_ratio"], (1.75 + 2.0) / 2, places=4)
+
+    def test_the_interval_of_the_median_comes_from_the_sentence_draws_and_the_seed(self):
+        n = np.linspace(-0.3, 0.3, 8)
+        a = lrb.retention_variants(ret_runs(noise_group=n), LANGS, n_boot=200, seed=0)["INT4"]
+        b = lrb.retention_variants(ret_runs(noise_group=n), LANGS, n_boot=200, seed=0)["INT4"]
+        c = lrb.retention_variants(ret_runs(noise_group=n), LANGS, n_boot=200, seed=1)["INT4"]
+        self.assertEqual((a["median_lo"], a["median_hi"]), (b["median_lo"], b["median_hi"]))
+        self.assertNotEqual((a["median_lo"], a["median_hi"]), (c["median_lo"], c["median_hi"]))
+        self.assertLess(a["median_lo"], a["median_hi"])
+        d = lrb.retention_variants(ret_runs(), LANGS, n_boot=200)["INT4"]
+        self.assertAlmostEqual(d["median_lo"], d["median_hi"], places=6)                                       # no per-sentence variation: a degenerate interval at the point value
+        e = lrb.retention_variants(ret_runs(noise_group=n), LANGS, n_boot=50, seed=0)["INT4"]
+        self.assertNotEqual((a["median_lo"], a["median_hi"]), (e["median_lo"], e["median_hi"]))                # the number of draws is the argument, not a constant
+        self.assertNotEqual((a["median_lo"], a["median_hi"]), (a["mean_lo"], a["mean_hi"]))                    # the interval of the median is not the interval of the mean
+
+    def test_a_state_without_any_language_with_a_positive_fp_effect_is_undefined_not_an_error(self):
+        g = {l: 0.05 for l in LANGS}; d = {l: [0.1] * 3 for l in LANGS}
+        def harm(code, a, kind):
+            return (g[code] if kind == "g" else d[code][int(kind[1:])]) if a == 0.0 else 0.0
+        fp = planted_run("FP", harm, langs=LANGS, n_controls=3)
+        r = lrb.retention_variants({"FP": fp, "INT4": ret_runs()["INT4"]}, LANGS, n_boot=20)["INT4"]
+        self.assertEqual(r["n_languages"], 0); self.assertIsNone(r["mean_ratio"]); self.assertIsNone(r["median_ratio"]); self.assertIsNone(r["largest_ratio_language"])
+
+    def test_fp_must_be_present_and_the_language_list_must_not_be_empty(self):
+        with self.assertRaises(ValueError):
+            lrb.retention_variants({"INT4": ret_runs()["INT4"]}, LANGS)
+        with self.assertRaises(ValueError):
+            lrb.retention_variants(ret_runs(), [])
+
+    def test_the_mean_equals_the_pre_registered_estimator_of_the_comparison_module(self):
+        import phase1_func_analysis as fa
+        rr = ret_runs(); D = fa.draws(8, 50, 0)
+        eff = {s: {c: fa.functional_effect(rr[s], c, "K64", D) for c in LANGS} for s in rr}
+        self.assertEqual(lrb.retention_variants(rr, LANGS, n_boot=50)["INT4"]["mean_ratio"], fa.retention_macro(eff["INT4"], eff["FP"], LANGS)["ratio"])
+
+    def test_the_report_text_carries_the_retention_table_and_the_post_hoc_label(self):
+        res = lrb.evaluate({"FP": run_with(G, D)}, LANGS)
+        ret = lrb.retention_variants(ret_runs(), LANGS, n_boot=20)
+        text = lrb.report_text(res, {}, retention=ret)
+        for k in ("median of the ratios", "INT4", "mean of the ratios", "largest ratio", "c"):
+            self.assertIn(k, text)
+        self.assertNotIn("median of the ratios", lrb.report_text(res, {}))
+        r = ret["INT4"]; self.assertIn(f"| {r['mean_ratio']:+.3f} | {r['median_ratio']:+.3f} [", text)               # the mean column comes first, the median column second
+
+    def test_a_state_without_an_entering_language_is_printed_as_undefined(self):
+        g = {l: 0.05 for l in LANGS}; d = {l: [0.1] * 3 for l in LANGS}
+        def harm(code, a, kind):
+            return (g[code] if kind == "g" else d[code][int(kind[1:])]) if a == 0.0 else 0.0
+        ret = lrb.retention_variants({"FP": planted_run("FP", harm, langs=LANGS, n_controls=3), "INT4": ret_runs()["INT4"]}, LANGS, n_boot=20)
+        text = lrb.report_text(lrb.evaluate({"FP": run_with(G, D)}, LANGS), {}, retention=ret)
+        self.assertIn("| INT4 | 0 | undefined | undefined | - |", text)
+
+
 class Report(unittest.TestCase):
     def test_the_report_is_labelled_post_hoc_and_says_that_it_cannot_change_the_verdict(self):
         res = lrb.evaluate({"FP": run_with(G, D)}, LANGS)
@@ -154,6 +243,7 @@ class Files(unittest.TestCase):
                 self.assertTrue((d / "out" / f).exists(), f)
             js = json.loads((d / "out" / "robust.json").read_text())
             self.assertEqual(js["states"], ["FP", "INT4"]); self.assertEqual(js["tested"], ["a", "b", "c", "d"]); self.assertEqual(js["untested"], ["e"]); self.assertTrue(js["post_hoc"])
+            self.assertEqual(list(js["retention"]), ["INT4"]); self.assertIn("median_ratio", js["retention"]["INT4"]); self.assertIn("median of the ratios", (d / "out" / "report.md").read_text())
             with open(d / "out" / "languages.csv") as fh:
                 rows = list(csv.DictReader(fh))
             self.assertEqual(len(rows), 8); self.assertIn("E_median", rows[0]); self.assertIn("outlier_draws", rows[0])
