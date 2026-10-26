@@ -371,3 +371,33 @@ def paired_relative_improvement(err_base, err_diag, feature_idx, cluster_idx, n_
     nf, nc = int(fi.max()) + 1, int(ci.max()) + 1; mf, mc = bootstrap_multiplicities(nf, nc, n_boot, seed); reps = 1.0 - replicate_stats(d, fi, ci, mf, mc, "mean") / replicate_stats(b, fi, ci, mf, mc, "mean")
     lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
     return {"point": float(1.0 - d.mean() / b.mean()), "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n": int(len(b)), "n_features": nf, "n_clusters": nc, "n_boot": int(n_boot), "seed": int(seed), "level": level}
+
+
+MODEL_GROUPS = {"A": ("A",), "A+G": ("A", "G"), "A+B": ("A", "B"), "A+B+G": ("A", "B", "G")}
+BASELINES = ("A", "A+G")
+DIAGNOSTIC = "A+B"
+UTILITY_REDUCTION = 0.10
+
+
+def utility_criterion(improvement):
+    """The prespecified project criterion: at least 10 % relative held-out MAE reduction over the strongest baseline AND a paired-bootstrap interval that excludes zero improvement."""
+    return bool(improvement["point"] >= UTILITY_REDUCTION and improvement["low"] > 0)
+
+
+def diagnostic(d, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, lams=RIDGE_STRENGTHS, n_folds=N_FOLDS, min_calibration=20, min_heldout=10):
+    """The held-out diagnostic of one quantized state. d: the design (`design`). Everything is fitted on the CALIBRATION items only (standardization, ridge strength by feature-group cross-validation within the
+    calibration half, the coefficients, the choice of the strongest baseline among A and A+G by its cross-validated calibration error); the held-out items only score. Models: A (activation baseline), A+G
+    (plus the gradient baseline), A+B (plus the generic sensitivity measured with the other directions: THE DIAGNOSTIC), A+B+G. Also reported: the null model (the calibration median). The criterion
+    compares the diagnostic with the strongest baseline on the held-out items with a paired crossed bootstrap. Fewer items than `min_calibration` / `min_heldout` give status 'insufficient' and no fit."""
+    cal, held = d["split"] == "calibration", d["split"] == "heldout"; out = {"n_calibration": int(cal.sum()), "n_heldout": int(held.sum()), "diagnostic": DIAGNOSTIC, "baselines": list(BASELINES)}
+    if cal.sum() < min_calibration or held.sum() < min_heldout:
+        return {**out, "status": "insufficient"}
+    X = lambda name, m: np.hstack([d[g][m] for g in MODEL_GROUPS[name]]); y_cal, y_held = d["y"][cal], d["y"][held]; models = {}
+    for name in MODEL_GROUPS:
+        ch = choose_lambda(X(name, cal), y_cal, d["feature"][cal], lams, n_folds); fit = ridge_fit(X(name, cal), y_cal, ch["lambda"]); ae = np.abs(ridge_predict(fit, X(name, held)) - y_held)
+        models[name] = {"lambda": ch["lambda"], "cv_mae": ch["cv_mae"][ch["lambda"]], "cv_mae_by_lambda": ch["cv_mae"], "heldout_mae": float(ae.mean()), "abs_error": ae, "coef": fit["coef"].tolist(), "mean": fit["mean"].tolist(),
+                        "scale": fit["scale"].tolist(), "intercept": fit["intercept"]}
+    strongest = min(BASELINES, key=lambda n: models[n]["cv_mae"]); fh, ch_ = d["feature"][held], d["cluster"][held]
+    imp = paired_relative_improvement(models[strongest]["abs_error"], models[DIAGNOSTIC]["abs_error"], fh, ch_, n_boot, seed)
+    imp_all = paired_relative_improvement(models[strongest]["abs_error"], models["A+B+G"]["abs_error"], fh, ch_, n_boot, seed)
+    return {**out, "status": "fitted", "models": models, "null_mae": float(np.abs(y_held - np.median(y_cal)).mean()), "strongest_baseline": strongest, "improvement": imp, "improvement_with_gradient": imp_all, "criterion_met": utility_criterion(imp)}

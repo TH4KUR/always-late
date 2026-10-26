@@ -472,5 +472,52 @@ class PairedImprovement(unittest.TestCase):
         e = np.arange(1.0, 9.0); r = ta.paired_relative_improvement(e, e, np.arange(8), np.arange(8) % 3, n_boot=30, seed=0); self.assertEqual((r["point"], r["low"], r["high"]), (0.0, 0.0, 0.0))
 
 
+def synthetic_design(seed=0, n_cal_features=24, n_held_features=18, per=4, signal="B", noise=0.1):
+    """A design of the predictive diagnostic with known structure: y follows the column of the group `signal` (None: pure noise)."""
+    rng = np.random.default_rng(seed); n_c, n_h = n_cal_features * per, n_held_features * per; n = n_c + n_h
+    feature = np.concatenate([np.repeat(np.arange(n_cal_features), per), 1000 + np.repeat(np.arange(n_held_features), per)]); split = np.array(["calibration"] * n_c + ["heldout"] * n_h)
+    d = {"A": rng.normal(size=(n, 5)), "B": rng.normal(size=(n, 1)), "G": rng.normal(size=(n, 4)), "split": split, "feature": feature, "cluster": rng.integers(0, 12, size=n)}
+    d["y"] = 3.0 + (d[signal][:, 0] * 2.0 if signal else 0.0) + rng.normal(size=n) * noise if signal else 3.0 + rng.normal(size=n)
+    return d
+
+
+class Diagnostic(unittest.TestCase):
+    def test_a_generic_sensitivity_that_carries_the_signal_beats_both_baselines_and_meets_the_criterion(self):
+        r = ta.diagnostic(synthetic_design(signal="B"), n_boot=200, seed=1)
+        self.assertEqual((r["n_calibration"], r["n_heldout"]), (96, 72)); self.assertEqual(set(r["models"]), {"A", "A+G", "A+B", "A+B+G"}); self.assertEqual(r["diagnostic"], "A+B")
+        self.assertGreater(r["improvement"]["point"], 0.5); self.assertGreater(r["improvement"]["low"], 0.0); self.assertTrue(r["criterion_met"]); self.assertLess(r["models"]["A+B"]["heldout_mae"], r["models"]["A"]["heldout_mae"])
+
+    def test_pure_noise_gives_no_utility_and_the_null_model_is_the_calibration_median(self):
+        r = ta.diagnostic(synthetic_design(signal=None, seed=3), n_boot=200, seed=1); self.assertFalse(r["criterion_met"]); self.assertLess(r["improvement"]["point"], 0.1)
+        d = synthetic_design(signal=None, seed=3); cal = d["split"] == "calibration"; held = ~cal; self.assertAlmostEqual(r["null_mae"], float(np.abs(d["y"][held] - np.median(d["y"][cal])).mean()))
+
+    def test_the_strongest_baseline_is_chosen_on_the_calibration_half_by_cross_validated_error(self):
+        d = synthetic_design(signal="G", seed=5); r = ta.diagnostic(d, n_boot=50, seed=1); self.assertEqual(r["strongest_baseline"], "A+G")
+        d2 = synthetic_design(signal="B", seed=5); self.assertEqual(ta.diagnostic(d2, n_boot=50, seed=1)["strongest_baseline"], "A")                        # G is noise: the extra columns do not pay
+
+    def test_nothing_from_the_held_out_half_enters_the_fits_the_strengths_or_the_choice_of_the_baseline(self):
+        d = synthetic_design(signal="B", seed=7); a = ta.diagnostic(d, n_boot=50, seed=1); e = {k: (v.copy() if isinstance(v, np.ndarray) else v) for k, v in d.items()}; held = e["split"] == "heldout"
+        e["y"][held] = e["y"][held] * 50 + 1000; e["A"][held] = e["A"][held] * 1e6; e["B"][held] = -e["B"][held] * 1e6; b = ta.diagnostic(e, n_boot=50, seed=1)
+        self.assertEqual(a["strongest_baseline"], b["strongest_baseline"])
+        for name in a["models"]:
+            for k in ("lambda", "cv_mae", "coef", "mean", "scale"):
+                self.assertEqual(np.asarray(a["models"][name][k]).tolist(), np.asarray(b["models"][name][k]).tolist(), (name, k))
+        self.assertNotEqual(a["models"]["A"]["heldout_mae"], b["models"]["A"]["heldout_mae"])
+
+    def test_too_few_items_are_reported_not_fitted(self):
+        r = ta.diagnostic(synthetic_design(n_cal_features=3, n_held_features=2, per=2), n_boot=10, seed=0); self.assertEqual(r["status"], "insufficient"); self.assertEqual((r["n_calibration"], r["n_heldout"]), (6, 4)); self.assertNotIn("improvement", r)
+
+    def test_a_small_held_out_half_alone_is_enough_to_refuse_and_the_coefficients_are_those_of_the_chosen_strength(self):
+        r = ta.diagnostic(synthetic_design(n_cal_features=24, n_held_features=2, per=2), n_boot=10, seed=0); self.assertEqual((r["status"], r["n_heldout"]), ("insufficient", 4))
+        d = synthetic_design(signal="B", seed=9); r = ta.diagnostic(d, n_boot=10, seed=0, lams=(0.1, 10, 1000)); cal = d["split"] == "calibration"
+        for name, groups in ta.MODEL_GROUPS.items():
+            fit = ta.ridge_fit(np.hstack([d[g][cal] for g in groups]), d["y"][cal], r["models"][name]["lambda"]); self.assertTrue(np.allclose(fit["coef"], r["models"][name]["coef"]))
+        self.assertTrue(any(r["models"][n]["lambda"] != 1 for n in r["models"]))
+
+    def test_the_criterion_needs_ten_percent_and_an_interval_above_zero(self):
+        self.assertTrue(ta.utility_criterion({"point": 0.10, "low": 0.01, "high": 0.2})); self.assertFalse(ta.utility_criterion({"point": 0.0999, "low": 0.01, "high": 0.2}))
+        self.assertFalse(ta.utility_criterion({"point": 0.3, "low": 0.0, "high": 0.4})); self.assertFalse(ta.utility_criterion({"point": 0.3, "low": -0.1, "high": 0.4}))
+
+
 if __name__ == "__main__":
     unittest.main()
