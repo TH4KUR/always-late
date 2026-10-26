@@ -157,7 +157,7 @@ def main(argv=None):
     ap.add_argument("--keep-shards", action="store_true")
     a = ap.parse_args(argv)
     from transformers import AutoTokenizer
-    tok = AutoTokenizer.from_pretrained(a.tokenizer); count = lambda t: len(tok(t, add_special_tokens=False)["input_ids"])
+    tok = AutoTokenizer.from_pretrained(a.tokenizer, local_files_only=True); count = lambda t: len(tok(t, add_special_tokens=False)["input_ids"])
     text_dir = Path(a.text_dir); text_dir.mkdir(parents=True, exist_ok=True); results, files, shards = {}, {}, {}
     for code, cfg in PANEL.items():
         sh = SHARDS[cfg["config"]]; path = Path(a.shards_dir) / Path(sh["file"]).name
