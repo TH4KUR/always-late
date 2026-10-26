@@ -372,6 +372,13 @@ class FreezeCheck(unittest.TestCase):
             self.assertIn(needle, deploy)
 
 
+class GateConstants(unittest.TestCase):
+    def test_the_instrument_gate_thresholds_are_the_amended_ones_and_not_looser_than_documented(self):
+        self.assertEqual((tr.GATE_MIN_TOP1, tr.GATE_MAX_ABS, tr.GATE_PROBE_SENTENCES, tr.GATE_ROWS), (0.90, 2.0, 8, 512))
+        src = (Path(__file__).resolve().parents[1] / "phase1_transfer_run.py").read_text()
+        self.assertIn("min_top1=GATE_MIN_TOP1", src); self.assertIn("max_abs=GATE_MAX_ABS", src); self.assertNotIn("min_top1=0.95", src)
+
+
 class Constants(unittest.TestCase):
     def test_the_direction_kinds_and_seeds_are_those_of_the_frozen_spec(self):
         import phase1_transfer_freeze as tf

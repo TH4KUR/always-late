@@ -19,6 +19,11 @@ import phase1_transfer_core as tc
 
 DIRECTION_KINDS = ("real", "matched_swapped", "random1", "random2", "random3")
 RANDOM_SEEDS = [1, 2, 3]
+# Instrument gates of the model-facing part (not part of the frozen spec). The float32 readout is compared with the model's own bfloat16 logits on the rows of a probe batch: top-1 agreement and the largest absolute
+# logit difference. Amendment A6 (ledger, 2026-10-26 14:35): the top-1 threshold of the F5 runner (0.95) was written for ITS probe of four evaluation sentences (62 rows, 59 of 62 needed); the first instrument job
+# (Slurm 40070) agreed on 58 of 62 rows of its probe with a largest difference of 0.59, so the threshold is 0.90 on a larger probe (8 sentences, at most 512 rows): the gate catches a wrong split, layer, dtype or
+# readout, not near ties between the bfloat16 and the float32 logits. The largest-difference limit is unchanged.
+GATE_MIN_TOP1, GATE_MAX_ABS, GATE_PROBE_SENTENCES, GATE_ROWS = 0.90, 2.0, 8, 512
 
 
 def random_direction(direction, seed, feature_id):
@@ -277,12 +282,13 @@ def main(argv=None):
     log("dev sentences", len(dev_tokens), "truncated", truncated, "features in the core", len(core["feature_ids"]), "states", labels)
 
     setup("FP")
-    probe = batcher(dev_tokens[:8])[0]; tokens, valid = probe["tokens"][:4].to(DEVICE), probe["valid"][:4].to(DEVICE)
+    probe = batcher(dev_tokens[:GATE_PROBE_SENTENCES])[0]; tokens, valid = probe["tokens"][:GATE_PROBE_SENTENCES].to(DEVICE), probe["valid"][:GATE_PROBE_SENTENCES].to(DEVICE)
     resid = lower(tokens); z_ref = upper(resid)
     gates = {"split_equals_full": bool(torch.equal(model(tokens), z_ref))}
-    z_ref = z_ref[valid][:256].float()
-    gates["logits_native_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid)[valid][:256]), min_top1=0.95, max_abs=2.0)
-    gates["logits_float32_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid.float())[valid][:256]), min_top1=0.95, max_abs=2.0)
+    z_ref = z_ref[valid][:GATE_ROWS].float()
+    gates["logits_native_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid)[valid][:GATE_ROWS]), min_top1=GATE_MIN_TOP1, max_abs=GATE_MAX_ABS)
+    gates["logits_float32_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid.float())[valid][:GATE_ROWS]), min_top1=GATE_MIN_TOP1, max_abs=GATE_MAX_ABS)
+    gates["probe_rows"] = int(min(int(valid.sum()), GATE_ROWS))
     del resid, z_ref; gc.collect(); torch.cuda.empty_cache()
     log("gates:", gates)
     if not gates["split_equals_full"] or not gates["logits_native_residual"]["ok"] or not gates["logits_float32_residual"]["ok"]:
