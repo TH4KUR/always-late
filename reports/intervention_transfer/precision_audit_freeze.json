@@ -1,0 +1,1814 @@
+{
+ "schema": 1,
+ "kind": "intervention-transfer-precision-audit-freeze",
+ "rule": "feature FP effect norm = median over the feature's core contexts of the FP effect norm (fp_norm) of the real direction; features ranked by (norm, feature id), quartile = floor(4 * rank / n); inside a quartile the features with the lowest sha256 of 'salt:feature id' are chosen; each chosen feature contributes the first n_contexts contexts in the order of the frozen core (the original FP ranking). Only FP quantities are read.",
+ "salt": "precision-audit-r5-v1",
+ "inputs_sha256": {
+  "core": "3b7b266add9eb575ad601b460b03021e6f2f27ca5f1fd9378657b3641ca6530c",
+  "fp_norm_table": "be221b2bf485e113e07f525be55dffea0262d4793bce3e2a908e451ebabffb14"
+ },
+ "counts": {
+  "features_in_core": 404,
+  "excluded": 0,
+  "per_quartile": 32,
+  "n_contexts": 4,
+  "selected_features": 128,
+  "selected_pairs": 512
+ },
+ "excluded": [],
+ "features": [
+  {
+   "feature": 11896,
+   "direction_id": 10299,
+   "language_index": 7,
+   "feature_fp_norm": 19.40332656678852,
+   "contexts": [
+    2524,
+    4258,
+    15353,
+    1395
+   ],
+   "quartile": 0,
+   "rank_hash": "03572001a9f4a3153c3d4ed3d25d661d4168c31b036118ae76ba331e52b1fd9c"
+  },
+  {
+   "feature": 1555,
+   "direction_id": 10552,
+   "language_index": 0,
+   "feature_fp_norm": 32.19633295902905,
+   "contexts": [
+    2369,
+    6269,
+    3366,
+    3513
+   ],
+   "quartile": 0,
+   "rank_hash": "03fd48b8bbd9495b4236fea3cb4898786813a6e19947ce4a848ac2500e03afbb"
+  },
+  {
+   "feature": 9079,
+   "direction_id": 1840,
+   "language_index": 8,
+   "feature_fp_norm": 30.322677211591966,
+   "contexts": [
+    8147,
+    10141,
+    8239,
+    10944
+   ],
+   "quartile": 0,
+   "rank_hash": "04d0fc4abf82e98bfcdf1ff2489a122ca9d5912b10d9ed3647a8306d804f31fc"
+  },
+  {
+   "feature": 16010,
+   "direction_id": 13114,
+   "language_index": 22,
+   "feature_fp_norm": 28.28584422820763,
+   "contexts": [
+    17670,
+    19722,
+    13183,
+    15080
+   ],
+   "quartile": 0,
+   "rank_hash": "0691cf9a42e57d33a2f855b16ee20f076495779a5c88dd818528c4752065fef2"
+  },
+  {
+   "feature": 16160,
+   "direction_id": 802,
+   "language_index": 2,
+   "feature_fp_norm": 23.399412810979413,
+   "contexts": [
+    3025,
+    53,
+    16964,
+    1050
+   ],
+   "quartile": 0,
+   "rank_hash": "087f768df0bbb851b18df8416b1e1de9b59fbdcd10aa358e0f5e9fa741f2c54c"
+  },
+  {
+   "feature": 8332,
+   "direction_id": 11308,
+   "language_index": 13,
+   "feature_fp_norm": 18.71734592292966,
+   "contexts": [
+    12970,
+    14318,
+    8212,
+    10315
+   ],
+   "quartile": 0,
+   "rank_hash": "0b30981c76f38d66fd53ff1f514440a5824f8d764349d4ad68b070900d79a205"
+  },
+  {
+   "feature": 15159,
+   "direction_id": 1724,
+   "language_index": 19,
+   "feature_fp_norm": 21.847493891905224,
+   "contexts": [
+    10168,
+    8087,
+    11165,
+    10161
+   ],
+   "quartile": 0,
+   "rank_hash": "0b38713c92a4e10ef05e95d4eeb185d93bbf0d4ffa21e35f2d9205b4cb1bcc1c"
+  },
+  {
+   "feature": 2224,
+   "direction_id": 10038,
+   "language_index": 12,
+   "feature_fp_norm": 26.126961821079973,
+   "contexts": [
+    3137,
+    8616,
+    12940,
+    917
+   ],
+   "quartile": 0,
+   "rank_hash": "0b4dc10d0a41e83d9334c8d33f0ec2d816b509c342aa5fc843d00a1b8fbf3c0b"
+  },
+  {
+   "feature": 14567,
+   "direction_id": 12735,
+   "language_index": 16,
+   "feature_fp_norm": 38.435732020797474,
+   "contexts": [
+    4113,
+    7487,
+    125,
+    6545
+   ],
+   "quartile": 0,
+   "rank_hash": "1557195435d33ac5aa701038d1f426e42ba9c896bbcfb7fabd1d85c5e6a2c5ab"
+  },
+  {
+   "feature": 2442,
+   "direction_id": 14429,
+   "language_index": 25,
+   "feature_fp_norm": 35.60519885492274,
+   "contexts": [
+    15311,
+    23515,
+    6511,
+    23490
+   ],
+   "quartile": 0,
+   "rank_hash": "15d03fc55e9e44224826d0e66bfbdb494fc049cfff82921054556c3af0b2ea84"
+  },
+  {
+   "feature": 6538,
+   "direction_id": 9992,
+   "language_index": 10,
+   "feature_fp_norm": 29.30820459061181,
+   "contexts": [
+    7113,
+    6116,
+    756,
+    9327
+   ],
+   "quartile": 0,
+   "rank_hash": "174b565f32dae89c0226263a38b392925b7b13ef06d59b824fd4d24f720d2a7c"
+  },
+  {
+   "feature": 1731,
+   "direction_id": 11816,
+   "language_index": 2,
+   "feature_fp_norm": 39.73576463050435,
+   "contexts": [
+    25436,
+    2750,
+    16267,
+    1312
+   ],
+   "quartile": 0,
+   "rank_hash": "1c16f9fafa955c8043d04f9af71dbd8c437a5e3a40c4ef4f1568cbd81f3e84eb"
+  },
+  {
+   "feature": 6853,
+   "direction_id": 14346,
+   "language_index": 26,
+   "feature_fp_norm": 31.62666917106569,
+   "contexts": [
+    23310,
+    21057,
+    23902,
+    23488
+   ],
+   "quartile": 0,
+   "rank_hash": "1c3c5b12db75963f41ef5646728b348a1a9fc755389bb23671adaa5eea429e5f"
+  },
+  {
+   "feature": 6641,
+   "direction_id": 10163,
+   "language_index": 12,
+   "feature_fp_norm": 33.859705316682536,
+   "contexts": [
+    7901,
+    7689,
+    8250,
+    8854
+   ],
+   "quartile": 0,
+   "rank_hash": "1ea92cb62f99c20f96812a85ec66168f04b92ed3c3970e346aced1a8f70cfd9b"
+  },
+  {
+   "feature": 3137,
+   "direction_id": 3785,
+   "language_index": 2,
+   "feature_fp_norm": 34.96320719328726,
+   "contexts": [
+    12846,
+    9949,
+    3165,
+    4162
+   ],
+   "quartile": 0,
+   "rank_hash": "20aa40dfc3be5e2c02159c7b14fd059e7cac5aaecdac225c5084c23244c77424"
+  },
+  {
+   "feature": 6304,
+   "direction_id": 10299,
+   "language_index": 7,
+   "feature_fp_norm": 18.025215680237196,
+   "contexts": [
+    1053,
+    1339,
+    1285,
+    3047
+   ],
+   "quartile": 0,
+   "rank_hash": "216778b6f746a069ceea4400b617fdf408e6e51f4aaa6b06e3cffb3effcdbc18"
+  },
+  {
+   "feature": 437,
+   "direction_id": 12640,
+   "language_index": 23,
+   "feature_fp_norm": 36.5140582393795,
+   "contexts": [
+    7224,
+    6153,
+    15198,
+    13204
+   ],
+   "quartile": 0,
+   "rank_hash": "22d258b6a7ef12429b01b6e07b1c1cb348e396a3252d0df73f7f8d2eed646284"
+  },
+  {
+   "feature": 4006,
+   "direction_id": 3086,
+   "language_index": 26,
+   "feature_fp_norm": 24.004286667308122,
+   "contexts": [
+    26824,
+    26821,
+    26499,
+    21539
+   ],
+   "quartile": 0,
+   "rank_hash": "255bb345c19cabd4d0dbb49b8076b2f9c3d35921f4c2a93c8f10bc28d3241892"
+  },
+  {
+   "feature": 10163,
+   "direction_id": 2489,
+   "language_index": 12,
+   "feature_fp_norm": 15.598461672000406,
+   "contexts": [
+    2946,
+    1949,
+    1200,
+    13738
+   ],
+   "quartile": 0,
+   "rank_hash": "27da2033b16fdb6e43f6884498b87611a3cd5ef5675a91d2e93003c6fd55af96"
+  },
+  {
+   "feature": 1650,
+   "direction_id": 12371,
+   "language_index": 6,
+   "feature_fp_norm": 18.271865316634717,
+   "contexts": [
+    2527,
+    16136,
+    25581,
+    948
+   ],
+   "quartile": 0,
+   "rank_hash": "296d42b49b53f182d79cc064577cc9dece20ce2f5e93aef476f26c1792df6989"
+  },
+  {
+   "feature": 9848,
+   "direction_id": 5727,
+   "language_index": 1,
+   "feature_fp_norm": 19.955349967983572,
+   "contexts": [
+    17807,
+    15055,
+    13078,
+    1779
+   ],
+   "quartile": 0,
+   "rank_hash": "2ac92c00af9e565baed90d74f878f667cdd7a07052e9a3e6485de53a447341b6"
+  },
+  {
+   "feature": 7858,
+   "direction_id": 6651,
+   "language_index": 12,
+   "feature_fp_norm": 39.96124651427971,
+   "contexts": [
+    10258,
+    302,
+    8196,
+    16176
+   ],
+   "quartile": 0,
+   "rank_hash": "2f14014151dedd5a8626f415f8de4e5b35ce5fd4451609ab9562dee24a6b0a2b"
+  },
+  {
+   "feature": 6855,
+   "direction_id": 7822,
+   "language_index": 15,
+   "feature_fp_norm": 18.755607659355555,
+   "contexts": [
+    3522,
+    25404,
+    16427,
+    13148
+   ],
+   "quartile": 0,
+   "rank_hash": "30e85e886ff97f4436393f628b11a49cec2dad01364ae5fa88c4caa92a4a1a98"
+  },
+  {
+   "feature": 5090,
+   "direction_id": 7081,
+   "language_index": 26,
+   "feature_fp_norm": 18.919638438951385,
+   "contexts": [
+    26220,
+    26278,
+    25640,
+    11323
+   ],
+   "quartile": 0,
+   "rank_hash": "3491a9706c5ca39c7104aab50417ccabf1d6318d743deff4d1ec3f1af8f081af"
+  },
+  {
+   "feature": 2134,
+   "direction_id": 5150,
+   "language_index": 0,
+   "feature_fp_norm": 32.454471173933115,
+   "contexts": [
+    17459,
+    5925,
+    7040,
+    13022
+   ],
+   "quartile": 0,
+   "rank_hash": "3ce7f5bc95a64166f840a03e307cc4c80167e74924dd94f166b832bbbe6823a4"
+  },
+  {
+   "feature": 10375,
+   "direction_id": 8538,
+   "language_index": 0,
+   "feature_fp_norm": 40.15480158809727,
+   "contexts": [
+    3949,
+    7722,
+    10705,
+    743
+   ],
+   "quartile": 0,
+   "rank_hash": "3f2a6468f5617b37a3e0bb030dfc6deb0e3a5f5a40c61f8c6958633ef2fe8638"
+  },
+  {
+   "feature": 16052,
+   "direction_id": 1171,
+   "language_index": 12,
+   "feature_fp_norm": 22.191035004581547,
+   "contexts": [
+    5980,
+    25648,
+    7260,
+    13956
+   ],
+   "quartile": 0,
+   "rank_hash": "427b14f5e5c423a9e0ccdbb523f194e36706141ae55d297e90c1268c9912bd02"
+  },
+  {
+   "feature": 12960,
+   "direction_id": 11932,
+   "language_index": 25,
+   "feature_fp_norm": 25.788056243787025,
+   "contexts": [
+    25320,
+    7134,
+    24977,
+    19260
+   ],
+   "quartile": 0,
+   "rank_hash": "4543aa2e3c174f4a382512d15dafefa1792eabd39e76e2c7209af922c286a5a7"
+  },
+  {
+   "feature": 10552,
+   "direction_id": 1555,
+   "language_index": 0,
+   "feature_fp_norm": 24.290226471628515,
+   "contexts": [
+    12457,
+    6475,
+    1415,
+    493
+   ],
+   "quartile": 0,
+   "rank_hash": "4729440ac37772b705f9173fe7be87f4cad15f11984d0b709ad2a4a2e2eefa4c"
+  },
+  {
+   "feature": 14745,
+   "direction_id": 12026,
+   "language_index": 1,
+   "feature_fp_norm": 30.511484631856792,
+   "contexts": [
+    1104,
+    1135,
+    5848,
+    600
+   ],
+   "quartile": 0,
+   "rank_hash": "48f7023fcced57eb13323768c0a38f9eb5d2d418856d57f917f65bfb1f7d4f46"
+  },
+  {
+   "feature": 6408,
+   "direction_id": 192,
+   "language_index": 23,
+   "feature_fp_norm": 21.65038223629358,
+   "contexts": [
+    10186,
+    15495,
+    25495,
+    19159
+   ],
+   "quartile": 0,
+   "rank_hash": "4e2ea92b2b4acfe5cfd2864e422048c701e64393d4fdc3293c5c9c408c2cf54a"
+  },
+  {
+   "feature": 9226,
+   "direction_id": 5160,
+   "language_index": 20,
+   "feature_fp_norm": 20.84169893145078,
+   "contexts": [
+    12923,
+    8935,
+    18449,
+    15914
+   ],
+   "quartile": 0,
+   "rank_hash": "4e4ebeeb8b1f287821607b6ba57f78decc00095ad9bd7e7f034f491e9c1d47e4"
+  },
+  {
+   "feature": 14118,
+   "direction_id": 13062,
+   "language_index": 0,
+   "feature_fp_norm": 52.38640507686947,
+   "contexts": [
+    89,
+    2083,
+    4077,
+    3080
+   ],
+   "quartile": 1,
+   "rank_hash": "06d9b6dea5de8dc775f1adc1e3a07b660afa487955c1db9e81c2603dbd555946"
+  },
+  {
+   "feature": 16126,
+   "direction_id": 6651,
+   "language_index": 12,
+   "feature_fp_norm": 72.18575695880679,
+   "contexts": [
+    12382,
+    418,
+    15373,
+    3409
+   ],
+   "quartile": 1,
+   "rank_hash": "0b60f2da0de1be9defc0c7ad0d843ff5e6f60ba495adc34f4d48f6c17ab04497"
+  },
+  {
+   "feature": 12615,
+   "direction_id": 14739,
+   "language_index": 21,
+   "feature_fp_norm": 59.78016489278495,
+   "contexts": [
+    24573,
+    21854,
+    4068,
+    24001
+   ],
+   "quartile": 1,
+   "rank_hash": "0fe39c8fcde6f23381f354fbe9bd94493f9c5411a4332d8596ad234a7095ee73"
+  },
+  {
+   "feature": 8181,
+   "direction_id": 14754,
+   "language_index": 6,
+   "feature_fp_norm": 54.189229328650285,
+   "contexts": [
+    190,
+    34,
+    3436,
+    117
+   ],
+   "quartile": 1,
+   "rank_hash": "108498d2651b5a69527cb78ff9a080713d40b3ff36b5d445d05a555e08a024aa"
+  },
+  {
+   "feature": 5472,
+   "direction_id": 14700,
+   "language_index": 0,
+   "feature_fp_norm": 42.693503965702305,
+   "contexts": [
+    4629,
+    399,
+    835,
+    910
+   ],
+   "quartile": 1,
+   "rank_hash": "125ce1d05db38ca709e95efae44019fefa4756949abf7751345a0c1b298479b5"
+  },
+  {
+   "feature": 8992,
+   "direction_id": 3072,
+   "language_index": 17,
+   "feature_fp_norm": 43.348352302287886,
+   "contexts": [
+    15961,
+    2003,
+    3997,
+    9
+   ],
+   "quartile": 1,
+   "rank_hash": "13932b0404088ff54ebf394935d05f143b0ae4697345b29b6200695a9e22a3e2"
+  },
+  {
+   "feature": 1221,
+   "direction_id": 13677,
+   "language_index": 14,
+   "feature_fp_norm": 78.00769515975801,
+   "contexts": [
+    2281,
+    16656,
+    1284,
+    287
+   ],
+   "quartile": 1,
+   "rank_hash": "14624b6661af2f8af02b04a2d24a6425e70b54232c4967057dc242d1b344b936"
+  },
+  {
+   "feature": 14700,
+   "direction_id": 15596,
+   "language_index": 0,
+   "feature_fp_norm": 50.91448257948735,
+   "contexts": [
+    4580,
+    3583,
+    5577,
+    1574
+   ],
+   "quartile": 1,
+   "rank_hash": "15969a0bd53186859a2ca0c92636e96fd7c71e2171c9d4ed807d202ee0461080"
+  },
+  {
+   "feature": 15820,
+   "direction_id": 1731,
+   "language_index": 2,
+   "feature_fp_norm": 60.244993532151085,
+   "contexts": [
+    365,
+    2425,
+    2985,
+    706
+   ],
+   "quartile": 1,
+   "rank_hash": "17b727dd4f882d35bad36686210d15d090f2fdeaf8408f8bdb8489eca36d93b4"
+  },
+  {
+   "feature": 2806,
+   "direction_id": 9992,
+   "language_index": 10,
+   "feature_fp_norm": 43.14308401441765,
+   "contexts": [
+    10185,
+    10305,
+    9978,
+    10397
+   ],
+   "quartile": 1,
+   "rank_hash": "1ca1bb62fa636076353013229157076f932f60e03fc08708926ab9c80e4cfb69"
+  },
+  {
+   "feature": 14337,
+   "direction_id": 14735,
+   "language_index": 7,
+   "feature_fp_norm": 63.05205857807429,
+   "contexts": [
+    787,
+    1781,
+    806,
+    9735
+   ],
+   "quartile": 1,
+   "rank_hash": "20f86c15eb96ceda03aec2a84ae5ca5b52181d48b03eacb8911a7aa29e6c4ced"
+  },
+  {
+   "feature": 11664,
+   "direction_id": 7990,
+   "language_index": 23,
+   "feature_fp_norm": 48.27588051334322,
+   "contexts": [
+    8772,
+    1645,
+    1627,
+    7801
+   ],
+   "quartile": 1,
+   "rank_hash": "21dcf3a931670ea663c943cfeb4123c3e3b785262cc81c819b824dc77fb0c9f9"
+  },
+  {
+   "feature": 5726,
+   "direction_id": 13862,
+   "language_index": 23,
+   "feature_fp_norm": 64.56976697948856,
+   "contexts": [
+    14426,
+    25095,
+    211,
+    2808
+   ],
+   "quartile": 1,
+   "rank_hash": "234d47a1770368007a6a4e4a19d4878e8656bea9e15567cfbdb91b9ee42b57a8"
+  },
+  {
+   "feature": 6834,
+   "direction_id": 2838,
+   "language_index": 13,
+   "feature_fp_norm": 68.16908227499897,
+   "contexts": [
+    12631,
+    4655,
+    10637,
+    2661
+   ],
+   "quartile": 1,
+   "rank_hash": "269aa41aea2bafeb51f6b6ab1ac9c79c2678a81af3ff392a3b3f8ae1467c7d83"
+  },
+  {
+   "feature": 14350,
+   "direction_id": 8542,
+   "language_index": 9,
+   "feature_fp_norm": 60.31401994189973,
+   "contexts": [
+    9726,
+    7781,
+    9156,
+    5186
+   ],
+   "quartile": 1,
+   "rank_hash": "27d92ebcdded3e76c85b8b24a3542c046b2135611d1b75f385cdae69ffffdce3"
+  },
+  {
+   "feature": 12735,
+   "direction_id": 6179,
+   "language_index": 16,
+   "feature_fp_norm": 59.205118410808325,
+   "contexts": [
+    17444,
+    16418,
+    4335,
+    4483
+   ],
+   "quartile": 1,
+   "rank_hash": "28edc6769494992d02bd609a420f107cc32c156217171c2dac96ffa3a9fb26c0"
+  },
+  {
+   "feature": 9286,
+   "direction_id": 8336,
+   "language_index": 1,
+   "feature_fp_norm": 42.06050071042718,
+   "contexts": [
+    18289,
+    11405,
+    19286,
+    19822
+   ],
+   "quartile": 1,
+   "rank_hash": "2e990b6c39fc82434a0434b69015d7087cdafc3a40a67660d2b1dde14f5eda34"
+  },
+  {
+   "feature": 2808,
+   "direction_id": 9731,
+   "language_index": 25,
+   "feature_fp_norm": 71.82072514453472,
+   "contexts": [
+    3071,
+    2642,
+    5829,
+    648
+   ],
+   "quartile": 1,
+   "rank_hash": "3086e283e7e5ca1ba101a62e8c1bf688efe3855b117903c7bf81abd691a7452a"
+  },
+  {
+   "feature": 12864,
+   "direction_id": 6408,
+   "language_index": 23,
+   "feature_fp_norm": 43.78648234153236,
+   "contexts": [
+    10612,
+    15676,
+    1639,
+    18588
+   ],
+   "quartile": 1,
+   "rank_hash": "313975398b871f9aa86baeb333698218097c70daa4b32125906b5e16b89e52a3"
+  },
+  {
+   "feature": 731,
+   "direction_id": 5447,
+   "language_index": 18,
+   "feature_fp_norm": 49.74330109189803,
+   "contexts": [
+    18415,
+    10884,
+    10127,
+    15172
+   ],
+   "quartile": 1,
+   "rank_hash": "34c8c625dc63a31349920229cc630cdd2a2a64e488de8fe54d1cc6e1cfa7ca1a"
+  },
+  {
+   "feature": 8538,
+   "direction_id": 10375,
+   "language_index": 0,
+   "feature_fp_norm": 64.88444197890139,
+   "contexts": [
+    569,
+    825,
+    847,
+    957
+   ],
+   "quartile": 1,
+   "rank_hash": "355eb7da61a79407c8369823fc283693945e3f72b8b75750e756f61d92bafbaf"
+  },
+  {
+   "feature": 9313,
+   "direction_id": 11213,
+   "language_index": 23,
+   "feature_fp_norm": 52.63511849485271,
+   "contexts": [
+    3499,
+    4248,
+    3853,
+    4708
+   ],
+   "quartile": 1,
+   "rank_hash": "36761d368bdc611d75052cf987289f521c2f024bf31795b8a85a06c2acf05f1d"
+  },
+  {
+   "feature": 12520,
+   "direction_id": 15838,
+   "language_index": 11,
+   "feature_fp_norm": 43.59108402452868,
+   "contexts": [
+    24963,
+    2969,
+    12999,
+    13911
+   ],
+   "quartile": 1,
+   "rank_hash": "37a6445ab95b9302875069de56672c0010504589ce90bb348490b8fdd5bfd8f7"
+  },
+  {
+   "feature": 16304,
+   "direction_id": 11646,
+   "language_index": 6,
+   "feature_fp_norm": 78.07964684817142,
+   "contexts": [
+    208,
+    13633,
+    2666,
+    14630
+   ],
+   "quartile": 1,
+   "rank_hash": "3c24dfb6f138dda42fefe2b9bed017460e043603b96fe4995da4a9c56394221f"
+  },
+  {
+   "feature": 2650,
+   "direction_id": 4289,
+   "language_index": 25,
+   "feature_fp_norm": 55.08878155928775,
+   "contexts": [
+    8599,
+    3614,
+    18569,
+    6605
+   ],
+   "quartile": 1,
+   "rank_hash": "3edab7c848964f16a49a8424f3340f483da32563ba798615de6bef801f1d5c46"
+  },
+  {
+   "feature": 7753,
+   "direction_id": 16278,
+   "language_index": 17,
+   "feature_fp_norm": 77.90281216354545,
+   "contexts": [
+    17257,
+    17073,
+    1991,
+    17212
+   ],
+   "quartile": 1,
+   "rank_hash": "4468806c890bdc2462c8cd581521b841c5a016c5a989668048c2ee6592807e8f"
+  },
+  {
+   "feature": 11215,
+   "direction_id": 11258,
+   "language_index": 22,
+   "feature_fp_norm": 47.388471326158026,
+   "contexts": [
+    6063,
+    24814,
+    20321,
+    20618
+   ],
+   "quartile": 1,
+   "rank_hash": "45f28f2e6976ffe7f0a94b24b5b6410a6ccbc76ba9ccb9c0771432ec1bf8b9aa"
+  },
+  {
+   "feature": 802,
+   "direction_id": 16160,
+   "language_index": 2,
+   "feature_fp_norm": 63.548101779130775,
+   "contexts": [
+    17497,
+    4380,
+    16355,
+    3539
+   ],
+   "quartile": 1,
+   "rank_hash": "49c06826a386d59db18d39783981b0f3e80e74307fa773cabb9a2a272f9e0e2b"
+  },
+  {
+   "feature": 13834,
+   "direction_id": 7460,
+   "language_index": 3,
+   "feature_fp_norm": 41.46186487677359,
+   "contexts": [
+    3119,
+    3960,
+    3173,
+    3667
+   ],
+   "quartile": 1,
+   "rank_hash": "512059d2f1cd7a8e2adae709d3415bce1733f3a7f606e52b3682a93c91a13f8b"
+  },
+  {
+   "feature": 7822,
+   "direction_id": 6855,
+   "language_index": 15,
+   "feature_fp_norm": 69.00591346051883,
+   "contexts": [
+    825,
+    15882,
+    15863,
+    228
+   ],
+   "quartile": 1,
+   "rank_hash": "531be5e97198bcc6b11a20682e36dc9e990fcbe9b4bfef5dc0e84f686e1e2cb2"
+  },
+  {
+   "feature": 16278,
+   "direction_id": 7753,
+   "language_index": 17,
+   "feature_fp_norm": 53.41244552432355,
+   "contexts": [
+    5175,
+    17611,
+    17942,
+    19483
+   ],
+   "quartile": 1,
+   "rank_hash": "542541f0aa37f09bb56b727c74e66074c53665939ef211d7b7f435a5c57c9c9e"
+  },
+  {
+   "feature": 4289,
+   "direction_id": 2650,
+   "language_index": 25,
+   "feature_fp_norm": 41.56522302063655,
+   "contexts": [
+    15989,
+    1779,
+    13890,
+    2776
+   ],
+   "quartile": 1,
+   "rank_hash": "555933a08fc20d79997c45d6ca6c94d2ce4be277fe0b43b183875659084d59c9"
+  },
+  {
+   "feature": 11932,
+   "direction_id": 12960,
+   "language_index": 25,
+   "feature_fp_norm": 158.59326756474985,
+   "contexts": [
+    8950,
+    576,
+    8268,
+    8163
+   ],
+   "quartile": 2,
+   "rank_hash": "06d8f50823c8568629b4fbdf90b200cfaf9da13ad23a64d3355ef60c00194c1f"
+  },
+  {
+   "feature": 9405,
+   "direction_id": 1165,
+   "language_index": 8,
+   "feature_fp_norm": 117.02487663457272,
+   "contexts": [
+    166,
+    5019,
+    10357,
+    24002
+   ],
+   "quartile": 2,
+   "rank_hash": "09dd5e010287cd0a9c7e014ba647c7caff2764fb44cbe6695391ceae645a1618"
+  },
+  {
+   "feature": 1029,
+   "direction_id": 1033,
+   "language_index": 26,
+   "feature_fp_norm": 96.88591280908275,
+   "contexts": [
+    6948,
+    6711,
+    6724,
+    6368
+   ],
+   "quartile": 2,
+   "rank_hash": "0b4e70248fd60473945786165b53dbc8dcc8885d4f607c85e9298ab954699afa"
+  },
+  {
+   "feature": 3651,
+   "direction_id": 7536,
+   "language_index": 20,
+   "feature_fp_norm": 170.727479860357,
+   "contexts": [
+    4413,
+    8129,
+    3677,
+    2022
+   ],
+   "quartile": 2,
+   "rank_hash": "0df6cae4800766173e500d64c28b05b1beb265d3e72770bd76518ac567bd610a"
+  },
+  {
+   "feature": 1754,
+   "direction_id": 2543,
+   "language_index": 16,
+   "feature_fp_norm": 185.0016999330141,
+   "contexts": [
+    699,
+    7099,
+    3307,
+    7026
+   ],
+   "quartile": 2,
+   "rank_hash": "0eba9d26bba1b7016620bb11abee4c1b9865ff27983eafbed26df767b34fdd62"
+  },
+  {
+   "feature": 4589,
+   "direction_id": 11950,
+   "language_index": 10,
+   "feature_fp_norm": 94.23658221110206,
+   "contexts": [
+    20145,
+    16349,
+    9002,
+    20938
+   ],
+   "quartile": 2,
+   "rank_hash": "1051952149116a033aefd0d9f5c7bf29a880020726a9bb21d06f5fb8f449b317"
+  },
+  {
+   "feature": 1514,
+   "direction_id": 9166,
+   "language_index": 16,
+   "feature_fp_norm": 200.75308960067724,
+   "contexts": [
+    16723,
+    685,
+    14643,
+    1835
+   ],
+   "quartile": 2,
+   "rank_hash": "10d7548fbc2d97bbb301fc5e270b9587533ca07d113348db69881a7c2924a2e4"
+  },
+  {
+   "feature": 3247,
+   "direction_id": 9405,
+   "language_index": 8,
+   "feature_fp_norm": 117.08485667641283,
+   "contexts": [
+    2650,
+    4644,
+    16608,
+    17325
+   ],
+   "quartile": 2,
+   "rank_hash": "1236e1c942b3edfcea2487c220371b8752bf30be3d14c6c5cb340c2f230e4f5a"
+  },
+  {
+   "feature": 2794,
+   "direction_id": 15054,
+   "language_index": 1,
+   "feature_fp_norm": 191.08763284661495,
+   "contexts": [
+    72,
+    279,
+    601,
+    453
+   ],
+   "quartile": 2,
+   "rank_hash": "1325a0425008706ada64069ed9dd78f3409c4b799bae2096320123dbdb11a1ae"
+  },
+  {
+   "feature": 13677,
+   "direction_id": 1221,
+   "language_index": 14,
+   "feature_fp_norm": 186.13895406064108,
+   "contexts": [
+    25052,
+    6109,
+    12091,
+    20067
+   ],
+   "quartile": 2,
+   "rank_hash": "1388663b8b270c37854616be1419586579c12961a39fa1a451fd5ae201d25713"
+  },
+  {
+   "feature": 11646,
+   "direction_id": 16304,
+   "language_index": 6,
+   "feature_fp_norm": 86.05106920856903,
+   "contexts": [
+    594,
+    460,
+    1589,
+    4582
+   ],
+   "quartile": 2,
+   "rank_hash": "139de28316e2034e7e4ca4e81016bc722cdbe42a3049bf077f3b591183290154"
+  },
+  {
+   "feature": 15838,
+   "direction_id": 10069,
+   "language_index": 11,
+   "feature_fp_norm": 164.29934259235745,
+   "contexts": [
+    2957,
+    17866,
+    2221,
+    1755
+   ],
+   "quartile": 2,
+   "rank_hash": "13ea1a98dc33e5546eb87888ead5618f18874473718c460a0603180e5152dbaf"
+  },
+  {
+   "feature": 10669,
+   "direction_id": 16311,
+   "language_index": 25,
+   "feature_fp_norm": 141.2315106521188,
+   "contexts": [
+    871,
+    1868,
+    2178,
+    1181
+   ],
+   "quartile": 2,
+   "rank_hash": "14199504186f3f3e3465afc07475363a848a6a4f94d0a663e0c5bd22c07be135"
+  },
+  {
+   "feature": 9563,
+   "direction_id": 16342,
+   "language_index": 8,
+   "feature_fp_norm": 89.09006829015303,
+   "contexts": [
+    12467,
+    12775,
+    8987,
+    12415
+   ],
+   "quartile": 2,
+   "rank_hash": "1743e7debdb208e6ce4a9b3f4f55605680780333409e1afc30c4faddab750024"
+  },
+  {
+   "feature": 14170,
+   "direction_id": 14162,
+   "language_index": 15,
+   "feature_fp_norm": 160.60212706581444,
+   "contexts": [
+    675,
+    968,
+    363,
+    2945
+   ],
+   "quartile": 2,
+   "rank_hash": "1ac623b911f806ea09f0f68c5d2f5d9c002385ccf0b08a26c02502b41feeaaed"
+  },
+  {
+   "feature": 9218,
+   "direction_id": 2312,
+   "language_index": 18,
+   "feature_fp_norm": 147.73469466901878,
+   "contexts": [
+    3184,
+    193,
+    13154,
+    12157
+   ],
+   "quartile": 2,
+   "rank_hash": "1b45c4f8e281ba37b1706fdbd40e4806585877f47fd60e6cf511c961a19b8d7e"
+  },
+  {
+   "feature": 1797,
+   "direction_id": 2838,
+   "language_index": 13,
+   "feature_fp_norm": 92.70727848394424,
+   "contexts": [
+    793,
+    286,
+    767,
+    16057
+   ],
+   "quartile": 2,
+   "rank_hash": "1b4d10609aceff003d307a54b2567236891c035d0dfacea86c8fd1b0cb41f302"
+  },
+  {
+   "feature": 3473,
+   "direction_id": 7746,
+   "language_index": 13,
+   "feature_fp_norm": 154.2023330342372,
+   "contexts": [
+    2663,
+    2729,
+    3000,
+    4657
+   ],
+   "quartile": 2,
+   "rank_hash": "1c836d6553c6f135f9b94453b44f294080b8f23efc9bb83872820930abc9a0b5"
+  },
+  {
+   "feature": 3072,
+   "direction_id": 8992,
+   "language_index": 17,
+   "feature_fp_norm": 104.01945935885432,
+   "contexts": [
+    14752,
+    16227,
+    760,
+    16880
+   ],
+   "quartile": 2,
+   "rank_hash": "1f6ae7e87ba1fbfbd702983ee93d1cf9a188fe66666a0fc3fbba9e05db46b7f8"
+  },
+  {
+   "feature": 4813,
+   "direction_id": 3473,
+   "language_index": 13,
+   "feature_fp_norm": 183.36846882348223,
+   "contexts": [
+    59,
+    617,
+    123,
+    1487
+   ],
+   "quartile": 2,
+   "rank_hash": "2529203fc5cd9f914579adbbfca593ec1edd332f79153e33bfa992e16c07a5b3"
+  },
+  {
+   "feature": 10002,
+   "direction_id": 4813,
+   "language_index": 13,
+   "feature_fp_norm": 141.6581955272468,
+   "contexts": [
+    7,
+    221,
+    76,
+    250
+   ],
+   "quartile": 2,
+   "rank_hash": "280f3620e9470ec8f60aba47acba31dfe1a44fea6c74294f4d9e91e66272b7e3"
+  },
+  {
+   "feature": 14457,
+   "direction_id": 13662,
+   "language_index": 6,
+   "feature_fp_norm": 165.28139508993138,
+   "contexts": [
+    7562,
+    15537,
+    20369,
+    14489
+   ],
+   "quartile": 2,
+   "rank_hash": "2a6d9a328bb12e8519af76dc9ff69f0838260843685798c43006fd52baf213dd"
+  },
+  {
+   "feature": 9876,
+   "direction_id": 13462,
+   "language_index": 20,
+   "feature_fp_norm": 145.76626221204805,
+   "contexts": [
+    12953,
+    2964,
+    5678,
+    6257
+   ],
+   "quartile": 2,
+   "rank_hash": "325282285671c665d96d10c857cf2eb5c2c5a0f0b723e24ffbf38a2d771e12ea"
+  },
+  {
+   "feature": 12683,
+   "direction_id": 1693,
+   "language_index": 10,
+   "feature_fp_norm": 160.63261821593534,
+   "contexts": [
+    465,
+    251,
+    2684,
+    6726
+   ],
+   "quartile": 2,
+   "rank_hash": "3592a87584dcd707ef4baa9b75be655b500315e312390e3346f82bf28dcc951f"
+  },
+  {
+   "feature": 4083,
+   "direction_id": 2285,
+   "language_index": 22,
+   "feature_fp_norm": 110.71375438840603,
+   "contexts": [
+    2616,
+    4610,
+    622,
+    482
+   ],
+   "quartile": 2,
+   "rank_hash": "35f892ea231ec1ebdc6e5cb5de1ef249d029960eb410991fcb6d97d8fdae6c01"
+  },
+  {
+   "feature": 15054,
+   "direction_id": 2794,
+   "language_index": 1,
+   "feature_fp_norm": 121.45199426119537,
+   "contexts": [
+    1932,
+    1628,
+    1926,
+    3919
+   ],
+   "quartile": 2,
+   "rank_hash": "380693b2f298a98be7b4f3fbdcdbe8e7129a74a20116904ebb8a1edd60e0c296"
+  },
+  {
+   "feature": 12706,
+   "direction_id": 11460,
+   "language_index": 19,
+   "feature_fp_norm": 152.1425083175929,
+   "contexts": [
+    24642,
+    58,
+    12650,
+    24406
+   ],
+   "quartile": 2,
+   "rank_hash": "3943beb53dc8e6aef2fd11f97705eb0aa00378fc5a90cb7743d67d608e851770"
+  },
+  {
+   "feature": 15523,
+   "direction_id": 14739,
+   "language_index": 21,
+   "feature_fp_norm": 147.97160807365375,
+   "contexts": [
+    807,
+    682,
+    13768,
+    14765
+   ],
+   "quartile": 2,
+   "rank_hash": "4579f9cfeb249e15d25a36c9498a5bf213058d10e8b23c34c03bec82e0942961"
+  },
+  {
+   "feature": 10729,
+   "direction_id": 7893,
+   "language_index": 5,
+   "feature_fp_norm": 151.6074795203465,
+   "contexts": [
+    473,
+    704,
+    403,
+    900
+   ],
+   "quartile": 2,
+   "rank_hash": "464a5c329943d10d2a5dbf2cc2b3633433db1d3a8d3c8ce72ab332f11db78243"
+  },
+  {
+   "feature": 12385,
+   "direction_id": 15165,
+   "language_index": 3,
+   "feature_fp_norm": 146.85137291442953,
+   "contexts": [
+    98,
+    362,
+    584,
+    2403
+   ],
+   "quartile": 2,
+   "rank_hash": "4e890e1ce2a7d9f4a7c9ff329ba097833040af0f23a0d15327c2758579ad9e38"
+  },
+  {
+   "feature": 15413,
+   "direction_id": 7559,
+   "language_index": 24,
+   "feature_fp_norm": 178.70718771852316,
+   "contexts": [
+    2866,
+    2843,
+    4903,
+    12950
+   ],
+   "quartile": 2,
+   "rank_hash": "4f55b91a5b4a5c3f579525eecc4daf785f89e5518ce5eebb9af7b87fb878edc1"
+  },
+  {
+   "feature": 7416,
+   "direction_id": 1020,
+   "language_index": 20,
+   "feature_fp_norm": 98.19125581712673,
+   "contexts": [
+    1997,
+    7312,
+    4626,
+    1000
+   ],
+   "quartile": 2,
+   "rank_hash": "52c1b24c0163fad5137ddf1962259456bca18477eb891533688f5780e4968773"
+  },
+  {
+   "feature": 7051,
+   "direction_id": 11488,
+   "language_index": 3,
+   "feature_fp_norm": 540.3500200897098,
+   "contexts": [
+    2411,
+    2384,
+    2465,
+    4401
+   ],
+   "quartile": 3,
+   "rank_hash": "026b27b4898c5ad748d1e70ce7fb9125fc26b72cb15741de912aaaba35ec98d6"
+  },
+  {
+   "feature": 2285,
+   "direction_id": 3290,
+   "language_index": 22,
+   "feature_fp_norm": 941.9285721142286,
+   "contexts": [
+    14145,
+    12151,
+    5172,
+    13992
+   ],
+   "quartile": 3,
+   "rank_hash": "036c90ec03a5bf2578ce61fadafc515efc433002b1746ee8c0177552e33a64fd"
+  },
+  {
+   "feature": 13364,
+   "direction_id": 14660,
+   "language_index": 12,
+   "feature_fp_norm": 242.9002479277155,
+   "contexts": [
+    968,
+    648,
+    397,
+    578
+   ],
+   "quartile": 3,
+   "rank_hash": "097690123d1564d91508a81ef7bbd4acff9a26019cd9454d0c2609a549ab9669"
+  },
+  {
+   "feature": 13800,
+   "direction_id": 8379,
+   "language_index": 3,
+   "feature_fp_norm": 317.967942004492,
+   "contexts": [
+    703,
+    140,
+    16065,
+    16269
+   ],
+   "quartile": 3,
+   "rank_hash": "0abf12d39235a499506062fda1122cc250a5fd5024cd33396c60cdb8708aa614"
+  },
+  {
+   "feature": 10585,
+   "direction_id": 13772,
+   "language_index": 17,
+   "feature_fp_norm": 206.0734650581176,
+   "contexts": [
+    14252,
+    14213,
+    14082,
+    13998
+   ],
+   "quartile": 3,
+   "rank_hash": "10add6b13f813f1444cab99fd4a6b6958897b45c29327486824ff9248b0108f7"
+  },
+  {
+   "feature": 15227,
+   "direction_id": 15,
+   "language_index": 7,
+   "feature_fp_norm": 218.53504708321196,
+   "contexts": [
+    6034,
+    7091,
+    7092,
+    6619
+   ],
+   "quartile": 3,
+   "rank_hash": "1204325b7223b3587253bcae357667d6186094ec478cf1224aeb5cbdaf74b751"
+  },
+  {
+   "feature": 3443,
+   "direction_id": 6812,
+   "language_index": 17,
+   "feature_fp_norm": 511.20109660655083,
+   "contexts": [
+    302,
+    21422,
+    21319,
+    21779
+   ],
+   "quartile": 3,
+   "rank_hash": "1bebfa71048218cfb41f512d19a765f12363874a0fc42ad48e15ce326418c5b6"
+  },
+  {
+   "feature": 11213,
+   "direction_id": 9313,
+   "language_index": 23,
+   "feature_fp_norm": 247.69801039059675,
+   "contexts": [
+    81,
+    15036,
+    274,
+    5066
+   ],
+   "quartile": 3,
+   "rank_hash": "1e359477a0bc60ab62f2c3d61bb66bfe904aafd8c07d53d6a4350b85fa222eca"
+  },
+  {
+   "feature": 14660,
+   "direction_id": 13364,
+   "language_index": 12,
+   "feature_fp_norm": 257.59139500278536,
+   "contexts": [
+    3170,
+    3394,
+    3485,
+    7298
+   ],
+   "quartile": 3,
+   "rank_hash": "20483bd60ad0e6c2f324f3186b95b29d7b6181db684d072c7886af4192095a71"
+  },
+  {
+   "feature": 138,
+   "direction_id": 6432,
+   "language_index": 21,
+   "feature_fp_norm": 393.3689219338851,
+   "contexts": [
+    498,
+    513,
+    645,
+    647
+   ],
+   "quartile": 3,
+   "rank_hash": "20f15d8f72225e08dcb104849863d70ede4d4f996d999e25c90e210d6d5db55a"
+  },
+  {
+   "feature": 6639,
+   "direction_id": 6228,
+   "language_index": 14,
+   "feature_fp_norm": 257.8335792458143,
+   "contexts": [
+    500,
+    21274,
+    1497,
+    14295
+   ],
+   "quartile": 3,
+   "rank_hash": "26df2de07678c8a7647ae858c06bfa031c3bf09cb5d7934677bf1d4f2835235e"
+  },
+  {
+   "feature": 4730,
+   "direction_id": 15906,
+   "language_index": 7,
+   "feature_fp_norm": 1070.9812396012442,
+   "contexts": [
+    13063,
+    3001,
+    24259,
+    24889
+   ],
+   "quartile": 3,
+   "rank_hash": "29f4d9ec7c8c30f2e234cafd6dc9287fe99ac43aab71ba57c69e6eae5ecc6d38"
+  },
+  {
+   "feature": 13772,
+   "direction_id": 10585,
+   "language_index": 17,
+   "feature_fp_norm": 604.6914523118941,
+   "contexts": [
+    720,
+    946,
+    25871,
+    24933
+   ],
+   "quartile": 3,
+   "rank_hash": "2fedae1b04876b663152b238eae6378f2bb54a2d136894a2338eaac6f41051ac"
+  },
+  {
+   "feature": 15808,
+   "direction_id": 8380,
+   "language_index": 11,
+   "feature_fp_norm": 355.28905939259204,
+   "contexts": [
+    121,
+    13603,
+    906,
+    14600
+   ],
+   "quartile": 3,
+   "rank_hash": "31c1325608bdbfd0ce89065e609c182d344fba18f3ff8eb62ba4954068001186"
+  },
+  {
+   "feature": 1724,
+   "direction_id": 15159,
+   "language_index": 19,
+   "feature_fp_norm": 243.52499314003109,
+   "contexts": [
+    202,
+    3193,
+    4190,
+    2196
+   ],
+   "quartile": 3,
+   "rank_hash": "34c60a57f1c29f3743a8bb2ab556ef96d24f08c0480c6695a516c685ee68348c"
+  },
+  {
+   "feature": 8380,
+   "direction_id": 15808,
+   "language_index": 11,
+   "feature_fp_norm": 467.08403711066364,
+   "contexts": [
+    561,
+    795,
+    933,
+    9
+   ],
+   "quartile": 3,
+   "rank_hash": "38d89ffa21f4ce723c6c7647591fae51c0fe4139c24471116e8722f6c9380139"
+  },
+  {
+   "feature": 11668,
+   "direction_id": 14457,
+   "language_index": 6,
+   "feature_fp_norm": 234.88687712507254,
+   "contexts": [
+    589,
+    3029,
+    2032,
+    38
+   ],
+   "quartile": 3,
+   "rank_hash": "45f37796c62af2acb96600f73f01b625b8996c9d47ddd391b1500ff4fe4fac35"
+  },
+  {
+   "feature": 11467,
+   "direction_id": 9709,
+   "language_index": 22,
+   "feature_fp_norm": 515.2648748091824,
+   "contexts": [
+    828,
+    325,
+    240,
+    520
+   ],
+   "quartile": 3,
+   "rank_hash": "48fc771625b94283b2134db8d4e6b728933c485800ec12925e395c5d0faff8a3"
+  },
+  {
+   "feature": 7893,
+   "direction_id": 10729,
+   "language_index": 5,
+   "feature_fp_norm": 430.35722161216813,
+   "contexts": [
+    537,
+    481,
+    551,
+    420
+   ],
+   "quartile": 3,
+   "rank_hash": "4be5fdf0e29739edd28a8e39aa0e9171572020f50c1f7e19070f84c0ba149d04"
+  },
+  {
+   "feature": 7746,
+   "direction_id": 3473,
+   "language_index": 13,
+   "feature_fp_norm": 336.5620511466732,
+   "contexts": [
+    2115,
+    2392,
+    2989,
+    2658
+   ],
+   "quartile": 3,
+   "rank_hash": "4c4fa988e4736d8556ab4bf773d2e70d8521b65f7395f0b62b3c436290820990"
+  },
+  {
+   "feature": 13149,
+   "direction_id": 11816,
+   "language_index": 2,
+   "feature_fp_norm": 206.70617635032653,
+   "contexts": [
+    802,
+    836,
+    412,
+    582
+   ],
+   "quartile": 3,
+   "rank_hash": "4f6bf5967a67144bec721761fd6e4a73afdb5e7bfffb7d22274de595749a2b0a"
+  },
+  {
+   "feature": 2416,
+   "direction_id": 9976,
+   "language_index": 8,
+   "feature_fp_norm": 330.09210424441494,
+   "contexts": [
+    16946,
+    16903,
+    16947,
+    858
+   ],
+   "quartile": 3,
+   "rank_hash": "51bfec8ef6e6c805cbeb0e346935143dccb3b31e3490f6043c8f173a864bc4ab"
+  },
+  {
+   "feature": 4144,
+   "direction_id": 6167,
+   "language_index": 19,
+   "feature_fp_norm": 317.6958796714654,
+   "contexts": [
+    630,
+    77,
+    520,
+    153
+   ],
+   "quartile": 3,
+   "rank_hash": "5271743b46a1da6936c8a5e5d874fa1986bf39647977c161dbe3d178bd9493c2"
+  },
+  {
+   "feature": 13462,
+   "direction_id": 11991,
+   "language_index": 20,
+   "feature_fp_norm": 321.68998677680935,
+   "contexts": [
+    867,
+    396,
+    813,
+    554
+   ],
+   "quartile": 3,
+   "rank_hash": "528d76d1159842011b6a32c17652776add6587cef116589df024e9d23493f081"
+  },
+  {
+   "feature": 8307,
+   "direction_id": 12683,
+   "language_index": 10,
+   "feature_fp_norm": 325.59495068065144,
+   "contexts": [
+    1435,
+    24263,
+    24433,
+    24756
+   ],
+   "quartile": 3,
+   "rank_hash": "52e29050fa8a97ec143a16718eefed168099ffee5fafffb730c18269bf5b00b1"
+  },
+  {
+   "feature": 2858,
+   "direction_id": 15234,
+   "language_index": 8,
+   "feature_fp_norm": 353.7970907703796,
+   "contexts": [
+    164,
+    723,
+    119,
+    422
+   ],
+   "quartile": 3,
+   "rank_hash": "5780bacb3d5f0ac24b221249f1db3a6e2a67e3ed330da6eba10677292dfcbaff"
+  },
+  {
+   "feature": 2664,
+   "direction_id": 1488,
+   "language_index": 15,
+   "feature_fp_norm": 406.3343450255651,
+   "contexts": [
+    43,
+    448,
+    189,
+    915
+   ],
+   "quartile": 3,
+   "rank_hash": "585331cf2ee0e7c38755fb9327ab52ffbcb90b00569ae7f61608458242112d22"
+  },
+  {
+   "feature": 12933,
+   "direction_id": 12026,
+   "language_index": 1,
+   "feature_fp_norm": 428.34471392643337,
+   "contexts": [
+    115,
+    943,
+    620,
+    384
+   ],
+   "quartile": 3,
+   "rank_hash": "5b3c89d39b72806de7850ba754fec000617c734ba61f754972e6d84da61779f9"
+  },
+  {
+   "feature": 1081,
+   "direction_id": 13260,
+   "language_index": 20,
+   "feature_fp_norm": 303.4006818801463,
+   "contexts": [
+    487,
+    1554,
+    6454,
+    1484
+   ],
+   "quartile": 3,
+   "rank_hash": "5b51ebd563a892e722775d402b0ddae65c1a20af73a739634d8d7cc34bf9a169"
+  },
+  {
+   "feature": 2489,
+   "direction_id": 10163,
+   "language_index": 12,
+   "feature_fp_norm": 325.8170802820291,
+   "contexts": [
+    20892,
+    6015,
+    20303,
+    24374
+   ],
+   "quartile": 3,
+   "rank_hash": "5b64a5bf1b3125b1c2311ada054f477efb230dd5b586883226fd36c37112825e"
+  },
+  {
+   "feature": 7987,
+   "direction_id": 15444,
+   "language_index": 9,
+   "feature_fp_norm": 336.9322505218106,
+   "contexts": [
+    876,
+    636,
+    339,
+    494
+   ],
+   "quartile": 3,
+   "rank_hash": "5c5548f7ca38b17ce8230660b552a27d211fc9e76add95384f7e25ef15aab6a5"
+  },
+  {
+   "feature": 2569,
+   "direction_id": 2686,
+   "language_index": 11,
+   "feature_fp_norm": 299.83977067194803,
+   "contexts": [
+    381,
+    133,
+    1378,
+    3372
+   ],
+   "quartile": 3,
+   "rank_hash": "5e1d3d4dd1c7e52ae4e1792ac587f4949b5df7ff2f6f5f19e744116bb13a7b49"
+  }
+ ],
+ "selection_sha256": "a230ec735f6e46d9065e74379054ff4aa8beee2c4451412223850ff1c69ff0ad"
+}
