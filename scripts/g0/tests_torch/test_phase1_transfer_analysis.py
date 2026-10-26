@@ -101,5 +101,71 @@ class Floor(unittest.TestCase):
         self.assertEqual(cov[("real", "calibration")], {"items": 5, "eligible": 2}); self.assertEqual(cov[("real", "heldout")], {"items": 5, "eligible": 1})
 
 
+def gitem(d, ntok=10):
+    """A group-level item with the loss changes d of the five cells."""
+    return {"gram": np.eye(5), "cells": list(tc.CELLS), "dloss": list(d), "loss_base": [2.0] * 5, "n_rows": 3, "n_target_rows": ntok, "n_active_q": 1, "n_positions": 3}
+
+
+def group_items_for(langs, n_sent, group, controls, ntok=lambda l, j: 10):
+    """group: function (lang, j) -> five loss changes of the group; controls: list of such functions (one per draw)."""
+    out = {}
+    for l in langs:
+        for j in range(n_sent):
+            out[(l, j, "group")] = gitem(group(l, j), ntok(l, j))
+            for r, c in enumerate(controls):
+                out[(l, j, f"control{r}")] = gitem(c(l, j), ntok(l, j))
+    return out
+
+
+LANGS2 = ["a", "b"]
+
+
+class GroupLevel(unittest.TestCase):
+    def test_arrays_have_one_slot_per_language_sentence_set_and_cell_and_mark_missing_sets(self):
+        items = group_items_for(LANGS2, 3, lambda l, j: [1, 2, 3, 4, 5], [lambda l, j: [0.1] * 5, lambda l, j: [0.2] * 5])
+        del items[("b", 1, "control1")]
+        A = ta.group_arrays(items, LANGS2, 3, 2)
+        self.assertEqual(A["dloss"].shape, (2, 3, 3, 5)); self.assertEqual(A["ntok"].shape, (2, 3)); self.assertEqual(A["valid"].tolist(), [[True, True, True], [True, False, True]])
+        self.assertTrue(np.isnan(A["dloss"][1, 1, 2]).all()); self.assertEqual(float(A["dloss"][0, 2, 1, 4]), 0.1)
+
+    def test_the_net_harm_is_the_group_minus_the_mean_of_the_controls_pooled_by_token_count(self):
+        group = lambda l, j: [1.0 + j] * 5; ctrl = [lambda l, j: [0.2] * 5, lambda l, j: [0.4] * 5]
+        A = ta.group_arrays(group_items_for(["a"], 2, group, ctrl, ntok=lambda l, j: 10 * (j + 1)), ["a"], 2, 2)
+        pool = ta.pooled_harms(A)                                                                                           # token weights 10 and 20
+        self.assertAlmostEqual(pool["group"][0, 0], (10 * 1.0 + 20 * 2.0) / 30); self.assertAlmostEqual(pool["control"][0, 0], 0.3); self.assertAlmostEqual(pool["net"][0, 0], (10 * 1.0 + 20 * 2.0) / 30 - 0.3)
+
+    def test_a_sentence_with_a_missing_set_is_left_out_of_the_net_and_counted(self):
+        items = group_items_for(["a"], 2, lambda l, j: [1.0 + 9 * j] * 5, [lambda l, j: [0.0] * 5]); del items[("a", 1, "control0")]
+        A = ta.group_arrays(items, ["a"], 2, 1); pool = ta.pooled_harms(A)
+        self.assertAlmostEqual(pool["net"][0, 0], 1.0); self.assertEqual(pool["n_sentences"].tolist(), [1])
+
+    def test_the_decomposition_of_the_net_harm_has_the_identity_and_the_native_difference(self):
+        net = np.array([[0.9, 1.9, 0.7, 1.6, 0.6, ]]); dec = ta.decompose_net(net)
+        self.assertAlmostEqual(dec["C"][0], 1.0); self.assertAlmostEqual(dec["W"][0], -0.2); self.assertAlmostEqual(dec["I"][0], 1.6 - 1.9 - 0.7 + 0.9); self.assertAlmostEqual(dec["total"][0], 0.7)
+        self.assertAlmostEqual(dec["C"][0] + dec["W"][0] + dec["I"][0], dec["total"][0]); self.assertAlmostEqual(dec["native_minus_fixed"][0], 0.6 - 1.6); self.assertAlmostEqual(dec["native_total"][0], 0.6 - 0.9)
+
+    def test_the_a3_summary_counts_languages_and_takes_the_median_of_the_paired_difference(self):
+        dec = {"C": np.array([1.0, -2.0, 0.1]), "W": np.array([0.5, 0.5, -0.4])}                                         # |C| - |W| = 0.5, 1.5, -0.3
+        s = ta.a3_summary(dec)
+        self.assertEqual(s["n_languages"], 3); self.assertEqual(s["c_gt_w"], 2); self.assertAlmostEqual(s["median_abs_c"], 1.0); self.assertAlmostEqual(s["median_abs_w"], 0.5); self.assertAlmostEqual(s["median_difference"], 0.5); self.assertTrue(s["holds"])
+        dec["C"] = np.array([0.1, 0.2, 0.1]); self.assertFalse(ta.a3_summary(dec)["holds"])
+
+    def test_the_bootstrap_resamples_source_sentences_jointly_across_languages_and_is_seeded(self):
+        rng = np.random.default_rng(0); eff = rng.normal(size=(2, 30))
+        group = lambda l, j: [1.0, 1.0 + eff[LANGS2.index(l), j], 1.0, 1.0, 1.0]
+        A = ta.group_arrays(group_items_for(LANGS2, 30, group, [lambda l, j: [0.0] * 5]), LANGS2, 30, 1)
+        r1 = ta.bootstrap_a3(A, n_boot=200, seed=3); r2 = ta.bootstrap_a3(A, n_boot=200, seed=3); r3 = ta.bootstrap_a3(A, n_boot=200, seed=4)
+        self.assertEqual(r1, r2); self.assertNotEqual(r1["median_difference"], r3["median_difference"])
+        lo, hi = r1["median_difference"]; self.assertLessEqual(lo, hi)
+        const = ta.group_arrays(group_items_for(LANGS2, 30, lambda l, j: [1.0, 2.0, 1.5, 1.7, 1.0], [lambda l, j: [0.0] * 5]), LANGS2, 30, 1)
+        c = ta.bootstrap_a3(const, n_boot=50, seed=0); self.assertEqual(c["median_difference"][0], c["median_difference"][1])           # nothing varies over sentences: a degenerate interval
+
+    def test_languages_are_resampled_with_the_same_sentence_multiplicities(self):
+        A = ta.group_arrays(group_items_for(LANGS2, 4, lambda l, j: [1.0, 1.0 + j, 1.0, 1.0, 1.0], [lambda l, j: [0.0] * 5]), LANGS2, 4, 1)
+        m = np.array([0, 2, 1, 1]); pool = ta.pooled_harms(A, mult=m)
+        want = (0 * 1.0 + 2 * 1.0 + 1 * 1.0 + 1 * 1.0) / 4                                                                 # cell 0 is 1.0 everywhere, cell 1 is 1 + j: pooled over the multiplicities
+        self.assertAlmostEqual(pool["net"][0, 0], want); self.assertAlmostEqual(pool["net"][1, 1], (2 * 2.0 + 1 * 3.0 + 1 * 4.0) / 4)
+
+
 if __name__ == "__main__":
     unittest.main()
