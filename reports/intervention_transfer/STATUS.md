@@ -73,6 +73,23 @@ Full jobs (submitted 2026-10-26 16:04, snapshot `repo_9184825` = commit `9184825
 
 Update 2026-10-26 16:15: **40402 (`transfer-group-int4`) was cancelled after 10 min** (about 0.17 GPU hours wasted): its node (gnode090) listed `No devices found.` in the log head, the model ran on the CPU (`Moving model to device: cpu`) and passed every gate (top-1 1.0), so the failure is visible only in the log head, not in the gates; no chunk file had been written (its directory holds only `meta_transfer.json` and `gpu_mem.log`, left in place). Resubmitted as **40426** `transfer-group-int4r` (`--exclude=gnode068,gnode069,gnode090`, same snapshot and arguments, new output name so nothing of the CPU run can mix with it). 40404 (`transfer-group-int16`) then started on the freed GPU of gnode090 and lists `GPU 0:`; the other four running jobs list `GPU 0:` and 0 `CUDA initialization` warnings. The guard `nvidia-smi -L | grep -q 'GPU 0'` was added to `run_transfer.sbatch` (commit `d09b14b`) for later submissions; the running jobs use the snapshot without it, so the log head of every job is checked by hand.
 
+Validation commands of the twelve full runs (`scripts/g0/phase1_transfer_validate.py`, tested; it copies the output directory to `/home/karma/Documents/ANLP/project/transfer_runs/<name>/`, compares sha256 with Ada, checks sacct, the log head, the meta gates and the planned item counts, prints a JSON report and exits 1 on any failure; append the checksums of a validated job to `artifact_checksums.md`):
+
+```
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40399 --name transfer-feature-int4 --task feature --states INT4 --core reports/intervention_transfer/core_sample.json
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40400 --name transfer-feature-int6 --task feature --states INT6 --core reports/intervention_transfer/core_sample.json
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40401 --name transfer-feature-int16 --task feature --states INT16 --core reports/intervention_transfer/core_sample.json
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40403 --name transfer-group-int6 --task group --states INT6 --languages 27 --sentences 300
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40404 --name transfer-group-int16 --task group --states INT16 --languages 27 --sentences 300
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40514 --name transfer-group-int4r --task group --states INT4 --languages 27 --sentences 300
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40544 --name transfer-ext-feature-int4 --task feature --states INT4 --core reports/intervention_transfer/core_external.json --gate-max-abs 3.0
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40545 --name transfer-ext-feature-int6 --task feature --states INT6 --core reports/intervention_transfer/core_external.json --gate-max-abs 3.0
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40546 --name transfer-ext-feature-int16 --task feature --states INT16 --core reports/intervention_transfer/core_external.json --gate-max-abs 3.0
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40547 --name transfer-ext-group-int4 --task group --states INT4 --languages 6 --sentences 300 --gate-max-abs 3.0
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40548 --name transfer-ext-group-int6 --task group --states INT6 --languages 6 --sentences 300 --gate-max-abs 3.0
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_validate.py --job 40549 --name transfer-ext-group-int16 --task group --states INT16 --languages 6 --sentences 300 --gate-max-abs 3.0
+```
+
 ## 7. Log
 
 - 2026-10-26 09:54 IST (first firing of the study, cron): ledger created; amendments A1 to A5 recorded; the descriptive reanalysis reproduced; the 404-feature sample and the freeze hashes verified against `meta_f5.json` of `f5-dir2`; external corpus located and its revision recorded; the freeze content and the choices T, F, S, X, D, G, Q, H written down BEFORE any code or output. Next: item 1 of section 5 (the freeze script with tests).
