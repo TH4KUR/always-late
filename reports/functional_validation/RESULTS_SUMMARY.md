@@ -63,3 +63,5 @@ Design and plan: [`../../docs/superpowers/specs/`](../../docs/superpowers/specs/
 
 
 **Update 2026-10-26 21:23:** claim 18 (intervention transfer, main matrix) is finished and analysed once (D-094); the external six-language Wikipedia panel (amendments A11, A11b, A12) is still running at the feature level and is not part of claim 18.
+
+**Update 2026-10-26 21:47:** claim 18 wording corrected after a fact-check (no number changed; D-094 Update): INT6 "changes little" (cosine 0.984, normalized error 0.165, 1.9 floors, above the rounding floor), not "preserved"; the group-level context term is for the fixed full-precision edit, and with the quantized state's own activation the INT4 net harm (0.433) equals the weights-only cell (0.428); the feature-level weight term has the larger norm (exploratory); the real direction is close to but not equal to its controls (error gap +0.019, cosine gap +0.065); the INT4 prediction gain is not quantization-specific (INT16 23.4%) and the INT6 interval includes zero.

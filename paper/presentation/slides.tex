@@ -143,7 +143,7 @@ $I = D[Q,Q]-D[Q,FP]-D[FP,Q]+D[FP,FP]$ \hfill (interaction)\\
 \vspace{0.5em}\par{\smallfont \textcolor{muted}{Status words by rule: supported / reversed / inconclusive. Baselines: A activation (cosine of amplitudes, log activation, firing, effect and residual norms), G gradient attribution, B generic sensitivity from the other directions of the same context.}}
 \end{slide}
 
-\begin{slide}{Group level: the context term dominates at INT4}
+\begin{slide}{Group level: for the fixed edit, the context term is larger at INT4}
 {\fontsize{18}{24}\selectfont
 \begin{tabular}{@{}lrrrrr@{}}
 \toprule
@@ -157,12 +157,12 @@ INT4 & \textbf{0.848} & \textbf{0.310} & \textbf{0.104} & 0.071 & \textbf{19 of 
 \vspace{0.6em}
 \begin{itemize}
  \item Median over 27 languages, 300 sentences; net harm of removing the K64 group beyond matched controls (full precision: 0.263, as in the earlier study).
- \item INT4: net harm 0.85 with the FP edit, 0.43 with the quantized state's own activation; interval of the median $|C|-|W|$: [+0.022, +0.073].
- \item \key{A3} (context dominates): supported at INT4, undecided at INT6. $^\dagger$ counts at rounding size mean nothing.
+ \item INT4: net harm 0.85 with the fixed FP edit, 0.43 with the quantized state's own activation, which is the weights-only value (0.428): for the natural intervention the amplification is that of the weights. Interval of the median $|C|-|W|$: [+0.022, +0.073].
+ \item \key{A3} (context dominates, for the fixed edit): supported at INT4, undecided at INT6. $^\dagger$ the count is also 19 at rounding size: the interval, not the count, is the evidence.
 \end{itemize}
 \end{slide}
 
-\begin{slide}{Feature level: the effect vector is rotated, mostly by the weights}
+\begin{slide}{Feature level: the effect vector is rotated; the weight term is larger}
 {\fontsize{18}{24}\selectfont
 \begin{tabular}{@{}lrrrrrr@{}}
 \toprule
@@ -177,13 +177,13 @@ INT4 & \textbf{0.768} & \textbf{0.664} & \textbf{7.7} & 0.359 & \textbf{0.560} &
 \begin{itemize}
  \item 2,203 eligible items of 235 features (34\%). Terms relative to the FP effect norm plus the floor.
  \item The error is 97--99\% orthogonal to the FP effect, and the quantized state's own activation leaves 97\% of it: not a rescaling, not an activation change (\key{H1} supported).
- \item Weights above context in the effect vector (norm of a logit change), the opposite of the group-level loss: different quantities. The interaction is a third of the change at INT4.
+ \item Weight term above context term in the effect vector (norm of a logit change; exploratory, the terms are not additive), the opposite of the group-level loss: different quantities. The interaction is a third of the change at INT4.
 \end{itemize}
 \end{slide}
 
 \begin{slide}{Which term, is it specific, and do averages hide the contexts?}
 \centering\includegraphics[width=10.0in]{transfer-terms.png}\par\vspace{0.2em}
-{\fontsize{15}{19}\selectfont\raggedright\textbf{(a)} Real direction (filled) against matched and random directions (hollow): weights above context, and the real direction is within or below its controls (INT4 gap +0.019 [+0.009, +0.032]): a generic response. \textbf{(b)} Group level: context above weights at INT4 (green), equal at INT6. \textbf{(c)} The averaged fingerprint looks better than its contexts: +0.126 [0.121, 0.131] at INT4 against +0.0145 in the rounding-only state (\key{H4}, features-only interval).\par}
+{\fontsize{15}{19}\selectfont\raggedright\textbf{(a)} Real direction (filled) against matched and random directions (hollow): weight term above context term, and the real direction is close to its controls (INT4 error gap +0.019 [+0.009, +0.032], but less rotated: cosine gap +0.065): mostly a generic response. \textbf{(b)} Group level: context above weights at INT4 (green), equal at INT6. \textbf{(c)} The averaged fingerprint looks better than its contexts: +0.126 [0.121, 0.131] at INT4 against +0.0145 in the rounding-only state (\key{H4}, features-only interval).\par}
 \end{slide}
 
 \begin{slide}{Can the transfer error be predicted for held-out features?}
@@ -191,18 +191,18 @@ INT4 & \textbf{0.768} & \textbf{0.664} & \textbf{7.7} & 0.359 & \textbf{0.560} &
 \begin{minipage}[t]{5.6in}\vspace{0pt}\fontsize{19}{26}\selectfont
 A+B = activation baseline plus the sensitivity to \emph{other} directions of the same context, against the strongest baseline:\\[0.3em]
 INT4: \textbf{21.5\%} [12.7, 29.4], criterion met\\
-INT6: 10.9\% [$-$1.2, 21.4], not met\\
-INT16 (rounding only): 23.4\% [15.1, 30.8]\\[0.4em]
+INT6: 10.9\% [$-$1.2, 21.4], interval includes zero, not met (all items: 37.1\% [30.7, 43.0])\\
+INT16 (rounding only): 23.4\% [15.1, 30.8]: the gain is not quantization-specific\\[0.4em]
 \key{Utility not met} (needs both states).
 \end{minipage}
 \end{slide}
 
 \begin{slide}{What does not add to the prediction, and what it means}
 \begin{itemize}
- \item \key{Gradient attribution} (loss form): INT4 held-out error 0.1241 against 0.1253 without it.
- \item \key{Pearson survival} of the feature: A+P against A $-0.4\%$ [$-1.8$, 0.7] at INT4; A+B+P against A+B $-0.6\%$ [$-4.3$, 3.4].
+ \item \key{Gradient attribution} (loss form, eligible items, INT4): held-out error 0.1241 against 0.1253 without it (no interval).
+ \item \key{Pearson survival} of the feature: A+P against A $-0.4\%$ [$-1.8$, 0.7] at INT4; A+B+P against A+B $-0.6\%$ [$-4.3$, 3.4]; at INT6 A+B+P is worse than A+B ($-6.5\%$ [$-12.0$, $-1.6$]).
  \item The sensitivity to other directions measures how \emph{noise-prone a context} is (it works in a rounding-only state too), not a quantization-specific mechanism.
- \item So: INT6 keeps the effect to about two numerical floors; INT4 does not (cosine 0.77); the transfer error is a generic response, hidden by averaging; activation survival does not track it.
+ \item So: INT6 changes the effect little (about two numerical floors, above the rounding floor); INT4 does not (cosine 0.77); most of the transfer error is shared with other directions and hidden by averaging; activation survival is not a reliable proxy for it.
 \end{itemize}
 \end{slide}
 
@@ -229,7 +229,7 @@ INT16 (rounding only): 23.4\% [15.1, 30.8]\\[0.4em]
 \begin{itemize}
  \item One model, one layer, one SAE, one quantizer (simulated RTN, not deployed integer kernels); Gemma-2-9B is run by another team and is not part of this work.
  \item The earlier descriptive studies are exploratory; the only confirmatory family (Belebele) was not met.
- \item Only about 5\% of the items clear the numerical floor; claims on eligible items rest on a few hundred items per state, and the all-items tables are reported next to them.
+ \item About a third of the real-direction items (2,203 of 6,464; 235 of 404 features) clear the numerical floor; the held-out half is 1,066 items of 116 features, and the all-items tables are reported next to the eligible ones.
  \item The gradient baseline is the loss-attribution form, not the effect-vector form; Pearson survival is a secondary question.
  \item Nothing here is a statement about task accuracy, safety or deployment.
 \end{itemize}

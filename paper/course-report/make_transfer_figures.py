@@ -48,7 +48,7 @@ def terms_figure(res, suffix=""):
             ax.scatter([x + 0.17 * (j - 1.5) for j in range(4)], ys, s=9, facecolor="none", edgecolor=GREY, lw=0.7, zorder=2, label="four control directions" if (si, ti) == (0, 0) else None)
             ticks.append(x); labels.append(lab); x += 1
         x += 0.7
-    ax.set_xticks(ticks, labels); ax.set_ylabel("median norm / (FP norm + floor)"); ax.set_ylim(0, None)
+    ax.set_xticks(ticks, labels); ax.set_ylabel("median norm / (FP norm + floor)"); ax.set_ylim(0, ax.get_ylim()[1] * 1.3)
     for cx, name in ((1, "INT6"), (4.7, "INT4")):
         ax.text(cx, -0.19, name, transform=ax.get_xaxis_transform(), ha="center", va="top", fontsize=7.5)
     ax.legend(frameon=False, loc="upper left", handletextpad=0.2, borderaxespad=0.1); ax.set_title("(a) feature level, eligible items", fontsize=7.5, loc="left")

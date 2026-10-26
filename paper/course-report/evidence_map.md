@@ -45,3 +45,17 @@ their genuine arXiv-issued DOI, rather than being mislabelled as proceedings
 papers. The manuscript does not make a first-ever or exhaustive novelty claim.
 
 Added 2026-10-26 (second revision): Gemma 2 (arXiv 2408.00118), JumpReLU SAEs (2407.14435), Cunningham et al. (2309.08600), Gao et al. TopK SAEs (2406.04093), the NLLB Team paper for FLORES-200 (2207.04672) and The Llama 3 Herd of Models (2407.21783) were checked against their arXiv abstract pages on 26 October 2026 (titles, author order, years); long author lists are truncated with `and others`, which the official bibliography style supports.
+
+## Update 2026-10-26 21:47: Section 7 (Intervention Transfer under Quantization), revision 3
+
+The sections of revision 3 are numbered 1 Introduction, 2 Related Work, 3 Setting and Research History, 4 Measurements and Interventions, 5 Replication and Initial Tests, 6 Association and Functional Results, 7 Intervention Transfer under Quantization, 8 Graded Feature Scaling, 9 A Second-Model Check, 10 Discussion and Conclusion; the rows above that cite older section numbers refer to revision 2. Every number of Section 7 and of the abstract's transfer sentences comes from `reports/intervention_transfer/results/main/` (`README.md`, `claim_status.json`, `analysis_summary.json`, `component_summary.csv`, `group_per_language.csv`, `averaged_fingerprints.csv`, `predictive_validation.csv`); the group-level cell medians (0.263, 0.684, 0.428, 0.848, native 0.433) are from `group_per_language.csv`.
+
+| Claim in the manuscript | Source | Status and caveat |
+|---|---|---|
+| Group level, INT6 and INT4: net harm, |C|, |W|, |I|, languages with |C|>|W|, interval of the median difference | `claim_status.json` (A3), `group_per_language.csv`, D-094 | Context term of the FIXED full-precision edit; the count 19 of 27 also holds at INT16, so the interval is the evidence; exploratory beyond the declared rule A3 (mixed). |
+| Feature level: cosine, normalized error, floors, orthogonal share, relative norms | `component_summary.csv`, `claim_status.json` (H1), D-094 | H1 supported; weight-term norm statement exploratory (terms not additive); controls are not eligibility-filtered. |
+| Averaged fingerprints (H4) | `averaged_fingerprints.csv`, `claim_status.json` (H4) | Features-only interval; INT16 reference +0.0145. |
+| Prediction (A+B), strongest baseline, INT16, all-items series | `predictive_validation.csv`, `claim_status.json` (H3, UTILITY) | Utility not met; INT6 interval includes zero; INT16 gain shows it is not quantization-specific. |
+| Survival and gradient add nothing | `analysis_summary.json` (survival blocks), D-094 | Eligible items at INT4; INT6 survival is worse; the gradient has no interval. |
+| Figures 1 and 2 | `paper/course-report/make_transfer_figures.py` from `results/main/*.csv` | Regenerated 2026-10-26; legend moved. |
+| External-panel paragraph | pending until the six external runs are validated and analysed once (D-095) | Marked `[PENDING ...]` in `main.tex`. |
