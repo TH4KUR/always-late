@@ -572,5 +572,63 @@ class Specificity(unittest.TestCase):
         b = find(ta.specificity_summary(self.rows, n_boot=20, seed=1, eligible_only=False), split="all", metric="normalized_error_gap"); self.assertEqual((b["n"], b["n_no_control"]), (2, 1))
 
 
+SURV_CORE = {"feature_ids": [10, 11, 12, 13], "feature_language_index": [0, 0, 1, 1], "languages": ["aaa", "bbb"]}
+
+
+def survival_data(n_feat=20):
+    """The content of a Phase 1 survival.pt in miniature: per-language correlations [languages, features] and pooled correlations [features] per bit width, with a recognizable value per cell."""
+    corr = {b: torch.tensor([[b + 0.01 * f + 0.0 for f in range(n_feat)], [b + 0.5 + 0.01 * f for f in range(n_feat)]]) / 10.0 for b in (8, 6, 4)}
+    return {"languages": ["aaa", "bbb"], "bits": [8, 6, 4], "corr": corr, "pooled_corr": {b: torch.tensor([b + 0.9 + 0.01 * f for f in range(n_feat)]) / 10.0 for b in (8, 6, 4)}}
+
+
+class Survival(unittest.TestCase):
+    def test_the_pearson_survival_of_a_feature_is_the_pooled_value_and_the_value_in_its_own_language_at_the_bit_width_of_the_state(self):
+        v = ta.survival_values(survival_data(), SURV_CORE, ("INT6", "INT4"))
+        self.assertEqual(set(v), {"INT6", "INT4"}); self.assertAlmostEqual(v["INT6"][10][0], (6 + 0.9 + 0.10) / 10.0, places=5); self.assertAlmostEqual(v["INT6"][10][1], (6 + 0.10) / 10.0, places=5)
+        self.assertAlmostEqual(v["INT4"][12][1], (4 + 0.5 + 0.12) / 10.0, places=5); self.assertAlmostEqual(v["INT4"][13][0], (4 + 0.9 + 0.13) / 10.0, places=5)                  # feature 12 and 13: language index 1
+
+    def test_another_language_order_or_a_missing_bit_width_is_an_error(self):
+        d = survival_data(); d["languages"] = ["bbb", "aaa"]
+        with self.assertRaisesRegex(ValueError, "languages"):
+            ta.survival_values(d, SURV_CORE, ("INT6",))
+        d = survival_data(); del d["corr"][6]
+        with self.assertRaisesRegex(ValueError, "bit"):
+            ta.survival_values(d, SURV_CORE, ("INT6",))
+        with self.assertRaisesRegex(ValueError, "state"):
+            ta.survival_values(survival_data(), SURV_CORE, ("FP",))
+
+    def test_the_design_gets_a_p_group_and_drops_items_of_features_without_a_survival_value(self):
+        rows = {}
+        for f in (10, 11):
+            for s in (1000, 2000):
+                rows[(f, s, "real")] = prow(f, s, "real", err=1.0 + f / 100)
+                rows[(f, s, "random1")] = prow(f, s, "random1", err=0.2)
+        d = ta.design(rows, survival={10: [0.9, 0.8]}); self.assertEqual(len(d["y"]), 2); self.assertEqual(d["P"].shape, (2, 2)); self.assertTrue(np.allclose(d["P"], [[0.9, 0.8]] * 2)); self.assertEqual(d["dropped_reasons"], {"missing:survival": 2})
+        self.assertEqual(d["columns"]["P"], ["pearson_pooled", "pearson_own"]); self.assertNotIn("P", ta.design(rows))
+
+
+class SurvivalDiagnostic(unittest.TestCase):
+    def test_survival_that_carries_the_signal_improves_on_a_and_on_the_diagnostic_and_noise_does_not(self):
+        d = synthetic_design(signal="B", seed=11); n = len(d["y"]); rng = np.random.default_rng(12)
+        d["P"] = np.stack([d["y"] * 0.7 + rng.normal(size=n) * 0.05, rng.normal(size=n)], axis=1)                    # the pooled survival tracks the target, the own-language one is noise
+        r = ta.survival_diagnostic(d, n_boot=100, seed=1); self.assertEqual(set(r["models"]), {"A", "A+P", "A+B", "A+B+P"}); self.assertEqual(r["status"], "fitted")
+        self.assertGreater(r["improvement_over_A"]["point"], 0.3); self.assertGreater(r["improvement_over_A"]["low"], 0.0)
+        d2 = synthetic_design(signal=None, seed=13); d2["P"] = np.random.default_rng(14).normal(size=(len(d2["y"]), 2)); r2 = ta.survival_diagnostic(d2, n_boot=100, seed=1)
+        self.assertLess(r2["improvement_over_A"]["point"], 0.1); self.assertLess(r2["improvement_over_diagnostic"]["point"], 0.1)
+
+    def test_it_compares_a_plus_p_with_a_and_a_plus_b_plus_p_with_a_plus_b_on_the_held_out_items_with_the_same_protocol(self):
+        d = synthetic_design(signal="B", seed=15); d["P"] = np.random.default_rng(16).normal(size=(len(d["y"]), 2)); r = ta.survival_diagnostic(d, n_boot=60, seed=2); held = d["split"] == "heldout"
+        ref = ta.paired_relative_improvement(r["models"]["A+B"]["abs_error"], r["models"]["A+B+P"]["abs_error"], d["feature"][held], d["cluster"][held], 60, 2); self.assertEqual(r["improvement_over_diagnostic"], ref)
+        ref = ta.paired_relative_improvement(r["models"]["A"]["abs_error"], r["models"]["A+P"]["abs_error"], d["feature"][held], d["cluster"][held], 60, 2); self.assertEqual(r["improvement_over_A"], ref)
+        cal = d["split"] == "calibration"; fit = ta.ridge_fit(np.hstack([d["A"][cal], d["P"][cal]]), d["y"][cal], r["models"]["A+P"]["lambda"]); self.assertTrue(np.allclose(fit["coef"], r["models"]["A+P"]["coef"]))
+
+    def test_without_survival_values_or_with_too_few_items_it_says_so(self):
+        d = synthetic_design(signal="B", seed=17)
+        with self.assertRaisesRegex(ValueError, "survival"):
+            ta.survival_diagnostic(d, n_boot=10, seed=1)
+        d["P"] = np.zeros((len(d["y"]), 2)); small = synthetic_design(n_cal_features=3, n_held_features=2, per=2); small["P"] = np.zeros((10, 2)); self.assertEqual(ta.survival_diagnostic(small, n_boot=10, seed=1)["status"], "insufficient")
+        few_held = synthetic_design(n_cal_features=24, n_held_features=2, per=2); few_held["P"] = np.zeros((len(few_held["y"]), 2)); r = ta.survival_diagnostic(few_held, n_boot=10, seed=1); self.assertEqual((r["status"], r["n_heldout"]), ("insufficient", 4))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -304,31 +304,38 @@ SENSITIVITY_OFFSET = 0.01
 GRADIENT_OFFSET = 1e-6
 
 
-def design(rows, kind="real", eligible_only=True):
+def design(rows, kind="real", eligible_only=True, survival=None):
     """The design of the predictive diagnostic of one quantized state (the target is the normalized transfer error of the direction `kind`): one entry per item of that kind (eligible ones unless asked
     otherwise), sorted by (feature, sentence). Columns, in three groups (names in COLUMNS): A, the activation baseline (activation cosine of the FP and quantized amplitudes, log FP activation, firing share
     in the quantized state, log FP effect norm, log residual norm); B, the generic sensitivity measured with the OTHER directions of the same feature and context (log of the mean normalized error of the
     matched swapped and random directions that exist, plus 0.01: the item's own direction never enters); G, the gradient baseline of amendment A9 (logs of the absolute first-order loss shift, the FP and quantized
-    first-order loss predictions, and the ratio of the gradient norms). An item with a missing value, or without any control direction, is dropped and counted by reason (never filled)."""
+    first-order loss predictions, and the ratio of the gradient norms). An item with a missing value, or without any control direction, is dropped and counted by reason (never filled). With `survival` ({feature: [pooled Pearson survival, Pearson survival in its own language]} of the
+    state, see `survival_values`) the design gets a fourth group P (columns pearson_pooled, pearson_own) for the secondary question whether the Duan-style survival adds anything; a feature without a value is dropped
+    ('missing:survival')."""
     controls = {}
     for r in rows.values():
         if r["kind"] in CONTROL_KINDS:
             controls.setdefault((r["feature"], r["sentence"]), []).append(r["normalized_error"])
-    keys, y, A, B, G, split, feature, cluster, dropped = [], [], [], [], [], [], [], [], {}
+    keys, y, A, B, G, P, split, feature, cluster, dropped = [], [], [], [], [], [], [], [], [], {}
     for r in sorted((r for r in rows.values() if r["kind"] == kind and (r["eligible"] or not eligible_only)), key=lambda r: (r["feature"], r["sentence"])):
         missing = next((n for n in _REQUIRED if r.get(n) is None), None)
         if missing is not None:
             dropped[f"missing:{missing}"] = dropped.get(f"missing:{missing}", 0) + 1; continue
+        if survival is not None and r["feature"] not in survival:
+            dropped["missing:survival"] = dropped.get("missing:survival", 0) + 1; continue
         ctrl = controls.get((r["feature"], r["sentence"]))
         if not ctrl:
             dropped["no_control"] = dropped.get("no_control", 0) + 1; continue
-        keys.append((r["feature"], r["sentence"])); y.append(r["normalized_error"]); split.append(r["split"]); feature.append(r["feature"]); cluster.append(r["cluster"])
+        keys.append((r["feature"], r["sentence"])); P.append(survival[r["feature"]] if survival is not None else None); y.append(r["normalized_error"]); split.append(r["split"]); feature.append(r["feature"]); cluster.append(r["cluster"])
         A.append([r["act_cos"], np.log(max(r["amp_fp_mean"], 1e-12)), r["firing"], np.log(max(r["fp_norm"], 1e-12)), np.log(max(r["resid_norm_fp"], 1e-12))])
         B.append([np.log(np.mean(ctrl) + SENSITIVITY_OFFSET)])
         G.append([np.log(abs(r["g_shift_native"]) + GRADIENT_OFFSET), np.log(abs(r["g_pred_fp"]) + GRADIENT_OFFSET), np.log(abs(r["g_pred_q_native"]) + GRADIENT_OFFSET), np.log(max(r["g_norm_q"], 1e-12)) - np.log(max(r["g_norm_fp"], 1e-12))])
     arr = lambda x, w: np.array(x, dtype=float).reshape(len(x), w)
-    return {"keys": keys, "y": np.array(y, dtype=float), "A": arr(A, 5), "B": arr(B, 1), "G": arr(G, 4), "split": np.array(split), "feature": np.array(feature, dtype=np.int64), "cluster": np.array(cluster, dtype=np.int64),
-            "columns": {k: list(v) for k, v in COLUMNS.items()}, "n_dropped": int(sum(dropped.values())), "dropped_reasons": dropped}
+    out = {"keys": keys, "y": np.array(y, dtype=float), "A": arr(A, 5), "B": arr(B, 1), "G": arr(G, 4), "split": np.array(split), "feature": np.array(feature, dtype=np.int64), "cluster": np.array(cluster, dtype=np.int64),
+           "columns": {k: list(v) for k, v in COLUMNS.items()}, "n_dropped": int(sum(dropped.values())), "dropped_reasons": dropped}
+    if survival is not None:
+        out["P"] = arr(P, 2); out["columns"]["P"] = ["pearson_pooled", "pearson_own"]
+    return out
 
 
 FOLD_SALT = "intervention-transfer-ridge-folds-v1"
@@ -387,6 +394,50 @@ def utility_criterion(improvement):
     return bool(improvement["point"] >= UTILITY_REDUCTION and improvement["low"] > 0)
 
 
+STATE_BITS = {"INT16": 16, "INT8": 8, "INT6": 6, "INT5": 5, "INT4": 4}
+
+
+def survival_values(sdata, core, states):
+    """The Pearson survival of every feature of the core per state, from the content of a Phase 1 `survival.pt` (mask regime): {state: {feature: [pooled correlation over all languages' tokens, correlation in the
+    feature's own language]}}. The language lists of the file and of the core must be equal (the index of a feature's language is read from the core), and the file must hold the bit width of every state."""
+    if list(sdata["languages"]) != list(core["languages"]):
+        raise ValueError("the languages of the survival file differ from those of the core")
+    out = {}
+    for s in states:
+        bits = STATE_BITS.get(s)
+        if bits is None:
+            raise ValueError(f"no bit width is defined for the state {s}")
+        if bits not in sdata["corr"] or bits not in sdata["pooled_corr"]:
+            raise ValueError(f"the survival file has no {bits} bit entry for the state {s}")
+        pooled, own = sdata["pooled_corr"][bits], sdata["corr"][bits]
+        out[s] = {int(f): [float(pooled[int(f)]), float(own[int(li), int(f)])] for f, li in zip(core["feature_ids"], core["feature_language_index"])}
+    return out
+
+
+def _fit_models(d, groups, lams, n_folds):
+    """The models `groups` ({name: (column groups of the design)}) fitted on the calibration items only (ridge strength by feature-group cross-validation inside them) and scored on the held-out items."""
+    cal, held = d["split"] == "calibration", d["split"] == "heldout"; X = lambda name, m: np.hstack([d[g][m] for g in groups[name]]); y_cal, y_held = d["y"][cal], d["y"][held]; models = {}
+    for name in groups:
+        ch = choose_lambda(X(name, cal), y_cal, d["feature"][cal], lams, n_folds); fit = ridge_fit(X(name, cal), y_cal, ch["lambda"]); ae = np.abs(ridge_predict(fit, X(name, held)) - y_held)
+        models[name] = {"lambda": ch["lambda"], "cv_mae": ch["cv_mae"][ch["lambda"]], "cv_mae_by_lambda": ch["cv_mae"], "heldout_mae": float(ae.mean()), "abs_error": ae, "coef": fit["coef"].tolist(), "mean": fit["mean"].tolist(),
+                        "scale": fit["scale"].tolist(), "intercept": fit["intercept"]}
+    return models
+
+
+def survival_diagnostic(d, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, lams=RIDGE_STRENGTHS, n_folds=N_FOLDS, min_calibration=20, min_heldout=10):
+    """The secondary question of the survival addendum (design with `survival`): does the Pearson survival of the feature (group P) add to the activation baseline (A+P against A) and to the diagnostic (A+B+P against
+    A+B)? Same protocol as `diagnostic`: calibration fits only, the same strengths and folds, the paired crossed bootstrap on the held-out items; no 10 percent criterion (a secondary analysis)."""
+    if "P" not in d:
+        raise ValueError("the design has no survival columns (build it with survival=...)")
+    cal, held = d["split"] == "calibration", d["split"] == "heldout"; out = {"n_calibration": int(cal.sum()), "n_heldout": int(held.sum())}
+    if cal.sum() < min_calibration or held.sum() < min_heldout:
+        return {**out, "status": "insufficient"}
+    models = _fit_models(d, {"A": ("A",), "A+P": ("A", "P"), "A+B": ("A", "B"), "A+B+P": ("A", "B", "P")}, lams, n_folds); fh, ch_ = d["feature"][held], d["cluster"][held]
+    return {**out, "status": "fitted", "models": models, "null_mae": float(np.abs(d["y"][held] - np.median(d["y"][cal])).mean()),
+            "improvement_over_A": paired_relative_improvement(models["A"]["abs_error"], models["A+P"]["abs_error"], fh, ch_, n_boot, seed),
+            "improvement_over_diagnostic": paired_relative_improvement(models["A+B"]["abs_error"], models["A+B+P"]["abs_error"], fh, ch_, n_boot, seed)}
+
+
 def diagnostic(d, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, lams=RIDGE_STRENGTHS, n_folds=N_FOLDS, min_calibration=20, min_heldout=10):
     """The held-out diagnostic of one quantized state. d: the design (`design`). Everything is fitted on the CALIBRATION items only (standardization, ridge strength by feature-group cross-validation within the
     calibration half, the coefficients, the choice of the strongest baseline among A and A+G by its cross-validated calibration error); the held-out items only score. Models: A (activation baseline), A+G
@@ -395,11 +446,7 @@ def diagnostic(d, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, lams=RIDGE_S
     cal, held = d["split"] == "calibration", d["split"] == "heldout"; out = {"n_calibration": int(cal.sum()), "n_heldout": int(held.sum()), "diagnostic": DIAGNOSTIC, "baselines": list(BASELINES)}
     if cal.sum() < min_calibration or held.sum() < min_heldout:
         return {**out, "status": "insufficient"}
-    X = lambda name, m: np.hstack([d[g][m] for g in MODEL_GROUPS[name]]); y_cal, y_held = d["y"][cal], d["y"][held]; models = {}
-    for name in MODEL_GROUPS:
-        ch = choose_lambda(X(name, cal), y_cal, d["feature"][cal], lams, n_folds); fit = ridge_fit(X(name, cal), y_cal, ch["lambda"]); ae = np.abs(ridge_predict(fit, X(name, held)) - y_held)
-        models[name] = {"lambda": ch["lambda"], "cv_mae": ch["cv_mae"][ch["lambda"]], "cv_mae_by_lambda": ch["cv_mae"], "heldout_mae": float(ae.mean()), "abs_error": ae, "coef": fit["coef"].tolist(), "mean": fit["mean"].tolist(),
-                        "scale": fit["scale"].tolist(), "intercept": fit["intercept"]}
+    y_cal, y_held = d["y"][cal], d["y"][held]; models = _fit_models(d, MODEL_GROUPS, lams, n_folds)
     strongest = min(BASELINES, key=lambda n: models[n]["cv_mae"]); fh, ch_ = d["feature"][held], d["cluster"][held]
     imp = paired_relative_improvement(models[strongest]["abs_error"], models[DIAGNOSTIC]["abs_error"], fh, ch_, n_boot, seed)
     imp_all = paired_relative_improvement(models[strongest]["abs_error"], models["A+B+G"]["abs_error"], fh, ch_, n_boot, seed)
