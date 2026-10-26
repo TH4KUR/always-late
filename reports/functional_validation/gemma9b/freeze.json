@@ -1,0 +1,75 @@
+{
+ "schema": 1,
+ "kind": "gemma9b_freeze",
+ "decision": "D-089",
+ "created": "2026-10-26 15:40",
+ "base_commit_of_main": "5b51ba6a20e9f1caf691ab3d458f615b9f7e0006",
+ "model": "google/gemma-2-9b",
+ "sae_release": "gemma-scope-9b-pt-res-canonical",
+ "sae_id": "layer_20/width_16k/canonical",
+ "layer": 20,
+ "hook": "blocks.20.hook_resid_post",
+ "d_model": 3584,
+ "flores": {
+  "archive": "https://dl.fbaipublicfiles.com/nllb/flores200_dataset.tar.gz",
+  "sha256": "b8b0b76783024b85797e5cc75064eb83fc5288b41e9654dabc7be6ae944011f6",
+  "dev_lines": 997,
+  "devtest_lines": 1012
+ },
+ "preset": {
+  "name": "Study G MAIN",
+  "configurations_per_language": 37,
+  "configurations_per_state": 999,
+  "ratios_down": [
+   0.3535533905932738,
+   0.1767766952966369,
+   0.08838834764831845
+  ],
+  "ratios_up": [
+   2.82842712474619,
+   5.65685424949238,
+   11.31370849898476
+  ],
+  "ratios_fine": [
+   1.1,
+   1.2
+  ],
+  "ratios_source": "reports\\functional_validation\\gain_study\\calibration\\ratios.json",
+  "ratios_sha256": "51ded03a93d4e6e725a16add6cefe9291a300ac176a4e07c6d7cd932f16d33ba",
+  "recalibrated_on_9b": false,
+  "n_controls": 3,
+  "label": "K64",
+  "n_eval_sentences": 300,
+  "states": [
+   "FP",
+   "INT8",
+   "INT7",
+   "INT6",
+   "INT5",
+   "INT4"
+  ],
+  "languages": 27,
+  "group_families": [
+   "K16",
+   "K64",
+   "all"
+  ]
+ },
+ "predictions": {
+  "source": "docs\\superpowers\\plans\\2026-10-26-llama-consistency-check.md sections 3 and 7",
+  "text": "## 3. Predictions (written now; thresholds from the Gemma numbers; each is met or not met, and the report says which)\n\nLet n be the number of tested languages (at least 16 selective features) and `req(x) = ceil(x * n / 27)` (the proportional rule of Study G).\n\n- **P1 (L1):** at FP the median over the tested languages of E(K64 zero-ablation) is above 0 with its 95 % bootstrap interval (over languages) above 0, and E > 0 in at least `req(24)` languages (Gemma: 27 of 27, macro 0.70).\n- **P2a (L2, flat through the middle):** macro retention (E at the state over E at FP) lies within [0.85, 1.15] at INT8 and INT6.\n- **P2b (L2, the deep end changes):** macro retention at INT4 is at least 0.30 above the retention at INT6 and is the largest of the ladder (Gemma: 2.14 against 1.04). INT5 is reported, not tested (Gemma 1.13: a gradual rise is not excluded).\n- **P3a (L3, graded):** at FP and at INT4 the median net harm over languages is strictly decreasing in the ratio (0 > 0.088 > 0.177 > 0.354 in harm order) and the order holds in at least `req(24)` languages (H-G1 of Study G).\n- **P3b (L3, the threshold):** the net harm at the deepest down ratio (0.088) is larger at INT4 than at FP in at least `req(20)` languages and the median ratio INT4 over FP is above 1.3 (Gemma: 1.9).\n\n**Verdict wording (fixed now):** *consistent* if P1, P2b and P3a hold (the qualitative picture: a language-specific, graded dependence that is flat through INT6 and larger at INT4); *partly consistent* if P1 and P3a hold and P2b or P3b does not (the dependence exists but the quantization pattern differs: the numbers are reported with the reason candidates, not explained away); *not consistent* if P1 fails. P2a and P3b are reported with their outcomes and do not change the verdict. A different pattern on Llama is a result about Llama, not a failure of the pipeline, provided the gates pass and the planted-world tests hold.\n\n## 7. Amendment 03:46 (2026-10-26, before any real Llama result; closes two gaps of the verdict wording of section 3)\n\n(1) P3b never changes the verdict (section 3 says so in its last sentence; the clause 'P2b or P3b does not hold' in the definition of 'partly consistent' is withdrawn). (2) The case 'P1 holds and P3a does not' was not covered: it is called **limited** (a language-specific dependence exists but is not graded in the ratio). The complete verdict function: *consistent* = P1 and P2b and P3a; *partly consistent* = P1 and P3a and not P2b; *limited* = P1 and not P3a; *not consistent* = not P1. P2a and P3b are reported. (3) Definitions used by the analysis module `phase1_llama_compare.py` (tests first): the tested languages are those whose group in the manifest has at least 16 members (`groups[l].all`); E is the frozen `functional_effect` (zero-ablation of the group minus the mean of the zeroed controls, nats per token); the macro retention is the frozen `retention_macro` (mean of the per-language ratios over the tested languages whose FP interval lies above 0); P1 uses the 95 % percentile interval of the median of E over the tested languages (bootstrap over languages, 5,000 draws, seed 0); P3a is the frozen `h_g1` of Study G on the tested languages at FP and at INT4; P3b is the per-language net harm at the deepest down ratio at INT4 against FP (count) and the median over the languages with a positive FP value of the ratio INT4 over FP; n_boot over sentences 2,000, seed 0.\n",
+  "text_sha256": "6da85e5bc07abde154a5dd67a96318bdd4b63bafda331fd5b32fa4f31765b0de"
+ },
+ "code_sha256": {
+  "scripts/g0/phase1_gemma9b_run.py": "94c0f7194e0a05c962da6870f2305a4a9527fb541e461368614b5e8b396f4b51",
+  "scripts/g0/run_gemma9b.sbatch": "fea1b9636ec31cc9ca96184380dbd8c37a03aba51491cd8a3410bc842f32eaa4",
+  "scripts/g0/tests_torch/test_phase1_gemma9b_run.py": "7444d7a12614ad7a5b65d25686f6fefda5ae07bc2b68b685b607ba4575a5c776",
+  "reports/g0/phase1_languages.json": "befb8ba3dd843f438ac3d308b05e2824f33a5693260a6801dd69fe313348cb88"
+ },
+ "rules": [
+  "no frozen file edited",
+  "the 2B ratios are not recalibrated",
+  "any deviation is a dated amendment that says why",
+  "no post hoc language selection, no new thresholds after seeing numbers"
+ ]
+}
