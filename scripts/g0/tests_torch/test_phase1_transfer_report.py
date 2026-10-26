@@ -135,6 +135,7 @@ class Outputs(Fixture):
             self.assertTrue((out / name).exists() and (out / name).stat().st_size > 0, name)
         text = (out / "analysis_summary.json").read_text(); self.assertNotIn("NaN", text); self.assertNotIn("abs_error", text); json.loads(text); json.loads((out / "claim_status.json").read_text())
         self.assertEqual(len((out / "per_context_INT4.csv").read_text().strip().split("\n")), 1 + 40)
+        feats = (out / "averaged_features_INT4.csv").read_text().strip().split("\n"); self.assertEqual(len(feats), 1 + 4 * 5); head = feats[0].split(","); self.assertTrue({"feature", "kind", "split", "pooled_cos", "item_cos", "cos_gap", "coherence_fp"} <= set(head))
 
     def test_jsonable_turns_numpy_into_plain_values_and_nan_into_null(self):
         x = rep.jsonable({"a": np.float64(1.5), "b": np.array([1, 2]), "c": (np.int64(3), float("nan")), "abs_error": np.ones(3), "d": np.bool_(True), "e": np.float64("nan")})

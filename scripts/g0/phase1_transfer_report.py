@@ -174,6 +174,7 @@ def write_outputs(out_dir, feat, group, claims):
         write_csv(out / "predictive_validation.csv", pv)
         for s, st in feat["states"].items():
             write_csv(out / f"per_context_{s}.csv", [{k: v for k, v in r.items()} for _, r in sorted(st["rows"].items())])
+            write_csv(out / f"averaged_features_{s}.csv", [r for _, r in sorted(st["averaged_features"].items())])
     if group is not None:
         write_csv(out / "group_per_language.csv", [{"state": s, **r} for s, st in group["states"].items() for r in st["per_language"]])
         write_csv(out / "a3.csv", [{"state": s, **{k: v for k, v in st["a3"]["point"].items()}, **{f"{k}_ci": st["a3"][k] for k in ("median_difference", "median_abs_c", "median_abs_w", "c_gt_w")}, "share_holds": st["a3"]["share_holds"]} for s, st in group["states"].items()])
