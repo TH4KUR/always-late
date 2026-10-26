@@ -212,3 +212,38 @@ def crossed_bootstrap(values, feature_idx, cluster_idx, stat="median", n_boot=BO
     point = float(v.mean()) if stat == "mean" else weighted_median(v, np.ones(len(v))); reps = replicate_stats(v, fi, ci, mf, mc, stat)
     lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
     return {**out, "point": point, "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n_features": nf, "n_clusters": nc}
+
+
+def _rel(r, key):
+    """A norm of the row relative to the FP effect norm plus the floor of its kind (the normalization of the primary endpoint); None stays None."""
+    return None if r[key] is None else r[key] / (r["fp_norm"] + r["floor"])
+
+
+# the metrics of the component table: name -> (value of a row (None = undefined), statistic of the table)
+METRICS = {
+    "normalized_error": (lambda r: r["normalized_error"], "median"),
+    "native_normalized_error": (lambda r: _rel(r, "native_error_norm"), "median"),
+    "scalar_normalized_error": (lambda r: _rel(r, "scalar_residual_norm"), "median"),
+    "native_scalar_normalized_error": (lambda r: _rel(r, "native_scalar_residual_norm"), "median"),
+    "C_rel": (lambda r: _rel(r, "C_norm"), "median"), "W_rel": (lambda r: _rel(r, "W_norm"), "median"), "I_rel": (lambda r: _rel(r, "I_norm"), "median"), "total_rel": (lambda r: _rel(r, "total_norm"), "median"),
+    "c_gt_w": (lambda r: float(r["C_norm"] > r["W_norm"]), "mean"),
+    "interaction_share": (lambda r: r["I_norm"] / (r["C_norm"] + r["W_norm"]) if r["C_norm"] + r["W_norm"] > 0 else None, "median"),
+    "cosine": (lambda r: r["cosine"], "median"), "norm_ratio": (lambda r: r["norm_ratio"], "median"), "error_over_floor": (lambda r: r["error_over_floor"], "median"),
+}
+
+
+def component_summary(rows, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, metrics=None, eligible_only=True, splits=("all", "calibration", "heldout")):
+    """The component table of one quantized state: for every direction kind and split ('all', calibration, held out) and every metric of METRICS, the statistic over the ELIGIBLE items (all items when
+    `eligible_only` is False) with its crossed-bootstrap interval over features and source-sentence clusters. rows: apply_floor(item_table(...)). -> list of records {kind, split, metric, n_items (all items of the
+    group, eligible or not), + the fields of `crossed_bootstrap`}; an undefined value of an item (None) is counted in `n_missing`, never filled."""
+    names = list(METRICS) if metrics is None else list(metrics); out = []
+    for kind in sorted({r["kind"] for r in rows.values()}):
+        for split in splits:
+            group = [r for r in rows.values() if r["kind"] == kind and (split == "all" or r["split"] == split)]
+            if not group:
+                continue
+            sel = [r for r in group if r["eligible"] or not eligible_only]; fidx = np.array([r["feature"] for r in sel], dtype=np.int64); cidx = np.array([r["cluster"] for r in sel], dtype=np.int64)
+            for name in names:
+                fn, stat = METRICS[name]; vals = np.array([np.nan if (x := fn(r)) is None else x for r in sel], dtype=float)
+                out.append({"kind": kind, "split": split, "metric": name, "n_items": len(group), **crossed_bootstrap(vals, fidx, cidx, stat, n_boot, seed)})
+    return out

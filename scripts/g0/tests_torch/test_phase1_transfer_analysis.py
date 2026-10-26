@@ -267,5 +267,48 @@ class CrossedBootstrap(unittest.TestCase):
         self.assertNotEqual(ta.crossed_bootstrap(v, f, c, "mean", n_boot=100, seed=5), ta.crossed_bootstrap(v, f, c, "mean", n_boot=100, seed=6))
 
 
+def floored(specs, floors):
+    """apply_floor(item_table(...)) of items {(feature, sentence, kind): item}."""
+    return ta.apply_floor(ta.item_table(specs, CORE, SPLIT, 997), floors)
+
+
+def find(records, **kw):
+    hit = [r for r in records if all(r[k] == v for k, v in kw.items())]
+    assert len(hit) == 1, (kw, len(hit)); return hit[0]
+
+
+class ComponentSummary(unittest.TestCase):
+    def setUp(self):
+        # floor 1: eligible means fp > 5. rows: (10, 1000) fp 10, error 0; (10, 2000) fp 10, error 3; (11, 1001) fp 10, error 4 (heldout); (12, 3000) fp 4 (not eligible)
+        self.rows = floored({(10, 1000, "real"): item(10, 10), (10, 2000, "real"): item(10, 13), (11, 1001, "real"): item(10, 10, 4.0), (12, 3000, "real"): item(4, 4, 2.0), (10, 1000, "random1"): item(10, 10, 1.0)}, {"real": 1.0, "random1": 1.0})
+
+    def test_the_summary_covers_every_kind_and_split_with_the_eligible_items_only(self):
+        rec = ta.component_summary(self.rows, n_boot=40, seed=1)
+        a = find(rec, kind="real", split="all", metric="normalized_error"); self.assertEqual(a["n"], 3); self.assertEqual(a["n_items"], 4); self.assertAlmostEqual(a["point"], 3.0 / 11.0)           # lower median of 0, 3/11, 4/11
+        self.assertEqual(find(rec, kind="real", split="calibration", metric="normalized_error")["n"], 2); self.assertEqual(find(rec, kind="real", split="heldout", metric="normalized_error")["n"], 1)
+        self.assertEqual(find(rec, kind="random1", split="all", metric="normalized_error")["n"], 1); self.assertEqual(find(rec, kind="real", split="all", metric="normalized_error")["stat"], "median")
+
+    def test_ineligible_items_enter_when_the_eligibility_rule_is_switched_off_and_n_items_always_counts_them(self):
+        rec = ta.component_summary(self.rows, n_boot=40, seed=1, eligible_only=False); a = find(rec, kind="real", split="all", metric="normalized_error")
+        self.assertEqual((a["n"], a["n_items"]), (4, 4))
+
+    def test_the_components_are_relative_to_the_fp_norm_plus_the_floor_and_c_versus_w_is_a_share(self):
+        rec = ta.component_summary(self.rows, n_boot=40, seed=1); r = self.rows[(11, 1001, "real")]
+        h = find(rec, kind="real", split="heldout", metric="C_rel"); self.assertAlmostEqual(h["point"], r["C_norm"] / (r["fp_norm"] + 1.0))
+        self.assertAlmostEqual(find(rec, kind="real", split="heldout", metric="native_normalized_error")["point"], r["native_error_norm"] / (r["fp_norm"] + 1.0))
+        share = find(rec, kind="real", split="all", metric="c_gt_w"); self.assertEqual(share["stat"], "mean"); self.assertAlmostEqual(share["point"], float(np.mean([self.rows[k]["C_norm"] > self.rows[k]["W_norm"] for k in self.rows if k[2] == "real" and self.rows[k]["eligible"]])))
+
+    def test_the_native_error_the_interaction_share_and_the_unit_counts_come_from_the_right_fields(self):
+        mine = {"gram": gram_of([[10.0, 0.0], [10.0, 1.0], [10.0, 2.0], [10.0, 4.0], [10.0, 1.0]]), "cells": list(tc.CELLS), "dloss": [0.1] * 5, "loss_base": [2.0] * 5, "n_rows": 2, "n_target_rows": 5, "n_active_q": 1, "n_positions": 2}
+        rows = floored({(10, 1000, "real"): mine, (10, 1997, "real"): mine, (11, 1001, "real"): mine}, {"real": 1.0}); rec = ta.component_summary(rows, n_boot=20, seed=1); r = rows[(10, 1000, "real")]
+        self.assertAlmostEqual(find(rec, kind="real", split="all", metric="native_normalized_error")["point"], 1.0 / 11.0); self.assertAlmostEqual(find(rec, kind="real", split="all", metric="normalized_error")["point"], 4.0 / 11.0)
+        self.assertAlmostEqual(find(rec, kind="real", split="all", metric="interaction_share")["point"], r["I_norm"] / (r["C_norm"] + r["W_norm"]))
+        a = find(rec, kind="real", split="all", metric="normalized_error"); self.assertEqual((a["n_features"], a["n_clusters"]), (2, 2))                          # sentences 1000 and 1997 share the source cluster 3; 1001 is cluster 4
+
+    def test_a_metric_that_is_undefined_for_an_item_is_counted_as_missing(self):
+        rows = floored({(10, 1000, "real"): item(10, 10), (10, 2000, "real"): {**item(10, 10), "gram": gram_of([[0, 0], [0, 0], [0, 0], [1, 1], [0, 1]])}}, {"real": 0.0001})
+        a = find(ta.component_summary(rows, n_boot=20, seed=1, eligible_only=False), kind="real", split="all", metric="scalar_normalized_error"); self.assertEqual((a["n"], a["n_missing"]), (1, 1))
+
+
 if __name__ == "__main__":
     unittest.main()
