@@ -353,16 +353,33 @@ def check_core_against_freeze(freeze, core):
         raise ValueError("the core sample or the spec of the code differ from the freeze in: " + ", ".join(problems))
 
 
-def make_grad_fn(upper_final, logits_fn, device):
+def make_grad_fn(upper_final, model, device, vocab_chunk=65536):
     """grad_fn(h [L, d], targets [L]) -> [L, d] float32 on the host: the gradient of the mean NLL over the rows with a target with respect to the prefix residual, through the suffix of the CURRENT weights (amendment A9).
-    torch.autograd.grad asks for the gradient of the residual only, so no parameter gradient is formed; the global no-grad mode of the run is lifted inside."""
+    torch.autograd.grad asks for the gradient of the residual only, so no parameter gradient is formed; the global no-grad mode of the run is lifted inside. The readout is the float32 one of the F5 runner (final RMS
+    norm, unembedding, soft cap; `make_logits_fn`) but its gradient is formed in vocabulary chunks: autograd through the whole readout kept four float32 copies of the unembedding slices (2.4 GB) and ran out of
+    memory next to the model on an 11 GB card (jobs 40330 and 40331). Pass 1 (no graph): the log-sum-exp of every row over the vocabulary chunks. Pass 2, chunk by chunk: the loss sum_v softmax_v(detached) z_v -
+    z_target (weighted 1 / number of rows with a target), whose gradient with respect to the normalized hidden state is exactly the gradient of the NLL; then one backward pass through the final norm and the layers above."""
     def grad_fn(h, targets):
         with torch.enable_grad():
             x = h.to(device).float().unsqueeze(0).requires_grad_(True)
-            z = logits_fn(upper_final(x)[0])
-            valid = (targets >= 0).to(device); tg = targets.clamp(min=0).to(device)
-            nll = -torch.log_softmax(z, -1)[torch.arange(len(tg), device=device), tg]
-            (g,) = torch.autograd.grad(nll[valid].mean(), x)
+            hf = upper_final(x)[0].float(); n = hf / torch.sqrt(hf.pow(2).mean(-1, keepdim=True) + model.cfg.eps) * model.ln_final.w.float()
+            valid = (targets >= 0).to(device); tg = targets.clamp(min=0).to(device); rows = torch.arange(len(tg), device=device); weight = valid.float() / valid.sum().clamp(min=1)
+            W, b, cap = model.unembed.W_U, model.unembed.b_U.float(), model.cfg.output_logits_soft_cap; starts = range(0, W.shape[1], vocab_chunk)
+
+            def z_chunk(i, nn):
+                z = nn @ W[:, i:i + vocab_chunk].float() + b[i:i + vocab_chunk]
+                return cap * torch.tanh(z / cap) if cap else z
+
+            with torch.no_grad():
+                lse = torch.logsumexp(torch.stack([torch.logsumexp(z_chunk(i, n.detach()), -1) for i in starts]), 0)
+            leaf = n.detach().clone().requires_grad_(True); dn = torch.zeros_like(n)
+            for i in starts:
+                z = z_chunk(i, leaf); p = torch.exp(z.detach() - lse[:, None]); loss = ((p * z).sum(-1) * weight).sum()
+                inside = (tg >= i) & (tg < i + vocab_chunk)
+                if bool(inside.any()):
+                    loss = loss - (z[rows[inside], tg[inside] - i] * weight[inside]).sum()
+                dn = dn + torch.autograd.grad(loss, leaf)[0]                                                                # inputs=leaf only: if the weights require grad, no parameter gradient is formed
+            (g,) = torch.autograd.grad(n, x, grad_outputs=dn)
         return g[0].detach().cpu()
     return grad_fn
 
@@ -428,7 +445,7 @@ def main(argv=None):
     encode = lambda x: env["encode_sae"](sae, x)
     restore = env["restore_model_work"]
     suffix = make_suffix(upper_final, logits_fn, DEVICE)
-    grad_fn = make_grad_fn(upper_final, logits_fn, DEVICE)
+    grad_fn = make_grad_fn(upper_final, model, DEVICE)
     log("model", model_name, "hook", hook, "d_sae", int(sae.cfg.d_sae), "V", int(model.cfg.d_vocab), "soft cap", model.cfg.output_logits_soft_cap)
 
     labels = [fr5.state_label(x) for x in a.states]

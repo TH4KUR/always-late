@@ -364,15 +364,44 @@ class GradScalars(Fixture, unittest.TestCase):
         out = tr.process_items(ProcessItems.items(self), self.suf, self.switches, grad_fn=self.grad_fn); keys = set(next(iter(out["items"].values())))
         self.assertTrue(set(a9["fields"]) <= keys); self.assertEqual({k for k in keys if k.startswith("g_")}, set(a9["fields"])); self.assertEqual(a9["supersedes"], "A7")
         self.assertEqual(a9["amends_freeze_sha256"], hashlib.sha256((root / "reports/intervention_transfer/freeze.json").read_bytes()).hexdigest())
-        src = (root / "scripts/g0/phase1_transfer_run.py").read_text(); self.assertIn("grad_fn = make_grad_fn(upper_final, logits_fn, DEVICE)", src); self.assertIn("grad_scales=a.grad_scales, grad_fn=grad_fn)", src); self.assertIn("max_rows=a.max_rows, grad_fn=grad_fn)", src)
+        src = (root / "scripts/g0/phase1_transfer_run.py").read_text(); self.assertIn("grad_fn = make_grad_fn(upper_final, model, DEVICE)", src); self.assertIn("grad_scales=a.grad_scales, grad_fn=grad_fn)", src); self.assertIn("max_rows=a.max_rows, grad_fn=grad_fn)", src)
 
-    def test_make_grad_fn_returns_the_autograd_gradient_of_the_mean_nll_on_the_host(self):
-        g = torch.Generator().manual_seed(6); W = torch.randn(D, V, generator=g); h = torch.randn(4, D, generator=g, requires_grad=False); tg = torch.tensor([1, 2, -1, 3])
-        gf = tr.make_grad_fn(lambda x: x * 2.0, lambda rows: rows @ W, "cpu")
-        with torch.no_grad():                                                                                              # the run is in no-grad mode: the function lifts it inside
-            got = gf(h, tg)
-        x = h.clone().requires_grad_(True); z = (x * 2.0) @ W; nll = -torch.log_softmax(z, -1)[torch.arange(4), tg.clamp(min=0)]; (want,) = torch.autograd.grad(nll[tg >= 0].mean(), x)
-        self.assertTrue(torch.allclose(got, want, atol=1e-6)); self.assertEqual(got.device.type, "cpu"); self.assertFalse(got.requires_grad)
+    @staticmethod
+    def readout_model(cap):
+        from types import SimpleNamespace
+        g = torch.Generator().manual_seed(6)
+        return SimpleNamespace(cfg=SimpleNamespace(eps=0.1, output_logits_soft_cap=cap), ln_final=SimpleNamespace(w=torch.rand(D, generator=g) + 0.5), unembed=SimpleNamespace(W_U=torch.randn(D, V, generator=g), b_U=torch.randn(V, generator=g)))
+
+    def test_make_grad_fn_equals_the_full_autograd_gradient_of_the_f5_readout_for_every_chunk_size_with_and_without_the_soft_cap(self):
+        import phase1_func_f5_run as fr5
+        upper = lambda x: torch.tanh(x) * 3.0
+        for cap in (2.0, None):
+            model = self.readout_model(cap); h = torch.randn(1, 6, D, generator=torch.Generator().manual_seed(7))[0]; tg = torch.tensor([1, 6, -1, 3, 0, -1])
+            x = h.clone().unsqueeze(0).requires_grad_(True); z = fr5.make_logits_fn(model, vocab_chunk=3)(upper(x)[0]); nll = -torch.log_softmax(z, -1)[torch.arange(6), tg.clamp(min=0)]; (want,) = torch.autograd.grad(nll[tg >= 0].mean(), x)
+            for chunk in (1, 3, V, 100):
+                with torch.no_grad():                                                                                      # the run is in no-grad mode: the function lifts it inside
+                    got = tr.make_grad_fn(upper, model, "cpu", vocab_chunk=chunk)(h, tg)
+                self.assertTrue(torch.allclose(got, want[0], atol=1e-6), (cap, chunk)); self.assertEqual(got.device.type, "cpu"); self.assertFalse(got.requires_grad)
+
+    def test_a_row_without_a_target_gets_a_zero_gradient_in_a_row_wise_model_and_no_target_at_all_gives_zeros(self):
+        model = self.readout_model(2.0); h = torch.randn(4, D, generator=torch.Generator().manual_seed(8)); upper = lambda x: torch.tanh(x) * 3.0
+        got = tr.make_grad_fn(upper, model, "cpu", vocab_chunk=3)(h, torch.tensor([2, -1, 5, -1]))
+        self.assertEqual(float(got[1].abs().max()), 0.0); self.assertEqual(float(got[3].abs().max()), 0.0); self.assertGreater(float(got[0].abs().max()), 0.0)
+        self.assertEqual(float(tr.make_grad_fn(upper, model, "cpu", vocab_chunk=3)(h, torch.tensor([-1, -1, -1, -1])).abs().max()), 0.0)
+
+    def test_no_parameter_gradient_is_formed_even_when_the_weights_require_grad(self):
+        model = self.readout_model(2.0); model.unembed.W_U.requires_grad_(True); model.unembed.b_U.requires_grad_(True); model.ln_final.w.requires_grad_(True)
+        h = torch.randn(4, D, generator=torch.Generator().manual_seed(10)); got = tr.make_grad_fn(lambda x: torch.tanh(x) * 3.0, model, "cpu", vocab_chunk=3)(h, torch.tensor([2, 1, 5, 0]))
+        self.assertIsNone(model.unembed.W_U.grad); self.assertIsNone(model.unembed.b_U.grad); self.assertIsNone(model.ln_final.w.grad); self.assertGreater(float(got.abs().max()), 0.0)
+
+    def test_no_tensor_with_a_full_vocabulary_row_is_kept_for_the_backward_pass(self):
+        # the first real run died with CUDA out of memory: the graph of the whole readout kept four float32 copies of the unembedding slices (2.4 GB) next to the model; the chunked gradient keeps one chunk
+        model = self.readout_model(2.0); h = torch.randn(6, D, generator=torch.Generator().manual_seed(9)); saved = []
+        def pack(x):
+            saved.append(x.numel()); return x
+        with torch.autograd.graph.saved_tensors_hooks(pack, lambda x: x):
+            tr.make_grad_fn(lambda x: torch.tanh(x) * 3.0, model, "cpu", vocab_chunk=2)(h, torch.tensor([1, 6, 0, 3, 2, 5]))
+        self.assertTrue(saved); self.assertLess(max(saved), 6 * V)                                                          # a [6, V] logits tensor would be 42 elements; the largest kept one is the [6, d] residual (30)
 
     def test_the_gradient_changes_no_gram_and_without_it_there_are_no_gradient_fields(self):
         a = tr.process_items(ProcessItems.items(self), self.suf, self.switches); b = tr.process_items(ProcessItems.items(self), self.suf, self.switches, grad_fn=self.grad_fn)
