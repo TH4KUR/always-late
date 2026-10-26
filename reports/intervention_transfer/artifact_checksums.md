@@ -711,4 +711,27 @@ ba529646d048bd19b2b0242490554902622549657ecda86e5be26864de42477c  transfer_INT6_
 2c0629331cbcf17e6b9b6d7721bf7533bff9bbd5763083a68f7035fa7d874387  transfer_INT6_c016.pt
 ```
 
+### `transfer-ext-feature-int16` (Slurm 40546, EXTERNAL panel feature level INT16, snapshot `repo_428f2ff`, gnode080, COMPLETED 0:0 in 6 h 51 min; validated 02:26 IST (27 October) with `phase1_transfer_validate.py --gate-max-abs 3.0`: GPU line, 0 CUDA warnings, meta complete, gates passed (limit 3.0 of amendment A12), sham exact, items 32030 + skipped 0 = 32,030 planned (402 features, 6,406 feature-context pairs x 5 directions), 17 chunks and none resumed, peak GPU 9.90 GB; sha256 of all 19 files equal to Ada's. ALL SIX EXTERNAL RUNS ARE NOW VALIDATED; the external analysis is run once)
+```
+e466f7acaa8b4bd63221e7e91a60b5671d52bc41e845ce032f4f087f5994e506  gpu_mem.log
+5e259be19a649d0c6793e6459b1c8213b1d734f9008d0b5341d0dd812caaa2dc  meta_transfer.json
+1dfdb62e6011e66ae92db4920a7335cd471ee87318906f7ef53631abf6e98107  transfer_INT16_c000.pt
+1b5428ef5a565381001befa0d862b547189ceed89e1f916d636635acca105ea9  transfer_INT16_c001.pt
+0b1cbdd11faa0cefa6ec6fc77052c485aaf4b9458f0e9135f05f5692b1a4224e  transfer_INT16_c002.pt
+cccc74c3b2e272d3db7ab7147b2e4796c24d90d9b48bea501afd02fa00b4d493  transfer_INT16_c003.pt
+7ca45ed65472064dbb1839531954cf03a0f38604d838888aab4d78424e7ccbff  transfer_INT16_c004.pt
+ed04e7ffb222d0f2e92a826fdcef7876a7272ef187b55e560cbd6524b670de67  transfer_INT16_c005.pt
+f0ae0ec8bb9468d6513833d4ceb8392e085de0499c3ee4674290d164adc7e5db  transfer_INT16_c006.pt
+e1286c326141fd908205fc3c4d61ff2e12a3ae32afe58925618d705f238be149  transfer_INT16_c007.pt
+2f4d5653f5582212c4a3278e568c5a2793f57a987fb0a84f2c8bc68d4042dc5d  transfer_INT16_c008.pt
+0835765ee56a6a18780229a594044230eadaed7e47027117e6c27e2e482581d9  transfer_INT16_c009.pt
+f3668b186ede06b4cb1cb394bd6d4c76b2ed874f426759ebddac1628f9e408c9  transfer_INT16_c010.pt
+d3cbf797254f84a18bacc8633e654843d1933f68027e9533f869cf79e7d1b1f9  transfer_INT16_c011.pt
+ca1dae61735c3490a36c4436fe2c0200049115d2502ec0713aa9872c0c8e9230  transfer_INT16_c012.pt
+117101d164536e1f1dff198b9cb97c0b401eec96e25492521dc5e4f639190844  transfer_INT16_c013.pt
+2475b5bd4c0fb6aa474f21abab5a788ab0582e2f24a234c686bcca371ef66ce8  transfer_INT16_c014.pt
+5117aad6ea4c9f460ac8b9158953b1d84a65b8a1ced0e5d28d1c66ca067c9801  transfer_INT16_c015.pt
+4c45c5f9a87c5ee677482cfd67583857d09b702222f43f8807e76fa5686f53c4  transfer_INT16_c016.pt
+```
+
 Other full jobs: appended here when each is validated.
