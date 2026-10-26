@@ -1,0 +1,4 @@
+build/
+validation/rendered/
+temp/
+missfont.log

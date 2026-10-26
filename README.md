@@ -36,7 +36,7 @@ ANLP course project (IIIT Hyderabad, 2026). Gemma-2-2B, the Gemma Scope 16k Jump
 | Study G: graded gain, extensions B, C, D | done | [`gain_study/README.md`](reports/functional_validation/gain_study/README.md) |
 | Llama-3.2-1B consistency check (D-087) | last job running; now **exploratory only** (D-089) | `STATUS.md` |
 | **Gemma-2-9B confirmation** (replaces Llama, D-089) | handed to another team on a separate cluster, branch `gemma9b-confirmation` | [handoff 040](reports/handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) |
-| **Intervention-transfer study** (Codex's design, D-088) | queued in the cron after the Llama write-up | [verification](reports/intervention_transfer/verification_2026-10-26.md), `RESEARCH_DIRECTION.md` (Codex's, not yet committed) |
+| **Intervention-transfer study** (Codex's design, D-088) | queued in the cron after the Llama write-up | [verification](reports/intervention_transfer/verification_2026-10-26.md), [`RESEARCH_DIRECTION.md`](RESEARCH_DIRECTION.md) |
 | Course report | draft by another session | `paper/course-report/` |
 
 ## Headline results (exploratory unless marked; one model, one layer, one SAE)

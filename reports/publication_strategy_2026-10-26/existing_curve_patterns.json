@@ -1,0 +1,46 @@
+{
+  "status": "post hoc descriptive, no inferential tests or new GPU data",
+  "doses": [
+    0.0,
+    0.08838834764831845,
+    0.1767766952966369,
+    0.3535533905932738
+  ],
+  "definition": "k=(FP_net dot Q_net)/(FP_net dot FP_net)",
+  "inputs_sha256": {
+    "gain_study/results/curves.csv": "978f6504bf814d96b6ba92ff9e5c0b6fcb170d7d573d3c4345d624229db8b256",
+    "results/rescue/fidelity.csv": "ccacb32fa445cbfcf90796a3d7fa6885e10396894c4e9ed8fa6eb25e33538222"
+  },
+  "states": {
+    "INT6": {
+      "n_languages": 27,
+      "median_net_scale": 1.0298538669132011,
+      "median_control_scale": 1.0424806982163315,
+      "median_relative_residual": 0.018566035148533496,
+      "max_relative_residual": 0.1319897231262216,
+      "net_control_scale_spearman": -0.304029304029304
+    },
+    "INT5": {
+      "n_languages": 27,
+      "median_net_scale": 1.0936363102638578,
+      "median_control_scale": 1.1511201320011526,
+      "median_relative_residual": 0.03066423037361939,
+      "max_relative_residual": 0.16985083997292288,
+      "net_control_scale_spearman": 0.043345543345543344
+    },
+    "INT4": {
+      "n_languages": 27,
+      "median_net_scale": 1.519909971986571,
+      "median_control_scale": 1.515682030464482,
+      "median_relative_residual": 0.12694818009295442,
+      "max_relative_residual": 0.968539160135911,
+      "net_control_scale_spearman": 0.017094017094017096
+    }
+  },
+  "limits": [
+    "Four doses are far from identity; not curvature estimates.",
+    "Similar medians do not imply per-language agreement.",
+    "No raw-data uncertainty propagated into these fitted summaries.",
+    "Means, medians, and mean retention ratios are different estimands."
+  ]
+}

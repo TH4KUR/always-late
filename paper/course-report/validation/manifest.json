@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-26",
+  "pdf": "AlwaysLate-Final-Report.pdf",
+  "pdf_sha256": "ce2ff1ae710f1a8a2a7daf7c99b32c3258a0eddb6b6971a66dce475a62c3e4ba",
+  "source_sha256": "604db0f63c60691ca3699dbc703210de1f0e0e590444313a49137a6293545359",
+  "total_pages": 9,
+  "main_content_end_page": 7,
+  "references_page": 8,
+  "appendix_start_page": 9,
+  "appendix_pages": 1,
+  "upstream_style_commit": "d5adc823ff0f80f98c80405ca0ab66c68e684409",
+  "upstream_checker_commit": "f626497051df8689e990fac36ba9f42cd630e31c",
+  "upstream_styles_unchanged": true,
+  "style_sha256": {
+    "acl.sty": "19dfeddc2c0e448f3926a0bef048a9db3f3611b46265b760caabd7ada4f361de",
+    "acl_natbib.bst": "6fbb306202290f4b68e74ac1460a8b27398500cb6dfeb4492e74c457eae7cd1e"
+  },
+  "official_cli": "All Clear!",
+  "official_report": {},
+  "disabled_cli_flags": [],
+  "unresolved_references": false,
+  "overfull_boxes": false,
+  "embedded_fonts": true,
+  "type3_fonts": false,
+  "optional_online_reference_check": "An earlier compiled draft attempt failed because Scholarcy returned a Cloudflare HTML challenge; not completed. Primary-source bibliography verification performed separately.",
+  "editor_compiler": "Unavailable: could not download the Tectonic bundle. Local installed pdfLaTeX/BibTeX build succeeded."
+}
