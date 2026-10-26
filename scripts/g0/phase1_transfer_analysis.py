@@ -107,7 +107,10 @@ def apply_floor(rows, floors, multiple=ELIGIBILITY_MULTIPLE, reference=None):
             raise ValueError(f"no floor for the direction kind {r['kind']}")
         if reference is not None and k not in reference:
             raise ValueError(f"item {k} is not in the reference rows: the eligibility cannot be fixed from the reference state")
-        fl = floors[r["kind"]]; fp_eligibility = (reference[k] if reference is not None else r)["fp_norm"]
+        fl = floors[r["kind"]]
+        if not fl > 0:
+            raise ValueError(f"the floor of the direction kind {r['kind']} is {fl}: the frozen fallback for an exactly zero floor (the repeated-batch pseudo-state) is not implemented, so the normalization is undefined")
+        fp_eligibility = (reference[k] if reference is not None else r)["fp_norm"]
         out[k] = {**r, "floor": fl, "eligible": bool(fp_eligibility > multiple * fl), "normalized_error": r["error_norm"] / (r["fp_norm"] + fl), "error_over_floor": r["error_norm"] / fl}
     return out
 
@@ -225,12 +228,12 @@ def crossed_bootstrap(values, feature_idx, cluster_idx, stat="median", n_boot=BO
     "n_features", "n_clusters", "stat", "n_boot", "seed", "level"}; no value at all gives NaNs. The multiplicities are drawn for the features and clusters that occur among the kept rows."""
     v = np.asarray(values, dtype=float); keep = ~np.isnan(v); out = {"n": int(keep.sum()), "n_missing": int((~keep).sum()), "stat": stat, "n_boot": int(n_boot), "seed": int(seed), "level": level}
     if not keep.any():
-        return {**out, "point": float("nan"), "low": float("nan"), "high": float("nan"), "n_features": 0, "n_clusters": 0}
+        return {**out, "point": float("nan"), "low": float("nan"), "high": float("nan"), "n_finite": 0, "n_features": 0, "n_clusters": 0}
     v = v[keep]; _, fi = np.unique(np.asarray(feature_idx)[keep], return_inverse=True); _, ci = np.unique(np.asarray(cluster_idx)[keep], return_inverse=True)
     nf, nc = int(fi.max()) + 1, int(ci.max()) + 1; mf, mc = bootstrap_multiplicities(nf, nc, n_boot, seed)
     point = float(v.mean()) if stat == "mean" else weighted_median(v, np.ones(len(v))); reps = replicate_stats(v, fi, ci, mf, mc, stat)
     lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
-    return {**out, "point": point, "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n_features": nf, "n_clusters": nc}
+    return {**out, "point": point, "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n_finite": int(np.isfinite(reps).sum()), "n_features": nf, "n_clusters": nc}
 
 
 def _rel(r, key):
@@ -399,7 +402,7 @@ def paired_relative_improvement(err_base, err_diag, feature_idx, cluster_idx, n_
     b, d = np.asarray(err_base, dtype=float), np.asarray(err_diag, dtype=float); _, fi = np.unique(feature_idx, return_inverse=True); _, ci = np.unique(cluster_idx, return_inverse=True)
     nf, nc = int(fi.max()) + 1, int(ci.max()) + 1; mf, mc = bootstrap_multiplicities(nf, nc, n_boot, seed); reps = 1.0 - replicate_stats(d, fi, ci, mf, mc, "mean") / replicate_stats(b, fi, ci, mf, mc, "mean")
     lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
-    return {"point": float(1.0 - d.mean() / b.mean()), "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n": int(len(b)), "n_features": nf, "n_clusters": nc, "n_boot": int(n_boot), "seed": int(seed), "level": level}
+    return {"point": float(1.0 - d.mean() / b.mean()), "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n_finite": int(np.isfinite(reps).sum()), "n": int(len(b)), "n_features": nf, "n_clusters": nc, "n_boot": int(n_boot), "seed": int(seed), "level": level}
 
 
 MODEL_GROUPS = {"A": ("A",), "A+G": ("A", "G"), "A+B": ("A", "B"), "A+B+G": ("A", "B", "G")}

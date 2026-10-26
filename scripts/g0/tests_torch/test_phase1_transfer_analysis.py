@@ -133,6 +133,21 @@ class LossReporting(unittest.TestCase):
         self.assertAlmostEqual(find(rec, kind="real", split="all", metric="dloss_error")["point"], 0.3)                                      # signed loss change of the quantized model minus that of the full-precision one
 
 
+class ReplicateCounts(unittest.TestCase):
+    def test_the_intervals_report_how_many_replicates_were_finite(self):
+        v = np.array([1.0, 2.0, 3.0]); r = ta.crossed_bootstrap(v, np.array([0, 1, 2]), np.array([0, 0, 0]), "mean", n_boot=300, seed=1)                  # three features, one cluster: some replicates give a feature no weight, never all
+        self.assertEqual(r["n_finite"], 300)
+        sparse_f, sparse_c = np.array([0, 0, 1, 1]), np.array([0, 1, 0, 1]); r = ta.crossed_bootstrap(np.array([1.0, 2.0, 3.0, 4.0]), sparse_f, sparse_c, "median", n_boot=200, seed=1); self.assertEqual(r["n_finite"], 200)
+        diag = ta.crossed_bootstrap(np.array([1.0, 2.0]), np.array([0, 1]), np.array([0, 1]), "mean", n_boot=300, seed=1); self.assertTrue(0 < diag["n_finite"] < 300)                # two rows on a diagonal: a replicate can give both rows no weight
+        diag = ta.paired_relative_improvement(np.array([1.0, 2.0]), np.array([0.5, 1.5]), np.array([0, 1]), np.array([0, 1]), n_boot=300, seed=1); self.assertTrue(0 < diag["n_finite"] < 300)
+        b = np.arange(1.0, 9.0); d = b * 0.9; r = ta.paired_relative_improvement(b, d, np.arange(8), np.arange(8) % 2, n_boot=100, seed=1); self.assertEqual(r["n_finite"], 100)
+
+    def test_a_zero_floor_stops_with_a_message_that_names_the_missing_fallback(self):
+        rows = ta.item_table({(10, 1000, "real"): item(3, 3)}, CORE, SPLIT, 997)
+        with self.assertRaisesRegex(ValueError, "floor.*repeated"):
+            ta.apply_floor(rows, {"real": 0.0})
+
+
 class EligibilityReference(unittest.TestCase):
     def test_eligibility_can_be_fixed_from_a_reference_state_while_the_error_uses_the_rows_own_norm(self):
         ref = ta.item_table({(10, 1000, "real"): item(10, 10), (10, 2000, "real"): item(4, 4)}, CORE, SPLIT, 997)
