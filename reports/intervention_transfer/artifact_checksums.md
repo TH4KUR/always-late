@@ -688,4 +688,27 @@ dcee0e967d8a9e1521e3efdff54d0f5629fb2c6fe240f85b63dc76edb0aa0c0e  transfer_INT4_
 f599f2e52ed74134287db0126812c171e28d5dcba953654ccf292e0bec34f6cd  transfer_INT4_c016.pt
 ```
 
+### `transfer-ext-feature-int6` (Slurm 40545, EXTERNAL panel feature level INT6, snapshot `repo_428f2ff`, gnode061, COMPLETED 0:0 in 7 h 22 min; validated 00:49 IST (27 October) with `phase1_transfer_validate.py --gate-max-abs 3.0`: GPU line, 0 CUDA warnings, meta complete, gates passed (limit 3.0 of amendment A12), sham exact, items 32030 + skipped 0 = 32,030 planned (402 features, 6,406 feature-context pairs x 5 directions), 17 chunks and none resumed, peak GPU 9.90 GB; sha256 of all 19 files equal to Ada's)
+```
+6ba6fbb80431c22008f2f58f9f5124ab01c87f57e20fc5fce454464cd102fbca  gpu_mem.log
+32c19e4dd7ecbd75574d6763e2f22435e12a9d839fe7960e0a80e4bde06590b0  meta_transfer.json
+a154e9e30ca306af04c1df7f18a5375b14f34a5aaa5b4cb674190b6972ed4385  transfer_INT6_c000.pt
+1bb9c236a5fd0d13fc652d4b5a3d76a8309417b999efcf81eecade03a9f06f89  transfer_INT6_c001.pt
+87490740955fa703f6af0249fb82f28b07001d759880fd2e42d1f329c4ee44ea  transfer_INT6_c002.pt
+2ec69dfeaf2dbddffbf7a16046a086a85ecbbf2a192ad747ac0d73f063d0cf13  transfer_INT6_c003.pt
+48b25bf0187788d99f62253cd2d0f811554d1a793987f552b4e432cdee72215b  transfer_INT6_c004.pt
+a4e078c747f6d6ab6afcc84b3bde04eee192a81ad260141607f3026f072dc9b3  transfer_INT6_c005.pt
+06b5f1488a0ec190e516918ddfc3a256db89400dfa7f83c9552507fec088cb40  transfer_INT6_c006.pt
+18d9eecab1ba9645f1038c008ff8130dfedb24c844ec3c2ed4f590deb9d6d4c0  transfer_INT6_c007.pt
+016e732fc8a27dacacef87e0e67b80a5799cf8a5dd39f1e9ce61928ba6cc0867  transfer_INT6_c008.pt
+8c8ed8d7ef4dd2d535aaf28091cfc08760dc7b2c15cbf8915a4c71dde3b2ee15  transfer_INT6_c009.pt
+f035204d88945b008aa813308001657254bcb040623544e65250d9bd44be7a19  transfer_INT6_c010.pt
+3b32ea0cc0cadf61931afe7e4a8f37c05557a5acddcc2c557c18799f8b866081  transfer_INT6_c011.pt
+586ed1a0cc27754c5fba26cb839ee960c22175a08f0cb3bd9d6951343a6b1b7d  transfer_INT6_c012.pt
+4bf33693ecc1702b34fb0c2d549c7c3a4edfe2aded29e9151128b74a8fd57131  transfer_INT6_c013.pt
+11492745c6b878d0acb110e7af1522f554ea1f9cf587f72088ecf23965736fcb  transfer_INT6_c014.pt
+ba529646d048bd19b2b0242490554902622549657ecda86e5be26864de42477c  transfer_INT6_c015.pt
+2c0629331cbcf17e6b9b6d7721bf7533bff9bbd5763083a68f7035fa7d874387  transfer_INT6_c016.pt
+```
+
 Other full jobs: appended here when each is validated.
