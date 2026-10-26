@@ -1,6 +1,6 @@
 # Decisions for your review (the questions I would have asked you)
 
-**Open questions at a glance (2026-10-26; the rest of this file is the full record):** Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
+**Open questions at a glance (2026-10-27; the rest of this file is the full record):** Q29 start Task 2 of the recovery plan (new), Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
 
 **New, 2026-10-21 (D-040): Q17 and Q18** (Q18: the scoop risk from Duan's announced causal follow-up; also not blocking)
 
@@ -240,6 +240,13 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Default:** (a), with (b) if the measured throughput leaves room.
 - ANSWER:
 - STATUS: open
+
+## Q29. Start Task 2 of Codex's publication recovery plan (the paired arithmetic-precision experiment: bf16 suffix against fp32 suffix on 512 existing pairs), or stop at Task 1 and keep the time for the course deliverables? (D-096 to D-099)  [MEDIUM-HIGH, scope and GPU time; not blocking]
+- **Context.** Task 1 of the recovery plan is complete (D-096 locked cross-corpus scoring, D-097 gradient scalars against signed loss, D-098 common support, D-099 native versus fixed). The plan's only new model experiment is Task 2: do the INT4 transfer conclusions persist when the numerical implementation of the suffix changes (the existing bfloat16 suffix with float32 readout against a float32 suffix, the SAME stored bf16 weight values promoted exactly, the same cached prefix residuals and edits)? Cost estimate: 128 features x 4 contexts = 512 pairs, real and matched-swapped directions, FP/INT16/INT4, two modes: roughly 1 to 2 GPU hours of the planned allowance of at most 8 (the main run took about 3 hours for 32,320 items per state); the build is the work: an in-place fp32 promotion of the upper layers with dtype assertions, cross-mode cell vectors, a frozen selection, tests first. The course deliverables (report, deck, archive) are complete and due 2026-10-31.
+- **Options.** (a) default: start Task 2 as planned, in bounded steps (selection frozen first, implementation plan, tests first, mutation checks, one instrument job, then the full job), stop if the instrument shows the memory or throughput allowance cannot be met; (b) stop at Task 1 and spend the remaining time on the course deliverables and the team's checks; (c) start the build but do not queue the full job until you say so.
+- **Default:** (a): your standing instruction of 2026-10-26 15:37 ('continue working till i tell you to stop') and the plan's status as your latest research priority. The report, deck and archive are not affected by the experiment unless it changes a claim.
+- ANSWER:
+- STATUS: open (asked 2026-10-27 05:12)
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
