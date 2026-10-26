@@ -257,6 +257,29 @@ class SharedBase(Fixture, unittest.TestCase):
             self.assertTrue(np.array_equal(out["items"][k]["gram"], plain["items"][k]["gram"]))
 
 
+class ItemScalars(Fixture, unittest.TestCase):
+    """Per-item scalars for the predictive baselines of the analysis (activation, edit and residual sizes), stored next to the Gram so that no later job is needed for them."""
+    def test_edit_and_residual_norms_are_the_mean_row_norms_over_the_edited_rows(self):
+        its = ProcessItems.items(self); out = tr.process_items(its, self.suf, self.switches)
+        for it in its:
+            s = out["items"][it["key"]]; rows = it["rows"]
+            self.assertAlmostEqual(s["edit_norm_fp"], float(it["edit_fp"].norm(dim=-1).mean()), places=5); self.assertAlmostEqual(s["edit_norm_native"], float(it["edit_native"].norm(dim=-1).mean()), places=5)
+            self.assertAlmostEqual(s["resid_norm_fp"], float(it["h_fp"][rows].norm(dim=-1).mean()), places=5); self.assertAlmostEqual(s["resid_norm_q"], float(it["h_q"][rows].norm(dim=-1).mean()), places=5)
+
+    def test_the_feature_level_run_adds_the_mean_activation_in_fp_and_in_the_quantized_state(self):
+        out = tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, self.suf, self.switches)
+        s = out["items"][(2, 10, "real")]
+        self.assertAlmostEqual(s["amp_fp_mean"], float(self.amps["FP"][(2, 10)].mean()), places=6); self.assertAlmostEqual(s["amp_q_mean"], float(self.amps["Q"][(2, 10)].mean()), places=6)
+        self.assertAlmostEqual(s["direction_norm"], float(self.dirs[2]["real"].norm()), places=5)
+
+    def test_the_group_level_items_carry_the_edit_norms_but_no_activation_fields(self):
+        g = torch.Generator().manual_seed(8); W = torch.randn(6, D, generator=g); a_fp = torch.relu(torch.randn(4, 6, generator=g)); a_q = torch.relu(torch.randn(4, 6, generator=g))
+        its, _ = tr.group_items("eng", 1, torch.randn(5, D), torch.randn(5, D), a_fp, a_q, W, {"group": [0, 1, 2]}, torch.tensor([1, 2, 3, 4, -1]))
+        out = tr.process_items(its, self.suf, self.switches)
+        for s in out["items"].values():
+            self.assertIn("edit_norm_fp", s); self.assertNotIn("amp_fp_mean", s)
+
+
 class GroupEdits(unittest.TestCase):
     def setUp(self):
         g = torch.Generator().manual_seed(8); self.W = torch.randn(6, D, generator=g)

@@ -104,7 +104,7 @@ def process_items(items, suffixes, switches, center=True, max_rows=768, observer
     target objects; they share the unedited run in ONE suffix call per cell, see `_batches`), "n_active_q" (optional count)}.
     Order of work: switches["FP"](), the FP-suffix cells of every context batch (vectors kept on the host), switches["Q"](), the Q-suffix cells (the cells Q/Q and Q/Q-native of a batch share one call and one
     unedited run), then the Gram matrices. observer: see `phase1_transfer_core.effect_many` (the tag is (cell, [item keys]); for the call 'Q/Q+Q/Q-native' the first K edits are Q/Q, the next K Q/Q-native).
-    -> {"items": {key: {"gram" (5 x 5 float64), "dloss", "loss_base" (five values each), "n_rows", "n_target_rows", "n_active_q", "n_positions"}}, "pooled": {pool: {"gram", "n_rows", "n_contexts"}}, "skipped": [(key, reason)]}."""
+    -> {"items": {key: {"gram" (5 x 5 float64), "dloss", "loss_base" (five values each), "n_rows", "n_target_rows", "n_active_q", "n_positions", "edit_norm_fp", "edit_norm_native", "resid_norm_fp", "resid_norm_q" and the item's optional "extra" fields}}, "pooled": {pool: {"gram", "n_rows", "n_contexts"}}, "skipped": [(key, reason)]}."""
     keys = [it["key"] for it in items]
     if len(set(keys)) != len(keys):
         raise ValueError(f"duplicate item keys: {sorted({k for k in keys if keys.count(k) > 1}, key=str)[:3]}")
@@ -137,7 +137,9 @@ def process_items(items, suffixes, switches, center=True, max_rows=768, observer
             key = it["key"]; cells = dict(fp_vectors.pop(key)); cells["FP/Q"] = _cpu(fq[i]); cells["Q/Q"] = _cpu(qq[i]); cells["Q/Q-native"] = _cpu(qq[len(b) + i])
             n = cells["FP/FP"]["n_rows"]
             out[key] = {"gram": tc.gram(cells).numpy().astype(np.float64), "dloss": [cells[c]["dloss"] for c in tc.CELLS], "loss_base": [cells[c]["loss_base"] for c in tc.CELLS], "n_rows": n,
-                        "n_target_rows": int((it["targets"] >= 0).sum()), "n_active_q": it.get("n_active_q"), "n_positions": int(len(it["rows"]))}
+                        "n_target_rows": int((it["targets"] >= 0).sum()), "n_active_q": it.get("n_active_q"), "n_positions": int(len(it["rows"])),
+                        "edit_norm_fp": float(it["edit_fp"].norm(dim=-1).mean()), "edit_norm_native": float(it["edit_native"].norm(dim=-1).mean()),
+                        "resid_norm_fp": float(it["h_fp"][it["rows"]].norm(dim=-1).mean()), "resid_norm_q": float(it["h_q"][it["rows"]].norm(dim=-1).mean()), **it.get("extra", {})}
             pool = it.get("pool")
             if pool is not None:
                 acc = sums.setdefault(pool, {c: 0 for c in tc.CELLS}); nrows[pool] = nrows.get(pool, 0) + n; counts[pool] = counts.get(pool, 0) + 1
@@ -172,7 +174,8 @@ def process_chunk(features, contexts, caches, positions, amplitudes, dirs, token
             for kind in DIRECTION_KINDS:
                 d = dirs[f][kind].float()
                 items.append({"key": (f, s, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": amplitudes["FP"][(f, s)].float()[:, None] * d[None, :], "edit_native": amplitudes["Q"][(f, s)].float()[:, None] * d[None, :],
-                              "targets": tg, "pool": (f, kind), "ctx": (f, s), "n_active_q": n_act})
+                              "targets": tg, "pool": (f, kind), "ctx": (f, s), "n_active_q": n_act,
+                              "extra": {"amp_fp_mean": float(amplitudes["FP"][(f, s)].float().mean()), "amp_q_mean": float(amplitudes["Q"][(f, s)].float().mean()), "direction_norm": float(d.norm())}})
     res = process_items(items, suffixes, switches, center, max_rows, observer)
     return {"items": res["items"], "pooled": res["pooled"], "skipped": skipped}
 
