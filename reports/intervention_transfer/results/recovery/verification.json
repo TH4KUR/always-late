@@ -1,0 +1,170 @@
+{
+ "ok": true,
+ "checks": {
+  "refit_equals_locked": {
+   "ok": true,
+   "detail": {
+    "INT16/A": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT16/A+G": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT16/A+B": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT16/A+B+G": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT6/A": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT6/A+G": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT6/A+B": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT6/A+B+G": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT4/A": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT4/A+G": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT4/A+B": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    },
+    "INT4/A+B+G": {
+     "max_relative_difference": 0.0,
+     "lambda_refit": 10,
+     "lambda_locked": 10,
+     "ok": true
+    }
+   }
+  },
+  "committed_mae_reproduced": {
+   "ok": true,
+   "detail": {
+    "INT16/A": {
+     "locked": 0.016377893622384645,
+     "committed": 0.016377893622384645,
+     "ok": true
+    },
+    "INT16/A+G": {
+     "locked": 0.015911474702249774,
+     "committed": 0.015911474702249774,
+     "ok": true
+    },
+    "INT16/A+B": {
+     "locked": 0.012186927056591402,
+     "committed": 0.012186927056591402,
+     "ok": true
+    },
+    "INT16/A+B+G": {
+     "locked": 0.01228034887692859,
+     "committed": 0.01228034887692859,
+     "ok": true
+    },
+    "INT6/A": {
+     "locked": 0.02899311542691989,
+     "committed": 0.02899311542691989,
+     "ok": true
+    },
+    "INT6/A+G": {
+     "locked": 0.02897370545607196,
+     "committed": 0.02897370545607196,
+     "ok": true
+    },
+    "INT6/A+B": {
+     "locked": 0.02584224814229182,
+     "committed": 0.02584224814229182,
+     "ok": true
+    },
+    "INT6/A+B+G": {
+     "locked": 0.025884399417334326,
+     "committed": 0.025884399417334326,
+     "ok": true
+    },
+    "INT4/A": {
+     "locked": 0.12534701237456627,
+     "committed": 0.12534701237456627,
+     "ok": true
+    },
+    "INT4/A+G": {
+     "locked": 0.1241400461993968,
+     "committed": 0.1241400461993968,
+     "ok": true
+    },
+    "INT4/A+B": {
+     "locked": 0.09746969581871817,
+     "committed": 0.09746969581871817,
+     "ok": true
+    },
+    "INT4/A+B+G": {
+     "locked": 0.09673713405508291,
+     "committed": 0.09673713405508291,
+     "ok": true
+    }
+   }
+  },
+  "renormalization_reproduces_main": {
+   "ok": true,
+   "detail": {
+    "INT16": {
+     "items": 32320,
+     "mismatches": 0,
+     "max_abs_difference": 0.0,
+     "ok": true
+    },
+    "INT6": {
+     "items": 32320,
+     "mismatches": 0,
+     "max_abs_difference": 0.0,
+     "ok": true
+    },
+    "INT4": {
+     "items": 32320,
+     "mismatches": 0,
+     "max_abs_difference": 0.0,
+     "ok": true
+    }
+   }
+  }
+ }
+}
