@@ -152,47 +152,86 @@ class GroupLevel(Fixture):
         self.assertAlmostEqual(row["control_FP_FP"], 0.1); self.assertAlmostEqual(row["native_total"], float(dec["native_total"][1])); self.assertEqual(st["a3"], ta.bootstrap_a3(A, 30, 1)); self.assertTrue(res["states"]["INT16"]["reference"])
 
 
-def a3_result(low, high):
-    return {"a3": {"median_difference": (low, high)}}
+def a3_result(low, high, medians=True):
+    return {"a3": {"median_difference": (low, high), "point": {"holds_medians": medians}}}
 
 
-def feat_state(sr=(0.6, 0.9), ne=(0.7, 0.9), imp_a=(0.1, 0.3), crit=True, cos=(0.05, 0.4), eligible=(10, 100), status="fitted", rel=None, rel_only=None):
+def feat_state(sr=(0.6, 0.9), ne=(0.7, 0.9), floor=(2.0, 3.0), imp_a=(0.1, 0.3), crit=True, cos=(0.05, 0.4), eligible=(10, 100), status="fitted", rel=None, rel_only=None, features=(1, 2, 3)):
     mk = lambda metric, lo, hi, split="all": {"kind": "real", "split": split, "metric": metric, "low": lo, "high": hi, "n": 10}
-    comp = [mk("scalar_residual_share", *sr), mk("native_error_share", *ne)]
+    comp = [mk("scalar_residual_share", *sr), mk("native_error_share", *ne), mk("error_over_floor", *floor)]
     for m in ("C_rel", "W_rel", "I_rel"):
         comp += [mk(m, 0.1, 0.3, "calibration"), mk(m, *((0.2, 0.4) if rel is None or (rel_only and m != rel_only) else rel), "heldout")]
     pred = {"status": status, "improvement_over_A": {"low": imp_a[0], "high": imp_a[1]}, "criterion_met": crit}
-    return {"components": comp, "predictive": {"eligible": {"result": pred}}, "averaged": [mk("cos_gap", *cos)], "coverage": [{"kind": "real", "split": "all", "items": eligible[1], "eligible": eligible[0]}, {"kind": "random1", "split": "all", "items": 500, "eligible": 400}]}
+    rows = {(f, 1000, "real"): {"kind": "real", "feature": f, "eligible": True} for f in features}; rows.update({(f, 1000, "random1"): {"kind": "random1", "feature": f, "eligible": True} for f in (7, 8)})
+    return {"components": comp, "predictive": {"eligible": {"result": pred}}, "averaged": [mk("cos_gap", *cos)], "rows": rows,
+            "coverage": [{"kind": "real", "split": "all", "items": eligible[1], "eligible": eligible[0]}, {"kind": "random1", "split": "all", "items": 500, "eligible": 400}]}
+
+
+def ref_state(sr=(0.95, 1.0), ne=(0.9, 1.0), cos=(-0.02, 0.02)):
+    """The INT16 reference state of a feature-level result: rounding only."""
+    s = feat_state(sr=sr, ne=ne, floor=(0.4, 0.8), cos=cos); s["reference"] = True; return s
+
+
+def feats(**states):
+    return {"states": {"INT16": ref_state(), **states}}
 
 
 class Claims(unittest.TestCase):
-    def test_a3_is_decided_by_the_interval_of_the_median_difference_at_each_judged_state_and_overall_only_when_they_agree(self):
+    def test_a3_needs_the_paired_interval_and_the_median_reading_to_agree_at_each_judged_state_and_overall_only_when_the_states_agree(self):
         g = {"states": {"INT6": a3_result(0.1, 0.4), "INT4": a3_result(0.05, 0.3), "INT16": a3_result(-1, 1)}}; c = rep.claim_status(None, g)["claims"]["A3"]
         self.assertEqual((c["per_state"], c["overall"]), ({"INT6": "supported", "INT4": "supported"}, "supported"))
         g["states"]["INT4"] = a3_result(-0.2, 0.3); c = rep.claim_status(None, g)["claims"]["A3"]; self.assertEqual((c["per_state"]["INT4"], c["overall"]), ("inconclusive", "mixed"))
-        g["states"]["INT4"] = a3_result(-0.5, -0.1); self.assertEqual(rep.claim_status(None, g)["claims"]["A3"]["per_state"]["INT4"], "reversed")
+        g["states"]["INT4"] = a3_result(-0.5, -0.1, medians=False); self.assertEqual(rep.claim_status(None, g)["claims"]["A3"]["per_state"]["INT4"], "reversed")
+        g["states"]["INT4"] = a3_result(0.1, 0.4, medians=False); self.assertEqual(rep.claim_status(None, g)["claims"]["A3"]["per_state"]["INT4"], "inconclusive")          # the two readings of the frozen wording disagree
+        g["states"]["INT4"] = a3_result(-0.5, -0.1, medians=True); self.assertEqual(rep.claim_status(None, g)["claims"]["A3"]["per_state"]["INT4"], "inconclusive")
         for edge in ((0.0, 0.3), (-0.3, 0.0)):                                                                                          # an interval that touches zero does not decide
-            g["states"]["INT4"] = a3_result(*edge); self.assertEqual(rep.claim_status(None, g)["claims"]["A3"]["per_state"]["INT4"], "inconclusive")
+            g["states"]["INT4"] = a3_result(*edge, medians=edge[0] == 0.0); self.assertEqual(rep.claim_status(None, g)["claims"]["A3"]["per_state"]["INT4"], "inconclusive")
         del g["states"]["INT4"]; c = rep.claim_status(None, g)["claims"]["A3"]; self.assertEqual((c["per_state"]["INT4"], c["overall"]), ("not evaluated", "not evaluated"))
 
-    def test_h1_needs_both_shares_above_one_half_with_their_lower_ends_and_fails_when_either_is_confidently_below(self):
-        f = lambda **kw: {"states": {"INT6": feat_state(**kw), "INT4": feat_state(**kw)}}; st = lambda **kw: rep.claim_status(f(**kw), None)["claims"]["H1"]
+    def test_h1_needs_both_shares_above_one_half_and_an_error_above_the_floor_and_shows_the_rounding_reference(self):
+        f = lambda **kw: feats(INT6=feat_state(**kw), INT4=feat_state(**kw)); st = lambda **kw: rep.claim_status(f(**kw), None)["claims"]["H1"]
         self.assertEqual(st()["overall"], "supported"); self.assertEqual(st(sr=(0.4, 0.9))["overall"], "inconclusive"); self.assertEqual(st(ne=(0.1, 0.4))["overall"], "not supported"); self.assertEqual(st(sr=(0.5, 0.9))["overall"], "inconclusive")
+        self.assertEqual(st(floor=(0.5, 0.9))["overall"], "inconclusive")                                                                  # the shares are high but the error does not clear the numerical floor: rounding noise alone gives them
+        self.assertEqual(st(floor=(1.0, 3.0))["overall"], "inconclusive")                                                                  # a lower end of exactly one floor does not clear it
+        self.assertEqual(st()["reference"], {"scalar_residual_share": (0.95, 1.0), "native_error_share": (0.9, 1.0), "error_over_floor": (0.4, 0.8)})
 
-    def test_h3_and_h4_and_the_utility_and_the_population(self):
-        f = {"states": {"INT6": feat_state(), "INT4": feat_state(imp_a=(-0.1, 0.2), crit=False, cos=(-0.2, 0.3), eligible=(3, 60))}}; c = rep.claim_status(f, None)["claims"]
-        self.assertEqual(c["H3"]["per_state"], {"INT6": "supported", "INT4": "inconclusive"}); self.assertEqual(c["H3"]["overall"], "mixed"); self.assertEqual(c["H4"]["per_state"], {"INT6": "supported", "INT4": "inconclusive"})
-        self.assertEqual(c["UTILITY"]["per_state"], {"INT6": "met", "INT4": "not met"}); self.assertEqual(c["UTILITY"]["overall"], "not met"); self.assertEqual(c["POPULATION"]["INT4"], {"real_items": 60, "eligible_real_items": 3, "eligible_fraction": 0.05})
-        f["states"]["INT4"] = feat_state(cos=(-0.5, -0.1)); self.assertEqual(rep.claim_status(f, None)["claims"]["H4"]["per_state"]["INT4"], "supported")
-        f["states"]["INT4"] = feat_state(status="insufficient"); c = rep.claim_status(f, None)["claims"]; self.assertEqual(c["UTILITY"]["per_state"]["INT4"], "not met (insufficient items)"); self.assertEqual(c["H3"]["per_state"]["INT4"], "inconclusive")
+    def test_h3_and_the_utility_and_the_population(self):
+        f = feats(INT6=feat_state(), INT4=feat_state(imp_a=(-0.1, 0.2), crit=False, eligible=(3, 60), features=(1, 2))); c = rep.claim_status(f, None)["claims"]
+        self.assertEqual(c["H3"]["per_state"], {"INT6": "supported", "INT4": "inconclusive"}); self.assertEqual(c["H3"]["overall"], "mixed")
+        self.assertEqual(c["UTILITY"]["per_state"], {"INT6": "met", "INT4": "not met"}); self.assertEqual(c["UTILITY"]["overall"], "not met")
+        self.assertEqual(c["POPULATION"]["INT4"], {"real_items": 60, "eligible_real_items": 3, "eligible_fraction": 0.05, "eligible_features": 2}); self.assertEqual(c["POPULATION"]["INT6"]["eligible_features"], 3)
+        f["states"]["INT4"] = feat_state(status="insufficient"); c = rep.claim_status(f, None)["claims"]; self.assertEqual(c["UTILITY"]["per_state"]["INT4"], "insufficient"); self.assertEqual(c["H3"]["per_state"]["INT4"], "inconclusive")
 
-    def test_h2_is_descriptive_and_reproducible_when_the_calibration_and_held_out_intervals_overlap(self):
-        c = rep.claim_status({"states": {"INT6": feat_state(), "INT4": feat_state(rel=(0.8, 0.9))}}, None)["claims"]["H2"]
-        one = rep.claim_status({"states": {"INT6": feat_state(rel=(0.8, 0.9), rel_only="W_rel"), "INT4": feat_state()}}, None)["claims"]["H2"]["per_state"]["INT6"]; self.assertFalse(one["reproducible"]); self.assertEqual(one["overlap_by_component"], {"C_rel": True, "W_rel": False, "I_rel": True})
-        self.assertEqual(c["status"], "descriptive"); self.assertTrue(c["per_state"]["INT6"]["reproducible"]); self.assertFalse(c["per_state"]["INT4"]["reproducible"]); self.assertEqual(c["per_state"]["INT4"]["overlap_by_component"], {"C_rel": False, "W_rel": False, "I_rel": False})
+    def test_the_utility_overall_is_met_only_when_every_state_is_met_and_an_unfitted_or_unrun_state_is_not_a_failure(self):
+        u = lambda **kw: rep.claim_status(feats(**{k: feat_state(**v) for k, v in kw.items()}), None)["claims"]["UTILITY"]
+        self.assertEqual(u(INT6={}, INT4={})["overall"], "met"); self.assertEqual(u(INT6={}, INT4={"crit": False})["overall"], "not met"); self.assertEqual(u(INT6={}, INT4={"status": "insufficient"})["overall"], "insufficient")
+        self.assertEqual(u(INT6={})["overall"], "not evaluated"); self.assertEqual(u(INT6={"crit": False}, INT4={"status": "insufficient"})["overall"], "not met"); self.assertEqual(u(INT6={"status": "insufficient"})["overall"], "insufficient")
+
+    def test_h4_needs_an_interval_that_excludes_zero_and_the_rounding_reference_and_is_labelled_as_a_features_only_interval(self):
+        f = lambda cos, ref=(-0.02, 0.02): {"states": {"INT16": ref_state(cos=ref), "INT6": feat_state(cos=cos), "INT4": feat_state(cos=cos)}}; h4 = lambda *a, **k: rep.claim_status(f(*a, **k), None)["claims"]["H4"]
+        self.assertEqual(h4((0.05, 0.4))["overall"], "supported"); self.assertEqual(h4((-0.5, -0.1))["overall"], "supported"); self.assertEqual(h4((-0.2, 0.3))["overall"], "inconclusive")
+        self.assertEqual(h4((0.01, 0.4))["overall"], "inconclusive")                                                                       # the interval excludes zero but overlaps the rounding-only state: noise averaging alone can give it
+        self.assertEqual(h4((0.02, 0.4))["overall"], "inconclusive")                                                                      # an interval that only touches the reference does not separate from it
+        self.assertEqual(h4((0.05, 0.4), ref=(0.0, 0.2))["overall"], "inconclusive"); self.assertEqual(h4((0.05, 0.4))["interval"], "features only: the pooled fingerprint cannot be resampled by source-sentence cluster")
+        self.assertEqual(h4((0.05, 0.4))["reference"], (-0.02, 0.02))
+        noref = rep.claim_status({"states": {"INT6": feat_state(), "INT4": feat_state()}}, None)["claims"]["H4"]; self.assertEqual(noref["per_state"], {"INT6": "inconclusive", "INT4": "inconclusive"})
+
+    def test_h2_is_descriptive_and_the_intervals_overlap_when_the_calibration_and_held_out_intervals_do(self):
+        c = rep.claim_status(feats(INT6=feat_state(), INT4=feat_state(rel=(0.8, 0.9))), None)["claims"]["H2"]
+        one = rep.claim_status(feats(INT6=feat_state(rel=(0.8, 0.9), rel_only="W_rel"), INT4=feat_state()), None)["claims"]["H2"]["per_state"]["INT6"]; self.assertFalse(one["intervals_overlap"]); self.assertEqual(one["overlap_by_component"], {"C_rel": True, "W_rel": False, "I_rel": True})
+        self.assertEqual(c["status"], "descriptive"); self.assertTrue(c["per_state"]["INT6"]["intervals_overlap"]); self.assertFalse(c["per_state"]["INT4"]["intervals_overlap"]); self.assertEqual(c["per_state"]["INT4"]["overlap_by_component"], {"C_rel": False, "W_rel": False, "I_rel": False})
 
     def test_a_state_that_was_not_run_is_not_evaluated(self):
-        c = rep.claim_status({"states": {"INT6": feat_state()}}, None)["claims"]; self.assertEqual(c["H1"]["per_state"]["INT4"], "not evaluated"); self.assertEqual(c["H1"]["overall"], "not evaluated"); self.assertEqual(c["UTILITY"]["overall"], "not met")
+        c = rep.claim_status(feats(INT6=feat_state()), None)["claims"]; self.assertEqual(c["H1"]["per_state"]["INT4"], "not evaluated"); self.assertEqual(c["H1"]["overall"], "not evaluated"); self.assertEqual(c["UTILITY"]["overall"], "not evaluated")
+
+    def test_the_scope_of_the_claims_is_stated_with_the_output(self):
+        s = rep.claim_status(feats(INT6=feat_state(), INT4=feat_state()), a3_group())["scope"]
+        self.assertIn("feature-held-out", s["held_out"]); self.assertIn("calibration", s["held_out"]); self.assertIn("sentences only", s["group_bootstrap"]); self.assertIn("features and source-sentence clusters", s["feature_bootstrap"])
+        self.assertEqual(s["analysis_parameters"], {"min_calibration": 20, "min_heldout": 10, "ridge_strengths": [0.1, 1, 10], "folds": 5, "utility_reduction": 0.10, "h1_floor_multiple": 1.0})
+
+
+def a3_group():
+    return {"states": {"INT6": a3_result(0.1, 0.4), "INT4": a3_result(0.1, 0.4)}}
 
 
 class Outputs(Fixture):

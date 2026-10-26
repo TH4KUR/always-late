@@ -58,7 +58,7 @@ class EndToEnd(unittest.TestCase):
     def test_the_tables_the_claims_and_the_four_figures_come_out_of_the_runner_output(self):
         feat = rep.feature_level(self.fdirs, self.core, self.split, 997, n_boot=30, seed=1); grp = rep.group_level(self.gdirs, ["l0", "l1"], 3, 3, n_boot=30, seed=1); out = self.root / "report"
         claims = rep.claim_status(feat, grp); rep.write_outputs(out, feat, grp, claims); json.loads((out / "claim_status.json").read_text())
-        self.assertIn(claims["claims"]["A3"]["overall"], ("supported", "reversed", "inconclusive", "mixed")); self.assertEqual(claims["claims"]["UTILITY"]["overall"], "not met")                  # twelve real items per state are too few to fit
+        self.assertIn(claims["claims"]["A3"]["overall"], ("supported", "reversed", "inconclusive", "mixed")); self.assertEqual(claims["claims"]["UTILITY"]["overall"], "insufficient")             # twelve real items per state are too few to fit: not a failed criterion
         tables = tf.load_tables(out); paths = tf.write_figures(tables, self.root / "figs", "fake model, plumbing only", themes=("light",), formats=("svg",))
         self.assertEqual(len(paths), 4); self.assertTrue(all(Path(p).stat().st_size > 1000 for p in paths))
 

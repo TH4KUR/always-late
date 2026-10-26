@@ -2,15 +2,22 @@
 full runs: per quantized state the coverage, the component table, the specificity contrast, H4 (averaged fingerprints), the predictive diagnostic; per state of the group panel the net C/W/I decomposition by language and
 the A3 summary; and a claim status by RULES WRITTEN BEFORE ANY FULL-RUN OUTPUT EXISTED (the CLAIM_RULES below, recorded in the ledger on 2026-10-26).
 
-CLAIM RULES (all on the Gemma-2-2B runs, INT6 and INT4 judged separately; INT16 is the rounding reference and never a result):
-  A3  : supported at a state iff the lower end of the interval of the median over languages of |C| - |W| (group level, net harm, sentence bootstrap) is above zero; reversed iff the upper end is below zero;
-        otherwise inconclusive. The overall status needs the same verdict at INT6 and at INT4, else 'mixed'.
+CLAIM RULES (all on the Gemma-2-2B runs, INT6 and INT4 judged separately; INT16 is the rounding reference and never a result). Fixed 2026-10-26 before any full-run output; TIGHTENED the same day after an independent
+review of the code, still before any outcome was read (amendment A14, ledger): the changes close the ways in which a status word could be produced by rounding noise or by an unrun state.
+  A3  : supported at a state iff the lower end of the interval of the median over languages of |C| - |W| (group level, net harm, sentence bootstrap) is above zero AND the median of |C| exceeds the median of |W|
+        (the second reading of the frozen wording); reversed iff the upper end is below zero AND the median of |C| does not exceed the median of |W|; otherwise inconclusive. Overall: the same verdict at INT6
+        and INT4, else 'mixed'; a state not run: 'not evaluated'.
   H1  : supported at a state iff, for the real direction over the eligible items, the lower ends of the intervals of BOTH the median share of the error left after the best rescaling of the FP effect and the median
-        share left after the native amplitude exceed 0.5; not supported iff the upper end of either is below 0.5; otherwise inconclusive.
-  H2  : descriptive (no frozen threshold): the medians of the relative norms of C, W and I with intervals, and 'reproducible' = the calibration and held-out intervals overlap for all three.
+        share left after the native amplitude exceed 0.5 AND the lower end of the median error over the numerical floor exceeds 1 (the error clears the floor: rounding noise alone leaves a share near 1); not
+        supported iff the upper end of either share is below 0.5; otherwise inconclusive. The INT16 intervals of the same quantities are printed next to the status.
+  H2  : descriptive (no frozen threshold): the medians of the relative norms of C, W and I with intervals, and 'intervals_overlap' = the calibration and held-out intervals overlap for all three (wide intervals
+        overlap trivially: the word is weak).
   H3  : supported at a state iff the interval of the relative held-out MAE reduction of the diagnostic over baseline A alone is above zero; reversed iff below zero; otherwise inconclusive.
-  H4  : supported at a state iff the interval of the median cosine gap (averaged fingerprint minus the row-weighted context mean, real direction, all features) excludes zero; inconclusive otherwise.
-  UTILITY (project criterion): met at a state iff the diagnostic reduces the held-out MAE by at least 10 % relative to the strongest baseline with a paired interval above zero; overall needs INT6 and INT4.
+  H4  : supported at a state iff the interval of the median cosine gap (averaged fingerprint minus the row-weighted context mean, real direction, all features) excludes zero AND does not overlap the INT16
+        interval of the same quantity (independent noise in the contexts averages out in the pooled fingerprint and gives a positive gap in a rounding-only state); the interval resamples features only;
+        inconclusive otherwise, and when no INT16 reference is present.
+  UTILITY (project criterion): met at a state iff the diagnostic reduces the held-out MAE by at least 10 % relative to the strongest baseline with a paired interval above zero. Overall: 'met' iff both states are
+        met; 'not met' if any state is not met; else 'insufficient' (a state with too few items to fit) or 'not evaluated' (a state not run): neither is a failed criterion.
   Every status carries its population (the number of eligible items and features) and the fraction of items that were eligible; a result on a few hundred items is reported as such."""
 import argparse
 import csv
@@ -100,49 +107,82 @@ def _verdict(low, high, threshold=0.0):
     return "supported" if low > threshold else ("reversed" if high < threshold else "inconclusive")
 
 
+H1_FLOOR_MULTIPLE = 1.0
+ANALYSIS_PARAMETERS = {"min_calibration": 20, "min_heldout": 10, "ridge_strengths": [0.1, 1, 10], "folds": 5, "utility_reduction": 0.10, "h1_floor_multiple": H1_FLOOR_MULTIPLE}
+SCOPE = {"held_out": "feature-held-out: the held-out half are other FEATURES; their contexts share source sentences with the calibration half (no document holdout), so sentence-level covariates can carry sentence-specific signal",
+         "feature_bootstrap": "features and source-sentence clusters crossed (2,000 replicates); the pooled quantities of H4: features only",
+         "group_bootstrap": "source sentences only (the groups and the matched control draws are fixed)",
+         "specificity": "the control directions are not eligibility-filtered and have a small full-precision effect, so their normalized error is dominated by the floor: the real-minus-control gap mixes scale and specificity",
+         "analysis_parameters": ANALYSIS_PARAMETERS}
+
+
+def _overlap(a, b):
+    return a is not None and b is not None and a[0] <= b[1] and b[0] <= a[1]
+
+
+def _roll_up(per, order):
+    """The overall status of a claim over the judged states: the common value when all states agree, else 'mixed'; any 'not evaluated' state makes it 'not evaluated'."""
+    if "not evaluated" in per.values() or not per:
+        return "not evaluated"
+    return next(iter(set(per.values()))) if len(set(per.values())) == 1 else "mixed"
+
+
 def claim_status(feat, group):
     """The status of each pre-declared claim by the CLAIM_RULES of the module docstring. feat, group: the results of `feature_level` and `group_level` (either may be None: the claims that need it are then
-    'not evaluated')."""
-    out = {"rules": "CLAIM_RULES of phase1_transfer_report.py (fixed 2026-10-26 before any full-run output)", "population": "Gemma-2-2B, layer-12 Gemma Scope 16k SAE, RTN per-output-channel; INT16 is the rounding reference", "claims": {}}
-    claims = out["claims"]; combine = lambda per: (next(iter(set(per.values()))) if len(set(per.values())) == 1 and per else "mixed")
+    'not evaluated'). The INT16 state, when present, is the rounding-only reference of H1 and H4."""
+    out = {"rules": "CLAIM_RULES of phase1_transfer_report.py (fixed 2026-10-26 before any full-run output; tightened the same day after an independent review, before any outcome was read: amendment A14)",
+           "population": "Gemma-2-2B, layer-12 Gemma Scope 16k SAE, RTN per-output-channel; INT16 is the rounding reference", "scope": SCOPE, "claims": {}}
+    claims = out["claims"]
     if group is not None:
         per = {}
         for s in JUDGED_STATES:
-            st = group["states"].get(s); per[s] = "not evaluated" if st is None else _verdict(st["a3"]["median_difference"][0], st["a3"]["median_difference"][1])
-        claims["A3"] = {"per_state": per, "overall": combine(per) if "not evaluated" not in per.values() else "not evaluated"}
+            st = group["states"].get(s)
+            if st is None:
+                per[s] = "not evaluated"; continue
+            lo, hi = st["a3"]["median_difference"]; med = st["a3"]["point"]["holds_medians"]
+            per[s] = "supported" if lo > 0 and med else ("reversed" if hi < 0 and not med else "inconclusive")                  # the paired interval and the median reading must agree
+        claims["A3"] = {"per_state": per, "overall": _roll_up(per, JUDGED_STATES)}
     if feat is not None:
-        h1, h3, h4, util, h2, pop = {}, {}, {}, {}, {}, {}
+        h1, h3, h4, util, h2, pop = {}, {}, {}, {}, {}, {}; ref = feat["states"].get(REFERENCE_STATE); ref_comp = ref["components"] if ref is not None else []
+        ref_iv = lambda recs, **kw: (lambda r: None if r is None or r["n"] == 0 else (r["low"], r["high"]))(_pick(recs, kind="real", split="all", **kw))
         for s in JUDGED_STATES:
             st = feat["states"].get(s)
             if st is None:
                 for d in (h1, h3, h4, util, h2):
                     d[s] = "not evaluated"
                 continue
-            comp = st["components"]; sr = _pick(comp, kind="real", split="all", metric="scalar_residual_share"); ne = _pick(comp, kind="real", split="all", metric="native_error_share")
+            comp = st["components"]; sr = _pick(comp, kind="real", split="all", metric="scalar_residual_share"); ne = _pick(comp, kind="real", split="all", metric="native_error_share"); fl = _pick(comp, kind="real", split="all", metric="error_over_floor")
             if sr is None or ne is None or sr["n"] == 0 or ne["n"] == 0:
                 h1[s] = "inconclusive"
-            elif sr["low"] > 0.5 and ne["low"] > 0.5:
-                h1[s] = "supported"
+            elif sr["low"] > 0.5 and ne["low"] > 0.5 and fl is not None and fl["n"] > 0 and fl["low"] > H1_FLOOR_MULTIPLE:
+                h1[s] = "supported"                                                                                               # both shares above one half AND an error that clears the numerical floor (rounding noise alone gives high shares)
             elif sr["high"] < 0.5 or ne["high"] < 0.5:
                 h1[s] = "not supported"
             else:
                 h1[s] = "inconclusive"
             pred = st["predictive"]["eligible"]["result"]
             if pred["status"] != "fitted":
-                h3[s] = "inconclusive"; util[s] = "not met (insufficient items)"
+                h3[s] = "inconclusive"; util[s] = "insufficient"
             else:
                 h3[s] = _verdict(pred["improvement_over_A"]["low"], pred["improvement_over_A"]["high"]); util[s] = "met" if pred["criterion_met"] else "not met"
-            av = _pick(st["averaged"], kind="real", split="all", metric="cos_gap"); h4[s] = "inconclusive" if av is None or av["n"] == 0 else ("supported" if av["low"] > 0 or av["high"] < 0 else "inconclusive")
+            av = _pick(st["averaged"], kind="real", split="all", metric="cos_gap"); r0 = ref_iv(ref["averaged"], metric="cos_gap") if ref is not None else None
+            if av is None or av["n"] == 0 or r0 is None:
+                h4[s] = "inconclusive"
+            else:
+                h4[s] = "supported" if (av["low"] > 0 or av["high"] < 0) and not _overlap((av["low"], av["high"]), r0) else "inconclusive"
             cov = [r for r in st["coverage"] if r["kind"] == "real"]; n_all = sum(r["items"] for r in cov); n_el = sum(r["eligible"] for r in cov)
-            pop[s] = {"real_items": n_all, "eligible_real_items": n_el, "eligible_fraction": (n_el / n_all) if n_all else None}
+            feats = {r["feature"] for r in st.get("rows", {}).values() if r["kind"] == "real" and r["eligible"]}
+            pop[s] = {"real_items": n_all, "eligible_real_items": n_el, "eligible_fraction": (n_el / n_all) if n_all else None, "eligible_features": len(feats)}
             rel = {}
             for m in ("C_rel", "W_rel", "I_rel"):
                 c, h = _pick(comp, kind="real", split="calibration", metric=m), _pick(comp, kind="real", split="heldout", metric=m)
                 rel[m] = None if c is None or h is None or c["n"] == 0 or h["n"] == 0 else bool(c["low"] <= h["high"] and h["low"] <= c["high"])
-            h2[s] = {"reproducible": None if None in rel.values() else all(rel.values()), "overlap_by_component": rel}
-        claims["H1"] = {"per_state": h1, "overall": combine(h1) if "not evaluated" not in h1.values() else "not evaluated"}; claims["H2"] = {"per_state": h2, "status": "descriptive"}
-        claims["H3"] = {"per_state": h3, "overall": combine(h3) if "not evaluated" not in h3.values() else "not evaluated"}; claims["H4"] = {"per_state": h4, "overall": combine(h4) if "not evaluated" not in h4.values() else "not evaluated"}
-        claims["UTILITY"] = {"per_state": util, "overall": "met" if all(v == "met" for v in util.values()) else "not met"}; claims["POPULATION"] = pop
+            h2[s] = {"intervals_overlap": None if None in rel.values() else all(rel.values()), "overlap_by_component": rel}
+        claims["H1"] = {"per_state": h1, "overall": _roll_up(h1, JUDGED_STATES), "reference": {m: ref_iv(ref_comp, metric=m) for m in ("scalar_residual_share", "native_error_share", "error_over_floor")}}
+        claims["H2"] = {"per_state": h2, "status": "descriptive"}; claims["H3"] = {"per_state": h3, "overall": _roll_up(h3, JUDGED_STATES)}
+        claims["H4"] = {"per_state": h4, "overall": _roll_up(h4, JUDGED_STATES), "interval": "features only: the pooled fingerprint cannot be resampled by source-sentence cluster", "reference": ref_iv(ref["averaged"], metric="cos_gap") if ref is not None else None}
+        vals = set(util.values()); overall = "met" if vals == {"met"} else ("not met" if "not met" in vals else ("insufficient" if "insufficient" in vals else "not evaluated"))
+        claims["UTILITY"] = {"per_state": util, "overall": overall}; claims["POPULATION"] = pop
     return out
 
 
