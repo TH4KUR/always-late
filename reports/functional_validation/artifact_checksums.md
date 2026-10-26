@@ -244,3 +244,14 @@ Fetched 2026-10-26 01:16 IST from Ada, sha256 equal on both sides (4 files, 0 di
 | `promptcheck/frozen/meta_mc_cal.json` | 1965 | `ebb2e86686e49e2496b2c80ac7a0877dcaf2e1cc884006ac0032edd5cf8f7816` |
 | `promptcheck/harness/func_mc_cal_letter_FP.pt` | 546493 | `dd11c4b93e1edfd44d5441fced09b3a7c244402a2723aa514a1447af7f675a36` |
 | `promptcheck/harness/meta_mc_cal.json` | 1966 | `71e7294344f959ee1b92e3e7c1e452423d0c5042e478249470c6568f522038ea` |
+
+Fetched 2026-10-26 07:11 IST from Ada, sha256 equal on both sides (the Llama-3.2-1B consistency check, D-087; RTX 2080 Ti on gnode048, no CUDA warning in the logs, snapshot `repo_0cf138e`, commit `0cf138e`): `llama-tag` 39717 (dev tagging pass, all 27 languages, equal token budget, selectivity file of the equal-budget stream; the manifest was built by the CPU job `llama-manifest` 39720) and `llama-lm-b` 39722 (states INT5 and INT4: sacct COMPLETED exit 0, 2 h 59 min 35 s, 999 configurations per state, 300 evaluation sentences per language with ids equal to the freeze, the Study G main preset, gates passed, complete, nothing skipped).
+
+| file | bytes | sha256 |
+|---|---|---|
+| `llama-tag/eq/selectivity.pt` | 5144262 | `a2754c508d4b1380afb7a6780ca37d3d5c4be52cb5b064477103cef06e64c21a` |
+| `llama-tag/eq/meta.json` | 5419 | `9942e316e98c0bf75337a8ff24b96ed90cdca6df236dabd229dbe1357b18cc0f` |
+| `llama-tag/groups_manifest.json` | 116104 | `c1c735c210b458b189732ab3526c625948022a6ed4bde4dca31ae641d7ff2541` |
+| `llama-lm-b/func_lm_eval_INT5.pt` | 5594871 | `af6b1ef56f121ce48fdb5d957c19e317130f76e0605fdeaadd3fa0db1b5862b5` |
+| `llama-lm-b/func_lm_eval_INT4.pt` | 5594871 | `480058d6af2ec52afd23582357d6a24908db0009f4b9a0f77f61b79ced64294c` |
+| `llama-lm-b/meta_lm_eval.json` | 2168 | `a307eb675a455cdafb1e4c21ba2777d9a18b38802039010d121ed4ba8f409c22` |
