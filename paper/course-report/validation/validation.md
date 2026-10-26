@@ -64,3 +64,5 @@ The team must review the interpretation and final wording, author order,
 course-specific AI disclosure requirements and any updated instructor rules.
 The code ZIP, presentation and complete `AlwaysLate-Final.zip` are separate
 remaining deliverables. The obsolete `paper/main.tex` has not been changed.
+
+**Update 2026-10-26 12:32:** the course guidelines no longer forbid AI-generated reports (rule 4 of `project_guidelines.txt` was edited by the user; decision D-093), so the 'AI disclosure' review item above is closed unless the instructors ask for a statement. The ACL style constraints and the page limits are unchanged.

@@ -47,7 +47,7 @@ Gemma-2-9B is NOT run here (handoff 040, branch `gemma9b-confirmation`).
 - Do not edit `third_party/duan2026/` by hand, add edits, change the baseline constants, or change the comparison bands. Do not describe diagnostics as replication.
 - Do not resurrect the legacy pipeline into the working tree. If something from it is needed, check out the tag and port the *idea* as a tested diff on their code.
 - **Never remove, shorten or overwrite progress-tracking documents** (decisions, questions, logs, handoffs, plans and designs, source registers, audits, the archive): the user's instruction of 2026-10-23, so that the whole trail of directions explored and considered survives to the end of the project; consolidation = move verbatim into `reports/archive/` with a pointer.
-- Do not edit `paper/` prose or write report text.
+- ~~Do not edit `paper/` prose or write report text.~~ **Update 2026-10-26 12:32 (D-093): the course guidelines no longer forbid AI-generated reports (rule 4 of `project_guidelines.txt`, edited by the user), so `paper/` prose and the report may be written and updated. Still untouched: `paper/course-report/acl.sty`, `acl_natbib.bst` and the official template copies (the ACL style), `third_party/`, and the claim discipline (numbers only from committed results with their status and limits; the course page limits; the official checker must stay `All Clear`). Index of the paper files: [`paper/README.md`](paper/README.md).**
 - Do not touch the user's `plan02-train` jobs, other users' files, `~/.netrc`, `~/.env`, `~/.ssh`, HF tokens. Do not fill `/home2`. No long jobs on the login node.
 - Do not commit data, weights, `.pt` files, per-feature CSV dumps or secrets. Commit small CSV/JSON/MD results under `reports/g0/`.
 

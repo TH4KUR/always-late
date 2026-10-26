@@ -10,8 +10,7 @@ Please read and follow these instructions throughout the project’s duration.
 1. The project must be done in teams of 3-4.
 2. You are highly encouraged to consult TAs during office hours to get inputs on project ideas.
 3. You are highly encouraged to consult your team’s TA mentor for project related questions and guidance.
-4. You are allowed to use AI and other internet resources for implementation and code. You are not allowed to
-use AI to generate reports wherever relevant.
+4. You are allowed to use AI and other internet resources for implementation and code.
 5. The project schedule and deadlines must be strictly followed. No extensions will be provided.
 6. All submissions should follow the ACL Style Guide. LATEX files for this can be found here.
 7. For each of the submissions, every team member must make the submission.

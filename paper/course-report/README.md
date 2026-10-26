@@ -4,10 +4,14 @@ This is a fresh draft of the completed study, not a revision of the obsolete
 `../main.tex`. The author names follow the existing project roster; the team
 must verify authorship/order and final wording before submission.
 
-The user confirmed on 26 October in the current chat that instructors now
-permit AI-written drafts. This supersedes the older prohibition recorded in
-`../../project_guidelines.txt` for this report's drafting workflow. This is a
-course-report draft, not an assertion of conference acceptance or novelty.
+The course guidelines changed on 26 October 2026: rule 4 of
+`../../project_guidelines.txt` now reads only 'You are allowed to use AI and
+other internet resources for implementation and code', and the sentence that
+forbade AI-generated reports was removed (the user's edit; decision D-093).
+The report and the paper may therefore be written and updated by the AI
+assistant; the earlier note in this file that the permission came from a chat
+statement is superseded. This is a course-report draft, not an assertion of
+conference acceptance or novelty.
 
 ## Requirements
 
@@ -90,8 +94,10 @@ scientific accuracy, completeness, or course acceptance.
 
 ## Team review still required
 
-Check the paper's interpretation and terminology, author order, bibliography,
-AI-use disclosure requirements and any newer instructor instructions. Verify
+Check the paper's interpretation and terminology, author order, bibliography
+and any newer instructor instructions (the guidelines no longer restrict
+AI-written reports and name no disclosure statement; add one if the
+instructors ask for it). Verify
 that every claim is retained with its qualification. A separate future
 conference submission needs a fresh novelty review and stronger external
 validation; the course report does not promise either.
