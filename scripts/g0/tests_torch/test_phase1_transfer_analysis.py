@@ -47,6 +47,21 @@ class Chunks(unittest.TestCase):
                 ta.load_chunks(d, "transfer", "INT4")
 
 
+class GroupChunks(unittest.TestCase):
+    def test_group_chunks_repeat_the_pool_of_a_language_and_set_and_the_group_analysis_reads_the_items_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d); pool = {("eng_Latn", "group"): {"gram": np.eye(5), "n_rows": 2, "n_contexts": 1}}
+            tr.atomic_save({"items": {("eng_Latn", 0, "group"): item(3, 3)}, "pooled": pool, "skipped": []}, d / "group_INT4_c000.pt", "k0")
+            tr.atomic_save({"items": {("eng_Latn", 1, "group"): item(4, 2)}, "pooled": pool, "skipped": [(("eng_Latn", 1, "control0"), "no_active_group_feature")]}, d / "group_INT4_c001.pt", "k1")
+            items, pooled, skipped = ta.load_chunks(d, "group", "INT4", pools=False)
+            self.assertEqual(set(items), {("eng_Latn", 0, "group"), ("eng_Latn", 1, "group")}); self.assertEqual(pooled, {}); self.assertEqual(skipped, [(("eng_Latn", 1, "control0"), "no_active_group_feature")])
+            with self.assertRaisesRegex(ValueError, "pool"):
+                ta.load_chunks(d, "group", "INT4")                                                                       # the feature-level default still refuses a pool that occurs twice
+            tr.atomic_save({"items": {("eng_Latn", 0, "group"): item(3, 3)}, "pooled": {}, "skipped": []}, d / "group_INT4_c002.pt", "k2")
+            with self.assertRaisesRegex(ValueError, "twice"):
+                ta.load_chunks(d, "group", "INT4", pools=False)                                                           # an item that occurs twice is an error in every case
+
+
 class Table(unittest.TestCase):
     def test_a_row_per_item_with_the_norms_the_split_and_the_source_cluster(self):
         items = {(10, 1000, "real"): item(3.0, 5.0, 4.0), (11, 2001, "matched_swapped"): item(4.0, 4.0)}

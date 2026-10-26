@@ -38,8 +38,11 @@ def write_feature_dir(d, state, drop=None):
 
 
 def write_group_dir(d, state, langs=("a", "b"), n_sent=6):
+    """Two chunk files of the sentences 0-2 and 3-5; both carry the pool of every (language, set) as the real chunks do."""
     items = group_items_for(list(langs), n_sent, lambda l, j: [1.0, 1.9 + 0.01 * j, 0.7, 1.6, 0.6], [lambda l, j: [0.1] * 5] * 3, ntok=lambda l, j: 10 + j)
-    tr.atomic_save({"items": items, "pooled": {}, "skipped": []}, Path(d) / f"group_{state}_c000.pt", f"g-{state}")
+    pool = {(l, k): {"gram": np.eye(5), "n_rows": 2, "n_contexts": 3} for l in langs for k in ("group", "control0", "control1", "control2")}
+    for c, js in enumerate(((0, 1, 2), (3, 4, 5))):
+        tr.atomic_save({"items": {k: v for k, v in items.items() if k[1] in js}, "pooled": pool, "skipped": []}, Path(d) / f"group_{state}_c{c:03d}.pt", f"g-{state}-{c}")
 
 
 class Fixture(unittest.TestCase):
@@ -79,7 +82,7 @@ class FeatureLevel(Fixture):
 class GroupLevel(Fixture):
     def test_per_language_pooled_harms_and_the_decomposition_agree_with_the_analysis_functions(self):
         res = rep.group_level(self.gdirs, ["a", "b"], 6, 3, n_boot=30, seed=1); st = res["states"]["INT6"]
-        items, _, _ = ta.load_chunks(self.gdirs["INT6"], "group", "INT6"); A = ta.group_arrays(items, ["a", "b"], 6, 3); pool = ta.pooled_harms(A); dec = ta.decompose_net(pool["net"])
+        items, _, _ = ta.load_chunks(self.gdirs["INT6"], "group", "INT6", pools=False); A = ta.group_arrays(items, ["a", "b"], 6, 3); pool = ta.pooled_harms(A); dec = ta.decompose_net(pool["net"])
         row = st["per_language"][1]; self.assertEqual((row["language"], row["n_sentences"], row["n_sentences_total"]), ("b", 6, 6)); self.assertAlmostEqual(row["net_Q_FP"], float(pool["net"][1, 1])); self.assertAlmostEqual(row["C"], float(dec["C"][1])); self.assertAlmostEqual(row["I"], float(dec["I"][1]))
         self.assertAlmostEqual(row["control_FP_FP"], 0.1); self.assertAlmostEqual(row["native_total"], float(dec["native_total"][1])); self.assertEqual(st["a3"], ta.bootstrap_a3(A, 30, 1)); self.assertTrue(res["states"]["INT16"]["reference"])
 

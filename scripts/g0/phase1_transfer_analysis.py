@@ -18,8 +18,9 @@ BOOTSTRAP_SEED = 20261026
 BOOTSTRAP_LEVEL = 95
 
 
-def load_chunks(directory, prefix, state):
-    """Merge the chunk files `<prefix>_<state>_c*.pt` of a run directory: (items, pooled, skipped). A key that occurs in two chunk files is an error."""
+def load_chunks(directory, prefix, state, pools=True):
+    """Merge the chunk files `<prefix>_<state>_c*.pt` of a run directory: (items, pooled, skipped). A key that occurs in two chunk files is an error. The feature-level chunks hold disjoint features, so every pool
+    occurs once; the group-level chunks are cut by sentence and each repeats the pool of every (language, set) of its sentences: with `pools=False` the pools are not merged (the group analysis reads the items only)."""
     import torch as _t
     from pathlib import Path
     files = sorted(Path(directory).glob(f"{prefix}_{state}_c*.pt"))
@@ -32,7 +33,7 @@ def load_chunks(directory, prefix, state):
             if k in items:
                 raise ValueError(f"item {k} occurs twice (second time in {f.name})")
             items[k] = v
-        for k, v in payload["pooled"].items():
+        for k, v in (payload["pooled"].items() if pools else ()):
             if k in pooled:
                 raise ValueError(f"pool {k} occurs twice (second time in {f.name})")
             pooled[k] = v

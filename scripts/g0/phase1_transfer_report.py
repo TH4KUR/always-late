@@ -73,7 +73,7 @@ def group_level(dirs, languages, n_sentences, n_controls, n_boot=ta.BOOTSTRAP_RE
     summary with its sentence bootstrap."""
     out = {"languages": list(languages), "states": {}}
     for s, d in dirs.items():
-        items, _, skipped = ta.load_chunks(d, "group", s); A = ta.group_arrays(items, languages, n_sentences, n_controls); pool = ta.pooled_harms(A); dec = ta.decompose_net(pool["net"]); table = []
+        items, _, skipped = ta.load_chunks(d, "group", s, pools=False); A = ta.group_arrays(items, languages, n_sentences, n_controls); pool = ta.pooled_harms(A); dec = ta.decompose_net(pool["net"]); table = []
         for li, lang in enumerate(languages):
             rec = {"language": lang, "n_sentences": int(pool["n_sentences"][li]), "n_sentences_total": int(n_sentences)}
             for name, arr in (("group", pool["group"]), ("control", pool["control"]), ("net", pool["net"])):
