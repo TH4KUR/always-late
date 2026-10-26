@@ -169,6 +169,68 @@ class Process(Fixture, unittest.TestCase):
             tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, bad, self.switches)
 
 
+class ProcessItems(Fixture, unittest.TestCase):
+    """The generic item processor behind the feature-level and the group-level runs: an item brings its own edits."""
+    def items(self):
+        out = []
+        for f in (2,):
+            for s in self.contexts[f]:
+                rows = self.positions[(f, s)] + 1; d = self.dirs[f]["real"]
+                out.append({"key": (f, s, "real"), "rows": rows, "h_fp": self.caches["FP"][s].float(), "h_q": self.caches["Q"][s].float(), "edit_fp": self.amps["FP"][(f, s)][:, None] * d[None, :],
+                            "edit_native": self.amps["Q"][(f, s)][:, None] * d[None, :], "targets": tr.context_targets(self.tokens[s]), "pool": (f, "real"), "n_active_q": int((self.amps["Q"][(f, s)] > 0).sum())})
+        return out
+
+    def test_an_item_equals_the_cells_of_the_core_and_the_weights_are_switched_once_per_state(self):
+        out = tr.process_items(self.items(), self.suf, self.switches)
+        self.assertEqual(self.log, ["FP", "Q"]); self.assertEqual(set(out["items"]), {(2, 10, "real"), (2, 11, "real")})
+        for (f, s, kind), it in out["items"].items():
+            res = {"FP": self.caches["FP"][s].float(), "Q": self.caches["Q"][s].float()}; rows = self.positions[(f, s)] + 1; d = self.dirs[f][kind]
+            ref = tc.factorial_effects(res, self.suf, rows, self.amps["FP"][(f, s)][:, None] * d[None, :], native_edit=self.amps["Q"][(f, s)][:, None] * d[None, :], targets=tr.context_targets(self.tokens[s]))
+            self.assertTrue(np.allclose(it["gram"], tc.gram(ref).numpy(), atol=1e-6)); self.assertEqual(it["n_target_rows"], len(self.tokens[s]))
+
+    def test_items_with_a_pool_key_are_pooled_and_items_without_one_are_not(self):
+        its = self.items(); out = tr.process_items(its, self.suf, self.switches)
+        self.assertEqual(list(out["pooled"]), [(2, "real")]); self.assertEqual(out["pooled"][(2, "real")]["n_contexts"], 2)
+        for it in its:
+            it["pool"] = None
+        self.assertEqual(tr.process_items(its, self.suf, self.switches)["pooled"], {})
+
+    def test_the_item_keys_must_be_unique_and_an_item_without_rows_is_skipped_with_its_key(self):
+        its = self.items()
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            tr.process_items(its + [dict(its[0])], self.suf, self.switches)
+        out0 = tr.process_items(its, self.suf, self.switches); self.assertEqual(out0["items"][(2, 10, "real")]["n_target_rows"], 3)
+        its[0]["targets"] = torch.tensor([0, 1, 2, -1]); self.assertEqual(tr.process_items(its, self.suf, self.switches)["items"][(2, 10, "real")]["n_target_rows"], 3)       # token id 0 is a target
+        its = self.items()
+        its[1]["rows"] = torch.zeros(0, dtype=torch.long); its[1]["edit_fp"] = torch.zeros(0, D); its[1]["edit_native"] = torch.zeros(0, D)
+        out = tr.process_items(its, self.suf, self.switches); self.assertEqual(out["skipped"], [((2, 11, "real"), "no_edited_row")]); self.assertEqual(len(out["items"]), 1)
+
+
+class GroupEdits(unittest.TestCase):
+    def setUp(self):
+        g = torch.Generator().manual_seed(8); self.W = torch.randn(6, D, generator=g)
+        self.act_fp = torch.tensor([[1.0, 0.0, 2.0, 0.0, 0.0, 0.5], [0.0, 0.0, 0.0, 3.0, 0.0, 0.0], [0.0, 1.5, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
+        self.act_q = torch.tensor([[0.8, 0.0, 1.8, 0.0, 0.0, 0.6], [0.0, 0.0, 0.0, 2.5, 0.0, 0.1], [0.0, 1.4, 0.0, 0.0, 0.0, 0.0], [0.2, 0.0, 0.0, 0.0, 0.0, 0.0]])
+
+    def test_the_edit_is_the_sum_of_activation_times_decoder_row_over_the_group_at_the_rows_where_it_is_active_in_fp(self):
+        rows, e_fp, e_q = tr.group_edit(self.act_fp, self.act_q, self.W, [0, 2, 3])
+        self.assertEqual(rows.tolist(), [1, 2]); self.assertEqual(tuple(e_fp.shape), (2, D))                                      # content rows 0 and 1 (the third has no active group feature), shifted by the BOS row
+        self.assertTrue(torch.allclose(e_fp[0], 1.0 * self.W[0] + 2.0 * self.W[2], atol=1e-6)); self.assertTrue(torch.allclose(e_fp[1], 3.0 * self.W[3], atol=1e-6))
+        self.assertTrue(torch.allclose(e_q[0], 0.8 * self.W[0] + 1.8 * self.W[2], atol=1e-6)); self.assertTrue(torch.allclose(e_q[1], 2.5 * self.W[3], atol=1e-6))
+
+    def test_a_row_that_is_active_only_in_the_quantized_state_is_not_edited_and_an_inactive_group_gives_no_rows(self):
+        rows, e_fp, e_q = tr.group_edit(self.act_fp, self.act_q, self.W, [0, 2, 3]); self.assertNotIn(4, rows.tolist())            # row 3 of the content has only a Q activation of feature 0
+        rows, e_fp, e_q = tr.group_edit(self.act_fp, self.act_q, self.W, [4]); self.assertEqual(len(rows), 0); self.assertEqual(tuple(e_fp.shape), (0, D))
+
+    def test_group_items_cover_the_group_and_the_control_draws_with_shared_residuals(self):
+        sets = {"group": [0, 2, 3], "control0": [1], "control1": [5], "control2": [4]}
+        h_fp, h_q = torch.randn(5, D), torch.randn(5, D); tg = torch.tensor([1, 2, 3, 4, -1])
+        its, skipped = tr.group_items("eng", 7, h_fp, h_q, self.act_fp, self.act_q, self.W, sets, tg)
+        self.assertEqual([i["key"] for i in its], [("eng", 7, "group"), ("eng", 7, "control0"), ("eng", 7, "control1")]); self.assertEqual(skipped, [(("eng", 7, "control2"), "no_active_group_feature")])
+        self.assertTrue(all(i["h_fp"] is h_fp and i["h_q"] is h_q for i in its)); self.assertTrue(all(i["pool"] == ("eng", i["key"][2]) for i in its)); self.assertEqual(its[0]["rows"].tolist(), [1, 2])
+        self.assertEqual(its[0]["n_active_q"], 2)                                                                     # counted over the edited rows only (the Q-only activation at content row 3 does not count)
+
+
 class FakeModel:
     """A tiny stand-in for the real model: the prefix (embedding times a state-dependent scale), a ReLU 'SAE' and a tanh suffix with a state-dependent matrix. prefix_differs / suffix_differs decide which part
     of the model changes between FP and the quantized states (both off: the states are identical)."""

@@ -81,14 +81,62 @@ def load_chunk(path, key):
     return d["payload"]
 
 
-def process_chunk(features, contexts, caches, positions, amplitudes, dirs, tokens, suffixes, switches, center=True):
-    """The items of one chunk.
-    features: feature ids; contexts: {feature: [dev sentence index]}; caches: {"FP": {sentence: [n+1, d] residual}, "Q": {...}} (any float dtype; converted to float32);
-    positions: {(feature, sentence): content positions where the feature is active in FP}; amplitudes: {"FP": {(feature, sentence): [len(positions)]}, "Q": {...}} (the activations of the feature at those positions
-    in the FP and in the quantized state); dirs: {feature: {kind: [d] vector}}; tokens: {sentence: content token ids}; suffixes: {"FP": f, "Q": f} (callables [B, L, d] -> [B, L, V]);
-    switches: {"FP": f, "Q": f} (put the model weights in that state; called once each, FP first).
-    -> {"items": {(feature, sentence, kind): {"gram", "dloss", "loss_base", "n_rows", "n_active_q", "n_positions"}}, "pooled": {(feature, kind): {"gram", "n_rows", "n_contexts"}}, "skipped": [(feature, sentence, reason)]}."""
+def process_items(items, suffixes, switches, center=True):
+    """The five cells of the crossed design for a list of items, each with its OWN edits (the feature-level run builds them from one feature's amplitude times a direction, the group-level run from the sum over a
+    feature group). item: {"key" (unique), "rows" (edited rows of the cached context), "h_fp", "h_q" ([L, d] float32 prefix residuals), "edit_fp" (the FP edit at those rows, used in the cells FP/FP, Q/FP, FP/Q,
+    Q/Q), "edit_native" (the quantized state's own edit, cell Q/Q-native), "targets" ([L], -1 = none), "pool" (key of the pool the item belongs to, or None), "n_active_q" (optional count)}.
+    Order of work: switches["FP"](), the FP-suffix cells of every item (vectors kept on the host), switches["Q"](), the Q-suffix cells, then the Gram matrices.
+    -> {"items": {key: {"gram" (5 x 5 float64), "dloss", "loss_base" (five values each), "n_rows", "n_target_rows", "n_active_q", "n_positions"}}, "pooled": {pool: {"gram", "n_rows", "n_contexts"}}, "skipped": [(key, reason)]}."""
+    keys = [it["key"] for it in items]
+    if len(set(keys)) != len(keys):
+        raise ValueError(f"duplicate item keys: {sorted({k for k in keys if keys.count(k) > 1}, key=str)[:3]}")
     jobs, skipped = [], []
+    for it in items:
+        if len(it["rows"]) == 0:
+            skipped.append((it["key"], "no_edited_row"))
+        else:
+            jobs.append(it)
+    fp_vectors = {}
+    switches["FP"]()
+    for it in jobs:
+        try:
+            fp_vectors[it["key"]] = {"FP/FP": _cpu(tc.effect(it["h_fp"], it["rows"], it["edit_fp"], suffixes["FP"], it["targets"], center)),
+                                     "Q/FP": _cpu(tc.effect(it["h_q"], it["rows"], it["edit_fp"], suffixes["FP"], it["targets"], center))}
+        except ValueError as e:
+            raise ValueError(f"context {it['key']}: {e}") from None
+    out, sums, nrows, counts = {}, {}, {}, {}
+    switches["Q"]()
+    for it in jobs:
+        key = it["key"]
+        try:
+            cells = dict(fp_vectors.pop(key))
+            cells["FP/Q"] = _cpu(tc.effect(it["h_fp"], it["rows"], it["edit_fp"], suffixes["Q"], it["targets"], center)); cells["Q/Q"] = _cpu(tc.effect(it["h_q"], it["rows"], it["edit_fp"], suffixes["Q"], it["targets"], center))
+            cells["Q/Q-native"] = _cpu(tc.effect(it["h_q"], it["rows"], it["edit_native"], suffixes["Q"], it["targets"], center))
+        except ValueError as e:
+            raise ValueError(f"context {key}: {e}") from None
+        n = cells["FP/FP"]["n_rows"]
+        out[key] = {"gram": tc.gram(cells).numpy().astype(np.float64), "dloss": [cells[c]["dloss"] for c in tc.CELLS], "loss_base": [cells[c]["loss_base"] for c in tc.CELLS], "n_rows": n,
+                    "n_target_rows": int((it["targets"] >= 0).sum()), "n_active_q": it.get("n_active_q"), "n_positions": int(len(it["rows"]))}
+        pool = it.get("pool")
+        if pool is not None:
+            acc = sums.setdefault(pool, {c: 0 for c in tc.CELLS}); nrows[pool] = nrows.get(pool, 0) + n; counts[pool] = counts.get(pool, 0) + 1
+            for c in tc.CELLS:
+                acc[c] = acc[c] + n * cells[c]["vector"].double()
+    pooled = {}
+    for pool, acc in sums.items():
+        avg = {c: {"vector": acc[c] / nrows[pool]} for c in tc.CELLS}
+        pooled[pool] = {"gram": tc.gram(avg).numpy().astype(np.float64), "n_rows": nrows[pool], "n_contexts": counts[pool]}
+    return {"items": out, "pooled": pooled, "skipped": skipped}
+
+
+def process_chunk(features, contexts, caches, positions, amplitudes, dirs, tokens, suffixes, switches, center=True):
+    """The items of one chunk of the feature-level run: for every feature, context (dev sentence) and direction kind the edit is the activation of the feature at its FP-active positions times the direction (FP
+    activation in the fixed cells, the quantized state's own activation in the native cell).
+    features: feature ids; contexts: {feature: [dev sentence index]}; caches: {"FP": {sentence: [n+1, d] residual}, "Q": {...}} (any float dtype; converted to float32);
+    positions: {(feature, sentence): content positions where the feature is active in FP}; amplitudes: {"FP": {(feature, sentence): [len(positions)]}, "Q": {...}}; dirs: {feature: {kind: [d] vector}};
+    tokens: {sentence: content token ids}; suffixes: {"FP": f, "Q": f}; switches: {"FP": f, "Q": f} (called once each, FP first).
+    -> process_items' result with the keys (feature, sentence, kind), the pools (feature, kind) and, in "skipped", (feature, sentence, reason) for contexts without an FP-active position."""
+    items, skipped = [], []
     for f in features:
         for s in contexts[f]:
             p = positions[(f, s)]
@@ -99,44 +147,35 @@ def process_chunk(features, contexts, caches, positions, amplitudes, dirs, token
                     raise KeyError(f"no cached residual of state {state} for context sentence {s}")
                 if len(amplitudes[state][(f, s)]) != len(p):
                     raise ValueError(f"feature {f}, context {s}: {len(amplitudes[state][(f, s)])} {state} amplitudes for {len(p)} positions")
-            jobs.append((f, s))
-    prep = {}
-    for f, s in jobs:
-        rows = positions[(f, s)] + 1; tg = context_targets(tokens[s]); prep[(f, s)] = (rows, tg, caches["FP"][s].float(), caches["Q"][s].float())
-    fp_vectors = {}
-    switches["FP"]()
-    for f, s in jobs:
-        rows, tg, h_fp, h_q = prep[(f, s)]
-        for kind in DIRECTION_KINDS:
-            edit = amplitudes["FP"][(f, s)].float()[:, None] * dirs[f][kind].float()[None, :]
-            try:
-                fp_vectors[(f, s, kind)] = {"FP/FP": _cpu(tc.effect(h_fp, rows, edit, suffixes["FP"], tg, center)), "Q/FP": _cpu(tc.effect(h_q, rows, edit, suffixes["FP"], tg, center))}
-            except ValueError as e:
-                raise ValueError(f"context {(f, s, kind)}: {e}") from None
-    items, sums, nrows = {}, {}, {}
-    switches["Q"]()
-    for f, s in jobs:
-        rows, tg, h_fp, h_q = prep[(f, s)]
-        for kind in DIRECTION_KINDS:
-            d = dirs[f][kind].float()
-            edit = amplitudes["FP"][(f, s)].float()[:, None] * d[None, :]; native = amplitudes["Q"][(f, s)].float()[:, None] * d[None, :]
-            try:
-                cells = dict(fp_vectors.pop((f, s, kind)))
-                cells["FP/Q"] = _cpu(tc.effect(h_fp, rows, edit, suffixes["Q"], tg, center)); cells["Q/Q"] = _cpu(tc.effect(h_q, rows, edit, suffixes["Q"], tg, center))
-                cells["Q/Q-native"] = _cpu(tc.effect(h_q, rows, native, suffixes["Q"], tg, center))
-            except ValueError as e:
-                raise ValueError(f"context {(f, s, kind)}: {e}") from None
-            n = cells["FP/FP"]["n_rows"]
-            items[(f, s, kind)] = {"gram": tc.gram(cells).numpy().astype(np.float64), "dloss": [cells[c]["dloss"] for c in tc.CELLS], "loss_base": [cells[c]["loss_base"] for c in tc.CELLS], "n_rows": n,
-                                   "n_active_q": int((amplitudes["Q"][(f, s)] > 0).sum()), "n_positions": int(len(positions[(f, s)]))}
-            acc = sums.setdefault((f, kind), {c: 0 for c in tc.CELLS}); nrows[(f, kind)] = nrows.get((f, kind), 0) + n
-            for c in tc.CELLS:
-                acc[c] = acc[c] + n * cells[c]["vector"].double()
-    pooled = {}
-    for key, acc in sums.items():
-        n = nrows[key]; avg = {c: {"vector": acc[c] / n} for c in tc.CELLS}
-        pooled[key] = {"gram": tc.gram(avg).numpy().astype(np.float64), "n_rows": n, "n_contexts": sum(1 for (f, s, k) in items if (f, k) == key)}
-    return {"items": items, "pooled": pooled, "skipped": skipped}
+            rows, tg, h_fp, h_q = p + 1, context_targets(tokens[s]), caches["FP"][s].float(), caches["Q"][s].float(); n_act = int((amplitudes["Q"][(f, s)] > 0).sum())
+            for kind in DIRECTION_KINDS:
+                d = dirs[f][kind].float()
+                items.append({"key": (f, s, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": amplitudes["FP"][(f, s)].float()[:, None] * d[None, :], "edit_native": amplitudes["Q"][(f, s)].float()[:, None] * d[None, :],
+                              "targets": tg, "pool": (f, kind), "n_active_q": n_act})
+    res = process_items(items, suffixes, switches, center)
+    return {"items": res["items"], "pooled": res["pooled"], "skipped": skipped}
+
+
+def group_edit(act_fp, act_q, W_dec, idx):
+    """The zero-ablation edit of a feature group on one context. act_fp, act_q: [n, F] SAE activations of the content rows in the FP and in the quantized state; W_dec [F, d]; idx: the group's feature ids.
+    -> (rows (content row + 1, the BOS row), edit_fp [m, d], edit_native [m, d]): the rows where some group feature is active in FP; the FP edit is the sum over the group of activation times decoder row, the
+    native edit the same with the quantized state's own activations at the same rows."""
+    idx = torch.as_tensor(idx, dtype=torch.long); a_fp, a_q = act_fp[:, idx].float(), act_q[:, idx].float(); W = W_dec[idx].float()
+    active = torch.nonzero((a_fp > 0).any(1), as_tuple=True)[0]
+    return active + 1, a_fp[active] @ W, a_q[active] @ W
+
+
+def group_items(code, sentence, h_fp, h_q, act_fp, act_q, W_dec, sets, targets):
+    """The items of one evaluation sentence for the group and its matched control draws: sets {kind: feature ids} (kind 'group', 'control0', ...). -> (items, skipped); a set with no active feature in FP on this
+    sentence is skipped with its key. The pool of an item is (language code, kind): the loss changes of the sentences are pooled by token count in the analysis."""
+    items, skipped = [], []
+    for kind, idx in sets.items():
+        rows, e_fp, e_q = group_edit(act_fp, act_q, W_dec, idx)
+        if len(rows) == 0:
+            skipped.append(((code, sentence, kind), "no_active_group_feature")); continue
+        n_act = int((act_q[:, torch.as_tensor(idx, dtype=torch.long)][rows - 1] > 0).any(1).sum())
+        items.append({"key": (code, sentence, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": e_fp, "edit_native": e_q, "targets": targets, "pool": (code, kind), "n_active_q": n_act})
+    return items, skipped
 
 
 def _cpu(e):
