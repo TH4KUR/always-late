@@ -1,0 +1,15 @@
+# STATUS.md NEXT STEP block of 2026-10-26 08:40, replaced verbatim at 09:15 (wandb Option A done, paper revision 2 done)
+
+Moved here unchanged when the state changed (the file's own protocol: replace the block, keep the old one). The block that replaced it is in STATUS.md; the step that did the work is the Log entry of 2026-10-26 09:15 and handoff 042.
+
+## NEXT STEP
+
+**Rewritten 2026-10-26 08:40 (the Llama check is finished; the previous block of 08:30 is verbatim in [`../archive/status_next_step_2026-10-26_0830.md`](../archive/status_next_step_2026-10-26_0830.md); older stacked updates in [`../archive/status_2026-10-26_cleanup.md`](../archive/status_2026-10-26_cleanup.md) section 2). Do the items in this order. Replace this block when the state changes; append to the Log.**
+
+1. **Intervention-transfer study (D-088), Gemma-2-2B part. Start at Task 1 (freeze)** of `docs/superpowers/plans/2026-10-26-intervention-transfer-main-and-contingencies.md` (design: `docs/superpowers/specs/2026-10-26-intervention-transfer-research-design.md`; both are Codex's files, committed by another session as `f61f223`: read, never edit). Apply the corrections in [`../intervention_transfer/verification_2026-10-26.md`](../intervention_transfer/verification_2026-10-26.md) (Chang §6.1-6.2 as precedent, pre-register that C is expected to dominate, gradient baseline mandatory, Bhandari 2609.06473, citation fixes). Its ledger: `reports/intervention_transfer/STATUS.md` (create it at Task 1). ~~Second model: Gemma-2-9B, which waits for the merge of branch `gemma9b-confirmation`; record that as an amendment before the freeze.~~ **UPDATE 2026-10-26 08:50 (the user): no second model in this study; Gemma-2-2B only; do not wait for, merge or record anything about the 9B branch.** Q28 (extra states): default, plan as written. Queue every Ada job at once (D-077), `--exclude=gnode068,gnode069`, read the log head for `GPU 0:` AND `CUDA initialization`. Done = `freeze.json` committed before any quantized intervention output is read, then Tasks 2 to 6 with their gates; 48 h cap and 32 GPU-hour ceiling. Nothing here needs the user.
+2. **Gemma-2-9B: NOT here, and not a topic of the cron job at all (the user, 2026-10-26 08:50: 'for subsequent runs of the cronjob, dont deal with the 9B confirmatory runs').** Another team, [handoff 040](../handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md). Do not touch branch `gemma9b-confirmation`. Note for the user to forward: `phase1_llama_robust.py` on `main` now has R6 (median of the per-language retention ratios), see handoff 041 section 3.
+3. **wandb:** the user's choice between Option A (post-hoc upload of the finished results, one run per study, schema v2, no weights; recommended) and Option B (offline logging in the job wrappers for future jobs) is unanswered; upload nothing without a go-ahead.
+4. Standing: literature re-check about 2026-10-30; Q21 to Q28 open with their defaults; the cron entries expire about 2026-10-29 (recreate them if the work is not finished).
+
+After each finished step: update this block and the Log, commit explicit paths and push; after a finished task write a handoff.
+

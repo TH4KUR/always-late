@@ -12,7 +12,7 @@ YQJSDJ+CMEX10                        Type 1            Builtin          yes yes 
 NTUNUC+CMSY10                        Type 1            Builtin          yes yes yes    196  0
 VDXHAP+CMMI6                         Type 1            Builtin          yes yes yes    203  0
 BXGEVL+DejaVuSerif                   CID TrueType      Identity-H       yes yes yes    223  0
-RRBAXE+NimbusMonL-Regu               Type 1            Custom           yes yes yes    247  0
+TUTWVJ+NimbusMonL-Regu               Type 1            Custom           yes yes yes    247  0
 BXGEVL+DejaVuSerif                   CID TrueType      Identity-H       yes yes yes    251  0
 BXGEVL+DejaVuSerif                   CID TrueType      Identity-H       yes yes yes    263  0
 OBWNBO+CMMI9                         Type 1            Builtin          yes yes yes    281  0
