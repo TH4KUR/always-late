@@ -273,6 +273,13 @@ class ItemScalars(Fixture, unittest.TestCase):
         self.assertAlmostEqual(s["amp_fp_mean"], float(self.amps["FP"][(2, 10)].mean()), places=6); self.assertAlmostEqual(s["amp_q_mean"], float(self.amps["Q"][(2, 10)].mean()), places=6)
         self.assertAlmostEqual(s["direction_norm"], float(self.dirs[2]["real"].norm()), places=5)
 
+    def test_the_feature_level_run_keeps_the_amplitude_of_every_edited_row_in_both_states_for_the_activation_correlation_baseline(self):
+        out = tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, self.suf, self.switches)
+        for kind in ("real", "random2"):
+            s = out["items"][(2, 10, kind)]
+            self.assertEqual(s["amp_fp"], [float(x) for x in self.amps["FP"][(2, 10)].float()]); self.assertEqual(s["amp_q"], [float(x) for x in self.amps["Q"][(2, 10)].float()])
+            self.assertEqual(len(s["amp_fp"]), s["n_positions"]); self.assertEqual(len(s["amp_q"]), s["n_positions"])
+
     def test_the_group_level_items_carry_the_edit_norms_but_no_activation_fields(self):
         g = torch.Generator().manual_seed(8); W = torch.randn(6, D, generator=g); a_fp = torch.relu(torch.randn(4, 6, generator=g)); a_q = torch.relu(torch.randn(4, 6, generator=g))
         its, _ = tr.group_items("eng", 1, torch.randn(5, D), torch.randn(5, D), a_fp, a_q, W, {"group": [0, 1, 2]}, torch.tensor([1, 2, 3, 4, -1]))

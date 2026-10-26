@@ -189,7 +189,8 @@ def process_chunk(features, contexts, caches, positions, amplitudes, dirs, token
                 d = dirs[f][kind].float()
                 items.append({"key": (f, s, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": amplitudes["FP"][(f, s)].float()[:, None] * d[None, :], "edit_native": amplitudes["Q"][(f, s)].float()[:, None] * d[None, :],
                               "targets": tg, "pool": (f, kind), "ctx": (f, s), "n_active_q": n_act,
-                              "extra": {"amp_fp_mean": float(amplitudes["FP"][(f, s)].float().mean()), "amp_q_mean": float(amplitudes["Q"][(f, s)].float().mean()), "direction_norm": float(d.norm())}})
+                              "extra": {"amp_fp_mean": float(amplitudes["FP"][(f, s)].float().mean()), "amp_q_mean": float(amplitudes["Q"][(f, s)].float().mean()), "direction_norm": float(d.norm()),
+                                        "amp_fp": [float(x) for x in amplitudes["FP"][(f, s)].float()], "amp_q": [float(x) for x in amplitudes["Q"][(f, s)].float()]}})
     res = process_items(items, suffixes, switches, center, max_rows, observer, grad_scales, grad_fn)
     return {"items": res["items"], "pooled": res["pooled"], "skipped": skipped}
 

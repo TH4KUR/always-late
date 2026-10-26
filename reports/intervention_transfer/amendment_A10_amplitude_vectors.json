@@ -1,0 +1,13 @@
+{
+ "amends_freeze_sha256": "3226c94b7e4dff30dda0166eac01fac01813facbdb62654cb36672dc66dbbf5f",
+ "created": "2026-10-26 15:54 IST",
+ "definition": "Every feature-level item additionally stores the activation of its feature at each FP-active edited position in the FP state (amp_fp) and in the quantized state (amp_q), as lists of floats in the order of the edited positions (the same order as the rows of the edit). These are the inputs of the prespecified baseline A 'activation correlation' (the correlation or cosine of the two amplitude vectors across the edited positions, with a defined fallback when a context has fewer than two positions) and of the activation-drift quantities of H1; the existing amp_fp_mean and amp_q_mean are their means.",
+ "fields": ["amp_fp", "amp_q"],
+ "id": "A10",
+ "kind": "intervention-transfer-freeze-amendment",
+ "schema": 1,
+ "scope": "feature-level run only (group-level items have no single feature activation); additive fields; no change of the Gram, the cells or the frozen spec.",
+ "status": "written before any full-run output of the study exists; the code's spec and freeze.json are unchanged.",
+ "title": "Per-item amplitude vectors for the activation-correlation baseline",
+ "why": "Baseline A of the frozen spec lists 'activation correlation', which the mean amplitudes stored so far cannot give (a correlation needs the per-position values). The vectors are a few floats per item and cost nothing."
+}
