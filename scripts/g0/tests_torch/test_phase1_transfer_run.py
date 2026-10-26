@@ -1,3 +1,4 @@
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -278,6 +279,49 @@ class ItemScalars(Fixture, unittest.TestCase):
         out = tr.process_items(its, self.suf, self.switches)
         for s in out["items"].values():
             self.assertIn("edit_norm_fp", s); self.assertNotIn("amp_fp_mean", s)
+
+
+class GradItems(Fixture, unittest.TestCase):
+    def test_a_gradient_cell_is_the_effect_of_a_scaled_fp_edit_at_the_quantized_prefix_and_suffix(self):
+        its = ProcessItems.items(self); out = tr.process_items(its, self.suf, self.switches, grad_scales=(0.05, 0.025))
+        names = tc.CELLS + (tc.grad_cell_name(0.05), tc.grad_cell_name(0.025))
+        for it in its:
+            s = out["items"][it["key"]]; self.assertEqual(s["cells"], list(names)); self.assertEqual(s["gram"].shape, (7, 7)); self.assertEqual(len(s["dloss"]), 7)
+            for j, tt in enumerate((0.05, 0.025)):
+                ref = tc.effect(it["h_q"], it["rows"], tt * it["edit_fp"], self.suf["Q"], it["targets"])
+                self.assertAlmostEqual(s["gram"][5 + j, 5 + j], float(ref["vector"].double() @ ref["vector"].double()), places=6); self.assertAlmostEqual(s["dloss"][5 + j], ref["dloss"], places=6)
+
+    def test_the_five_cell_block_is_the_same_with_and_without_gradient_cells(self):
+        its = ProcessItems.items(self); a = tr.process_items(its, self.suf, self.switches); b = tr.process_items(its, self.suf, self.switches, grad_scales=(0.05,))
+        for k in a["items"]:
+            self.assertTrue(np.allclose(a["items"][k]["gram"], b["items"][k]["gram"][:5, :5], atol=1e-6)); self.assertEqual(a["items"][k]["cells"], list(tc.CELLS)); self.assertEqual(a["items"][k]["gram"].shape, (5, 5))
+        for k in a["pooled"]:
+            self.assertEqual(b["pooled"][k]["gram"].shape, (6, 6)); self.assertTrue(np.allclose(a["pooled"][k]["gram"], b["pooled"][k]["gram"][:5, :5], atol=1e-6))
+
+    def test_for_a_linear_suffix_the_gradient_cell_is_exactly_t_times_the_fixed_cell(self):
+        lin = {"FP": lambda x: x @ (torch.ones(D, V) * 0.3), "Q": lambda x: x @ (torch.arange(D * V, dtype=torch.float32).reshape(D, V) * 0.01)}
+        its = ProcessItems.items(self); out = tr.process_items(its, lin, self.switches, grad_scales=(0.05,))
+        for it in its:
+            G = out["items"][it["key"]]["gram"]; self.assertAlmostEqual(G[5, 5], 0.05 ** 2 * G[3, 3], places=6); self.assertAlmostEqual(G[5, 3], 0.05 * G[3, 3], places=6)
+
+    def test_the_chunk_processor_and_the_run_pass_the_gradient_scales_on(self):
+        out = tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, self.suf, self.switches, grad_scales=(0.05,))
+        self.assertEqual(out["items"][(2, 10, "real")]["gram"].shape, (6, 6)); self.assertEqual(out["pooled"][(2, "real")]["gram"].shape, (6, 6))
+        with tempfile.TemporaryDirectory() as o:
+            run_fake(FakeModel(), o, grad_scales=(0.05, 0.025)); items = read_chunks(o, "INT6")
+            self.assertTrue(all(it["gram"].shape == (7, 7) and it["cells"][-1] == "Q/Q-grad@0.025" for it in items.values()))
+
+    def test_the_row_budget_counts_the_gradient_edits_too(self):
+        suf = {"FP": self.suf["FP"], "Q": lambda x: (self.shapes.append(tuple(x.shape)) or self.suf["Q"](x))}; self.shapes = []
+        tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, suf, self.switches, max_rows=28, grad_scales=(0.05,))
+        self.assertTrue(all(s[0] * s[1] <= 28 for s in self.shapes))                                                       # 1 + 3K sequences of 4 rows: K = 2 at most
+
+    def test_the_group_level_run_has_no_gradient_cells_and_the_feature_run_takes_the_scale_from_the_amendment(self):
+        import json as _json
+        root = Path(__file__).resolve().parents[3]; am = _json.loads((root / "reports/intervention_transfer/amendment_A7_gradient_cell.json").read_text())
+        self.assertEqual(tr.GRAD_SCALES, am["scales"]); self.assertEqual(am["cell"], tc.grad_cell_name(am["scales"][0])); self.assertEqual(am["amends_freeze_sha256"], hashlib.sha256((root / "reports/intervention_transfer/freeze.json").read_bytes()).hexdigest())
+        its, _ = tr.group_items("eng", 1, torch.randn(5, D), torch.randn(5, D), torch.relu(torch.randn(4, 6)), torch.relu(torch.randn(4, 6)), torch.randn(6, D), {"group": [0, 1, 2]}, torch.tensor([1, 2, 3, 4, -1]))
+        self.assertEqual(tr.process_items(its, self.suf, self.switches)["items"][("eng", 1, "group")]["gram"].shape, (5, 5))
 
 
 class GroupEdits(unittest.TestCase):

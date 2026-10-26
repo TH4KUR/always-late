@@ -248,6 +248,23 @@ class Many(unittest.TestCase):
             tc.effect_many(self.h, self.edits, lambda x: x[..., :1] / 0.0 + torch.zeros(*x.shape[:-1], self.V))
 
 
+class GradCells(unittest.TestCase):
+    """The first-order (finite-difference) cell of the gradient baseline: a small multiple t of the FP edit at the quantized prefix and suffix."""
+    def test_the_gram_can_be_taken_over_more_cells_and_the_five_cell_norms_ignore_them(self):
+        cells = {c: {"vector": torch.randn(7)} for c in tc.CELLS}; cells["Q/Q-grad@0.05"] = {"vector": torch.randn(7)}
+        G6 = tc.gram(cells, tc.CELLS + ("Q/Q-grad@0.05",)); G5 = tc.gram(cells)
+        self.assertEqual(tuple(G6.shape), (6, 6)); self.assertTrue(torch.allclose(G6[:5, :5], G5))
+        n6, n5 = tc.decomposition_norms(G6), tc.decomposition_norms(G5)
+        for k in n5:
+            self.assertAlmostEqual(n6[k], n5[k], places=9)
+        self.assertEqual(tc.transfer_error(G6, 0.5), tc.transfer_error(G5, 0.5))
+        with self.assertRaisesRegex(ValueError, "missing"):
+            tc.gram({c: cells[c] for c in tc.CELLS}, tc.CELLS + ("Q/Q-grad@0.05",))
+
+    def test_the_cell_name_carries_the_scale(self):
+        self.assertEqual(tc.grad_cell_name(0.05), "Q/Q-grad@0.05"); self.assertEqual(tc.grad_cell_name(0.025), "Q/Q-grad@0.025")
+
+
 class Observer(Many):
     """An optional observer sees the raw logits of a call (for sidecar measurements such as decision margins) and changes nothing."""
     def test_the_observer_is_called_once_per_call_with_the_raw_logits_the_rows_and_the_tag(self):

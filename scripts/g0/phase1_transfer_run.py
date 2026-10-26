@@ -19,6 +19,7 @@ import phase1_transfer_core as tc
 
 DIRECTION_KINDS = ("real", "matched_swapped", "random1", "random2", "random3")
 RANDOM_SEEDS = [1, 2, 3]
+GRAD_SCALES = [0.05]        # amendment A7 (reports/intervention_transfer/amendment_A7_gradient_cell.json): the first-order cell of the mandatory gradient baseline, feature-level run only
 # Instrument gates of the model-facing part (not part of the frozen spec). The float32 readout is compared with the model's own bfloat16 logits on the rows of a probe batch: top-1 agreement and the largest absolute
 # logit difference. Amendment A6 (ledger, 2026-10-26 14:35): the top-1 threshold of the F5 runner (0.95) was written for ITS probe of four evaluation sentences (62 rows, 59 of 62 needed); the first instrument job
 # (Slurm 40070) agreed on 58 of 62 rows of its probe with a largest difference of 0.59, so the threshold is 0.90 on a larger probe (8 sentences, at most 512 rows): the gate catches a wrong split, layer, dtype or
@@ -81,9 +82,9 @@ def load_chunk(path, key):
     return d["payload"]
 
 
-def _batches(jobs, max_rows):
+def _batches(jobs, max_rows, per_item=2):
     """Group the items by context ("ctx"; an item without one is its own context) and cut each group into sub-batches whose largest suffix call (the quantized suffix with the fixed AND the native edits of the quantized
-    prefix: 1 + 2K sequences of L rows) stays within `max_rows` rows (at least one item per sub-batch). Items of one context must share the residuals and the targets."""
+    prefix: 1 + per_item K sequences of L rows, per_item = 2 + the number of gradient scales) stays within `max_rows` rows (at least one item per sub-batch). Items of one context must share the residuals and the targets."""
     groups = {}
     for it in jobs:
         groups.setdefault(it.get("ctx", ("single", it["key"])), []).append(it)
@@ -92,16 +93,17 @@ def _batches(jobs, max_rows):
         first = g[0]
         if any(it["h_fp"] is not first["h_fp"] or it["h_q"] is not first["h_q"] or it["targets"] is not first["targets"] for it in g[1:]):
             raise ValueError(f"items of the context {first.get('ctx', first['key'])} must share the residuals and the targets")
-        kmax = max(1, ((max_rows // first["h_fp"].shape[0]) - 1) // 2)
+        kmax = max(1, ((max_rows // first["h_fp"].shape[0]) - 1) // per_item)
         out += [g[i:i + kmax] for i in range(0, len(g), kmax)]
     return out
 
 
-def process_items(items, suffixes, switches, center=True, max_rows=768, observer=None):
+def process_items(items, suffixes, switches, center=True, max_rows=768, observer=None, grad_scales=()):
     """The five cells of the crossed design for a list of items, each with its OWN edits (the feature-level run builds them from one feature's amplitude times a direction, the group-level run from the sum over a
     feature group). item: {"key" (unique), "rows" (edited rows of the cached context), "h_fp", "h_q" ([L, d] float32 prefix residuals), "edit_fp" (the FP edit at those rows, used in the cells FP/FP, Q/FP, FP/Q,
     Q/Q), "edit_native" (the quantized state's own edit, cell Q/Q-native), "targets" ([L], -1 = none), "pool" (key of the pool the item belongs to, or None), "ctx" (items of one context: the same residual and
-    target objects; they share the unedited run in ONE suffix call per cell, see `_batches`), "n_active_q" (optional count)}.
+    target objects; they share the unedited run in ONE suffix call per cell, see `_batches`), "n_active_q" (optional count), "extra" (optional dict of scalars stored with the item)}.
+    grad_scales: scales t of the first-order cells 'Q/Q-grad@t' (the FP edit times t at the quantized prefix and suffix, in the same call as Q/Q; amendment A7); the stored Gram is then over CELLS plus these cells.
     Order of work: switches["FP"](), the FP-suffix cells of every context batch (vectors kept on the host), switches["Q"](), the Q-suffix cells (the cells Q/Q and Q/Q-native of a batch share one call and one
     unedited run), then the Gram matrices. observer: see `phase1_transfer_core.effect_many` (the tag is (cell, [item keys]); for the call 'Q/Q+Q/Q-native' the first K edits are Q/Q, the next K Q/Q-native).
     -> {"items": {key: {"gram" (5 x 5 float64), "dloss", "loss_base" (five values each), "n_rows", "n_target_rows", "n_active_q", "n_positions", "edit_norm_fp", "edit_norm_native", "resid_norm_fp", "resid_norm_q" and the item's optional "extra" fields}}, "pooled": {pool: {"gram", "n_rows", "n_contexts"}}, "skipped": [(key, reason)]}."""
@@ -114,7 +116,7 @@ def process_items(items, suffixes, switches, center=True, max_rows=768, observer
             skipped.append((it["key"], "no_edited_row"))
         else:
             jobs.append(it)
-    batches = _batches(jobs, max_rows); fp_vectors = {}
+    names = tuple(tc.CELLS) + tuple(tc.grad_cell_name(t) for t in grad_scales); batches = _batches(jobs, max_rows, 2 + len(grad_scales)); fp_vectors = {}
     switches["FP"]()
     for b in batches:
         f0, ks = b[0], [it["key"] for it in b]; edits = [(it["rows"], it["edit_fp"]) for it in b]
@@ -130,29 +132,32 @@ def process_items(items, suffixes, switches, center=True, max_rows=768, observer
         f0, ks = b[0], [it["key"] for it in b]; edits = [(it["rows"], it["edit_fp"]) for it in b]; native = [(it["rows"], it["edit_native"]) for it in b]
         try:
             fq = tc.effect_many(f0["h_fp"], edits, suffixes["Q"], f0["targets"], center, observer, ("FP/Q", ks))
-            qq = tc.effect_many(f0["h_q"], edits + native, suffixes["Q"], f0["targets"], center, observer, ("Q/Q+Q/Q-native", ks))
+            grads = [(it["rows"], t * it["edit_fp"]) for t in grad_scales for it in b]
+            qq = tc.effect_many(f0["h_q"], edits + native + grads, suffixes["Q"], f0["targets"], center, observer, ("Q/Q+Q/Q-native" + "".join("+" + tc.grad_cell_name(t) for t in grad_scales), ks))
         except ValueError as e:
             raise ValueError(f"context {ks[0]} (batch of {len(ks)}): {e}") from None
         for i, it in enumerate(b):
             key = it["key"]; cells = dict(fp_vectors.pop(key)); cells["FP/Q"] = _cpu(fq[i]); cells["Q/Q"] = _cpu(qq[i]); cells["Q/Q-native"] = _cpu(qq[len(b) + i])
+            for j, t in enumerate(grad_scales):
+                cells[tc.grad_cell_name(t)] = _cpu(qq[(2 + j) * len(b) + i])
             n = cells["FP/FP"]["n_rows"]
-            out[key] = {"gram": tc.gram(cells).numpy().astype(np.float64), "dloss": [cells[c]["dloss"] for c in tc.CELLS], "loss_base": [cells[c]["loss_base"] for c in tc.CELLS], "n_rows": n,
+            out[key] = {"gram": tc.gram(cells, names).numpy().astype(np.float64), "cells": list(names), "dloss": [cells[c]["dloss"] for c in names], "loss_base": [cells[c]["loss_base"] for c in names], "n_rows": n,
                         "n_target_rows": int((it["targets"] >= 0).sum()), "n_active_q": it.get("n_active_q"), "n_positions": int(len(it["rows"])),
                         "edit_norm_fp": float(it["edit_fp"].norm(dim=-1).mean()), "edit_norm_native": float(it["edit_native"].norm(dim=-1).mean()),
                         "resid_norm_fp": float(it["h_fp"][it["rows"]].norm(dim=-1).mean()), "resid_norm_q": float(it["h_q"][it["rows"]].norm(dim=-1).mean()), **it.get("extra", {})}
             pool = it.get("pool")
             if pool is not None:
-                acc = sums.setdefault(pool, {c: 0 for c in tc.CELLS}); nrows[pool] = nrows.get(pool, 0) + n; counts[pool] = counts.get(pool, 0) + 1
-                for c in tc.CELLS:
+                acc = sums.setdefault(pool, {c: 0 for c in names}); nrows[pool] = nrows.get(pool, 0) + n; counts[pool] = counts.get(pool, 0) + 1
+                for c in names:
                     acc[c] = acc[c] + n * cells[c]["vector"].double()
     pooled = {}
     for pool, acc in sums.items():
-        avg = {c: {"vector": acc[c] / nrows[pool]} for c in tc.CELLS}
-        pooled[pool] = {"gram": tc.gram(avg).numpy().astype(np.float64), "n_rows": nrows[pool], "n_contexts": counts[pool]}
+        avg = {c: {"vector": acc[c] / nrows[pool]} for c in names}
+        pooled[pool] = {"gram": tc.gram(avg, names).numpy().astype(np.float64), "n_rows": nrows[pool], "n_contexts": counts[pool]}
     return {"items": out, "pooled": pooled, "skipped": skipped}
 
 
-def process_chunk(features, contexts, caches, positions, amplitudes, dirs, tokens, suffixes, switches, center=True, max_rows=768, observer=None):
+def process_chunk(features, contexts, caches, positions, amplitudes, dirs, tokens, suffixes, switches, center=True, max_rows=768, observer=None, grad_scales=()):
     """The items of one chunk of the feature-level run: for every feature, context (dev sentence) and direction kind the edit is the activation of the feature at its FP-active positions times the direction (FP
     activation in the fixed cells, the quantized state's own activation in the native cell).
     features: feature ids; contexts: {feature: [dev sentence index]}; caches: {"FP": {sentence: [n+1, d] residual}, "Q": {...}} (any float dtype; converted to float32);
@@ -176,7 +181,7 @@ def process_chunk(features, contexts, caches, positions, amplitudes, dirs, token
                 items.append({"key": (f, s, kind), "rows": rows, "h_fp": h_fp, "h_q": h_q, "edit_fp": amplitudes["FP"][(f, s)].float()[:, None] * d[None, :], "edit_native": amplitudes["Q"][(f, s)].float()[:, None] * d[None, :],
                               "targets": tg, "pool": (f, kind), "ctx": (f, s), "n_active_q": n_act,
                               "extra": {"amp_fp_mean": float(amplitudes["FP"][(f, s)].float().mean()), "amp_q_mean": float(amplitudes["Q"][(f, s)].float().mean()), "direction_norm": float(d.norm())}})
-    res = process_items(items, suffixes, switches, center, max_rows, observer)
+    res = process_items(items, suffixes, switches, center, max_rows, observer, grad_scales)
     return {"items": res["items"], "pooled": res["pooled"], "skipped": skipped}
 
 
@@ -226,7 +231,7 @@ def subset_core(core, max_features, max_contexts):
     return out
 
 
-def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, max_features=None, max_contexts=None, max_rows=768):
+def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, max_features=None, max_contexts=None, max_rows=768, grad_scales=()):
     """The feature-level core of the study for the quantized states `states` (labels, FP excluded: the FP prefix cache is built once). setup(label) puts the model weights in that state ('FP' or a quantized label);
     lower(tokens) -> [B, L, d] prefix residual; suffix([B, L, d] float32) -> [B, L, V] float32 logits (upper layers, final norm, unembedding, soft cap); encode(rows) -> SAE activations;
     W_dec [F, d]; core: the committed core sample (feature ids, matched direction ids, contexts as dev-sentence indices); dev_tokens: token ids of every dev sentence; batcher(sentences) -> batches (as the F5 runner).
@@ -261,7 +266,7 @@ def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, 
                 st["resumed"] += 1; continue
             t1 = time.time()
             res = process_chunk(chunk, {f: ctxs[f] for f in chunk}, caches, pos_f, amps, {f: build_directions(W_cpu, f, matched[f], RANDOM_SEEDS) for f in chunk},
-                                {s: dev_tokens[s] for f in chunk for s in ctxs[f]}, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=label: setup(l)}, max_rows=max_rows)
+                                {s: dev_tokens[s] for f in chunk for s in ctxs[f]}, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=label: setup(l)}, max_rows=max_rows, grad_scales=grad_scales)
             atomic_save({**res, "features": chunk}, path, key); st["items"] += len(res["items"]); st["skipped"] += len(res["skipped"]); st["seconds"] += time.time() - t1
             log(f"state {label} chunk {ci + 1}/{len(chunks)}: {len(res['items'])} items, {time.time() - t1:.0f} s")
     setup("FP"); meta["seconds"] = time.time() - t0
@@ -361,6 +366,7 @@ def main(argv=None):
     ap.add_argument("--task", choices=["feature", "group"], default="feature", help="feature: the feature-level core (404 features); group: the group-level panel (K64 group and control draws on the 27 x 300 evaluation sentences)")
     ap.add_argument("--manifest", default=str(ROOT / "reports/functional_validation/groups_manifest.json")); ap.add_argument("--eval-freeze", default=str(ROOT / "reports/functional_validation/evaluation_freeze_lm.json"))
     ap.add_argument("--chunk-sentences", type=int, default=60); ap.add_argument("--max-sentences", type=int, help="first n evaluation sentences of each language (group smoke)"); ap.add_argument("--max-languages", type=int, help="first n languages (group smoke)")
+    ap.add_argument("--grad-scales", type=float, nargs="*", default=GRAD_SCALES, help="scales of the first-order cells of the gradient baseline (feature task only; amendment A7: 0.05; the instrument job may add 0.025 to check the finite difference)")
     ap.add_argument("--max-rows", type=int, default=768, help="largest suffix call in rows (sequences x length); a context batch is cut to stay within it"); ap.add_argument("--chunk-features", type=int, default=25); ap.add_argument("--max-features", type=int, help="evenly spaced subset of the core (instrument job)"); ap.add_argument("--max-contexts", type=int, help="first contexts of each feature (instrument job)")
     ap.add_argument("--dev-per-language", type=int, default=997); ap.add_argument("--max-len", type=int, default=256); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024)
     ap.add_argument("--commit", default="unknown")
@@ -438,12 +444,12 @@ def main(argv=None):
         raise GateError(f"the split or the float32 logits do not reproduce the model: {gates}")
 
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    meta = {"task": "transfer-" + a.task, "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_rows": a.max_rows, "max_features": a.max_features, "max_contexts": a.max_contexts,
+    meta = {"task": "transfer-" + a.task, "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_rows": a.max_rows, "grad_scales": a.grad_scales if a.task == "feature" else [], "max_features": a.max_features, "max_contexts": a.max_contexts,
             "freeze_sha256": freeze_sha, "core_sha256": hashlib.sha256(Path(a.core).read_bytes()).hexdigest(), "gates": gates, "dev_sentences": len(dev_tokens), "truncated": truncated,
             "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "complete": False}
     (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
     if a.task == "feature":
-        res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts, max_rows=a.max_rows)
+        res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts, max_rows=a.max_rows, grad_scales=a.grad_scales)
     else:
         man = json.loads(Path(a.manifest).read_text()); eval_ids = fr5.frozen_eval_ids(json.loads(Path(a.eval_freeze).read_text())); langs = names[:a.max_languages] if a.max_languages else names; eval_tokens = {}
         for code in langs:

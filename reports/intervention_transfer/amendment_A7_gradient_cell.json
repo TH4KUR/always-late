@@ -1,0 +1,17 @@
+{
+ "amends_freeze_sha256": "3226c94b7e4dff30dda0166eac01fac01813facbdb62654cb36672dc66dbbf5f",
+ "cell": "Q/Q-grad@0.05",
+ "created": "2026-10-26 15:29 IST",
+ "definition": "For every (feature, context, direction) item the effect of t times the FP edit (t = 0.05) applied to the cached quantized-prefix residual and run through the quantized suffix, in the same suffix call as the cells Q/Q and Q/Q-native (the same unedited run as base). Its centered-logit effect vector, divided by t, is the one-sided finite-difference estimate of the directional derivative of the quantized model along the FP edit: the first-order prediction of the effect at the native quantized context (arXiv 2610.15850 as a baseline). The stored Gram is over the five cells plus this cell (6 x 6); the raw vector of the cell (not divided by t) is what the Gram contains.",
+ "id": "A7",
+ "kind": "intervention-transfer-freeze-amendment",
+ "scales": [
+  0.05
+ ],
+ "schema": 1,
+ "scope": "feature-level run only (the group-level run has no gradient cell)",
+ "status": "written before any full-run output of the study exists; freeze.json and the spec in the code are unchanged (the extra cell is additive: the five-cell block of the Gram is identical with and without it, tested).",
+ "title": "The first-order cell of the mandatory gradient baseline (finite difference)",
+ "validation": "The instrument job that follows this amendment runs the scales 0.05 and 0.025 on the instrument subset and compares the two derivatives (tests: for a linear suffix the cell is exactly t times the fixed-amplitude cell Q/Q). The full runs use 0.05 only.",
+ "why": "The frozen spec requires 'gradient: first-order (forward-mode) prediction ... mandatory' without fixing the implementation. A finite difference uses the same forward machinery as every other cell and needs no autograd or forward-mode support of the hooked model; a single edit costs about 17 percent more sequences per item (the speed of the batched runner was measured at 0.23 s per item against 0.59 s before, so the plan fits the 32 GPU-hour ceiling with this cell)."
+}

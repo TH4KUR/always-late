@@ -109,18 +109,23 @@ def decompose_contexts(per_context):
     return out
 
 
-def gram(cells):
-    """The 5 x 5 Gram matrix (float64) of the effect vectors of the cells in the order of CELLS: what the run stores per context."""
-    missing = [n for n in CELLS if n not in cells]
+def grad_cell_name(t):
+    """The name of the first-order cell of the gradient baseline (amendment A7): the effect of the FP edit scaled by t at the quantized prefix and suffix; the derivative is its vector divided by t."""
+    return f"Q/Q-grad@{t:g}"
+
+
+def gram(cells, names=CELLS):
+    """The Gram matrix (float64) of the effect vectors of `names` (default the five cells, in the order of CELLS: what the run stores per context; the gradient cells of amendment A7 are appended)."""
+    missing = [n for n in names if n not in cells]
     if missing:
         raise ValueError(f"missing cell(s) {missing}")
-    V = torch.stack([cells[n]["vector"].double() for n in CELLS])
+    V = torch.stack([cells[n]["vector"].double() for n in names])
     return V @ V.T
 
 
 def decomposition_norms(G):
     """The norms of C, W, I, total and native_minus_fixed from the Gram matrix."""
-    out = {}
+    out = {}; G = G[:5, :5]
     for k, c in _COEF.items():
         c = torch.tensor(c, dtype=torch.float64); out[k] = float(torch.sqrt(torch.clamp(c @ G @ c, min=0.0)))
     return out
