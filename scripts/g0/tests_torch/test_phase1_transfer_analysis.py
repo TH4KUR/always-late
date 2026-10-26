@@ -62,6 +62,17 @@ class GroupChunks(unittest.TestCase):
                 ta.load_chunks(d, "group", "INT4", pools=False)                                                           # an item that occurs twice is an error in every case
 
 
+class Contiguity(unittest.TestCase):
+    def test_a_missing_chunk_file_in_the_middle_is_an_error_that_names_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            for c in (0, 2):
+                tr.atomic_save({"items": {(10, 1000 + c, "real"): item(3, 3)}, "pooled": {}, "skipped": []}, d / f"transfer_INT4_c{c:03d}.pt", f"k{c}")
+            with self.assertRaisesRegex(ValueError, "c001"):
+                ta.load_chunks(d, "transfer", "INT4", pools=False)
+            tr.atomic_save({"items": {(10, 1001, "real"): item(3, 3)}, "pooled": {}, "skipped": []}, d / "transfer_INT4_c001.pt", "k1"); self.assertEqual(len(ta.load_chunks(d, "transfer", "INT4", pools=False)[0]), 3)
+
+
 class Table(unittest.TestCase):
     def test_a_row_per_item_with_the_norms_the_split_and_the_source_cluster(self):
         items = {(10, 1000, "real"): item(3.0, 5.0, 4.0), (11, 2001, "matched_swapped"): item(4.0, 4.0)}
@@ -109,6 +120,28 @@ class TableExtras(unittest.TestCase):
         r = self.row([[1.0, 0.0]] * 5, g_pred_fp=0.5, g_pred_q_fixed=0.75, g_pred_q_native=1.25, g_norm_fp=2.0, g_norm_q=3.0)
         self.assertEqual((r["g_pred_fp"], r["g_pred_q_fixed"], r["g_pred_q_native"], r["g_norm_fp"], r["g_norm_q"]), (0.5, 0.75, 1.25, 2.0, 3.0)); self.assertAlmostEqual(r["g_shift_native"], 0.75); self.assertAlmostEqual(r["g_shift_fixed"], 0.25)
         self.assertNotIn("g_shift_native", self.row([[1.0, 0.0]] * 5))
+
+
+class LossReporting(unittest.TestCase):
+    def test_the_signed_loss_changes_and_the_unedited_hybrid_losses_are_carried_into_the_table_and_summarized(self):
+        it = {**item(10, 10), "dloss": [0.1, 0.2, 0.3, 0.4, 0.5], "loss_base": [2.0, 3.0, 4.0, 5.0, 6.0]}; none = {**item(10, 10), "dloss": [None] * 5, "loss_base": [None] * 5}
+        rows = ta.item_table({(10, 1000, "real"): it, (10, 2000, "real"): none}, CORE, SPLIT, 997); r = rows[(10, 1000, "real")]
+        self.assertEqual([r[k] for k in ("dloss_FP_FP", "dloss_Q_FP", "dloss_FP_Q", "dloss_Q_Q", "dloss_Q_Q_native")], [0.1, 0.2, 0.3, 0.4, 0.5]); self.assertEqual((r["loss_base_FP_FP"], r["loss_base_Q_Q"]), (2.0, 5.0)); self.assertIsNone(rows[(10, 2000, "real")]["dloss_Q_Q"])
+        rec = ta.component_summary(ta.apply_floor(rows, {"real": 1.0}), n_boot=20, seed=1, eligible_only=False)
+        for name, want in (("dloss_FP_FP", 0.1), ("dloss_Q_Q", 0.4), ("dloss_Q_Q_native", 0.5), ("loss_base_FP", 2.0), ("loss_base_Q", 5.0)):
+            a = find(rec, kind="real", split="all", metric=name); self.assertAlmostEqual(a["point"], want); self.assertEqual((a["n"], a["n_missing"]), (1, 1))
+        self.assertAlmostEqual(find(rec, kind="real", split="all", metric="dloss_error")["point"], 0.3)                                      # signed loss change of the quantized model minus that of the full-precision one
+
+
+class EligibilityReference(unittest.TestCase):
+    def test_eligibility_can_be_fixed_from_a_reference_state_while_the_error_uses_the_rows_own_norm(self):
+        ref = ta.item_table({(10, 1000, "real"): item(10, 10), (10, 2000, "real"): item(4, 4)}, CORE, SPLIT, 997)
+        own = ta.item_table({(10, 1000, "real"): item(4.5, 4.5), (10, 2000, "real"): item(11, 11)}, CORE, SPLIT, 997)                       # in this state the norms differ: 4.5 and 11
+        plain = ta.apply_floor(own, {"real": 1.0}); self.assertEqual([plain[k]["eligible"] for k in sorted(plain)], [False, True])
+        fixed = ta.apply_floor(own, {"real": 1.0}, reference=ref); self.assertEqual([fixed[k]["eligible"] for k in sorted(fixed)], [True, False])
+        self.assertAlmostEqual(fixed[(10, 1000, "real")]["normalized_error"], plain[(10, 1000, "real")]["normalized_error"])
+        with self.assertRaisesRegex(ValueError, "reference"):
+            ta.apply_floor(own, {"real": 1.0}, reference={(10, 1000, "real"): ref[(10, 1000, "real")]})
 
 
 class Floor(unittest.TestCase):

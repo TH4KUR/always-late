@@ -17,6 +17,7 @@ from test_phase1_transfer_analysis import CORE, SPLIT, gitem, gram_of, group_ite
 
 KINDS = ("real", "matched_swapped", "random1", "random2", "random3")
 CONTEXTS = {10: (1000, 2000), 11: (1001, 2001), 12: (3000, 3001), 13: (3002, 3003)}
+CORE = {**CORE, "contexts": [list(CONTEXTS[f]) for f in CORE["feature_ids"]]}                                                      # the planned contexts of the fixture runs (the feature level is checked against them)
 ERR = {"INT16": 0.1, "INT6": 5.0, "INT4": 20.0}
 
 
@@ -25,16 +26,18 @@ def feature_item(err, kind_gap=0.0):
     return {"gram": gram_of([[100.0, 0.0], [100.0, 0.0], [100.0, 0.0], [100.0, err], [100.0, err / 2]]), "cells": list(tc.CELLS), "dloss": [0.1] * 5, "loss_base": [2.0] * 5, "n_rows": 2, "n_target_rows": 5, "n_active_q": 1, "n_positions": 2}
 
 
-def write_feature_dir(d, state, drop=None):
+def write_feature_dir(d, state, drop=None, weak=None):
     items, pooled = {}, {}
     for f, ss in CONTEXTS.items():
         for k in KINDS:
             for s in ss:
                 items[(f, s, k)] = feature_item(ERR[state] * (1 + 0.01 * f))
             pooled[(f, k)] = {**pool_gram([100.0, 0.0], [100.0, ERR[state]]), "n_contexts": len(ss)}
+    if weak:                                                                                                                         # an item whose full-precision effect is tiny in THIS job (the FP/FP cell is recomputed in every job)
+        items[weak] = {**items[weak], "gram": gram_of([[0.3, 0.0]] * 3 + [[0.3, ERR[state]], [0.3, ERR[state] / 2]])}
     if drop:
         del items[drop]
-    tr.atomic_save({"items": items, "pooled": pooled, "skipped": [((99, 1, "real"), "no_fp_active_position")]}, Path(d) / f"transfer_{state}_c000.pt", f"k-{state}")
+    tr.atomic_save({"items": items, "pooled": pooled, "skipped": []}, Path(d) / f"transfer_{state}_c000.pt", f"k-{state}")
 
 
 def write_group_dir(d, state, langs=("a", "b"), n_sent=6):
@@ -63,7 +66,7 @@ class FeatureLevel(Fixture):
         self.assertEqual(set(res["floors"]), set(KINDS)); self.assertTrue(all(abs(res["floors"][k] - want[k]) < 1e-9 for k in KINDS)); self.assertEqual(res["floor_state"], "INT16")
         for s in ERR:
             self.assertTrue(all(abs(r["floor"] - want[r["kind"]]) < 1e-9 for r in res["states"][s]["rows"].values()))
-        self.assertTrue(res["states"]["INT16"]["reference"]); self.assertFalse(res["states"]["INT4"]["reference"]); self.assertEqual(res["states"]["INT4"]["n_items"], 4 * 2 * 5); self.assertEqual(res["states"]["INT4"]["n_skipped"], 1)
+        self.assertTrue(res["states"]["INT16"]["reference"]); self.assertFalse(res["states"]["INT4"]["reference"]); self.assertEqual(res["states"]["INT4"]["n_items"], 4 * 2 * 5); self.assertEqual(res["states"]["INT4"]["n_skipped"], 0)
 
     def test_every_table_is_present_per_state_and_the_predictive_results_are_reported_with_their_counts(self):
         res = rep.feature_level(self.fdirs, CORE, SPLIT, 997, n_boot=20, seed=1); st = res["states"]["INT4"]
@@ -142,6 +145,52 @@ class SurvivalTable(Fixture):
         self.assertEqual((col("A+P", "reduction_over_A"), col("A+P", "reduction_over_A_low"), col("A+P", "reduction_over_A_high")), ("0.05", "0.01", "0.09")); self.assertEqual(col("A+P", "reduction_over_diagnostic"), "")
         self.assertEqual((col("A+B+P", "reduction_over_diagnostic"), col("A+B+P", "reduction_over_diagnostic_low"), col("A+B+P", "reduction_over_diagnostic_high")), ("0.03", "-0.01", "0.07")); self.assertEqual(col("A+B+P", "reduction_over_A"), "")
         self.assertEqual(col("A", "reduction_over_A"), ""); self.assertEqual(col("A+B", "reduction_over_diagnostic"), ""); self.assertEqual(col("A", "heldout_mae"), "0.4")
+
+
+class Completeness(Fixture):
+    def test_a_state_that_lost_items_fails_the_planned_count_even_when_every_state_lost_the_same(self):
+        for s in ERR:
+            write_feature_dir(self.fdirs[s], s, drop=(10, 1000, "real"))                                                                 # all states lack the same item: the states agree, the plan does not
+        with self.assertRaisesRegex(ValueError, "planned"):
+            rep.feature_level(self.fdirs, CORE, SPLIT, 997, n_boot=10, seed=1)
+
+    def test_skipped_contexts_and_skipped_items_count_five_and_one_against_the_plan(self):
+        items, pooled = {}, {}
+        for f, ss in CONTEXTS.items():
+            for k in KINDS:
+                for s in ss:
+                    if (f, s) != (13, 3003):
+                        items[(f, s, k)] = feature_item(1.0)
+                pooled[(f, k)] = {**pool_gram([100.0, 0.0], [100.0, 1.0]), "n_contexts": len(ss) - (1 if f == 13 else 0)}
+        d = self.root / "skip"; d.mkdir(); tr.atomic_save({"items": items, "pooled": pooled, "skipped": [(13, 3003, "no_fp_active_position")]}, d / "transfer_INT16_c000.pt", "k")
+        res = rep.feature_level({"INT16": d}, CORE, SPLIT, 997, n_boot=10, seed=1); self.assertEqual((res["states"]["INT16"]["n_items"], res["states"]["INT16"]["n_skipped"]), (35, 1)); self.assertEqual(res["states"]["INT16"]["planned_items"], 40)
+        del items[(10, 1000, "real")]; pooled[(10, "real")] = {**pooled[(10, "real")], "n_contexts": 1}; tr.atomic_save({"items": items, "pooled": pooled, "skipped": [(13, 3003, "no_fp_active_position"), ((10, 1000, "real"), "no_edited_row")]}, d / "transfer_INT16_c000.pt", "k")
+        self.assertEqual(rep.feature_level({"INT16": d}, CORE, SPLIT, 997, n_boot=10, seed=1)["states"]["INT16"]["n_items"], 34)                                            # 34 + 5 + 1 = 40
+
+    def test_eligibility_follows_the_reference_state_so_that_every_state_has_the_same_eligible_set(self):
+        key = (10, 1000, "real"); write_feature_dir(self.fdirs["INT16"], "INT16", weak=key)                                           # tiny in the INT16 job only
+        res = rep.feature_level(self.fdirs, CORE, SPLIT, 997, n_boot=10, seed=1)
+        for s in ("INT16", "INT6", "INT4"):
+            self.assertFalse(res["states"][s]["rows"][key]["eligible"], s); self.assertTrue(res["states"][s]["rows"][(10, 2000, "real")]["eligible"], s)
+        self.assertAlmostEqual(res["states"]["INT4"]["rows"][key]["fp_norm"], 100.0)                                                   # the row keeps its own norm for the normalized error
+
+    def test_the_group_grid_must_be_complete_too(self):
+        write_group_dir(self.gdirs["INT6"], "INT6", n_sent=6)
+        with self.assertRaisesRegex(ValueError, "planned"):
+            rep.group_level({"INT6": self.gdirs["INT6"]}, ["a", "b"], 7, 3, n_boot=10, seed=1)                                          # the plan says seven sentences, the files hold six
+        self.assertEqual(rep.group_level({"INT6": self.gdirs["INT6"]}, ["a", "b"], 6, 3, n_boot=10, seed=1)["states"]["INT6"]["planned_items"], 2 * 6 * 4)
+
+    def test_an_external_core_needs_the_cluster_modulus_and_the_languages_on_the_command_line(self):
+        freeze = {"spec": {"feature_subset": {"dev_per_language": 997}, "group_panel": {"evaluation_sentences": 6, "control_draws": 3}}, "split": SPLIT}
+        (self.root / "freeze.json").write_text(json.dumps(freeze)); (self.root / "core_ext.json").write_text(json.dumps({**CORE, "languages": ["a", "b"], "kind": "intervention-transfer-core-external"}))
+        base = ["--freeze", str(self.root / "freeze.json"), "--core", str(self.root / "core_ext.json"), "--out", str(self.root / "o"), "--n-boot", "10", "--feature-dir", f"INT16={self.fdirs['INT16']}"]
+        import contextlib, io
+        with contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit):
+            rep.main(base)
+        self.assertIn("--cluster-mod", err.getvalue())
+        with contextlib.redirect_stderr(io.StringIO()) as err2, self.assertRaises(SystemExit):
+            rep.main(base + ["--cluster-mod", "1000000", "--group-dir", f"INT16={self.gdirs['INT16']}"])
+        self.assertIn("--group-languages", err2.getvalue())
 
 
 class GroupLevel(Fixture):

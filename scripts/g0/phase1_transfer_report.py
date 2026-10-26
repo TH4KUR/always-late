@@ -55,6 +55,11 @@ def jsonable(x):
     return x
 
 
+def _check_planned(where, got, planned):
+    if got != planned:
+        raise ValueError(f"{where}: {got} items plus skipped, planned {planned}: the run is incomplete or belongs to another design (chunks lost, wrong core or wrong grid)")
+
+
 def feature_level(dirs, core, split, cluster_mod, n_boot=ta.BOOTSTRAP_REPLICATES, seed=ta.BOOTSTRAP_SEED, floor_state=REFERENCE_STATE, survival=None):
     """The feature-level results of every state in `dirs` ({state: chunk directory}); the floor of every direction kind is fixed from the calibration items of `floor_state` (INT16) and applied to all states. The
     items of the states must be the same set of (feature, sentence, direction) keys, else an error. `survival`: the content of a Phase 1 `survival.pt` (mask regime): adds, per state, the secondary
@@ -66,9 +71,12 @@ def feature_level(dirs, core, split, cluster_mod, n_boot=ta.BOOTSTRAP_REPLICATES
         if set(items) != ref_keys:
             raise ValueError(f"state {s} has {len(set(items) ^ ref_keys)} item keys that {ref_state} does not share: the states must hold the same feature-context-direction items")
     sv = ta.survival_values(survival, core, [s for s in dirs if s in JUDGED_STATES]) if survival is not None else None
+    planned = sum(len(c) for c in core["contexts"]) * 5
+    for s, (items, _, skipped) in loaded.items():
+        _check_planned(f"feature level, state {s}", len(items) + sum(5 if len(e) == 3 else 1 for e in skipped), planned)              # a skipped context is five items, a skipped item one
     raw = {s: ta.item_table(loaded[s][0], core, split, cluster_mod) for s in dirs}; floors = ta.floors_by_kind(raw[floor_state]); out = {"floors": floors, "floor_state": floor_state, "states": {}}
     for s in dirs:
-        rows = ta.apply_floor(raw[s], floors); res = {"reference": s == floor_state, "n_items": len(rows), "n_skipped": len(loaded[s][2]), "rows": rows, "coverage": _records(ta.coverage(rows)),
+        rows = ta.apply_floor(raw[s], floors, reference=raw[floor_state]); res = {"reference": s == floor_state, "n_items": len(rows), "n_skipped": len(loaded[s][2]), "planned_items": planned, "rows": rows, "coverage": _records(ta.coverage(rows)),
                                                        "components": ta.component_summary(rows, n_boot, seed), "specificity": ta.specificity_summary(rows, n_boot, seed)}
         res["averaged_features"] = ta.averaged_fingerprints(rows, loaded[s][1]); res["averaged"] = ta.averaged_summary(res["averaged_features"], n_boot, seed); res["predictive"] = {}
         for variant, eligible in (("eligible", True), ("all_items", False)):
@@ -86,13 +94,13 @@ def group_level(dirs, languages, n_sentences, n_controls, n_boot=ta.BOOTSTRAP_RE
     summary with its sentence bootstrap."""
     out = {"languages": list(languages), "states": {}}
     for s, d in dirs.items():
-        items, _, skipped = ta.load_chunks(d, "group", s, pools=False); A = ta.group_arrays(items, languages, n_sentences, n_controls); pool = ta.pooled_harms(A); dec = ta.decompose_net(pool["net"]); table = []
+        items, _, skipped = ta.load_chunks(d, "group", s, pools=False); planned = len(languages) * n_sentences * (1 + n_controls); _check_planned(f"group level, state {s}", len(items) + len(skipped), planned); A = ta.group_arrays(items, languages, n_sentences, n_controls); pool = ta.pooled_harms(A); dec = ta.decompose_net(pool["net"]); table = []
         for li, lang in enumerate(languages):
             rec = {"language": lang, "n_sentences": int(pool["n_sentences"][li]), "n_sentences_total": int(n_sentences)}
             for name, arr in (("group", pool["group"]), ("control", pool["control"]), ("net", pool["net"])):
                 rec.update({f"{name}_{c}": float(arr[li, ci]) for ci, c in enumerate(("FP_FP", "Q_FP", "FP_Q", "Q_Q", "Q_Q_native"))})
             rec.update({k: float(v[li]) for k, v in dec.items()}); table.append(rec)
-        out["states"][s] = {"reference": s == REFERENCE_STATE, "n_items": len(items), "n_skipped": len(skipped), "per_language": table, "a3": ta.bootstrap_a3(A, n_boot, seed)}
+        out["states"][s] = {"reference": s == REFERENCE_STATE, "n_items": len(items), "n_skipped": len(skipped), "planned_items": planned, "per_language": table, "a3": ta.bootstrap_a3(A, n_boot, seed)}
     return out
 
 
@@ -252,7 +260,13 @@ def main(argv=None):
     ap.add_argument("--cluster-mod", type=int, help="items with the same sentence index modulo this number share a bootstrap cluster (default: the dev sentences per language of the freeze, 997: the parallel FLORES sentence); the external panel uses a value above the number of passages")
     ap.add_argument("--group-languages", nargs="+", help="the languages of the group-level directories in the order of the run (default: the languages of the core; the external panel: its six)"); ap.add_argument("--group-sentences", type=int, help="sentences per language of the group-level run (default: the freeze's 300)")
     a = ap.parse_args(argv)
-    freeze = json.loads(Path(a.freeze).read_text()); core = json.loads(Path(a.core).read_text()); spec = freeze["spec"]; parse = lambda xs: {x.split("=", 1)[0]: x.split("=", 1)[1] for x in xs}
+    core = json.loads(Path(a.core).read_text())
+    if core.get("kind") == "intervention-transfer-core-external":                                                                        # an external run with the FLORES defaults would merge unrelated passages into clusters
+        if a.cluster_mod is None:
+            ap.error("the external core needs --cluster-mod (a value above the number of passages: every passage its own cluster)")
+        if a.group_dir and not a.group_languages:
+            ap.error("an external group-level run needs --group-languages (the languages of the panel)")
+    freeze = json.loads(Path(a.freeze).read_text()); spec = freeze["spec"]; parse = lambda xs: {x.split("=", 1)[0]: x.split("=", 1)[1] for x in xs}
     survival = None
     if a.survival:
         import torch

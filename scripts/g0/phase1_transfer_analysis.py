@@ -26,6 +26,10 @@ def load_chunks(directory, prefix, state, pools=True):
     files = sorted(Path(directory).glob(f"{prefix}_{state}_c*.pt"))
     if not files:
         raise FileNotFoundError(f"no chunk files {prefix}_{state}_c*.pt in {directory}")
+    idx = [int(f.stem.rsplit("_c", 1)[1]) for f in files]
+    if idx != list(range(len(files))):
+        missing = [f"{prefix}_{state}_c{i:03d}.pt" for i in range(max(idx) + 1) if i not in idx]
+        raise ValueError(f"the chunk files of {prefix}_{state} in {directory} are not contiguous: {missing} missing (a lost chunk would drop items silently)")
     items, pooled, skipped = {}, {}, []
     for f in files:
         payload = _t.load(f, weights_only=False)["payload"]
@@ -69,6 +73,8 @@ def item_table(items, core, split, cluster_mod):
              "native_error_norm": _quad(g, [-1, 0, 0, 0, 1]), "scalar_residual_norm": _rescaling_residual(g, 3), "native_scalar_residual_norm": _rescaling_residual(g, 4),
              "n_rows": it["n_rows"], "n_active_q": it.get("n_active_q"), "n_positions": it.get("n_positions"),
              **{k: it[k] for k in ("edit_norm_fp", "edit_norm_native", "resid_norm_fp", "resid_norm_q", "amp_fp_mean", "amp_q_mean", "direction_norm", "g_pred_fp", "g_pred_q_fixed", "g_pred_q_native", "g_norm_fp", "g_norm_q") if k in it}}
+        for i, c in enumerate(("FP_FP", "Q_FP", "FP_Q", "Q_Q", "Q_Q_native")):
+            r[f"dloss_{c}"] = None if it.get("dloss") is None else it["dloss"][i]; r[f"loss_base_{c}"] = None if it.get("loss_base") is None else it["loss_base"][i]
         if it.get("n_active_q") is not None and it.get("n_positions"):
             r["firing"] = it["n_active_q"] / it["n_positions"]
         if "amp_fp" in it and "amp_q" in it:
@@ -91,14 +97,18 @@ def floors_by_kind(rows_int16, percentile=FLOOR_PERCENTILE):
     return {k: float(np.percentile(v, percentile)) for k, v in by.items()}
 
 
-def apply_floor(rows, floors, multiple=ELIGIBILITY_MULTIPLE):
-    """Rows with the floor of their kind: eligible = FP effect norm above `multiple` times the floor; normalized error = error norm / (FP effect norm + floor); the error in units of the floor."""
+def apply_floor(rows, floors, multiple=ELIGIBILITY_MULTIPLE, reference=None):
+    """Rows with the floor of their kind: eligible = FP effect norm above `multiple` times the floor; normalized error = error norm / (FP effect norm + floor); the error in units of the floor. With `reference`
+    (the rows of the reference state, same keys) the eligibility is decided by the FP effect norm of the reference row, so that every state has the same eligible set (the FP/FP cell is recomputed in every job,
+    possibly on another node); the normalized error still uses the row's own norm."""
     out = {}
     for k, r in rows.items():
         if r["kind"] not in floors:
             raise ValueError(f"no floor for the direction kind {r['kind']}")
-        fl = floors[r["kind"]]
-        out[k] = {**r, "floor": fl, "eligible": bool(r["fp_norm"] > multiple * fl), "normalized_error": r["error_norm"] / (r["fp_norm"] + fl), "error_over_floor": r["error_norm"] / fl}
+        if reference is not None and k not in reference:
+            raise ValueError(f"item {k} is not in the reference rows: the eligibility cannot be fixed from the reference state")
+        fl = floors[r["kind"]]; fp_eligibility = (reference[k] if reference is not None else r)["fp_norm"]
+        out[k] = {**r, "floor": fl, "eligible": bool(fp_eligibility > multiple * fl), "normalized_error": r["error_norm"] / (r["fp_norm"] + fl), "error_over_floor": r["error_norm"] / fl}
     return out
 
 
@@ -239,6 +249,9 @@ METRICS = {
     "interaction_share": (lambda r: r["I_norm"] / (r["C_norm"] + r["W_norm"]) if r["C_norm"] + r["W_norm"] > 0 else None, "median"),
     "scalar_residual_share": (lambda r: r["scalar_residual_norm"] / r["error_norm"] if r["scalar_residual_norm"] is not None and r["error_norm"] > 0 else None, "median"),
     "native_error_share": (lambda r: r["native_error_norm"] / r["error_norm"] if r["error_norm"] > 0 else None, "median"),
+    "dloss_FP_FP": (lambda r: r["dloss_FP_FP"], "median"), "dloss_Q_Q": (lambda r: r["dloss_Q_Q"], "median"), "dloss_Q_Q_native": (lambda r: r["dloss_Q_Q_native"], "median"),
+    "dloss_error": (lambda r: None if r["dloss_Q_Q"] is None or r["dloss_FP_FP"] is None else r["dloss_Q_Q"] - r["dloss_FP_FP"], "median"),
+    "loss_base_FP": (lambda r: r["loss_base_FP_FP"], "median"), "loss_base_Q": (lambda r: r["loss_base_Q_Q"], "median"),
     "cosine": (lambda r: r["cosine"], "median"), "norm_ratio": (lambda r: r["norm_ratio"], "median"), "error_over_floor": (lambda r: r["error_over_floor"], "median"),
 }
 
