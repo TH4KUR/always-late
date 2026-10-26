@@ -77,3 +77,46 @@ def check_external_core(record, core, text):
         problems.append("the external core's contexts differ from the record")
     if problems:
         raise ValueError("; ".join(problems))
+
+
+def prepare_external(freeze, text_dir, encode, max_len, split="evaluation"):
+    """The tokens of the external passages: encode(list of texts) -> list of token id lists (content tokens without BOS or padding, as the runner's `encode_sentences`). The frozen token count of every passage is
+    checked (a different tokenizer or text normalization stops here), and no passage may be longer than `max_len` (it would be cut: an error instead). -> {"codes", "tokens": {code: [ids]}, "flat": all passages
+    in the order of the codes, "offsets": {code: index of its first passage in `flat`}, "n_tokens", "missing"}."""
+    p = load_passages(freeze, text_dir, split); tokens = {code: [[int(x) for x in t] for t in encode(p["texts"][code])] for code in p["codes"]}
+    check_token_counts(tokens, p["n_tokens"])
+    for code, lists in tokens.items():
+        long = [(i, len(t)) for i, t in enumerate(lists) if len(t) > max_len]
+        if long:
+            raise ValueError(f"{code}: {len(long)} passages longer than max_len {max_len}, first (index, tokens): {long[0]}")
+    flat, offsets = [], {}
+    for code in p["codes"]:
+        offsets[code] = len(flat); flat += tokens[code]
+    return {"codes": p["codes"], "tokens": tokens, "flat": flat, "offsets": offsets, "n_tokens": p["n_tokens"], "missing": p["missing"]}
+
+
+def external_core_from_model(core, tokens, lower, encode, batcher, device, M, min_ctx):
+    """The external core from the model: the maximum full-precision activation of every feature of `core` in every passage of `tokens` (the same function as the F5 runner), then `external_core`. Returns
+    (core, the activation matrix [n_passages, n_features])."""
+    import torch
+    import phase1_func_f5_run as fr5
+    ids = torch.as_tensor(core["feature_ids"], dtype=torch.long); ma = fr5.max_activation_per_sentence(lower, encode, batcher(tokens), ids, len(tokens), device)
+    return external_core(core, ma, M, min_ctx), ma
+
+
+def check_external_core_subset(main_core, ext):
+    """The features of the external core are features of the main core with the same matched direction and language index, and the language list is the same."""
+    problems = []
+    if list(ext["languages"]) != list(main_core["languages"]):
+        problems.append("the languages differ from the main core")
+    where = {int(f): k for k, f in enumerate(main_core["feature_ids"])}
+    for k, f in enumerate(ext["feature_ids"]):
+        j = where.get(int(f))
+        if j is None:
+            problems.append(f"feature {f} is not in the main core"); continue
+        if int(ext["direction_ids"][k]) != int(main_core["direction_ids"][j]):
+            problems.append(f"feature {f}: the direction differs from the main core")
+        if int(ext["feature_language_index"][k]) != int(main_core["feature_language_index"][j]):
+            problems.append(f"feature {f}: the language index differs from the main core")
+    if problems:
+        raise ValueError("; ".join(problems))
