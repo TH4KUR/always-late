@@ -37,3 +37,20 @@ Eligible items: 200 of 402 features, 1,444 of 6,406 real items (22.5 %) clear fi
 ## Limits that must travel with every statement
 
 Six languages and one corpus family, so this is an external-validity check and not a replication of the 27-language study (amendment A11, `not_claimed`); heavy-tailed group medians; 'held-out' means held-out FEATURES (the contexts of a held-out feature share passages with calibration contexts); the group-level interval covers passage sampling only and the H4 interval resamples features only; the numerical floor is large (bfloat16 execution) and was recomputed on this panel, so the eligible population differs from the main one (22.5 % against 34.1 %), which makes the INT6 statuses (A3 reversed, UTILITY met) less comparable to the main ones than the INT4 statuses; the INT16 reference is itself predicted by the same model (28.9 %), so UTILITY here does not show a quantization-specific mechanism; Chinese Traditional-character filtering of zho_Hans is a heuristic. The cross-corpus diagnostic declared in amendment A11 (E3; models fitted on the FLORES calibration features predict the external held-out items, no refit; a separate row, not part of the claim rules) is a separate step and is not in this directory yet.
+
+## Update 2026-10-27 02:35 IST: the cross-corpus diagnostic of amendment A11 (E3) is computed
+
+`scripts/g0/phase1_transfer_cross_corpus.py` (12 tests, 19 mutants all killed; the frozen analysis module is unchanged; written after the external analysis above had been run once, run once itself): the models A, A+G, A+B, A+B+G fitted on the CALIBRATION items of the main study (FLORES, 2,203 eligible real items of which 1,137 calibration; strengths by feature-group cross-validation inside them; strongest baseline chosen there) score the 659 HELD-OUT eligible items of the external panel with no refit (the calibration features of the main study and the held-out features of the external panel are disjoint; the code refuses a shared feature). Files: `cross_corpus.csv`, `cross_corpus.json` (2,000 paired crossed-bootstrap replicates, seed 20261026, on external features and passages). Command:
+
+```
+python scripts/g0/phase1_transfer_cross_corpus.py --train <analysis_main> --test <analysis_external> --out <analysis_external/cross_corpus>
+```
+
+| state | strongest baseline (main calibration) | held-out error of A+B | of the strongest baseline | null (main calibration median) | reduction of A+B against the strongest baseline | against A (H3 quantity) |
+|---|---|---|---|---|---|---|
+| INT16 (rounding reference) | A+G | 0.0160 | 0.0218 | 0.0317 | 26.7 % [19.5, 34.0] | 28.0 % [21.1, 35.0] |
+| INT6 | A | 0.0319 | 0.0398 | 0.0387 | 19.7 % [7.5, 29.5] | 19.7 % [7.5, 29.5] |
+| INT4 | A+G | 0.1108 | 0.1396 | 0.1441 | 20.6 % [9.3, 31.2] | 21.7 % [10.2, 32.4] |
+
+Reading: the sensitivity to other directions, calibrated on FLORES features, predicts the external held-out error without any refit and clears the 10 % criterion with an interval above zero at both quantized states (the INT6 interval starts at 7.5 %, so the point estimate clears 10 % but the lower end does not); the same model also predicts the rounding-only error (26.7 %), so, as in both within-corpus analyses, the result shows that the predictor measures how noise-prone a context is, not a quantization-specific mechanism. The baselines are not better than the training null at INT6 (0.0398 against 0.0387) and barely at INT4 (0.1396 against 0.1441): the activation measurements alone carry almost no transferable signal in either state. The target (normalized error) uses each corpus's own floor, so the absolute errors differ between the corpora; the comparison between models is paired on the same items. A separate row next to the claim rules: it is not one of the pre-declared claims and its status words are descriptive.
+

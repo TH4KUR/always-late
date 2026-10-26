@@ -1,0 +1,191 @@
+{
+ "train": "/home/karma/Documents/ANLP/project/transfer_runs/analysis_main",
+ "test": "/home/karma/Documents/ANLP/project/transfer_runs/analysis_external",
+ "n_boot": 2000,
+ "seed": 20261026,
+ "states": {
+  "INT16": {
+   "n_train_calibration": 1137,
+   "n_test_heldout": 659,
+   "diagnostic": "A+B",
+   "baselines": [
+    "A",
+    "A+G"
+   ],
+   "status": "fitted",
+   "null_mae": 0.03173031662692876,
+   "strongest_baseline": "A+G",
+   "improvement": {
+    "point": 0.2669343088695335,
+    "low": 0.1945854156084308,
+    "high": 0.3394945557918616,
+    "n_finite": 2000,
+    "n": 659,
+    "n_features": 100,
+    "n_clusters": 483,
+    "n_boot": 2000,
+    "seed": 20261026,
+    "level": 95
+   },
+   "improvement_over_A": {
+    "point": 0.28007728548821176,
+    "low": 0.2112634416831016,
+    "high": 0.34992456592372817,
+    "n_finite": 2000,
+    "n": 659,
+    "n_features": 100,
+    "n_clusters": 483,
+    "n_boot": 2000,
+    "seed": 20261026,
+    "level": 95
+   },
+   "criterion_met": true,
+   "models": {
+    "A": {
+     "lambda": 10,
+     "cv_mae": 0.014948877762015134,
+     "heldout_mae": 0.022179426259321046
+    },
+    "A+G": {
+     "lambda": 10,
+     "cv_mae": 0.01484096294418483,
+     "heldout_mae": 0.021781776111088866
+    },
+    "A+B": {
+     "lambda": 10,
+     "cv_mae": 0.012090029966261432,
+     "heldout_mae": 0.015967472758924444
+    },
+    "A+B+G": {
+     "lambda": 10,
+     "cv_mae": 0.012098256346512919,
+     "heldout_mae": 0.01615208631160732
+    }
+   },
+   "train_dropped_reasons": {},
+   "test_dropped_reasons": {}
+  },
+  "INT6": {
+   "n_train_calibration": 1137,
+   "n_test_heldout": 659,
+   "diagnostic": "A+B",
+   "baselines": [
+    "A",
+    "A+G"
+   ],
+   "status": "fitted",
+   "null_mae": 0.03872789324203284,
+   "strongest_baseline": "A",
+   "improvement": {
+    "point": 0.19648374624835196,
+    "low": 0.07466208864235382,
+    "high": 0.2947363348249783,
+    "n_finite": 2000,
+    "n": 659,
+    "n_features": 100,
+    "n_clusters": 483,
+    "n_boot": 2000,
+    "seed": 20261026,
+    "level": 95
+   },
+   "improvement_over_A": {
+    "point": 0.19648374624835196,
+    "low": 0.07466208864235382,
+    "high": 0.2947363348249783,
+    "n_finite": 2000,
+    "n": 659,
+    "n_features": 100,
+    "n_clusters": 483,
+    "n_boot": 2000,
+    "seed": 20261026,
+    "level": 95
+   },
+   "criterion_met": true,
+   "models": {
+    "A": {
+     "lambda": 10,
+     "cv_mae": 0.029164770026793067,
+     "heldout_mae": 0.03976123613343791
+    },
+    "A+G": {
+     "lambda": 10,
+     "cv_mae": 0.029372762012187213,
+     "heldout_mae": 0.03993753605606592
+    },
+    "A+B": {
+     "lambda": 10,
+     "cv_mae": 0.025107784389676778,
+     "heldout_mae": 0.031948799502474694
+    },
+    "A+B+G": {
+     "lambda": 10,
+     "cv_mae": 0.025179894577204237,
+     "heldout_mae": 0.03137979650089796
+    }
+   },
+   "train_dropped_reasons": {},
+   "test_dropped_reasons": {}
+  },
+  "INT4": {
+   "n_train_calibration": 1137,
+   "n_test_heldout": 659,
+   "diagnostic": "A+B",
+   "baselines": [
+    "A",
+    "A+G"
+   ],
+   "status": "fitted",
+   "null_mae": 0.14409520764155279,
+   "strongest_baseline": "A+G",
+   "improvement": {
+    "point": 0.2063134989928488,
+    "low": 0.09248929743575457,
+    "high": 0.31148006495723296,
+    "n_finite": 2000,
+    "n": 659,
+    "n_features": 100,
+    "n_clusters": 483,
+    "n_boot": 2000,
+    "seed": 20261026,
+    "level": 95
+   },
+   "improvement_over_A": {
+    "point": 0.21712825367335464,
+    "low": 0.10219835227091897,
+    "high": 0.32404834957992446,
+    "n_finite": 2000,
+    "n": 659,
+    "n_features": 100,
+    "n_clusters": 483,
+    "n_boot": 2000,
+    "seed": 20261026,
+    "level": 95
+   },
+   "criterion_met": true,
+   "models": {
+    "A": {
+     "lambda": 10,
+     "cv_mae": 0.11136636765374361,
+     "heldout_mae": 0.14149191835223532
+    },
+    "A+G": {
+     "lambda": 10,
+     "cv_mae": 0.11056542477736028,
+     "heldout_mae": 0.13956395260718127
+    },
+    "A+B": {
+     "lambda": 10,
+     "cv_mae": 0.08626761289032385,
+     "heldout_mae": 0.11077002521152159
+    },
+    "A+B+G": {
+     "lambda": 10,
+     "cv_mae": 0.08582726462851985,
+     "heldout_mae": 0.10871967965059924
+    }
+   },
+   "train_dropped_reasons": {},
+   "test_dropped_reasons": {}
+  }
+ }
+}
