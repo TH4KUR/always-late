@@ -10,14 +10,16 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 
 | file | what it is |
 |---|---|
-| [`../README.md`](../README.md) | what the project asks and where the evidence stands |
-| [`../HANDOFF.md`](../HANDOFF.md) | entry point for a new agent or teammate; names the newest handoff in [`handoffs/`](handoffs/) |
+| [`../README.md`](../README.md) | **orientation (rewritten 2026-10-26):** what the project is, the studies and their state, where to look for what |
+| [`../HANDOFF.md`](../HANDOFF.md) | **how to take over (rewritten 2026-10-26):** start order, the work loop, the durable rules, the do-not list, the environment facts |
 | [`functional_validation/gain_study/README.md`](functional_validation/gain_study/README.md) | **STUDY G, the user's major study (2026-10-24): graded gain of language-selective features, per language, across the precision ladder; the request verbatim, the status table, links to its design, plan and results; read first at every run** |
-| [`functional_validation/STATUS.md`](functional_validation/STATUS.md) | the ordered next steps (`Immediate`) and the dated Log of the functional study |
+| [`functional_validation/STATUS.md`](functional_validation/STATUS.md) | **what to do next (`NEXT STEP`, in order)** and the dated `Log` of the current work (older log entries and NEXT STEP updates are in `archive/`) |
+| [`handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md`](handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) | **the Gemma-2-9B confirmation for another team on a separate cluster** (branch `gemma9b-confirmation`, D-089) |
+| [`intervention_transfer/verification_2026-10-26.md`](intervention_transfer/verification_2026-10-26.md) | the verification of the intervention-transfer study (D-088): novelty, corrections, risks, and its place in the cron order |
 | [`functional_validation/RESULTS_SUMMARY.md`](functional_validation/RESULTS_SUMMARY.md) | the results on one page, with a claim map (evidence and the limit to state with each claim) |
 | [`functional_validation/FIGURE_INDEX.md`](functional_validation/FIGURE_INDEX.md) | every finished figure of the functional study and Study G: file, the question its title asks, the claim it supports, status and limit (no new numbers) |
 | [`functional_validation/REPRODUCE.md`](functional_validation/REPRODUCE.md) | one command re-runs every analysis of the functional study and compares with the committed outputs |
-| [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) | the questions for the user (Q1 to Q26) with their options, defaults and answers |
+| [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) | the questions for the user (Q1 to Q28) with their options, defaults and answers |
 
 ## 2. The trail (progress tracking; keep forever)
 
@@ -27,13 +29,13 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 | questions with the options considered, the defaults and the answers | [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) |
 | dated logs | [`progress_log.md`](progress_log.md); the Log of [`functional_validation/STATUS.md`](functional_validation/STATUS.md) (from 2026-10-23); [`archive/status_log_2026-10-21_to_22.md`](archive/status_log_2026-10-21_to_22.md); [`association_retention/STATUS.md`](association_retention/STATUS.md) |
 | handoffs, one per step (001 to 039 and their addenda; the only record of each chat) | [`handoffs/`](handoffs/) |
-| progress and plan pages | [`../PROGRESS.md`](../PROGRESS.md), [`../PLAN.md`](../PLAN.md) |
+| progress and plan pages | [`../PROGRESS.md`](../PROGRESS.md), [`../PLAN.md`](../PLAN.md) (pointers since 2026-10-26; full texts in [`archive/root_pages_2026-10-26/`](archive/root_pages_2026-10-26/)) |
 | designs and plans written before the data, with their hypotheses and predictions | [`../docs/superpowers/specs/`](../docs/superpowers/specs/), [`../docs/superpowers/plans/`](../docs/superpowers/plans/) |
 | options considered, including those not selected | [`association_retention/next_steps.md`](association_retention/next_steps.md) (options A to F of Q16), [`survival_method_reassessment.md`](survival_method_reassessment.md), [`association_retention/plan_verification.md`](association_retention/plan_verification.md) |
 | literature and novelty checks with their search logs | [`research_sources.md`](research_sources.md), [`functional_validation/prior_art.md`](functional_validation/prior_art.md) |
 | audits and reviews | [`audit_our_vs_duan.md`](audit_our_vs_duan.md), [`duan_codebase_audit.md`](duan_codebase_audit.md), [`../issues.md`](../issues.md), [`legacy_pipeline/`](legacy_pipeline/) |
 | text moved out of living pages, verbatim | [`archive/`](archive/) |
-| how the work was run | [`scheduled_routine.md`](scheduled_routine.md), [`functional_validation/cron_prompt.md`](functional_validation/cron_prompt.md), [`association_retention/cron_prompt.md`](association_retention/cron_prompt.md) (ended 2026-10-21) |
+| how the work was run | [`scheduled_routine.md`](scheduled_routine.md), [`functional_validation/cron_prompt.md`](functional_validation/cron_prompt.md), [`association_retention/cron_prompt.md`](association_retention/cron_prompt.md) (ended 2026-10-21); the first and last are pointers since 2026-10-26, full texts in [`archive/root_pages_2026-10-26/`](archive/root_pages_2026-10-26/) |
 
 ## 3. Directions explored or considered (a map; if it disagrees with the trail, the trail wins)
 
@@ -55,6 +57,9 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 | Study G (user, 2026-10-24): scale each language's selective features down (3 ratios) and up (3 ratios), per language, at FP and INT8 to INT4: is the effect monotone in the ratio, monotone across precisions, consistent across languages | design, plan and runs in progress; the pilot already holds two points of it | [`functional_validation/gain_study/README.md`](functional_validation/gain_study/README.md) |
 | Prior-art and novelty checks, the scoop risk | checked 2026-10-21 and 2026-10-23; the fingerprint object is FEGA's; Duan's causal step still unpublished on 2026-10-23 | D-040, D-065, Q18; [`functional_validation/prior_art.md`](functional_validation/prior_art.md) |
 | The two parallel branches of a teammate; a second model | `extensions-on-main` not merged; Llama-3.2-1B kept as a supporting model but blocked by the gated licence; Qwen3-1.7B-Base asked as an alternative | D-052, Q22, Q25, Q26 |
+| Llama-3.2-1B consistency check (user, 2026-10-26) | designed and run (D-087); interim FP misses P1 (21 of 27); **relabelled exploratory cross-architecture check (D-089)** because model, SAE type (TopK), SAE recipe and depth are confounded | D-087, D-089; [`../docs/superpowers/plans/2026-10-26-llama-consistency-check.md`](../docs/superpowers/plans/2026-10-26-llama-consistency-check.md) |
+| Gemma-2-9B confirmation (user, 2026-10-26): same architecture, same Gemma Scope SAE, matched relative depth | replaces Llama as the second model; run by another team on a separate cluster, branch `gemma9b-confirmation`, merged later | D-089; [`handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md`](handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) |
+| Intervention transfer under quantization (Codex, 2026-10-26): crossed prefix FP/Q x suffix FP/Q decomposition of a fixed feature intervention, held-out diagnostic, branches A and B | verified novel in a bounded search, adopted, queued in the cron after the Llama write-up; corrects the D-063 wording | D-088, Q28; [`intervention_transfer/verification_2026-10-26.md`](intervention_transfer/verification_2026-10-26.md) (Codex's design and plan files are hers, untracked until she commits them) |
 | Left open or not started | extensions beyond Phase 1 (Q8); upload of item-level files to the private dataset (Q21); the whole 4,382-feature F5 sample (Q24, default no); the rule S1 to S3 (Q23); activation quantization and other models are not studied | [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) |
 
 ## 4. Evidence (generated; reproducible)
@@ -72,4 +77,5 @@ All of it also stays in git history (`git show <commit>:<path>`).
 - **Moved verbatim to `archive/` on 2026-10-23** (living pages keep a pointer): the Log entries of 2026-10-21 and 2026-10-22 of `functional_validation/STATUS.md`; the stale State block of the same file; the stale state sections of `HANDOFF.md`; the stale 'NEXT RUN'S GOAL' block of `PROGRESS.md` and the chat-only paragraphs and steps of `scheduled_routine.md`; the superseded banners of README, PLAN and PROGRESS (2026-10-22).
 - **Moved verbatim to `archive/` on 2026-10-25** (the living page keeps a pointer): the update of 2026-10-24 08:04 and the done items 1 to 5 of the NEXT STEP block of `functional_validation/STATUS.md` -> [`archive/status_next_step_items_2026-10-24.md`](archive/status_next_step_items_2026-10-24.md) (8 lines, 12.9 KB; checked: every moved line is in the archive file, only two relative links were rebased, nothing else was removed).
 - **Removed on 2026-10-23: 24 generated files (1.7 MB)**, byte-identical (sha256) to the same-named files of `functional_validation/figures/eval/`, which stay: in `figures/pilot/` and `figures/mc_eval/` the figures 7 (Belebele coverage) and 8 (association by rank) in light and dark, SVG and PNG, and the tables `table_coverage` and `table_configurations` (CSV and markdown). Last commit that holds them: `7147f0e`.
+- **Moved verbatim to `archive/` on 2026-10-26** (documentation cleanup requested by the user; the living files keep a short current version or a pointer; relative links rebased): the previous `README.md`, `HANDOFF.md`, `PLAN.md`, `PROGRESS.md`, `scheduled_routine.md` and `association_retention/cron_prompt.md` -> [`archive/root_pages_2026-10-26/`](archive/root_pages_2026-10-26/); the stale State block, the stacked NEXT STEP updates of 2026-10-25/26 and the Log entries of 2026-10-23 to 2026-10-25 of `functional_validation/STATUS.md` -> [`archive/status_2026-10-26_cleanup.md`](archive/status_2026-10-26_cleanup.md).
 - **Not removed, on purpose:** every handoff, log, plan, design, decision, question, audit, source register and result. Nothing in section 2 was touched except by pointers and 'Update' lines.
