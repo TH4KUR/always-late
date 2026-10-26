@@ -1,5 +1,7 @@
 # Decisions for your review (the questions I would have asked you)
 
+**Open questions at a glance (2026-10-26; the rest of this file is the full record):** Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
+
 **New, 2026-10-21 (D-040): Q17 and Q18** (Q18: the scoop risk from Duan's announced causal follow-up; also not blocking)
 
 **Q17** asks you to confirm or change the defaults of the functional-study design (tasks, group size, decision rule, compute, cadence). Not blocking: work proceeds on the defaults. [Design](docs/superpowers/specs/2026-10-21-functional-validation-design.md), [plan](docs/superpowers/plans/2026-10-21-functional-validation.md), [status](reports/functional_validation/STATUS.md).
@@ -190,7 +192,8 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Options.** (a) default: you open https://huggingface.co/meta-llama/Llama-3.2-1B with the account that owns the token on Ada, accept the licence, and tell me; I then download the weights to the cache on the login node (about 2.5 GB) and continue; (b) you or a teammate (the branch's author already ran the model) provide the weights or a token with access; (c) you explicitly allow an ungated mirror of the same weights (same licence).
 - **Default:** (a). Until then the Gemma work continues and the Llama part of the plan (Task 14) waits; nothing else depends on it.
 - ANSWER:
-- STATUS: open
+- **Update 2026-10-26 (Claude, documentation cleanup):** access was granted on 2026-10-26 and the Llama check was run (D-087); the user then replaced Llama-3.2-1B by Gemma-2-9B with Gemma Scope as the second model (D-089).
+- STATUS: closed 2026-10-26 by D-089 (the earlier status was: open)
 
 ## Q23. The rule for calling the survival metric sensible (F5, D-053)?  [HIGH for the paper's claim, not blocking the code]
 - **Context.** The design (section 5) proposes, before any F5 number exists: the survival metric is called sensible if (S1) at INT6 at least 80 % of the features labelled retained have a write-side similarity W1 at or above the numerical floor (the 5th percentile of W1 at INT8); (S2) at INT4 the AUROC of the D-035 status for the event "W1 at or above the floor", in the matched F4 pairs, is at least 0.60 with its lower cluster-bootstrap bound above 0.5; (S3) at INT5 at least 80 % of the features that survive by the Duan cutoff (correlation 0.9) have W1 at or above the floor. If these fail, the survival label is read as input-side agreement only.
@@ -211,7 +214,8 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Options.** (a) default: keep this draft as the rule; nothing is run until Q22 is answered; the draft is applied if you do not change it before the first Llama number; (b) change the draft (give the statements or the numbers); (c) run Llama as exploratory only, with no rule (the cheapest; no confirmatory claim).
 - **Default:** (a). A rule given now is applied; a rule given after the Llama numbers would be post hoc and recorded as such.
 - ANSWER:
-- STATUS: open
+- **Update 2026-10-26 (Claude, documentation cleanup):** superseded: the Llama check ran with pre-registered predictions (D-087) and is now exploratory only; the confirmatory second-model test is the Gemma-2-9B run (D-089, handoff 040).
+- STATUS: closed 2026-10-26 by D-089 (the earlier status was: open)
 
 
 ## Q26. Is a second supporting model other than Llama-3.2-1B wanted (Qwen3-1.7B-Base with Qwen-Scope), given that Llama stays gated? (D-052, D-065)  [LOW-MEDIUM, publishability; not blocking]
@@ -219,7 +223,8 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Options.** (a) default: keep your decision D-052 (Llama-3.2-1B) and wait for Q22; nothing is started for Qwen; (b) add Qwen3-1.7B-Base as an additional supporting model now (I would write the design and plan first and start only after you read them); (c) replace Llama by Qwen as the supporting model (no licence acceptance needed as far as the page shows).
 - **Default:** (a). Without an answer the second-model work stays idle; the Gemma study is complete without it, and the paper can state the single-model limit.
 - ANSWER:
-- STATUS: open
+- **Update 2026-10-26 (Claude, documentation cleanup):** answered in effect by the user on 2026-10-26: the second model is Gemma-2-9B with Gemma Scope (same architecture and SAE family), not Qwen3 (D-089).
+- STATUS: closed 2026-10-26 by D-089 (the earlier status was: open)
 
 ## Q27. In Study G, which language-selective features are scaled at each precision: the full-precision ones (the main design) or the ones that are selective in THAT precision? (D-070, D-073)  [MEDIUM, methodology and publishability; not blocking]
 - **Context.** Your instruction of 2026-10-24 asks to measure 'which features contribute to a language, and which are general' before and after each quantization, and then to scale 'those features'. Two readings: (1) the features selected once, in full precision, and followed through the ladder (is the same set still doing the same thing?); (2) the features that contribute at each precision, re-selected in that precision (are the features that carry the language at INT4 as consequential as the full-precision ones were?). The main runs follow (1) because it is the cleaner dose-response across precisions and reuses the frozen groups and controls. Reading (2) needs groups selected per precision on sentences that the evaluation never sees; the D-035 per-sentence sidecar on Ada makes that possible on the CPU (the 712 devtest sentences outside the 300 evaluation sentences), at FP (as the reference), INT6 and INT4, plus three more GPU jobs of about 3 hours each (design: `docs/superpowers/specs/2026-10-24-graded-gain-study-design.md` section 10).
