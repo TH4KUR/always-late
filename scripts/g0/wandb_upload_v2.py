@@ -294,7 +294,7 @@ def dry_run_text(payload):
 
 # ---------------------------------------------------------------- the uploader (the wandb module is an argument)
 
-def upload(payload, root, wandb, only=None, entity=ENTITY, project=PROJECT, out=print):
+def upload(payload, root, wandb, only=None, entity=ENTITY, project=PROJECT, out=print, force_media=False):
     root = Path(root)
     if payload.get("schema_version") != SCHEMA_VERSION:
         raise SpecError("the payload is not of schema version 2")
@@ -323,7 +323,7 @@ def upload(payload, root, wandb, only=None, entity=ENTITY, project=PROJECT, out=
                 run.log(dict(row))
         media = {f"table/{k}": wandb.Table(columns=t["columns"], data=t["rows"]) for k, t in r["tables"].items()}
         media.update({i["key"]: wandb.Image(str(root / i["path"]), caption=i["caption"]) for i in r["images"]})
-        if media:
+        if media and (first or force_media):                       # a re-run of a finished run adds no history row; --force-media repeats the tables and images of an interrupted run
             run.log(media)
         run.summary.update(r["summary"])
         art = wandb.Artifact(f"{r['id']}-files", type="analysis-results", metadata={"upload_commit": payload["upload_commit"], "study": r["config"]["study"], "n_files": len(r["files"])})
@@ -624,7 +624,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Post-hoc upload of the committed results to wandb (schema v2).")
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build"); b.add_argument("--root", default=str(Path(__file__).resolve().parents[2])); b.add_argument("--out", required=True); b.add_argument("--only", nargs="*"); b.add_argument("--dry-run", action="store_true"); b.add_argument("--commit"); b.add_argument("--allow-dirty", action="store_true")
-    u = sub.add_parser("upload"); u.add_argument("--payload", required=True); u.add_argument("--root", required=True); u.add_argument("--only", nargs="*")
+    u = sub.add_parser("upload"); u.add_argument("--payload", required=True); u.add_argument("--root", required=True); u.add_argument("--only", nargs="*"); u.add_argument("--force-media", action="store_true")
     a = ap.parse_args(argv)
     if a.cmd == "build":
         payload = build_all(a.root, FAMILIES, a.only, a.commit or _git_head(a.root))
@@ -640,7 +640,7 @@ def main(argv=None):
     os.environ.setdefault("WANDB_SILENT", "true")
     import wandb
     payload = json.loads(Path(a.payload).read_text())
-    for r in upload(payload, a.root, wandb, a.only):
+    for r in upload(payload, a.root, wandb, a.only, force_media=a.force_media):
         pass
 
 

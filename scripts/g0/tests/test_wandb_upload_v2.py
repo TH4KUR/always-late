@@ -422,6 +422,12 @@ class Upload(Fixture):
     def test_a_resumed_run_does_not_get_its_history_again(self):
         wb, _, _ = self.run_upload(FakeWandb({"v2-demo": 7})); r = wb.runs[0]
         self.assertEqual([d for d in r.logged if "bits" in d], []); self.assertEqual(r.summary["headline/macro_effect"], 0.5); self.assertTrue(r.artifacts)
+        self.assertEqual(r.logged, [])                                                                          # no history and no tables or images again: a re-run adds no row
+
+    def test_force_media_logs_tables_and_images_again_on_a_resumed_run(self):
+        wb, _, _ = self.run_upload(FakeWandb({"v2-demo": 7}), force_media=True); r = wb.runs[0]
+        media = {k: v for d in r.logged for k, v in d.items()}
+        self.assertIn("table/t", media); self.assertIn("fig/fig_light", media); self.assertEqual([d for d in r.logged if "bits" in d], [])
 
     def test_only_selects_runs_and_an_unknown_slug_is_an_error(self):
         wb, res, _ = self.run_upload(only=["d2"]); self.assertEqual([i["id"] for i in wb.inits], ["v2-d2"])
