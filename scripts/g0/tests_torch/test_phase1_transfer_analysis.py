@@ -222,5 +222,50 @@ class GroupLevel(unittest.TestCase):
         self.assertAlmostEqual(res["share_holds"], float(np.mean(holds))); self.assertTrue(0 < res["share_holds"] < 1); self.assertEqual((res["n_boot"], res["seed"], res["level"]), (300, 9, 90))
 
 
+class CrossedBootstrap(unittest.TestCase):
+    def test_the_weighted_median_is_the_smallest_value_with_half_of_the_weight_below_it(self):
+        self.assertEqual(ta.weighted_median(np.array([4.0, 1.0, 3.0, 2.0]), np.ones(4)), 2.0)                              # lower median of 1, 2, 3, 4, whatever the order
+        self.assertEqual(ta.weighted_median(np.array([1.0, 2.0, 3.0, 4.0]), np.array([0.0, 0.0, 5.0, 1.0])), 3.0); self.assertEqual(ta.weighted_median(np.array([1.0, 2.0, 3.0, 4.0]), np.array([3.0, 0.0, 0.0, 3.0])), 1.0)
+        self.assertTrue(np.isnan(ta.weighted_median(np.array([1.0, 2.0]), np.zeros(2)))); self.assertEqual(ta.weighted_median(np.array([7.0]), np.array([2.0])), 7.0)
+
+    def test_the_multiplicities_are_drawn_per_feature_and_per_cluster_with_the_total_preserved_and_are_seeded(self):
+        a = ta.bootstrap_multiplicities(5, 7, 50, seed=1); b = ta.bootstrap_multiplicities(5, 7, 50, seed=1); c = ta.bootstrap_multiplicities(5, 7, 50, seed=2)
+        self.assertEqual(a[0].shape, (50, 5)); self.assertEqual(a[1].shape, (50, 7)); self.assertTrue((a[0].sum(1) == 5).all()); self.assertTrue((a[1].sum(1) == 7).all())
+        self.assertTrue(np.array_equal(a[0], b[0]) and np.array_equal(a[1], b[1])); self.assertFalse(np.array_equal(a[0], c[0]))
+
+    def test_a_row_weighs_the_product_of_the_multiplicity_of_its_feature_and_of_its_cluster(self):
+        values = np.array([1.0, 2.0, 3.0, 10.0]); fidx = np.array([0, 0, 1, 1]); cidx = np.array([0, 1, 0, 1])
+        mf = np.array([[3, 0], [1, 1]]); mc = np.array([[1, 1], [0, 2]])                                                    # replicate 0: weights 3, 3, 0, 0; replicate 1: weights 0, 1*2, 0, 1*2
+        self.assertTrue(np.allclose(ta.replicate_stats(values, fidx, cidx, mf, mc, "mean"), [(3 * 1 + 3 * 2) / 6, (2 * 2 + 10 * 2) / 4]))
+        self.assertTrue(np.allclose(ta.replicate_stats(values, fidx, cidx, mf, mc, "median"), [1.0, 2.0]))
+        with self.assertRaises(ValueError):
+            ta.replicate_stats(values, fidx, cidx, mf, mc, "mode")
+
+    def test_the_interval_follows_the_clusters_not_the_number_of_rows(self):
+        rng = np.random.default_rng(0); n_f, n_c = 40, 20; eff = rng.normal(size=n_c)                                       # the value of a row is the effect of its source cluster
+        fidx = np.repeat(np.arange(n_f), n_c); cidx = np.tile(np.arange(n_c), n_f); values = eff[cidx]
+        r = ta.crossed_bootstrap(values, fidx, cidx, "mean", n_boot=400, seed=3)
+        self.assertAlmostEqual(r["point"], float(values.mean())); self.assertGreater(r["high"] - r["low"], 0.5); self.assertEqual(r["n"], n_f * n_c)       # iid rows would give a width of about 0.15
+
+    def test_constant_values_give_a_degenerate_interval_and_nan_values_are_dropped_and_counted(self):
+        r = ta.crossed_bootstrap(np.full(6, 2.5), np.array([0, 0, 1, 1, 2, 2]), np.array([0, 1, 0, 1, 0, 1]), "median", n_boot=50, seed=0); self.assertEqual((r["low"], r["point"], r["high"]), (2.5, 2.5, 2.5))
+        v = np.array([1.0, np.nan, 3.0, 5.0]); r = ta.crossed_bootstrap(v, np.array([0, 0, 1, 1]), np.array([0, 1, 0, 1]), "mean", n_boot=20, seed=0); self.assertEqual((r["n"], r["n_missing"]), (3, 1)); self.assertAlmostEqual(r["point"], 3.0)
+        e = ta.crossed_bootstrap(np.array([]), np.array([], dtype=int), np.array([], dtype=int), "mean", n_boot=20, seed=0); self.assertEqual(e["n"], 0); self.assertTrue(np.isnan(e["point"]))
+
+    def test_the_interval_is_the_percentile_interval_of_the_replicates_replayed_independently_and_the_point_follows_the_statistic(self):
+        rng = np.random.default_rng(2); v = rng.exponential(size=60); f = np.repeat(np.arange(6), 10); c = np.tile(np.arange(10), 6)
+        for stat in ("mean", "median"):
+            r = ta.crossed_bootstrap(v, f, c, stat, n_boot=300, seed=11, level=90); mf, mc = ta.bootstrap_multiplicities(6, 10, 300, 11); reps = ta.replicate_stats(v, f, c, mf, mc, stat)
+            self.assertAlmostEqual(r["low"], float(np.percentile(reps, 5))); self.assertAlmostEqual(r["high"], float(np.percentile(reps, 95))); self.assertEqual((r["n_features"], r["n_clusters"], r["level"], r["stat"]), (6, 10, 90, stat))
+            self.assertAlmostEqual(r["point"], float(v.mean()) if stat == "mean" else ta.weighted_median(v, np.ones(60)))
+        self.assertAlmostEqual(ta.crossed_bootstrap(np.array([1.0, 2.0, 10.0]), np.array([0, 1, 2]), np.array([0, 0, 0]), "median", n_boot=10, seed=0)["point"], 2.0)
+
+    def test_the_default_replicates_and_seed_are_the_frozen_ones_and_the_same_seed_gives_the_same_interval(self):
+        self.assertEqual((ta.BOOTSTRAP_REPLICATES, ta.BOOTSTRAP_SEED), (2000, 20261026))
+        v = np.arange(12.0); f = np.repeat(np.arange(3), 4); c = np.tile(np.arange(4), 3)
+        self.assertEqual(ta.crossed_bootstrap(v, f, c, "mean", n_boot=100, seed=5), ta.crossed_bootstrap(v, f, c, "mean", n_boot=100, seed=5))
+        self.assertNotEqual(ta.crossed_bootstrap(v, f, c, "mean", n_boot=100, seed=5), ta.crossed_bootstrap(v, f, c, "mean", n_boot=100, seed=6))
+
+
 if __name__ == "__main__":
     unittest.main()

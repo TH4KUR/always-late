@@ -169,3 +169,46 @@ def bootstrap_a3(A, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, level=BOOT
     for k in ("median_difference", "median_abs_c", "median_abs_w", "c_gt_w"):
         v = [r[k] for r in reps]; out[k] = (float(np.percentile(v, lo)), float(np.percentile(v, hi)))
     return out
+
+
+def weighted_median(values, weights):
+    """The lower weighted median: the smallest value whose cumulative weight reaches half of the total (NaN for no weight). The same definition serves the point estimate (unit weights) and every bootstrap replicate."""
+    v, w = np.asarray(values, dtype=float), np.asarray(weights, dtype=float); total = w.sum()
+    if v.size == 0 or total <= 0:
+        return float("nan")
+    order = np.argsort(v, kind="stable"); return float(v[order][np.searchsorted(np.cumsum(w[order]), 0.5 * total, side="left")])
+
+
+def bootstrap_multiplicities(n_features, n_clusters, n_boot, seed):
+    """The multiplicities of a crossed bootstrap: [n_boot, n_features] and [n_boot, n_clusters] draws with replacement (each row sums to the number of units), features and source-sentence clusters independently
+    (the 'pigeonhole' scheme: a feature-context row has the weight of its feature times the weight of its cluster, so reused features and parallel translations of one source sentence are not iid rows)."""
+    rng = np.random.default_rng(seed)
+    return rng.multinomial(n_features, np.full(n_features, 1.0 / n_features), size=n_boot), rng.multinomial(n_clusters, np.full(n_clusters, 1.0 / n_clusters), size=n_boot)
+
+
+def replicate_stats(values, feature_idx, cluster_idx, mult_features, mult_clusters, stat):
+    """The statistic ('mean' or 'median', weighted) of the values in every replicate; the weight of a row is the multiplicity of its feature times that of its cluster."""
+    values = np.asarray(values, dtype=float); out = np.empty(len(mult_features))
+    order = np.argsort(values, kind="stable") if stat == "median" else None
+    for b in range(len(mult_features)):
+        w = mult_features[b][feature_idx] * mult_clusters[b][cluster_idx]
+        if stat == "mean":
+            out[b] = (w * values).sum() / w.sum() if w.sum() > 0 else np.nan
+        elif stat == "median":
+            total = w.sum(); out[b] = values[order][np.searchsorted(np.cumsum(w[order]), 0.5 * total, side="left")] if total > 0 else np.nan
+        else:
+            raise ValueError(f"unknown statistic {stat}")
+    return out
+
+
+def crossed_bootstrap(values, feature_idx, cluster_idx, stat="median", n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, level=BOOTSTRAP_LEVEL):
+    """A statistic of per-row values with a percentile interval from the crossed bootstrap over features and source-sentence clusters. NaN values are dropped and counted. -> {"point", "low", "high", "n", "n_missing",
+    "n_features", "n_clusters", "stat", "n_boot", "seed", "level"}; no value at all gives NaNs. The multiplicities are drawn for the features and clusters that occur among the kept rows."""
+    v = np.asarray(values, dtype=float); keep = ~np.isnan(v); out = {"n": int(keep.sum()), "n_missing": int((~keep).sum()), "stat": stat, "n_boot": int(n_boot), "seed": int(seed), "level": level}
+    if not keep.any():
+        return {**out, "point": float("nan"), "low": float("nan"), "high": float("nan"), "n_features": 0, "n_clusters": 0}
+    v = v[keep]; _, fi = np.unique(np.asarray(feature_idx)[keep], return_inverse=True); _, ci = np.unique(np.asarray(cluster_idx)[keep], return_inverse=True)
+    nf, nc = int(fi.max()) + 1, int(ci.max()) + 1; mf, mc = bootstrap_multiplicities(nf, nc, n_boot, seed)
+    point = float(v.mean()) if stat == "mean" else weighted_median(v, np.ones(len(v))); reps = replicate_stats(v, fi, ci, mf, mc, stat)
+    lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
+    return {**out, "point": point, "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n_features": nf, "n_clusters": nc}
