@@ -60,3 +60,5 @@ Table `conditions` (every run): columns `condition` + the metrics above, one row
 - Run name = `experiment/cell` (or just `experiment`), e.g. `baseline/full`, `R2/bos-mask`, `R5b/T_mask`; tags carry the experiment family.
 - A rebuilt run has `source = rebuilt-from-files` and `config_extra.replaces_wandb_run` = the id of the run it replaced; creation times are the rebuild time, not the original run time (wandb cannot backdate).
 - Adding a metric or rung means changing the constants in `g0_wandb.py`, bumping `SCHEMA_VERSION`, updating the tests and rebuilding; ad-hoc keys are not allowed (`wandb_rebuild.py verify` fails on them).
+
+**Update 2026-10-26:** the finished studies that never logged to wandb (functional study, Study G, Belebele, F5, prompt cross-check, Llama check) were uploaded post hoc as 15 new runs under schema v2: [`wandb_schema_v2.md`](wandb_schema_v2.md), D-091. The 19 runs of this schema were not touched.

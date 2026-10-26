@@ -11,7 +11,7 @@ Written 2026-10-26 08:55 IST, BEFORE any code (decision D-091). The user chose O
 ## 2. Run naming and identity
 
 - Project `anlp-project`, entity `karma-skz-` (the existing project). Every v2 run has the tags `schema-v2` and `post-hoc-upload` plus its family tag and its status tag (`exploratory` or `confirmatory`), `job_type = analysis-upload`, a `group` per study family (`functional`, `belebele`, `f5`, `study-g`, `llama`) and a name that says what it is (`<family>/<what>`).
-- **Deterministic id** `v2-<slug>` (for example `v2-study-g-main`), `resume="allow"`: a re-run overwrites config and summary of the same run instead of creating a second one; tables, images and the artifact are re-logged under the same keys; the history is logged only when the run has none yet (the uploader checks the step counter), so a re-run does not duplicate its history rows.
+- **Deterministic id** `v2-<slug>` (for example `v2-study-g-main`), `resume="allow"`: a re-run overwrites config and summary of the same run instead of creating a second one; the artifact is re-logged under the same name (identical content gives no new version); the history, the tables and the images are logged only when the run is new (`run.resumed` is false; the step counter cannot be used, it is 0 after a resume), so a re-run adds no row; `--force-media` repeats the tables and images of an interrupted run on purpose. Figures whose file stem occurs twice in a run (`pair_light.png` in four folders) get their folder in the key (`fig/<folder>-<stem>`).
 - The 19 old runs keep their names and ids. v2 names never collide with them (old names are `baseline/full`, `R1/...`, `R5a/...`, `phase1/...`, `smoke/...`).
 
 ## 3. Config (the same keys in every v2 run; unknown values are `n/a`)
@@ -69,6 +69,34 @@ Every summary key is `headline/<name>` (a number, a boolean or a short string) p
 4. Tests (offline, with fakes): `OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B -m unittest scripts/g0/tests_torch/test_wandb_upload_v2.py`; mutation check `scripts/g0/mutcheck.py` on the builder.
 5. A re-run is idempotent by the deterministic ids; delete nothing by hand. The key is never printed; the upload log is searched for key patterns afterwards.
 
-## 8. State (filled after the upload)
+## 8. State after the upload (2026-10-26 09:01 to 09:11 IST, from the login node of Ada)
 
-(see section 9 once the upload has run)
+Project <https://wandb.ai/karma-skz-/anlp-project>: **34 runs = the 19 old ones (all `finished`, untouched: the uploader refuses any id that does not start with `v2-`) + the 15 new ones.** Built from commit `acc6ebf` (146 files, 8.8 MB, every shipped file tracked and unchanged: `build` refuses a modified or untracked file). The run URLs:
+
+| run | name | URL |
+|---|---|---|
+| `v2-functional-lm-ladder` | functional/lm-ladder-F1-F2 | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-functional-lm-ladder> |
+| `v2-functional-rescue` | functional/rescue-F3 | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-functional-rescue> |
+| `v2-functional-f4-association` | functional/f4-association-vs-function | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-functional-f4-association> |
+| `v2-association-margin-a2-a3` | functional/association-margin-A2-A3 | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-association-margin-a2-a3> |
+| `v2-belebele-confirmatory-tmc` | belebele/confirmatory-T-MC | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-belebele-confirmatory-tmc> |
+| `v2-belebele-ksens-k-all` | belebele/sensitivity-K-all | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-belebele-ksens-k-all> |
+| `v2-belebele-positive-control` | belebele/positive-control-edit-sensitivity | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-belebele-positive-control> |
+| `v2-belebele-prompt-check` | belebele/prompt-cross-check | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-belebele-prompt-check> |
+| `v2-f5-main` | f5/feature-function-main | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-f5-main> |
+| `v2-f5-sensitivity-controls` | f5/sensitivity-and-swap-controls | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-f5-sensitivity-controls> |
+| `v2-study-g-main` | study-g/main-graded-gain | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-study-g-main> |
+| `v2-study-g-ext-c` | study-g/extension-C-repair | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-study-g-ext-c> |
+| `v2-study-g-ext-d` | study-g/extension-D-optimal-gain | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-study-g-ext-d> |
+| `v2-study-g-ext-b` | study-g/extension-B-state-defined | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-study-g-ext-b> |
+| `v2-llama-consistency-check` | llama/consistency-check-3.2-1B | <https://wandb.ai/karma-skz-/anlp-project/runs/v2-llama-consistency-check> |
+
+**Verification through `wandb.Api()` (after the last pass):** all 15 runs are `finished`; every summary key of the payload is present with the payload value (0 missing, 0 different); the artifact `v2-<slug>-files` of every run holds exactly the payload files plus `MANIFEST.json`; every table and figure of the payload is present. The upload logs were searched for key patterns (none) and the scratch directory on Ada (payload, tar, logs, the local wandb folder) was deleted afterwards.
+
+**What went wrong on the way, and what it left in the runs (stated because nothing on wandb was deleted):**
+1. The first full pass stopped at a table column that holds numbers and text (`auroc_function`); fixed by building the tables before the run starts and allowing mixed types. Three runs (`lm-ladder`, `rescue`, `f4-association`) had been finished by then.
+2. The second pass logged the tables, figures and history of those three runs and of the probe run (`belebele-prompt-check`) a second time, because the step counter of a resumed run is 0 (the uploader now uses `run.resumed`; a third full pass changed nothing). **Left behind: `v2-functional-lm-ladder` has its 9 history rows twice (20 rows: 2 x 9 + 2 media rows), its 6 tables and 5 figures twice; `v2-functional-rescue` and `v2-functional-f4-association` have their tables and figures twice; `v2-belebele-prompt-check` has its table twice.** The duplicates are identical in content (the line charts overlap exactly); summary, config and artifacts are correct and unique.
+3. `v2-f5-sensitivity-controls` had four figures `pair_light.png` under one key (only the last survived); it was logged again with distinct keys (`fig/direction_swap-pair_light`, ...), which left its first two figures and its table once more.
+If clean runs are wanted, the five runs can be deleted by the user (or with the user's go-ahead) and uploaded again with the same command; the ids are deterministic.
+
+**Re-run:** `python3 -B scripts/g0/wandb_upload_v2.py build --out <dir>` (refuses files that differ from the commit; `--only <slug>`, `--dry-run`), `scp` the `payload.json`, `files.tar` and the script to a scratch directory on Ada, extract the tar there, then `WANDB_SILENT=true WANDB_DIR=$PWD /home2/karma/duan-verify/env/bin/python wandb_upload_v2.py upload --payload payload.json --root <extracted> [--only <slug>] [--force-media]`. When a result changes (a new decision, a new run), add its family to `FAMILIES` in the script (tests first) and upload only that slug.
