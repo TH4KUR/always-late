@@ -1,0 +1,33 @@
+{
+ "id": "R1",
+ "kind": "intervention-transfer-revision-amendment",
+ "schema": 1,
+ "created": "2026-10-27 02:42 IST",
+ "title": "Locked FLORES-to-Wikipedia scoring (publication recovery plan, Task 1a): protocol fixed before the primary run",
+ "status": "POST HOC (selected after D-094). Written before the primary locked scoring was run. The original freezes, the amendments A1 to A14, the D-094 and D-095 tables and the failed original UTILITY criterion are unchanged; this amendment adds an analysis, it replaces nothing.",
+ "honesty_note": "The external panel had been analysed once under the original rules (D-095) and the A11 E3 cross-corpus diagnostic (EXTERNAL floors, comparator among A and A+G chosen on the main calibration half) had been computed and read before this run. No choice below (floors, comparators, covariates, thresholds, the null in the comparator set, the overlap band) depends on those results; the protocol is the one written in docs/superpowers/plans/2026-10-26-publication-recovery-after-results.md (Codex) before the external outcomes existed.",
+ "source": "docs/superpowers/plans/2026-10-26-publication-recovery-after-results.md Task 1; reports/publication_reassessment_2026-10-26/ (locked models exported by Codex after the main outcomes, no external outcome used)",
+ "inputs_sha256": {
+  "reports/publication_reassessment_2026-10-26/locked_flores_models.json": "5658d5ef7f369366004f467678d43a6b37a01dff1315dda4e4d4fd95c7e7c28a",
+  "transfer_runs/analysis_main/per_context_INT16.csv": "be221b2bf485e113e07f525be55dffea0262d4793bce3e2a908e451ebabffb14",
+  "transfer_runs/analysis_main/per_context_INT6.csv": "d071acd53419447678d1929df98804193d36963c6fbb4f82a75d43e019c6b346",
+  "transfer_runs/analysis_main/per_context_INT4.csv": "9fd618f2697fab2674026725d48f7e0aa9e72a9c54526aeffdc3ea6d48b5370f",
+  "transfer_runs/analysis_external/per_context_INT16.csv": "4eb0b8678e51338aecd078cf4721f4bae698d7905dff9663f195c267a6a0ccf7",
+  "transfer_runs/analysis_external/per_context_INT6.csv": "01a950845a50fd4281f1fbfa6fd9941c4e5f06495ebdfe83f0cd37a8cbe49d54",
+  "transfer_runs/analysis_external/per_context_INT4.csv": "aed9bc1a5b7b62d9ff0303ba6bc770900f5b2b01b01aa602a44a78ed29b609f1"
+ },
+ "verification_before_scoring": "(V1) the exported fits equal a refit on the main calibration items by the frozen protocol (standardization, strength by feature-group cross-validation, coefficients; to the last digit of the stored floats); (V2) the locked models reproduce the committed held-out MAE of every model and state on the main held-out items (results/main/predictive_validation.csv); (V3) the re-normalization error_norm / (fp_norm + FLORES floor of the kind) reproduces the main normalized_error of every main item; the run stops if any of the three fails.",
+ "primary_protocol": {
+  "items": "external held-out-feature items (the main study's feature split) of the real direction",
+  "floors": "the FLORES per-kind floors of the locked file (real 28.7225, matched_swapped 27.1656, random1 27.4392, random2 27.2179, random3 26.8968), applied to the external error norms and FP effect norms: normalized error = error_norm / (fp_norm + floor of the kind)",
+  "eligibility": "FP effect norm of the real direction above five times the FLORES real-direction floor; it depends on the FP effect only, never on a quantized quantity",
+  "covariates": "the original column groups A, G, B in the original order and transformations; B (generic sensitivity) = log(mean of the normalized errors of the control directions of the same feature and context, with the FLORES floors, + 0.01)",
+  "models": "A, A+G, A+B, A+B+G with the locked mean, scale, coefficients, intercept: no external ridge fit, standardization, strength, comparator selection or filtering on quantized errors; a missing covariate drops the item and is counted by reason",
+  "comparators": "(old, retained verbatim) the calibration-selected baseline of the locked file among A and A+G; (new) the comparator among A, A+G and the calibration-median null chosen by the cross-validated MAE on the MAIN calibration items (out-of-fold, feature-group folds of the frozen analysis); never chosen on external outcomes",
+  "statistic": "relative reduction of the mean absolute error of A+B against each comparator and against A (the H3 quantity); paired crossed bootstrap over external features and external passages (each passage its own cluster), 2,000 replicates, seed 20261026, 95 % percentile interval; absolute MAEs of every model and of the null (main calibration median) reported; states INT16 (reference), INT6, INT4 separately, never pooled",
+  "reported_with": "item counts (total, eligible, held-out eligible, dropped by reason), feature and passage counts, the sha256 of the locked file and of the inputs in every output"
+ },
+ "secondary_protocol": "the same scoring with the EXTERNAL floors and eligibility of the external analysis (target as in D-095); the A11 E3 numbers (results/external/cross_corpus.csv) remain as computed, the secondary rows add the null to the comparator set",
+ "not_claimed": "No quantization-specific predictive claim: the INT16 reference is reported next to every state. UTILITY of the original rules is not re-evaluated. A gain on external items shows transfer across corpora and languages of the generic-sensitivity predictor, not an audit cheaper than measuring the target (four extra control interventions per feature and context).",
+ "code": "scripts/g0/phase1_transfer_recovery.py with scripts/g0/tests_torch/test_phase1_transfer_recovery.py (tests first, mutation checked); outputs in reports/intervention_transfer/results/recovery/"
+}
