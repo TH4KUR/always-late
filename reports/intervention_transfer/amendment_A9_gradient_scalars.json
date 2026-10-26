@@ -1,0 +1,20 @@
+{
+ "amends_freeze_sha256": "3226c94b7e4dff30dda0166eac01fac01813facbdb62654cb36672dc66dbbf5f",
+ "created": "2026-10-26 15:41 IST",
+ "definition": "For every context (one gradient per context batch and state) the gradient of the mean negative log-likelihood over the rows with a target, with respect to the cached layer-12 residual of the prefix state, by reverse-mode autograd through the suffix of the current weights (h_fp under the FP weights, h_q under the quantized weights). For every item (feature, context, direction; and every group-level item) the first-order prediction of the signed loss change of its edit is minus the dot product of the gradient and the edit summed over the edited rows: g_pred_fp (FP model, FP edit), g_pred_q_fixed (quantized model, FP edit), g_pred_q_native (quantized model, native edit); g_norm_fp and g_norm_q are the mean row norms of the gradients at the edited rows. This is the gradient-attribution baseline of arXiv 2610.15850 (an intervention's effect predicted from the gradient at the unedited point); its prediction of the TRANSFER of the loss effect is g_pred_q_native minus g_pred_fp (and, for the fixed edit, g_pred_q_fixed minus g_pred_fp).",
+ "fields": [
+  "g_pred_fp",
+  "g_pred_q_fixed",
+  "g_pred_q_native",
+  "g_norm_fp",
+  "g_norm_q"
+ ],
+ "id": "A9",
+ "kind": "intervention-transfer-freeze-amendment",
+ "schema": 1,
+ "scope": "both runs (feature level and group level); no change of the Gram (five cells), of the cells or of the frozen spec; additive scalar fields stored with every item.",
+ "status": "written before any full-run output of the study exists; the code's spec and freeze.json are unchanged.",
+ "supersedes": "A7",
+ "title": "The mandatory gradient baseline: autograd gradient of the mean NLL, first-order predictions of the loss change of every edit",
+ "why": "The finite-difference cell of A7 measures bf16 rounding noise (see A7). An autograd gradient is the derivative of the computed graph and does not suffer rounding-boundary flips. One backward pass per context and state serves every feature, direction and group of that context, so the cost is small (two backward passes per context batch)."
+}

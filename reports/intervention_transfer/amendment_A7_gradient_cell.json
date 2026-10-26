@@ -10,7 +10,8 @@
  ],
  "schema": 1,
  "scope": "feature-level run only (the group-level run has no gradient cell)",
- "status": "written before any full-run output of the study exists; freeze.json and the spec in the code are unchanged (the extra cell is additive: the five-cell block of the Gram is identical with and without it, tested).",
+ "status": "WITHDRAWN 2026-10-26 before use (no full-run output existed): the instrument job 40300 (scales 0.05 and 0.025) showed that the effect of a small edit is rounding noise: the median effect norm is 10.73 at t = 0.05 and 10.64 at t = 0.025 (a linear effect would be 2.0 and 1.0 for the median Q/Q effect norm of 40.4), the two derivative estimates have a cosine of 0.51, and t times the edit is 0.0036 of the residual row norm, the bf16 resolution (2^-8 = 0.0039). The finite difference cannot be taken at a perturbation below the resolution of the model's own arithmetic.",
+ "superseded_by": "A9",
  "title": "The first-order cell of the mandatory gradient baseline (finite difference)",
  "validation": "The instrument job that follows this amendment runs the scales 0.05 and 0.025 on the instrument subset and compares the two derivatives (tests: for a linear suffix the cell is exactly t times the fixed-amplitude cell Q/Q). The full runs use 0.05 only.",
  "why": "The frozen spec requires 'gradient: first-order (forward-mode) prediction ... mandatory' without fixing the implementation. A finite difference uses the same forward machinery as every other cell and needs no autograd or forward-mode support of the hooked model; a single edit costs about 17 percent more sequences per item (the speed of the batched runner was measured at 0.23 s per item against 0.59 s before, so the plan fits the 32 GPU-hour ceiling with this cell)."

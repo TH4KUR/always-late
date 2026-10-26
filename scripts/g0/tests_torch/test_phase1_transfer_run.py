@@ -316,12 +316,82 @@ class GradItems(Fixture, unittest.TestCase):
         tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, suf, self.switches, max_rows=28, grad_scales=(0.05,))
         self.assertTrue(all(s[0] * s[1] <= 28 for s in self.shapes))                                                       # 1 + 3K sequences of 4 rows: K = 2 at most
 
-    def test_the_group_level_run_has_no_gradient_cells_and_the_feature_run_takes_the_scale_from_the_amendment(self):
+    def test_amendment_a7_is_withdrawn_and_the_default_has_no_finite_difference_cells(self):
         import json as _json
-        root = Path(__file__).resolve().parents[3]; am = _json.loads((root / "reports/intervention_transfer/amendment_A7_gradient_cell.json").read_text())
-        self.assertEqual(tr.GRAD_SCALES, am["scales"]); self.assertEqual(am["cell"], tc.grad_cell_name(am["scales"][0])); self.assertEqual(am["amends_freeze_sha256"], hashlib.sha256((root / "reports/intervention_transfer/freeze.json").read_bytes()).hexdigest())
+        root = Path(__file__).resolve().parents[3]; a7 = _json.loads((root / "reports/intervention_transfer/amendment_A7_gradient_cell.json").read_text())
+        self.assertEqual(tr.GRAD_SCALES, []); self.assertTrue(a7["status"].startswith("WITHDRAWN")); self.assertEqual(a7["superseded_by"], "A9")
         its, _ = tr.group_items("eng", 1, torch.randn(5, D), torch.randn(5, D), torch.relu(torch.randn(4, 6)), torch.relu(torch.randn(4, 6)), torch.randn(6, D), {"group": [0, 1, 2]}, torch.tensor([1, 2, 3, 4, -1]))
         self.assertEqual(tr.process_items(its, self.suf, self.switches)["items"][("eng", 1, "group")]["gram"].shape, (5, 5))
+
+
+class GradScalars(Fixture, unittest.TestCase):
+    """Amendment A9: the gradient baseline is the autograd gradient of the mean NLL with respect to the cached prefix residual, one backward pass per context and state, and the first-order prediction of the loss
+    change of every edit is minus the dot product of the gradient and the edit over the edited rows (a finite difference at small t measures bf16 rounding noise: A7 withdrawn)."""
+    def grad_fn(self, h, targets):
+        x = h.clone().requires_grad_(True); self.grad_calls.append(self.log[-1])
+        with torch.enable_grad():
+            z = self.suf[self.log[-1]](x[None])[0]; valid = targets >= 0
+            nll = -torch.log_softmax(z, -1)[torch.arange(len(h)), targets.clamp(min=0)]; (g,) = torch.autograd.grad(nll[valid].mean(), x)
+        return g
+
+    def setUp(self):
+        super().setUp(); self.grad_calls = []
+
+    def test_the_predictions_are_minus_the_dot_product_of_the_gradient_and_the_edit_over_the_edited_rows(self):
+        its = ProcessItems.items(self); out = tr.process_items(its, self.suf, self.switches, grad_fn=self.grad_fn)
+        for it in its:
+            s = out["items"][it["key"]]; rows = it["rows"]; self.log.append("FP"); gF = self.grad_fn(it["h_fp"], it["targets"]); self.log.append("Q"); gQ = self.grad_fn(it["h_q"], it["targets"])
+            self.assertAlmostEqual(s["g_pred_fp"], -float((gF[rows] * it["edit_fp"]).sum()), places=5); self.assertAlmostEqual(s["g_pred_q_fixed"], -float((gQ[rows] * it["edit_fp"]).sum()), places=5)
+            self.assertAlmostEqual(s["g_pred_q_native"], -float((gQ[rows] * it["edit_native"]).sum()), places=5)
+            self.assertAlmostEqual(s["g_norm_fp"], float(gF[rows].norm(dim=-1).mean()), places=5); self.assertAlmostEqual(s["g_norm_q"], float(gQ[rows].norm(dim=-1).mean()), places=5)
+
+    def test_for_a_tiny_edit_the_first_order_prediction_equals_the_measured_loss_change(self):
+        its = ProcessItems.items(self)
+        for it in its:
+            it["edit_fp"] = it["edit_fp"] * 1e-3; it["edit_native"] = it["edit_native"] * 1e-3
+        out = tr.process_items(its, self.suf, self.switches, grad_fn=self.grad_fn)
+        for it in its:
+            s = out["items"][it["key"]]
+            self.assertAlmostEqual(s["g_pred_fp"], s["dloss"][0], delta=abs(s["dloss"][0]) * 2e-2 + 1e-7); self.assertAlmostEqual(s["g_pred_q_native"], s["dloss"][4], delta=abs(s["dloss"][4]) * 2e-2 + 1e-7)
+
+    def test_one_gradient_per_context_and_state_computed_under_the_matching_weights(self):
+        tr.process_items(ProcessItems.items(self), self.suf, self.switches, grad_fn=self.grad_fn)
+        self.assertEqual(self.grad_calls, ["FP", "FP", "Q", "Q"])                                                          # two contexts: the FP gradients under the FP weights, then the Q gradients under the Q weights
+
+    def test_the_amendment_lists_exactly_the_fields_the_processor_stores_and_main_builds_the_gradient_function(self):
+        import json as _json
+        root = Path(__file__).resolve().parents[3]; a9 = _json.loads((root / "reports/intervention_transfer/amendment_A9_gradient_scalars.json").read_text())
+        out = tr.process_items(ProcessItems.items(self), self.suf, self.switches, grad_fn=self.grad_fn); keys = set(next(iter(out["items"].values())))
+        self.assertTrue(set(a9["fields"]) <= keys); self.assertEqual({k for k in keys if k.startswith("g_")}, set(a9["fields"])); self.assertEqual(a9["supersedes"], "A7")
+        self.assertEqual(a9["amends_freeze_sha256"], hashlib.sha256((root / "reports/intervention_transfer/freeze.json").read_bytes()).hexdigest())
+        src = (root / "scripts/g0/phase1_transfer_run.py").read_text(); self.assertIn("grad_fn = make_grad_fn(upper_final, logits_fn, DEVICE)", src); self.assertIn("grad_scales=a.grad_scales, grad_fn=grad_fn)", src); self.assertIn("max_rows=a.max_rows, grad_fn=grad_fn)", src)
+
+    def test_make_grad_fn_returns_the_autograd_gradient_of_the_mean_nll_on_the_host(self):
+        g = torch.Generator().manual_seed(6); W = torch.randn(D, V, generator=g); h = torch.randn(4, D, generator=g, requires_grad=False); tg = torch.tensor([1, 2, -1, 3])
+        gf = tr.make_grad_fn(lambda x: x * 2.0, lambda rows: rows @ W, "cpu")
+        with torch.no_grad():                                                                                              # the run is in no-grad mode: the function lifts it inside
+            got = gf(h, tg)
+        x = h.clone().requires_grad_(True); z = (x * 2.0) @ W; nll = -torch.log_softmax(z, -1)[torch.arange(4), tg.clamp(min=0)]; (want,) = torch.autograd.grad(nll[tg >= 0].mean(), x)
+        self.assertTrue(torch.allclose(got, want, atol=1e-6)); self.assertEqual(got.device.type, "cpu"); self.assertFalse(got.requires_grad)
+
+    def test_the_gradient_changes_no_gram_and_without_it_there_are_no_gradient_fields(self):
+        a = tr.process_items(ProcessItems.items(self), self.suf, self.switches); b = tr.process_items(ProcessItems.items(self), self.suf, self.switches, grad_fn=self.grad_fn)
+        for k in a["items"]:
+            self.assertTrue(np.array_equal(a["items"][k]["gram"], b["items"][k]["gram"])); self.assertNotIn("g_pred_fp", a["items"][k]); self.assertIn("g_pred_fp", b["items"][k])
+
+    def test_the_chunk_runner_and_both_runs_pass_the_gradient_function_on(self):
+        out = tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, self.suf, self.switches, grad_fn=self.grad_fn)
+        self.assertTrue(all("g_pred_fp" in v for v in out["items"].values()))
+        m = FakeModel()
+        def gf(h, tg):
+            x = h.clone().requires_grad_(True)
+            with torch.enable_grad():
+                z = m.suffix(x[None])[0]; v = tg >= 0; nll = -torch.log_softmax(z, -1)[torch.arange(len(h)), tg.clamp(min=0)]; (g,) = torch.autograd.grad(nll[v].mean(), x)
+            return g
+        with tempfile.TemporaryDirectory() as o:
+            run_fake(m, o, grad_fn=gf); self.assertTrue(all("g_pred_fp" in v for v in read_chunks(o, "INT6").values()))
+        with tempfile.TemporaryDirectory() as o:
+            run_fake_group(m, o, grad_fn=gf); self.assertTrue(all("g_pred_q_native" in v for v in read_group(o, "INT6")[0].values()))
 
 
 class GroupEdits(unittest.TestCase):
