@@ -1,0 +1,17 @@
+{
+ "amends": "amendment_A11_external_runs.json (E2); freeze_external.json sha256 a800d8d120abf9a96ecd7cae409ebffa1ff1e10369eab2f2e2c6c46e4854d4ef",
+ "created": "2026-10-26 16:49 IST",
+ "files": {
+  "core_external.json": "9b7a1a1bf16cb3e3f375dc2c2b8fe8204764a5d7fa69412167868a5b6e11fab5",
+  "core_external_record.json": "08fcf310c2290464fff586726cc12b498ac052c0e662291213b4f929b07abb39",
+  "max_activations_external.pt (not in git, 2.9 MB, in project/transfer_runs/transfer-ext-core2)": "366587c19d3d0313b69eba81f950188fbc37b5cd88978f7d77574ab32703cf45"
+ },
+ "id": "A11b",
+ "job": "transfer-ext-core2, Slurm 40528, snapshot repo_6d84d5b (commit 6d84d5b), gnode058, COMPLETED 0:0 in 1 min 49 s, GPU 0: RTX 2080 Ti, 0 CUDA initialization warnings; gates passed with --gate-max-abs 3.0 (amendment A12): split_equals_full true, top-1 0.977 and 0.975, largest differences 0.250 and 2.049; the three failed predecessors are in the ledger",
+ "kind": "intervention-transfer-freeze-amendment",
+ "result": "402 of the 404 features have at least four external evaluation passages with a positive full-precision activation; excluded: feature 4193 (3 passages) and feature 6414 (1 passage); 396 features have 16 contexts, the other six have 6, 14 or 15 contexts (two features each). The contexts index the 1,800 evaluation passages in the order eng_Latn, hin_Deva, rus_Cyrl, spa_Latn, yor_Latn, zho_Hans (300 each).",
+ "schema": 1,
+ "status": "written before any quantized output on the external panel exists",
+ "title": "The external core (contexts of the feature-level run on the Wikipedia panel), written from full-precision activations only",
+ "verification": "the core was rebuilt locally from max_activations_external.pt with phase1_transfer_external.external_core (M 16, min_ctx 4) and is identical in every field; the record, the subset check against the main core and the sha256 of the file pass; sha256 of all four files equal on both sides after scp"
+}
