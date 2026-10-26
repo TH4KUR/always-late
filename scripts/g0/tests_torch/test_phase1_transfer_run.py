@@ -822,7 +822,7 @@ class GateConstants(unittest.TestCase):
     def test_the_instrument_gate_thresholds_are_the_amended_ones_and_not_looser_than_documented(self):
         self.assertEqual((tr.GATE_MIN_TOP1, tr.GATE_MAX_ABS, tr.GATE_PROBE_SENTENCES, tr.GATE_ROWS), (0.90, 2.0, 8, 512))
         src = (Path(__file__).resolve().parents[1] / "phase1_transfer_run.py").read_text()
-        self.assertIn("min_top1=GATE_MIN_TOP1", src); self.assertIn("max_abs=GATE_MAX_ABS", src); self.assertNotIn("min_top1=0.95", src)
+        self.assertIn("min_top1=GATE_MIN_TOP1", src); self.assertIn("max_abs=a.gate_max_abs", src); self.assertIn("default=GATE_MAX_ABS", src); self.assertNotIn("min_top1=0.95", src)         # the limit is the option --gate-max-abs (amendment A12), whose default is the frozen 2.0
 
 
 class Constants(unittest.TestCase):
@@ -847,8 +847,13 @@ class ExternalCli(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), self.assertRaises(SystemExit):
             tr.main(["--help"])
-        for flag in ("--external-panel", "--external-text", "--external-core-record", "--main-core", "--external-M", "--external-min-ctx", "external-core"):
+        for flag in ("--external-panel", "--external-text", "--external-core-record", "--main-core", "--external-M", "--external-min-ctx", "external-core", "--gate-max-abs"):
             self.assertIn(flag, out.getvalue())
+
+    def test_the_logit_gate_limit_is_an_option_whose_default_is_the_frozen_one_and_both_gate_calls_and_the_meta_use_it(self):
+        import inspect
+        self.assertEqual(tr.GATE_MAX_ABS, 2.0); src = inspect.getsource(tr.main)
+        self.assertEqual(src.count("max_abs=a.gate_max_abs"), 2); self.assertNotIn("max_abs=GATE_MAX_ABS", src); self.assertIn('"gate_max_abs": a.gate_max_abs', src); self.assertIn("default=GATE_MAX_ABS", src)
 
     def test_the_external_core_task_needs_the_panel_the_panel_needs_its_text_and_the_feature_task_needs_the_pinned_core(self):
         code, err = self.run_main(["--task", "external-core"]); self.assertEqual(code, 2); self.assertIn("--task external-core needs --external-panel", err)

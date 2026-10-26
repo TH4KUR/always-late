@@ -414,7 +414,7 @@ def main(argv=None):
     ap.add_argument("--commit", default="unknown")
     ap.add_argument("--external-panel", help="freeze_external.json: run on the six-language external (Wikipedia) panel of amendment A11 instead of FLORES"); ap.add_argument("--external-text", help="directory of the panel's passages_<code>.jsonl files")
     ap.add_argument("--main-core", default=str(ROOT / "reports/intervention_transfer/core_sample.json"), help="the main core: with --external-panel and the feature task --core is the EXTERNAL core and this file is the base it must be a subset of")
-    ap.add_argument("--external-core-record", help="the record that pins the external core (feature task on the external panel)"); ap.add_argument("--external-M", type=int, default=16); ap.add_argument("--external-min-ctx", type=int, default=4)
+    ap.add_argument("--gate-max-abs", type=float, default=GATE_MAX_ABS, help="largest absolute difference allowed between the float32-readout logits and the model's own logits on the probe (the 2.0 of the main runs; the external panel uses a larger value, amendment A12: the maximum over 512 long-passage rows exceeds it by noise)"); ap.add_argument("--external-core-record", help="the record that pins the external core (feature task on the external panel)"); ap.add_argument("--external-M", type=int, default=16); ap.add_argument("--external-min-ctx", type=int, default=4)
     a = ap.parse_args(argv)
     if a.task == "external-core" and not a.external_panel:
         ap.error("--task external-core needs --external-panel")
@@ -500,8 +500,8 @@ def main(argv=None):
     resid = lower(tokens); z_ref = upper(resid)
     gates = {"split_equals_full": bool(torch.equal(model(tokens), z_ref))}
     z_ref = z_ref[valid][:GATE_ROWS].float()
-    gates["logits_native_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid)[valid][:GATE_ROWS]), min_top1=GATE_MIN_TOP1, max_abs=GATE_MAX_ABS)
-    gates["logits_float32_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid.float())[valid][:GATE_ROWS]), min_top1=GATE_MIN_TOP1, max_abs=GATE_MAX_ABS)
+    gates["logits_native_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid)[valid][:GATE_ROWS]), min_top1=GATE_MIN_TOP1, max_abs=a.gate_max_abs)
+    gates["logits_float32_residual"] = fr5.logit_agreement(z_ref, logits_fn(upper_final(resid.float())[valid][:GATE_ROWS]), min_top1=GATE_MIN_TOP1, max_abs=a.gate_max_abs)
     gates["probe_rows"] = int(min(int(valid.sum()), GATE_ROWS))
     del resid, z_ref; gc.collect(); torch.cuda.empty_cache()
     log("gates:", gates)
@@ -510,7 +510,7 @@ def main(argv=None):
 
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     meta = {"task": "transfer-" + a.task, "commit": a.commit, "model": model_name, "hook": hook, "states": labels, "chunk_features": a.chunk_features, "max_rows": a.max_rows, "grad_scales": a.grad_scales if a.task == "feature" else [], "gradient": "A9 (autograd gradient scalars per item)", "max_features": a.max_features, "max_contexts": a.max_contexts,
-            "freeze_sha256": freeze_sha, "core_sha256": hashlib.sha256(Path(a.core).read_bytes()).hexdigest(), "gates": gates, "dev_sentences": len(dev_tokens), "truncated": truncated,
+            "freeze_sha256": freeze_sha, "core_sha256": hashlib.sha256(Path(a.core).read_bytes()).hexdigest(), "gates": gates, "gate_max_abs": a.gate_max_abs, "dev_sentences": len(dev_tokens), "truncated": truncated,
             "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "complete": False}
     (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
     if a.task == "external-core":

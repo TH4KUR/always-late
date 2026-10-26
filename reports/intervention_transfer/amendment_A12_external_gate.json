@@ -1,0 +1,13 @@
+{
+ "amends_freeze_sha256": "3226c94b7e4dff30dda0166eac01fac01813facbdb62654cb36672dc66dbbf5f",
+ "created": "2026-10-26 16:41 IST",
+ "id": "A12",
+ "kind": "intervention-transfer-instrument-amendment",
+ "schema": 1,
+ "title": "Logit gate limit of the external-panel runs",
+ "scope": "the float32-logit gate of the runs with --external-panel only; the main runs keep the limit 2.0 (A6); the top-1 threshold 0.90, the probe of eight passages and 512 rows, and the split-equals-full gate are unchanged",
+ "change": "the largest allowed absolute difference between the logits of the float32-readout path and the model's own bfloat16 logits is the option --gate-max-abs (default 2.0 as before); the external runs pass 3.0",
+ "evidence": "the external-core job 40515 (gnode058, 2026-10-26 16:38, probe of the first eight evaluation passages of the panel, 512 rows) failed the float32 gate with top-1 agreement 0.9746 (limit 0.90, passed) and largest absolute difference 2.049 (limit 2.0); the native-residual path had top-1 0.977 and largest difference 0.250 on the same probe; the two jobs 40497 and 40498 printed 1.337 and 1.495 on their probes before stopping at the split gate on another node. The FLORES probe of 229 rows had 0.60 (instrument job 40220). The largest difference over rows x 256,000 logits grows with the number of rows and with the length of the context, and the passages are up to 128 tokens against FLORES sentences of about 30.",
+ "why_not_a_scientific_choice": "the gate only has to catch a wrong computation (a wrong layer or readout gives top-1 near chance and differences of ten or more); 3.0 is about one and a half times the largest value seen on correct computations, and every external job records the limit in its meta file",
+ "status": "written after the first external probe and before any external item exists"
+}
