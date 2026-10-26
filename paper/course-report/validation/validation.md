@@ -10,6 +10,8 @@ Status: complete draft for team review; not a submitted course ZIP. Revision 3 r
 - Independent fact-check of the transfer sections: a separate agent read `main.tex` against `reports/intervention_transfer/results/main/` and its verified findings were applied before this build (wording only, no number changed; D-094 Update, commit 542c246). The external-panel paragraph, the abstract sentence, the appendix row and the cross-corpus numbers were written afterwards from `reports/intervention_transfer/results/external/` (D-095) and have not had an independent review; every number in them was compared with the committed tables when written.
 - Not verified and not claimed: author names and order (taken from the project roster); the course AI-use disclosure (the team must check the course text). The optional online reference check of the checker (`check_full.py`) was not rerun (the external service returned a web page instead of BibTeX before); the bibliography (16 entries) was checked against the primary sources.
 
+- Update 2026-10-27 02:49 IST: the report was rebuilt after one clause (the INT6 cross-corpus reduction against the calibration median, D-096) was added to the external paragraph and four phrases were shortened; 11 pages, main content and limitations still end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!` again; `pdfinfo.txt`, `fonts.txt` and the hashes in `manifest.json` are those of this build.
+
 Revision 2 record (kept verbatim):
 
 # Course-report validation: revision 2 (2026-10-26 09:13 IST, 26 October 2026)
