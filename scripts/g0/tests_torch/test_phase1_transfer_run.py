@@ -831,5 +831,36 @@ class Constants(unittest.TestCase):
         self.assertEqual(list(tr.DIRECTION_KINDS), tf.SPEC["direction_kinds"]); self.assertEqual(tr.RANDOM_SEEDS, tf.SPEC["random_direction_seeds"])
 
 
+class ExternalCli(unittest.TestCase):
+    """The command line of the external-panel modes (amendment A11): the flags exist and an incomplete combination stops at once, before any model is loaded."""
+    BASE = ["--out", "x", "--flores-root", "y"]
+
+    def run_main(self, extra):
+        import contextlib, io
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as cm:
+            tr.main(self.BASE + extra)
+        return cm.exception.code, err.getvalue()
+
+    def test_the_new_flags_and_the_external_core_task_are_in_the_help(self):
+        import contextlib, io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), self.assertRaises(SystemExit):
+            tr.main(["--help"])
+        for flag in ("--external-panel", "--external-text", "--external-core-record", "--main-core", "--external-M", "--external-min-ctx", "external-core"):
+            self.assertIn(flag, out.getvalue())
+
+    def test_the_external_core_task_needs_the_panel_the_panel_needs_its_text_and_the_feature_task_needs_the_pinned_core(self):
+        code, err = self.run_main(["--task", "external-core"]); self.assertEqual(code, 2); self.assertIn("--task external-core needs --external-panel", err)
+        code, err = self.run_main(["--external-panel", "p.json"]); self.assertEqual(code, 2); self.assertIn("--external-panel needs --external-text", err)
+        code, err = self.run_main(["--task", "feature", "--external-panel", "p.json", "--external-text", "dir"]); self.assertEqual(code, 2); self.assertIn("needs --external-core-record", err)
+
+    def test_the_group_and_the_external_core_runs_pass_the_argument_checks_and_stop_later_at_the_missing_panel_file(self):
+        for task in ("group", "external-core"):
+            with self.assertRaises(FileNotFoundError) as cm:                                                              # not SystemExit (argument error) and not a TypeError of a missing pinned core
+                tr.main(self.BASE + ["--task", task, "--external-panel", "/nonexistent/panel.json", "--external-text", "/nonexistent"])
+            self.assertIn("panel.json", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -151,5 +151,19 @@ class Cli(Fixture):
         rep.main(args); claims = json.loads((out / "claim_status.json").read_text())["claims"]; self.assertIn("A3", claims); self.assertIn("UTILITY", claims); self.assertEqual(claims["A3"]["per_state"]["INT4"] in ("supported", "inconclusive", "reversed"), True)
 
 
+class CliExternal(Fixture):
+    def test_the_external_run_takes_its_own_languages_and_the_cluster_modulus_from_the_command_line(self):
+        freeze = {"spec": {"feature_subset": {"dev_per_language": 997}, "group_panel": {"evaluation_sentences": 300, "control_draws": 3}}, "split": SPLIT}; core = {**CORE, "languages": ["a", "b", "c"]}
+        (self.root / "freeze.json").write_text(json.dumps(freeze)); (self.root / "core.json").write_text(json.dumps(core)); out = self.root / "ext_out"
+        args = ["--freeze", str(self.root / "freeze.json"), "--core", str(self.root / "core.json"), "--out", str(out), "--n-boot", "20", "--seed", "1", "--group-languages", "a", "b", "--cluster-mod", "5", "--group-sentences", "6"]
+        for s in ERR:
+            args += ["--feature-dir", f"{s}={self.fdirs[s]}", "--group-dir", f"{s}={self.gdirs[s]}"]
+        rep.main(args)
+        self.assertEqual({r.split(",")[1] for r in (out / "group_per_language.csv").read_text().strip().split("\n")[1:]}, {"a", "b"})
+        lines = (out / "group_per_language.csv").read_text().strip().split("\n"); head = lines[0].split(","); self.assertEqual({l.split(",")[head.index("n_sentences_total")] for l in lines[1:]}, {"6"})
+        comp = [l for l in (out / "component_summary.csv").read_text().split("\n") if l.startswith("INT4,real,all,normalized_error")][0].split(","); header = (out / "component_summary.csv").read_text().split("\n")[0].split(",")
+        self.assertEqual(comp[header.index("n_clusters")], "4")                                                              # the eight sentences of the fixture fall into the clusters 0, 1, 2, 3 modulo 5 (the default 997 gives eight)
+
+
 if __name__ == "__main__":
     unittest.main()

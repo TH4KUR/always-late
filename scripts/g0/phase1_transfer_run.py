@@ -16,6 +16,7 @@ import numpy as np
 import torch
 
 import phase1_transfer_core as tc
+import phase1_transfer_external as te
 
 DIRECTION_KINDS = ("real", "matched_swapped", "random1", "random2", "random3")
 RANDOM_SEEDS = [1, 2, 3]
@@ -404,17 +405,33 @@ def main(argv=None):
     ap.add_argument("--out", required=True); ap.add_argument("--flores-root", required=True); ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json"))
     ap.add_argument("--freeze", default=str(ROOT / "reports/intervention_transfer/freeze.json")); ap.add_argument("--core", default=str(ROOT / "reports/intervention_transfer/core_sample.json"))
     ap.add_argument("--states", nargs="+", default=["16", "6", "4"], help="quantized states (bit widths; FP is always the reference); 16 = the rounding-only floor")
-    ap.add_argument("--task", choices=["feature", "group"], default="feature", help="feature: the feature-level core (404 features); group: the group-level panel (K64 group and control draws on the 27 x 300 evaluation sentences)")
+    ap.add_argument("--task", choices=["feature", "group", "external-core"], default="feature", help="feature: the feature-level core (404 features); group: the group-level panel (K64 group and control draws on the 27 x 300 evaluation sentences); external-core: the full-precision-only job that builds the contexts of the external panel (amendment A11)")
     ap.add_argument("--manifest", default=str(ROOT / "reports/functional_validation/groups_manifest.json")); ap.add_argument("--eval-freeze", default=str(ROOT / "reports/functional_validation/evaluation_freeze_lm.json"))
     ap.add_argument("--chunk-sentences", type=int, default=60); ap.add_argument("--max-sentences", type=int, help="first n evaluation sentences of each language (group smoke)"); ap.add_argument("--max-languages", type=int, help="first n languages (group smoke)")
     ap.add_argument("--grad-scales", type=float, nargs="*", default=GRAD_SCALES, help="scales of the first-order cells of the gradient baseline (feature task only; amendment A7: 0.05; the instrument job may add 0.025 to check the finite difference)")
     ap.add_argument("--max-rows", type=int, default=768, help="largest suffix call in rows (sequences x length); a context batch is cut to stay within it"); ap.add_argument("--chunk-features", type=int, default=25); ap.add_argument("--max-features", type=int, help="evenly spaced subset of the core (instrument job)"); ap.add_argument("--max-contexts", type=int, help="first contexts of each feature (instrument job)")
     ap.add_argument("--dev-per-language", type=int, default=997); ap.add_argument("--max-len", type=int, default=256); ap.add_argument("--batch-size", type=int, default=32); ap.add_argument("--max-tokens", type=int, default=1024)
     ap.add_argument("--commit", default="unknown")
+    ap.add_argument("--external-panel", help="freeze_external.json: run on the six-language external (Wikipedia) panel of amendment A11 instead of FLORES"); ap.add_argument("--external-text", help="directory of the panel's passages_<code>.jsonl files")
+    ap.add_argument("--main-core", default=str(ROOT / "reports/intervention_transfer/core_sample.json"), help="the main core: with --external-panel and the feature task --core is the EXTERNAL core and this file is the base it must be a subset of")
+    ap.add_argument("--external-core-record", help="the record that pins the external core (feature task on the external panel)"); ap.add_argument("--external-M", type=int, default=16); ap.add_argument("--external-min-ctx", type=int, default=4)
     a = ap.parse_args(argv)
+    if a.task == "external-core" and not a.external_panel:
+        ap.error("--task external-core needs --external-panel")
+    if a.external_panel and not a.external_text:
+        ap.error("--external-panel needs --external-text")
+    if a.external_panel and a.task == "feature" and not a.external_core_record:
+        ap.error("the feature task on the external panel needs --external-core-record (the pinned external core)")
     t0 = time.time(); log = lambda *m: print(f"[{time.time() - t0:7.0f}s]", *m, flush=True)
-    freeze_text = Path(a.freeze).read_text(); freeze = json.loads(freeze_text); core = json.loads(Path(a.core).read_text()); check_core_against_freeze(freeze, core)
+    freeze_text = Path(a.freeze).read_text(); freeze = json.loads(freeze_text); core_text = Path(a.core).read_text(); core = json.loads(core_text)
+    if a.external_panel and a.task == "feature":
+        main_core = json.loads(Path(a.main_core).read_text()); check_core_against_freeze(freeze, main_core); te.check_external_core_subset(main_core, core)
+        te.check_external_core(json.loads(Path(a.external_core_record).read_text()), core, core_text)
+    else:
+        check_core_against_freeze(freeze, core)
     freeze_sha = hashlib.sha256(freeze_text.encode()).hexdigest()
+    if a.external_panel:                                                                                   # the chunk keys of an external run cover the external freeze (and the external core): no chunk of the main study can be taken for one
+        freeze_ext_text = Path(a.external_panel).read_text(); freeze_sha = hashlib.sha256((freeze_text + freeze_ext_text + (core_text if a.task == "feature" else "")).encode()).hexdigest()
     if a.task == "group":
         check_inputs_against_freeze(freeze, {"groups_manifest": a.manifest, "evaluation_freeze_lm": a.eval_freeze})
 
@@ -463,12 +480,18 @@ def main(argv=None):
     names = [r["code"] for r in pd_.load_roster(a.roster)]
     if list(core["languages"]) != names:
         raise ValueError("the core sample was built for another language order")
-    dev_tokens, truncated = [], 0
-    for code in names:
-        for s in pd_.encode_sentences(tok, pd_.read_flores_split(a.flores_root, code, "dev", 997)[:a.dev_per_language]):
-            truncated += len(s) > a.max_len; dev_tokens.append(s[:a.max_len])
-    if len(dev_tokens) != len(names) * a.dev_per_language:
-        raise ValueError(f"{len(dev_tokens)} dev sentences, expected {len(names) * a.dev_per_language}: the dev pool is not the one of the core sample")
+    dev_tokens, truncated, ext = [], 0, None
+    if a.external_panel:
+        ext = te.prepare_external(json.loads(freeze_ext_text), a.external_text, lambda texts: pd_.encode_sentences(tok, texts), a.max_len); dev_tokens = ext["flat"]
+        log("external panel:", {c: len(ext["tokens"][c]) for c in ext["codes"]}, "missing", ext["missing"])
+        if a.task == "feature" and core["parameters"].get("n_passages") != len(dev_tokens):
+            raise ValueError(f"the external core was built on {core['parameters'].get('n_passages')} passages, the panel has {len(dev_tokens)}")
+    else:
+        for code in names:
+            for s in pd_.encode_sentences(tok, pd_.read_flores_split(a.flores_root, code, "dev", 997)[:a.dev_per_language]):
+                truncated += len(s) > a.max_len; dev_tokens.append(s[:a.max_len])
+        if len(dev_tokens) != len(names) * a.dev_per_language:
+            raise ValueError(f"{len(dev_tokens)} dev sentences, expected {len(names) * a.dev_per_language}: the dev pool is not the one of the core sample")
     batcher = lambda sents: p1.make_batches({0: sents}, bos, "mask", pad, a.max_len, a.batch_size, a.max_tokens)
     log("dev sentences", len(dev_tokens), "truncated", truncated, "features in the core", len(core["feature_ids"]), "states", labels, "task", a.task)
 
@@ -490,13 +513,24 @@ def main(argv=None):
             "freeze_sha256": freeze_sha, "core_sha256": hashlib.sha256(Path(a.core).read_bytes()).hexdigest(), "gates": gates, "dev_sentences": len(dev_tokens), "truncated": truncated,
             "argv": list(argv) if argv is not None else None, "versions": fr.p1_package_versions(), "complete": False}
     (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
+    if a.task == "external-core":
+        out_core, ma = te.external_core_from_model(core, dev_tokens, lower, encode, batcher, DEVICE, a.external_M, a.external_min_ctx)
+        out_core["source"].update({"external_freeze_sha256": hashlib.sha256(freeze_ext_text.encode()).hexdigest(), "main_core_file_sha256": hashlib.sha256(core_text.encode()).hexdigest(), "passage_order": ext["codes"],
+                                   "passages_by_language": {c: len(ext["tokens"][c]) for c in ext["codes"]}})
+        text = json.dumps(out_core, indent=1, sort_keys=True) + "\n"; (out / "core_external.json").write_text(text); (out / "core_external_record.json").write_text(json.dumps(te.core_record(out_core, text), indent=1, sort_keys=True) + "\n"); torch.save(ma, out / "max_activations_external.pt")
+        meta.update({"complete": True, "seconds": time.time() - t0, "n_features": len(out_core["feature_ids"]), "n_excluded": len(out_core["excluded_features"])}); (out / "meta_transfer.json").write_text(json.dumps(meta, indent=1, default=str) + "\n")
+        log("external core:", len(out_core["feature_ids"]), "features,", len(out_core["excluded_features"]), "excluded"); return
     if a.task == "feature":
         res = run_transfer(labels, setup, lower, suffix, encode, sae.W_dec, core, dev_tokens, batcher, out, freeze_sha, a.chunk_features, device=DEVICE, log=log, max_features=a.max_features, max_contexts=a.max_contexts, max_rows=a.max_rows, grad_scales=a.grad_scales, grad_fn=grad_fn)
     else:
-        man = json.loads(Path(a.manifest).read_text()); eval_ids = fr5.frozen_eval_ids(json.loads(Path(a.eval_freeze).read_text())); langs = names[:a.max_languages] if a.max_languages else names; eval_tokens = {}
-        for code in langs:
-            lines = pd_.read_flores_split(a.flores_root, code, "devtest", 1012)
-            eval_tokens[code] = [s[:a.max_len] for s in pd_.encode_sentences(tok, [lines[j] for j in eval_ids])]
+        man = json.loads(Path(a.manifest).read_text()); eval_tokens = {}
+        if ext is not None:
+            langs = [c for c in names if c in ext["codes"]]; langs = langs[:a.max_languages] if a.max_languages else langs; eval_tokens = {c: ext["tokens"][c] for c in langs}
+        else:
+            eval_ids = fr5.frozen_eval_ids(json.loads(Path(a.eval_freeze).read_text())); langs = names[:a.max_languages] if a.max_languages else names
+            for code in langs:
+                lines = pd_.read_flores_split(a.flores_root, code, "devtest", 1012)
+                eval_tokens[code] = [s[:a.max_len] for s in pd_.encode_sentences(tok, [lines[j] for j in eval_ids])]
         res = run_group(labels, setup, lower, suffix, encode, sae.W_dec, man, langs, eval_tokens, batcher, out, freeze_sha, a.chunk_sentences, device=DEVICE, log=log, max_sentences=a.max_sentences, max_rows=a.max_rows, grad_fn=grad_fn)
     if not res["gates"]["sham_exact"]:
         raise GateError(f"the sham edit is not exactly zero (max abs {res['gates']['sham_max_abs']}): the unedited and the edited rows do not take identical computations")

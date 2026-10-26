@@ -188,10 +188,12 @@ def main(argv=None):
     ap.add_argument("--freeze", required=True); ap.add_argument("--core", required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--feature-dir", action="append", default=[], metavar="STATE=DIR"); ap.add_argument("--group-dir", action="append", default=[], metavar="STATE=DIR")
     ap.add_argument("--n-boot", type=int, default=ta.BOOTSTRAP_REPLICATES); ap.add_argument("--seed", type=int, default=ta.BOOTSTRAP_SEED)
+    ap.add_argument("--cluster-mod", type=int, help="items with the same sentence index modulo this number share a bootstrap cluster (default: the dev sentences per language of the freeze, 997: the parallel FLORES sentence); the external panel uses a value above the number of passages")
+    ap.add_argument("--group-languages", nargs="+", help="the languages of the group-level directories in the order of the run (default: the languages of the core; the external panel: its six)"); ap.add_argument("--group-sentences", type=int, help="sentences per language of the group-level run (default: the freeze's 300)")
     a = ap.parse_args(argv)
     freeze = json.loads(Path(a.freeze).read_text()); core = json.loads(Path(a.core).read_text()); spec = freeze["spec"]; parse = lambda xs: {x.split("=", 1)[0]: x.split("=", 1)[1] for x in xs}
-    feat = feature_level(parse(a.feature_dir), core, freeze["split"], spec["feature_subset"]["dev_per_language"], a.n_boot, a.seed) if a.feature_dir else None
-    group = group_level(parse(a.group_dir), core["languages"], spec["group_panel"]["evaluation_sentences"], spec["group_panel"]["control_draws"], a.n_boot, a.seed) if a.group_dir else None
+    feat = feature_level(parse(a.feature_dir), core, freeze["split"], a.cluster_mod or spec["feature_subset"]["dev_per_language"], a.n_boot, a.seed) if a.feature_dir else None
+    group = group_level(parse(a.group_dir), a.group_languages or core["languages"], a.group_sentences or spec["group_panel"]["evaluation_sentences"], spec["group_panel"]["control_draws"], a.n_boot, a.seed) if a.group_dir else None
     write_outputs(a.out, feat, group, claim_status(feat, group))
     print(json.dumps(jsonable(claim_status(feat, group)["claims"]), indent=1, sort_keys=True))
 
