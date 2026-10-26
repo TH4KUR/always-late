@@ -166,6 +166,33 @@ class GroupLevel(unittest.TestCase):
         want = (0 * 1.0 + 2 * 1.0 + 1 * 1.0 + 1 * 1.0) / 4                                                                 # cell 0 is 1.0 everywhere, cell 1 is 1 + j: pooled over the multiplicities
         self.assertAlmostEqual(pool["net"][0, 0], want); self.assertAlmostEqual(pool["net"][1, 1], (2 * 2.0 + 1 * 3.0 + 1 * 4.0) / 4)
 
+    def test_items_with_other_cells_or_another_token_count_than_the_group_are_errors(self):
+        items = group_items_for(["a"], 2, lambda l, j: [1.0] * 5, [lambda l, j: [0.0] * 5]); bad = dict(items); bad[("a", 0, "group")] = {**items[("a", 0, "group")], "cells": ["FP/FP", "Q/FP", "FP/Q", "Q/Q-native", "Q/Q"]}
+        with self.assertRaises(ValueError):
+            ta.group_arrays(bad, ["a"], 2, 1)
+        other = dict(items); other[("a", 1, "control0")] = {**items[("a", 1, "control0")], "n_target_rows": 11}
+        with self.assertRaises(ValueError):
+            ta.group_arrays(other, ["a"], 2, 1)
+
+    def test_the_net_harm_needs_a_control_draw(self):
+        A = ta.group_arrays(group_items_for(["a"], 2, lambda l, j: [1.0] * 5, []), ["a"], 2, 0)
+        with self.assertRaises(ValueError):
+            ta.pooled_harms(A)
+
+    def test_a3_ties_do_not_count_for_the_context_term_and_a_zero_median_difference_does_not_hold(self):
+        s = ta.a3_summary({"C": np.array([1.0, -1.0]), "W": np.array([1.0, 1.0])})
+        self.assertEqual(s["c_gt_w"], 0); self.assertEqual(s["median_difference"], 0.0); self.assertFalse(s["holds"])
+
+    def test_the_interval_is_the_percentile_interval_of_the_seeded_replicates_replayed_independently(self):
+        rng = np.random.default_rng(5); c, w = rng.normal(size=12), rng.normal(size=12)                                  # one language: C and W come from the sentence-level loss changes of cells 1 and 2
+        group = lambda l, j: [0.0, c[j], w[j], 0.0, 0.0]
+        A = ta.group_arrays(group_items_for(["a"], 12, group, [lambda l, j: [0.0] * 5]), ["a"], 12, 1)
+        res = ta.bootstrap_a3(A, n_boot=300, seed=9, level=90); r = np.random.default_rng(9); diffs, holds = [], []
+        for _ in range(300):
+            m = np.bincount(r.integers(0, 12, 12), minlength=12); d = abs((m * c).sum() / m.sum()) - abs((m * w).sum() / m.sum()); diffs.append(d); holds.append(d > 0)
+        lo, hi = np.percentile(diffs, [5, 95]); self.assertAlmostEqual(res["median_difference"][0], lo); self.assertAlmostEqual(res["median_difference"][1], hi)
+        self.assertAlmostEqual(res["share_holds"], float(np.mean(holds))); self.assertTrue(0 < res["share_holds"] < 1); self.assertEqual((res["n_boot"], res["seed"], res["level"]), (300, 9, 90))
+
 
 if __name__ == "__main__":
     unittest.main()
