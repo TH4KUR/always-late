@@ -1,0 +1,39 @@
+{
+ "id": "R3",
+ "kind": "intervention-transfer-revision-amendment",
+ "schema": 1,
+ "created": "2026-10-27 03:51 IST",
+ "title": "Common-support analysis of the real direction against its control directions (publication recovery plan, task 1, bullet 'common real/swapped eligibility'): protocol fixed before the code and the run",
+ "status": "POST HOC (selected after D-094). Written before the code and the run. The original specificity table (D-094, D-095: normalized-error and cosine gaps of eligible real items against the mean of the controls, controls not eligibility-filtered) is unchanged and stays qualified; this adds a support-matched comparison.",
+ "honesty_note": "All items had been analysed under the original rules and the specificity table had been read. Codex's audit (reports/publication_reassessment_2026-10-26/README.md) had reported counts of jointly eligible pairs (986 real/swapped pairs of the main INT-state tables, 323 with all four controls) and a median real/swapped FP effect-norm ratio of 2.02 before this protocol was written. The band, the nested sets, the minimum coverage and the statistics below are those of the plan (band [0.8, 1.25]) or are fixed here without reference to any gap value; no gap statistic of the matched sets was computed before this file.",
+ "source": "docs/superpowers/plans/2026-10-26-publication-recovery-after-results.md Task 1: 'Analyse common real/swapped eligibility with FP effect norm, edit norm and residual norm jointly reported. Predefine FP-effect-norm ratio [0.8,1.25] as a diagnostic overlap band; count coverage before reporting a contrast. This is post hoc support analysis, not proof of equivalence. Do not rescale stored effect vectors to imitate a physically rescaled nonlinear edit.'",
+ "question": "Does the real decoder direction transfer differently from a control direction (matched swapped, random) when the two edits have a comparable full-precision effect size, or was the original small real-minus-control gap (D-094) a mixture of different FP effect scales and different eligibility populations?",
+ "inputs_sha256": {
+  "transfer_runs/analysis_main/per_context_INT16.csv": "be221b2bf485e113e07f525be55dffea0262d4793bce3e2a908e451ebabffb14",
+  "transfer_runs/analysis_main/per_context_INT6.csv": "d071acd53419447678d1929df98804193d36963c6fbb4f82a75d43e019c6b346",
+  "transfer_runs/analysis_main/per_context_INT4.csv": "9fd618f2697fab2674026725d48f7e0aa9e72a9c54526aeffdc3ea6d48b5370f",
+  "transfer_runs/analysis_external/per_context_INT16.csv": "4eb0b8678e51338aecd078cf4721f4bae698d7905dff9663f195c267a6a0ccf7",
+  "transfer_runs/analysis_external/per_context_INT6.csv": "01a950845a50fd4281f1fbfa6fd9941c4e5f06495ebdfe83f0cd37a8cbe49d54",
+  "transfer_runs/analysis_external/per_context_INT4.csv": "aed9bc1a5b7b62d9ff0303ba6bc770900f5b2b01b01aa602a44a78ed29b609f1"
+ },
+ "corpora": [
+  "flores_main",
+  "wikipedia_external"
+ ],
+ "states": [
+  "INT16 (reference)",
+  "INT6",
+  "INT4"
+ ],
+ "pairs": "for every control kind separately (matched_swapped is the primary comparison; random1, random2, random3 are secondary) the pairs of the real item and the control item of the same feature and context (the same (feature, sentence)); the pair needs a finite FP effect norm in both",
+ "nested_sets": {
+  "S0": "all pairs",
+  "S1": "pairs in which BOTH items are eligible (FP effect norm above five floors of the item's own kind, the flags of the main tables)",
+  "S2": "S1 pairs whose FP effect-norm ratio rho = fp_norm(real) / fp_norm(control) lies in the band [0.8, 1.25] (inclusive)"
+ },
+ "coverage_reported_first": "per corpus, state-independent set sizes (the sets depend on FP quantities only: they are identical in the three state tables, which is asserted): the number of pairs, of S1, of S2, the number of features and of source clusters in S2, the share of S1 inside the band, and the medians (with the 25th and 75th percentiles) of rho, of the ratio of the FP edit norms (edit_norm_fp) and of the ratio of the FP residual norms (resid_norm_fp) in S0, S1 and S2; for 'all four controls together' only the count of real items whose four control items are all in S1 (no contrast)",
+ "minimum_coverage_for_a_contrast": "at least 100 pairs and at least 20 features in the set; below this the contrast is reported as 'insufficient support' with the counts",
+ "contrast": "per state, corpus, control kind and set (S2 primary, S1 for comparison): the median over pairs of (a) the normalized-error gap, normalized_error(real) - normalized_error(control) (each with its own kind's floor, as in the main tables), (b) the cosine gap, cosine(real) - cosine(control) between the FP and the Q/Q effect vector (pairs with a missing cosine are left out and counted), (c) log2 of the ratio error_norm(real) / error_norm(control) (pairs with a zero control error norm left out and counted), and (d) the share of pairs in which the real direction has the larger normalized error; crossed bootstrap over features and source clusters (the external panel: passages), 2,000 replicates, seed 20261026, 95 % percentile",
+ "reading_rules": "No stored effect vector is rescaled. A contrast within the band is a support-matched comparison, not proof of equivalence or of selectivity; the band is a diagnostic overlap band, wide enough to include a 25 % difference in effect size. An interval that includes zero is 'not separated', never 'equal'. The INT16 reference is read next to INT6 and INT4: a real-minus-control gap present at INT16 is a property of the direction under rounding, not of quantization.",
+ "code": "scripts/g0/phase1_transfer_support.py with scripts/g0/tests_torch/test_phase1_transfer_support.py (tests first, mutation checked); outputs in reports/intervention_transfer/results/recovery/ (support_coverage.csv, support_contrast.csv, support.json)"
+}
