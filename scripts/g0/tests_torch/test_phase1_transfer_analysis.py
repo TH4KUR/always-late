@@ -531,5 +531,31 @@ class Diagnostic(unittest.TestCase):
         self.assertFalse(ta.utility_criterion({"point": 0.3, "low": 0.0, "high": 0.4})); self.assertFalse(ta.utility_criterion({"point": 0.3, "low": -0.1, "high": 0.4}))
 
 
+class Specificity(unittest.TestCase):
+    def setUp(self):
+        self.rows = {}
+        for f, s, real in ((10, 1000, 0.8), (10, 2000, 0.6), (11, 1001, 0.4)):
+            self.rows[(f, s, "real")] = prow(f, s, "real", err=real, cosine=0.9)
+            for k, e in (("matched_swapped", 0.2), ("random1", 0.1), ("random2", 0.3)):
+                self.rows[(f, s, k)] = prow(f, s, k, err=e, cosine=0.5)
+
+    def test_the_real_direction_against_the_mean_of_the_other_directions_at_the_same_context(self):
+        rec = ta.specificity_summary(self.rows, n_boot=20, seed=1)
+        a = find(rec, split="all", metric="normalized_error_gap"); self.assertEqual(a["n"], 3); self.assertAlmostEqual(a["point"], 0.6 - 0.2)                         # lower median of 0.8-0.2, 0.6-0.2, 0.4-0.2
+        self.assertAlmostEqual(find(rec, split="all", metric="cosine_gap")["point"], 0.9 - 0.5); self.assertEqual(find(rec, split="calibration", metric="normalized_error_gap")["n"], 2); self.assertEqual(find(rec, split="heldout", metric="normalized_error_gap")["n"], 1)
+        self.assertAlmostEqual(find(rec, split="all", metric="real_above_controls")["point"], 1.0)
+
+    def test_a_tie_with_the_controls_is_not_counted_as_the_real_direction_transferring_worse(self):
+        rows = {(10, 1000, "real"): prow(10, 1000, "real", err=0.2, cosine=None), (10, 1000, "random1"): prow(10, 1000, "random1", err=0.2, cosine=None)}
+        self.assertEqual(find(ta.specificity_summary(rows, n_boot=10, seed=0), split="all", metric="real_above_controls")["point"], 0.0)
+
+    def test_only_eligible_real_items_with_at_least_one_control_enter_and_the_others_are_counted(self):
+        self.rows[(10, 1000, "real")]["eligible"] = False
+        for k in ("matched_swapped", "random1", "random2"):
+            del self.rows[(11, 1001, k)]
+        a = find(ta.specificity_summary(self.rows, n_boot=20, seed=1), split="all", metric="normalized_error_gap"); self.assertEqual((a["n"], a["n_items"], a["n_no_control"]), (1, 3, 1))
+        b = find(ta.specificity_summary(self.rows, n_boot=20, seed=1, eligible_only=False), split="all", metric="normalized_error_gap"); self.assertEqual((b["n"], b["n_no_control"]), (2, 1))
+
+
 if __name__ == "__main__":
     unittest.main()

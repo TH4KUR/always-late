@@ -404,3 +404,28 @@ def diagnostic(d, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, lams=RIDGE_S
     imp_all = paired_relative_improvement(models[strongest]["abs_error"], models["A+B+G"]["abs_error"], fh, ch_, n_boot, seed)
     imp_a = paired_relative_improvement(models["A"]["abs_error"], models[DIAGNOSTIC]["abs_error"], fh, ch_, n_boot, seed)
     return {**out, "status": "fitted", "models": models, "null_mae": float(np.abs(y_held - np.median(y_cal)).mean()), "strongest_baseline": strongest, "improvement": imp, "improvement_over_A": imp_a, "improvement_with_gradient": imp_all, "criterion_met": utility_criterion(imp)}
+
+
+def specificity_summary(rows, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, eligible_only=True, splits=("all", "calibration", "heldout")):
+    """The specificity contrast of the real decoder direction against the other directions of the same feature and context: per real item (eligible ones unless asked otherwise, with at least one control) the
+    normalized error and the FP-to-Q/Q cosine of the real direction minus the mean over the matched swapped and random directions that exist, and the share of items where the real direction transfers worse
+    (higher error). Crossed bootstrap over features and source-sentence clusters. `n_items` counts all real items of the split, `n_no_control` the selected ones without a control (left out, counted)."""
+    controls = {}
+    for r in rows.values():
+        if r["kind"] in CONTROL_KINDS:
+            controls.setdefault((r["feature"], r["sentence"]), []).append(r)
+    out = []
+    for split in splits:
+        group = [r for r in rows.values() if r["kind"] == "real" and (split == "all" or r["split"] == split)]
+        if not group:
+            continue
+        sel = [r for r in group if r["eligible"] or not eligible_only]; have = [r for r in sel if (r["feature"], r["sentence"]) in controls]
+        fidx = np.array([r["feature"] for r in have], dtype=np.int64); cidx = np.array([r["cluster"] for r in have], dtype=np.int64)
+        gap = np.array([r["normalized_error"] - np.mean([c["normalized_error"] for c in controls[(r["feature"], r["sentence"])]]) for r in have], dtype=float)
+        cos = []
+        for r in have:
+            cs = [c["cosine"] for c in controls[(r["feature"], r["sentence"])] if c["cosine"] is not None]
+            cos.append(np.nan if r["cosine"] is None or not cs else r["cosine"] - float(np.mean(cs)))
+        for name, vals, stat in (("normalized_error_gap", gap, "median"), ("cosine_gap", np.array(cos, dtype=float), "median"), ("real_above_controls", (gap > 0).astype(float), "mean")):
+            out.append({"split": split, "metric": name, "n_items": len(group), "n_no_control": len(sel) - len(have), **crossed_bootstrap(vals, fidx, cidx, stat, n_boot, seed)})
+    return out
