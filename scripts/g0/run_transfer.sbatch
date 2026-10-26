@@ -1,7 +1,7 @@
 #!/bin/bash
 # Intervention-transfer study (D-088), the feature-level core on ONE GPU of Ada (u22, RTX 2080 Ti 11 GB), Gemma-2-2B layer 12: scripts/g0/phase1_transfer_run.py.
-# Usage: sbatch [-t HH:MM:SS] --exclude=gnode068,gnode069 --export=ALL,REPO=<snapshot> scripts/g0/run_transfer.sbatch <name> [extra args of phase1_transfer_run.py]
-# instrument job (plan Task 2, a correctness and throughput gate, NOT a scientific pilot): sbatch -t 00:40:00 --exclude=gnode068,gnode069 ... run_transfer.sbatch transfer-instrument --states 16 4 --max-features 12 --max-contexts 4 --chunk-features 6
+# Usage: sbatch [-t HH:MM:SS] --exclude=gnode068,gnode069,gnode076 --export=ALL,REPO=<snapshot> scripts/g0/run_transfer.sbatch <name> [extra args of phase1_transfer_run.py]
+# instrument job (plan Task 2, a correctness and throughput gate, NOT a scientific pilot): sbatch -t 00:40:00 --exclude=gnode068,gnode069,gnode076 ... run_transfer.sbatch transfer-instrument --states 16 4 --max-features 12 --max-contexts 4 --chunk-features 6
 # full run: one job per quantized state keeps each job near three hours:  run_transfer.sbatch transfer-int6 --states 6   (and 4, 16)
 # Prereqs: code deployed by scripts/g0/deploy_phase1.sh (it ships reports/intervention_transfer/freeze.json and core_sample.json); env, model cache and FLORES as for run_f5.sbatch.
 # Read the `GPU 0:` line AND the first lines of the log for `CUDA initialization` (a node whose CUDA fails runs on the CPU and stops at a gate). Jobs run offline (HF_HUB_OFFLINE=1).
