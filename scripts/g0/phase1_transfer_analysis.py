@@ -4,6 +4,8 @@ the frozen eligibility rule (FP effect norm above five times the floor of its di
 predictive baselines) are added with their own tests. Part 2 (this file, after `coverage`): the group-level arrays, the token-weighted pooled harms, the decomposition of the net harm and the A3 summary with its bootstrap.
 
 The floor is computed per direction kind (real, matched swapped, random 1 to 3): the frozen definition says 'at the same features, directions and contexts'; the held-out items never enter it (a test says so)."""
+import hashlib
+
 import numpy as np
 import torch
 
@@ -324,3 +326,48 @@ def design(rows, kind="real", eligible_only=True):
     arr = lambda x, w: np.array(x, dtype=float).reshape(len(x), w)
     return {"keys": keys, "y": np.array(y, dtype=float), "A": arr(A, 5), "B": arr(B, 1), "G": arr(G, 4), "split": np.array(split), "feature": np.array(feature, dtype=np.int64), "cluster": np.array(cluster, dtype=np.int64),
             "columns": {k: list(v) for k, v in COLUMNS.items()}, "n_dropped": int(sum(dropped.values())), "dropped_reasons": dropped}
+
+
+FOLD_SALT = "intervention-transfer-ridge-folds-v1"
+RIDGE_STRENGTHS = (0.1, 1, 10)
+N_FOLDS = 5
+
+
+def feature_fold(feature, n_folds=N_FOLDS, salt=FOLD_SALT):
+    """The fold of a feature in the feature-group cross-validation: SHA-256 of the salted feature id, so that all contexts of a feature are always together and the assignment never depends on the data."""
+    return int(hashlib.sha256(f"{salt}:{feature}".encode()).hexdigest()[:8], 16) % n_folds
+
+
+def ridge_fit(X, y, lam):
+    """Ridge regression of y on the columns of X standardized with the TRAINING mean and deviation (a constant column gets scale 1 and weight 0); minimizes |y - b - Zw|^2 + lam |w|^2 with the intercept b
+    (the training mean of y) unpenalized."""
+    X = np.asarray(X, dtype=float); y = np.asarray(y, dtype=float); mean = X.mean(0); sd = X.std(0); scale = np.where(sd > 0, sd, 1.0); Z = (X - mean) / scale; intercept = float(y.mean())
+    coef = np.linalg.solve(Z.T @ Z + lam * np.eye(Z.shape[1]), Z.T @ (y - intercept)); return {"mean": mean, "scale": scale, "coef": coef, "intercept": intercept, "lambda": lam}
+
+
+def ridge_predict(model, X):
+    return ((np.asarray(X, dtype=float) - model["mean"]) / model["scale"]) @ model["coef"] + model["intercept"]
+
+
+def choose_lambda(X, y, features, lams=RIDGE_STRENGTHS, n_folds=N_FOLDS, salt=FOLD_SALT):
+    """The ridge strength with the lowest mean absolute error over out-of-fold predictions of the feature-group folds (ties: the smaller strength). -> {"lambda", "cv_mae": {strength: mae}}."""
+    fold = np.array([feature_fold(f, n_folds, salt) for f in features]); X = np.asarray(X, dtype=float); y = np.asarray(y, dtype=float); cv = {}
+    if len(set(fold.tolist())) < 2:
+        raise ValueError(f"the features fall into {len(set(fold.tolist()))} of {n_folds} folds: cross-validation over feature groups needs at least two non-empty folds")
+    for lam in lams:
+        err = []
+        for k in range(n_folds):
+            te = fold == k
+            if te.any():
+                err.append(np.abs(ridge_predict(ridge_fit(X[~te], y[~te], lam), X[te]) - y[te]))
+        cv[lam] = float(np.concatenate(err).mean())
+    return {"lambda": min(sorted(lams), key=lambda l: cv[l]), "cv_mae": cv}
+
+
+def paired_relative_improvement(err_base, err_diag, feature_idx, cluster_idx, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, level=BOOTSTRAP_LEVEL):
+    """The relative reduction of the mean absolute error of the diagnostic model against the baseline, 1 - mean(err_diag) / mean(err_base), on the same items, with a percentile interval from the PAIRED crossed
+    bootstrap (the same feature and cluster multiplicities for both errors in every replicate)."""
+    b, d = np.asarray(err_base, dtype=float), np.asarray(err_diag, dtype=float); _, fi = np.unique(feature_idx, return_inverse=True); _, ci = np.unique(cluster_idx, return_inverse=True)
+    nf, nc = int(fi.max()) + 1, int(ci.max()) + 1; mf, mc = bootstrap_multiplicities(nf, nc, n_boot, seed); reps = 1.0 - replicate_stats(d, fi, ci, mf, mc, "mean") / replicate_stats(b, fi, ci, mf, mc, "mean")
+    lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
+    return {"point": float(1.0 - d.mean() / b.mean()), "low": float(np.nanpercentile(reps, lo)), "high": float(np.nanpercentile(reps, hi)), "n": int(len(b)), "n_features": nf, "n_clusters": nc, "n_boot": int(n_boot), "seed": int(seed), "level": level}

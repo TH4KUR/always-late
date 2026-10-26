@@ -421,5 +421,56 @@ class Design(unittest.TestCase):
         d = ta.design(self.rows); self.assertEqual(list(d["feature"]), [10, 10, 11, 11]); self.assertEqual(list(d["cluster"]), [1000 % 997, 2000 % 997] * 2)
 
 
+class Ridge(unittest.TestCase):
+    def test_the_fit_is_the_closed_form_ridge_on_columns_standardized_with_the_training_mean_and_deviation(self):
+        rng = np.random.default_rng(0); X = rng.normal(size=(30, 3)) * [1.0, 5.0, 0.2] + [3.0, -2.0, 0.0]; y = X @ [1.0, 0.1, 4.0] + rng.normal(size=30) * 0.1; lam = 2.0
+        m = ta.ridge_fit(X, y, lam); mu, sd = X.mean(0), X.std(0); Z = (X - mu) / sd; w = np.linalg.solve(Z.T @ Z + lam * np.eye(3), Z.T @ (y - y.mean()))
+        Xt = rng.normal(size=(5, 3)); self.assertTrue(np.allclose(ta.ridge_predict(m, Xt), ((Xt - mu) / sd) @ w + y.mean())); self.assertTrue(np.allclose(m["mean"], mu) and np.allclose(m["scale"], sd))
+
+    def test_a_larger_strength_shrinks_the_coefficients_and_a_constant_column_is_ignored(self):
+        rng = np.random.default_rng(1); X = rng.normal(size=(40, 2)); y = 3 * X[:, 0] + rng.normal(size=40)
+        small, large = ta.ridge_fit(X, y, 0.1), ta.ridge_fit(X, y, 100.0); self.assertLess(np.abs(large["coef"]).sum(), np.abs(small["coef"]).sum())
+        Xc = np.hstack([X, np.full((40, 1), 7.0)]); m = ta.ridge_fit(Xc, y, 1.0); self.assertEqual(float(m["coef"][2]), 0.0); self.assertTrue(np.isfinite(ta.ridge_predict(m, Xc)).all())
+
+    def test_the_intercept_is_not_penalized(self):
+        rng = np.random.default_rng(2); X = rng.normal(size=(50, 2)); y = X[:, 0] + 100.0
+        self.assertTrue(np.allclose(ta.ridge_predict(ta.ridge_fit(X, y, 1e6), X), y.mean(), atol=1e-3))                                          # huge penalty: the prediction is the training mean of y, far from zero
+
+
+class Folds(unittest.TestCase):
+    def test_a_feature_belongs_to_one_deterministic_fold_and_every_fold_is_used(self):
+        f = [ta.feature_fold(i, 5) for i in range(200)]; self.assertEqual(f, [ta.feature_fold(i, 5) for i in range(200)]); self.assertEqual(set(f), set(range(5))); self.assertNotEqual(f, [ta.feature_fold(i, 5, salt="other") for i in range(200)])
+
+    def test_the_strength_with_the_lowest_cross_validated_mae_over_feature_groups_is_chosen_and_ties_go_to_the_smaller_strength(self):
+        rng = np.random.default_rng(3); feats = np.repeat(np.arange(40), 3); X = rng.normal(size=(120, 4)); y = X[:, 0] * 2 + rng.normal(size=120) * 0.5
+        res = ta.choose_lambda(X, y, feats, lams=(0.1, 1, 10), n_folds=5)
+        manual = {}
+        for lam in (0.1, 1, 10):
+            err = []
+            for k in range(5):
+                te = np.array([ta.feature_fold(f, 5) == k for f in feats]); m = ta.ridge_fit(X[~te], y[~te], lam); err += list(np.abs(ta.ridge_predict(m, X[te]) - y[te]))
+            manual[lam] = float(np.mean(err))
+        self.assertTrue(all(abs(res["cv_mae"][l] - manual[l]) < 1e-12 for l in manual)); self.assertEqual(res["lambda"], min(manual, key=lambda l: (manual[l], l)))
+        const = ta.choose_lambda(np.zeros((30, 1)), np.arange(30.0), np.arange(30), lams=(0.1, 1, 10), n_folds=3); self.assertEqual(const["lambda"], 0.1)                  # a constant column: all strengths are the same
+
+
+class FoldsDegenerate(unittest.TestCase):
+    def test_fewer_than_two_nonempty_folds_cannot_be_cross_validated(self):
+        with self.assertRaisesRegex(ValueError, "folds"):
+            ta.choose_lambda(np.random.default_rng(0).normal(size=(6, 2)), np.arange(6.0), np.full(6, 7), lams=(0.1, 1), n_folds=5)
+
+
+class PairedImprovement(unittest.TestCase):
+    def test_the_relative_reduction_of_the_mean_absolute_error_with_an_interval_from_the_replicates_replayed_independently(self):
+        rng = np.random.default_rng(5); base = rng.exponential(size=40) + 0.5; diag = base * rng.uniform(0.6, 1.0, size=40); f = np.repeat(np.arange(8), 5); c = np.tile(np.arange(5), 8)
+        r = ta.paired_relative_improvement(base, diag, f, c, n_boot=200, seed=3, level=90); mf, mc = ta.bootstrap_multiplicities(8, 5, 200, 3)
+        reps = 1.0 - ta.replicate_stats(diag, f, c, mf, mc, "mean") / ta.replicate_stats(base, f, c, mf, mc, "mean")
+        self.assertAlmostEqual(r["point"], 1.0 - diag.mean() / base.mean()); self.assertAlmostEqual(r["low"], float(np.percentile(reps, 5))); self.assertAlmostEqual(r["high"], float(np.percentile(reps, 95)))
+        self.assertEqual((r["n"], r["n_features"], r["n_clusters"]), (40, 8, 5))
+
+    def test_equal_errors_give_no_improvement(self):
+        e = np.arange(1.0, 9.0); r = ta.paired_relative_improvement(e, e, np.arange(8), np.arange(8) % 3, n_boot=30, seed=0); self.assertEqual((r["point"], r["low"], r["high"]), (0.0, 0.0, 0.0))
+
+
 if __name__ == "__main__":
     unittest.main()
