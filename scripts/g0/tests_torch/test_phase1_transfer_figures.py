@@ -110,6 +110,7 @@ class Figures(unittest.TestCase):
         imp = panel(fig, "panel:improvement"); est = collection(imp, "reduction").get_offsets(); self.assertEqual(len(est), 1); self.assertAlmostEqual(float(est[0][0]), 0.23)
         segs = [s for lc in imp.collections if lc.get_gid() == "reduction-ci" for s in lc.get_segments()]; self.assertEqual(len(segs), 1); self.assertTrue(np.allclose([segs[0][0][0], segs[0][1][0]], [0.12, 0.31]))
         self.assertEqual(sorted(l.get_xdata()[0] for l in imp.lines if l.get_gid() in ("zero", "criterion")), [0.0, 0.10])
+        self.assertEqual([x.get_text() for x in imp.texts if x.get_gid() == "note:INT4"], ["not fitted: too few items"]); self.assertEqual([x for x in imp.texts if x.get_gid() == "note:INT6"], [])
         self.assertIn("too few", " ".join(x.get_text() for x in panel(fig, "panel:mae:INT4").texts)); self.assertEqual(len(panel(fig, "panel:mae:INT4").collections), 0)
 
     def test_every_text_is_inside_the_canvas_and_the_subtitle_never_overlaps_a_panel_title_in_both_themes(self):

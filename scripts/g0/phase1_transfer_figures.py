@@ -96,30 +96,30 @@ def _component_panel(fig, t, w, h, tables, state, x0):
         if any(r is None or r["point"] is None for r in recs):
             continue
         xs = np.arange(3) + (ki - 2) * 0.12; pts = np.array([r["point"] for r in recs], dtype=float); lo = np.array([r["low"] for r in recs], dtype=float); hi = np.array([r["high"] for r in recs], dtype=float)
-        col = t["series"][0] if k == "real" else t["series"][1 + (ki - 1) % 2]
+        col = t["series"][0] if k == "real" else t["ink2"]
         v = ax.vlines(xs, lo, hi, color=col, linewidth=1.2, alpha=0.9, zorder=2); v.set_gid(f"ci:{k}")
         ax.scatter(xs, pts, s=34 if k == "real" else 20, color=col if k == "real" else "none", edgecolor=col, linewidth=1.1, zorder=3, gid=f"est:{k}")
     ax.set_xticks([0, 1, 2]); ax.set_xticklabels(["context C", "weights W", "interaction I"]); ax.set_xlim(-0.5, 2.5)
-    _label(ax, t, f"{state}: relative norm of each term", "term of the decomposition", "median norm / (full precision norm + floor)")
+    _label(ax, t, f"{state}: relative norm of each term", "term of the decomposition", "median norm / (FP norm + floor)")
     return ax
 
 
 def fig_crossed_contrasts(tables, theme, note):
-    states = [s for s in STATES if any(r["state"] == s for r in tables["components"])]; fig, t = gf._fig(theme, 10.6, 5.9); w, h = fig.get_size_inches()
+    states = [s for s in STATES if any(r["state"] == s for r in tables["components"])]; fig, t = gf._fig(theme, 11.4, 5.9); w, h = fig.get_size_inches()
     for i, s in enumerate(states):
-        _component_panel(fig, t, w, h, tables, s, 0.95 + 3.2 * i)
-    g = fig.add_axes([(0.95 + 3.2 * len(states)) / w, 1.2 / h, 2.9 / w, 3.0 / h], gid="panel:group"); gf._style(g, t); allv = []
+        _component_panel(fig, t, w, h, tables, s, 0.95 + 3.5 * i)
+    g = fig.add_axes([(0.95 + 3.5 * len(states)) / w, 1.2 / h, 2.9 / w, 3.0 / h], gid="panel:group"); gf._style(g, t); allv = []
     for si, s in enumerate(STATES):
         rows = [r for r in tables["group"] if r["state"] == s]
         if not rows:
             continue
         x = np.array([abs(r["W"]) for r in rows], dtype=float); y = np.array([abs(r["C"]) for r in rows], dtype=float); allv += list(x) + list(y)
-        g.scatter(x, y, s=24, color=t["series"][si], edgecolor=t["surface"], linewidth=0.6, alpha=0.9, zorder=3, gid=f"group:{s}")
+        g.scatter(x, y, s=24, color=t["series"][1 + si], edgecolor=t["surface"], linewidth=0.6, alpha=0.9, zorder=3, gid=f"group:{s}")
     hi = max(allv) * 1.08 if allv else 1.0; g.plot((0, hi), (0, hi), color=t["muted"], linewidth=1.0, linestyle="--", zorder=1, gid="identity"); g.set_xlim(0, hi); g.set_ylim(0, hi)
-    _label(g, t, "group level: one point per language", "|W|  weight term of the net harm", "|C|  context term of the net harm (dashed: equal)")
-    handles = [Line2D([0], [0], color=t["series"][0], marker="o", linestyle="none", markersize=6), Line2D([0], [0], color=t["series"][1], marker="o", linestyle="none", markersize=6),
-               Line2D([0], [0], color=t["series"][1], marker="o", markerfacecolor="none", linestyle="none", markersize=5)]
-    _legend(fig, t, handles, ["real direction (left panels) / INT6 (right)", "control directions (left, hollow) / INT4 (right)", "bars: crossed bootstrap interval"], 3)
+    _label(g, t, "group level: one point per language", "|W|  weight term of the net harm", "|C|  context term (dashed: |C| = |W|)")
+    handles = [Line2D([0], [0], color=t["series"][0], marker="o", linestyle="none", markersize=6), Line2D([0], [0], color=t["ink2"], marker="o", markerfacecolor="none", linestyle="none", markersize=5),
+               Line2D([0], [0], color=t["series"][1], marker="o", linestyle="none", markersize=5), Line2D([0], [0], color=t["series"][2], marker="o", linestyle="none", markersize=5)]
+    _legend(fig, t, handles, ["real direction", "four control directions (hollow, bars: crossed bootstrap interval)", "group level INT6", "group level INT4"], 4)
     gf._head(fig, t, "Which term carries the change of an intervention's effect: the context, the weights, or their interaction?",
              "left: the median norm of the context term C (activations change, weights stay), the weight term W (weights change, activations stay) and the interaction I over the full-precision effect norm plus the floor, for the real "
              f"direction and the four control directions of the same features; right: the same decomposition of the net harm (group minus matched controls) of each of the languages, absolute values; {note}", 0.9)
@@ -164,6 +164,9 @@ def fig_predictive(tables, theme, note):
             continue
         ys.append(i); labels.append(s); c = imp.hlines(i, r["improvement_low"], r["improvement_high"], color=t["series"][0], linewidth=2.0, zorder=2); c.set_gid("reduction-ci")
         imp.scatter([r["improvement_diagnostic"]], [i], s=50, color=t["series"][0], edgecolor=t["surface"], linewidth=0.8, zorder=3, gid="reduction")
+    for i, s in enumerate(STATES):
+        if s not in labels:
+            imp.text(0.5, i, "not fitted: too few items", transform=imp.get_yaxis_transform(), ha="center", va="center", fontsize=8.5, color=t["muted"], gid=f"note:{s}")
     imp.axvline(0.0, color=t["muted"], linewidth=1.0, zorder=1, gid="zero"); imp.axvline(CRITERION, color=t["series"][1], linewidth=1.0, linestyle="--", zorder=1, gid="criterion")
     imp.set_yticks(range(len(STATES))); imp.set_yticklabels(STATES); imp.set_ylim(len(STATES) - 0.5, -0.5)
     _label(imp, t, "A+B against the strongest baseline", "relative reduction of the held-out error", "")
