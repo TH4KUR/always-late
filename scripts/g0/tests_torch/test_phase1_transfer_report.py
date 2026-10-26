@@ -79,6 +79,71 @@ class FeatureLevel(Fixture):
             rep.feature_level({"INT4": self.fdirs["INT4"]}, CORE, SPLIT, 997, n_boot=10, seed=1)
 
 
+def full_item(err):
+    """A feature-level item with the stored scalars of the amendments A9 and A10 (activation vectors, gradient predictions), so that the design of the diagnostic keeps it."""
+    return {**feature_item(err), "amp_fp": [4.0, 2.0], "amp_q": [3.0, 2.0], "amp_fp_mean": 3.0, "amp_q_mean": 2.5, "resid_norm_fp": 90.0, "resid_norm_q": 91.0, "edit_norm_fp": 30.0, "edit_norm_native": 28.0, "direction_norm": 1.0,
+            "g_pred_fp": 0.02, "g_pred_q_fixed": 0.025, "g_pred_q_native": 0.03, "g_norm_fp": 1.0, "g_norm_q": 1.2}
+
+
+def write_full_feature_dir(d, state):
+    items, pooled = {}, {}
+    for f, ss in CONTEXTS.items():
+        for k in KINDS:
+            for s in ss:
+                items[(f, s, k)] = full_item(ERR[state] * (1 + 0.01 * f))
+            pooled[(f, k)] = {**pool_gram([100.0, 0.0], [100.0, ERR[state]]), "n_contexts": len(ss)}
+    tr.atomic_save({"items": items, "pooled": pooled, "skipped": []}, Path(d) / f"transfer_{state}_c000.pt", f"kf-{state}")
+
+
+def survival_file(n_feat=20):
+    corr = {b: torch.tensor([[0.9 - 0.01 * f for f in range(n_feat)], [0.8 - 0.01 * f for f in range(n_feat)]]) for b in (6, 4)}
+    return {"languages": ["a", "b"], "bits": [6, 4], "corr": corr, "pooled_corr": {b: torch.tensor([0.85 - 0.01 * f for f in range(n_feat)]) for b in (6, 4)}}
+
+
+class SurvivalLevel(Fixture):
+    def test_the_survival_diagnostic_is_added_per_state_with_both_variants_and_the_p_columns_come_from_the_file(self):
+        full = {}
+        for s in ERR:
+            full[s] = self.root / f"full_{s}"; full[s].mkdir(); write_full_feature_dir(full[s], s)
+        core = {**CORE, "languages": ["a", "b"]}; res = rep.feature_level(full, core, SPLIT, 997, n_boot=20, seed=1, survival=survival_file())
+        for s in ("INT6", "INT4"):
+            st = res["states"][s]; self.assertEqual(set(st["survival"]), {"eligible", "all_items"}); v = st["survival"]["all_items"]
+            self.assertEqual(v["n_design"], 8); self.assertEqual(v["n_dropped"], 0); self.assertEqual(v["result"]["status"], "insufficient")                      # eight real items are too few to fit
+        d = ta.design(res["states"]["INT6"]["rows"], eligible_only=False, survival=ta.survival_values(survival_file(), core, ("INT6",))["INT6"]); self.assertTrue(np.allclose(d["P"][0], [0.85 - 0.10, 0.9 - 0.10]))
+        self.assertNotIn("survival", rep.feature_level(full, core, SPLIT, 997, n_boot=20, seed=1)["states"]["INT6"])
+
+    def test_the_survival_table_and_the_command_line_option_are_written(self):
+        full = {}
+        for s in ERR:
+            full[s] = self.root / f"full_{s}"; full[s].mkdir(); write_full_feature_dir(full[s], s)
+        core = {**CORE, "languages": ["a", "b"]}; feat = rep.feature_level(full, core, SPLIT, 997, n_boot=20, seed=1, survival=survival_file()); out = self.root / "surv_out"
+        rep.write_outputs(out, feat, None, rep.claim_status(feat, None)); lines = (out / "survival_validation.csv").read_text().strip().split("\n"); head = lines[0].split(",")
+        self.assertTrue({"state", "variant", "status", "n_design", "n_calibration", "n_heldout"} <= set(head)); self.assertEqual({l.split(",")[0] for l in lines[1:]}, {"INT6", "INT4"})                  # the survival question is asked at the judged states only (the reference state INT16 may have no entry in the file)
+        self.assertEqual(len(lines), 1 + 2 * 2); self.assertNotIn("survival", feat["states"]["INT16"])
+        import io, contextlib
+        torch.save(survival_file(), self.root / "survival.pt"); (self.root / "freeze.json").write_text(json.dumps({"spec": {"feature_subset": {"dev_per_language": 997}, "group_panel": {"evaluation_sentences": 6, "control_draws": 3}}, "split": SPLIT}))
+        (self.root / "core.json").write_text(json.dumps(core)); args = ["--freeze", str(self.root / "freeze.json"), "--core", str(self.root / "core.json"), "--out", str(self.root / "cli_surv"), "--n-boot", "20", "--survival", str(self.root / "survival.pt")]
+        for s in ERR:
+            args += ["--feature-dir", f"{s}={full[s]}"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            rep.main(args)
+        self.assertTrue((self.root / "cli_surv" / "survival_validation.csv").exists())
+
+
+class SurvivalTable(Fixture):
+    def test_the_reductions_of_a_plus_p_and_a_plus_b_plus_p_are_written_on_their_own_rows(self):
+        m = lambda mae: {"lambda": 1, "cv_mae": mae, "heldout_mae": mae}
+        res = {"status": "fitted", "n_calibration": 50, "n_heldout": 40, "null_mae": 0.5, "models": {"A": m(0.40), "A+P": m(0.38), "A+B": m(0.30), "A+B+P": m(0.29)},
+               "improvement_over_A": {"point": 0.05, "low": 0.01, "high": 0.09}, "improvement_over_diagnostic": {"point": 0.03, "low": -0.01, "high": 0.07}}
+        st = {"reference": False, "n_items": 0, "n_skipped": 0, "rows": {}, "coverage": [], "components": [], "specificity": [], "averaged": [], "averaged_features": {}, "predictive": {}, "survival": {"eligible": {"n_design": 90, "n_dropped": 2, "dropped_reasons": {}, "result": res}}}
+        out = self.root / "sv_only"; rep.write_outputs(out, {"floors": {}, "floor_state": "INT16", "states": {"INT6": st}}, None, {"claims": {}})
+        lines = (out / "survival_validation.csv").read_text().strip().split("\n"); head = lines[0].split(","); rows = {l.split(",")[head.index("model")]: l.split(",") for l in lines[1:]}
+        col = lambda name, key: rows[name][head.index(key)]
+        self.assertEqual((col("A+P", "reduction_over_A"), col("A+P", "reduction_over_A_low"), col("A+P", "reduction_over_A_high")), ("0.05", "0.01", "0.09")); self.assertEqual(col("A+P", "reduction_over_diagnostic"), "")
+        self.assertEqual((col("A+B+P", "reduction_over_diagnostic"), col("A+B+P", "reduction_over_diagnostic_low"), col("A+B+P", "reduction_over_diagnostic_high")), ("0.03", "-0.01", "0.07")); self.assertEqual(col("A+B+P", "reduction_over_A"), "")
+        self.assertEqual(col("A", "reduction_over_A"), ""); self.assertEqual(col("A+B", "reduction_over_diagnostic"), ""); self.assertEqual(col("A", "heldout_mae"), "0.4")
+
+
 class GroupLevel(Fixture):
     def test_per_language_pooled_harms_and_the_decomposition_agree_with_the_analysis_functions(self):
         res = rep.group_level(self.gdirs, ["a", "b"], 6, 3, n_boot=30, seed=1); st = res["states"]["INT6"]

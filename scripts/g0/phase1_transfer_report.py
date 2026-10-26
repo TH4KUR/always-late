@@ -48,15 +48,17 @@ def jsonable(x):
     return x
 
 
-def feature_level(dirs, core, split, cluster_mod, n_boot=ta.BOOTSTRAP_REPLICATES, seed=ta.BOOTSTRAP_SEED, floor_state=REFERENCE_STATE):
+def feature_level(dirs, core, split, cluster_mod, n_boot=ta.BOOTSTRAP_REPLICATES, seed=ta.BOOTSTRAP_SEED, floor_state=REFERENCE_STATE, survival=None):
     """The feature-level results of every state in `dirs` ({state: chunk directory}); the floor of every direction kind is fixed from the calibration items of `floor_state` (INT16) and applied to all states. The
-    items of the states must be the same set of (feature, sentence, direction) keys, else an error."""
+    items of the states must be the same set of (feature, sentence, direction) keys, else an error. `survival`: the content of a Phase 1 `survival.pt` (mask regime): adds, per state, the secondary
+    survival diagnostic (does the Pearson survival add to the activation baseline and to the diagnostic?)."""
     if floor_state not in dirs:
         raise ValueError(f"the floor state {floor_state} is not among the states {sorted(dirs)}")
     loaded = {s: ta.load_chunks(d, "transfer", s) for s, d in dirs.items()}; ref_state = floor_state; ref_keys = set(loaded[ref_state][0])
     for s, (items, _, _) in loaded.items():
         if set(items) != ref_keys:
             raise ValueError(f"state {s} has {len(set(items) ^ ref_keys)} item keys that {ref_state} does not share: the states must hold the same feature-context-direction items")
+    sv = ta.survival_values(survival, core, [s for s in dirs if s in JUDGED_STATES]) if survival is not None else None
     raw = {s: ta.item_table(loaded[s][0], core, split, cluster_mod) for s in dirs}; floors = ta.floors_by_kind(raw[floor_state]); out = {"floors": floors, "floor_state": floor_state, "states": {}}
     for s in dirs:
         rows = ta.apply_floor(raw[s], floors); res = {"reference": s == floor_state, "n_items": len(rows), "n_skipped": len(loaded[s][2]), "rows": rows, "coverage": _records(ta.coverage(rows)),
@@ -64,6 +66,10 @@ def feature_level(dirs, core, split, cluster_mod, n_boot=ta.BOOTSTRAP_REPLICATES
         res["averaged_features"] = ta.averaged_fingerprints(rows, loaded[s][1]); res["averaged"] = ta.averaged_summary(res["averaged_features"], n_boot, seed); res["predictive"] = {}
         for variant, eligible in (("eligible", True), ("all_items", False)):
             d = ta.design(rows, eligible_only=eligible); res["predictive"][variant] = {"n_design": int(len(d["y"])), "n_dropped": d["n_dropped"], "dropped_reasons": d["dropped_reasons"], "result": ta.diagnostic(d, n_boot, seed)}
+        if sv is not None and s in sv:
+            res["survival"] = {}
+            for variant, eligible in (("eligible", True), ("all_items", False)):
+                d = ta.design(rows, eligible_only=eligible, survival=sv[s]); res["survival"][variant] = {"n_design": int(len(d["y"])), "n_dropped": d["n_dropped"], "dropped_reasons": d["dropped_reasons"], "result": ta.survival_diagnostic(d, n_boot, seed) if len(d["y"]) else {"status": "insufficient", "n_calibration": 0, "n_heldout": 0}}
         out["states"][s] = res
     return out
 
@@ -172,6 +178,19 @@ def write_outputs(out_dir, feat, group, claims):
                                "improvement_diagnostic": r["improvement"]["point"] if name == r["diagnostic"] else None, "improvement_low": r["improvement"]["low"] if name == r["diagnostic"] else None,
                                "improvement_high": r["improvement"]["high"] if name == r["diagnostic"] else None, "criterion_met": r["criterion_met"] if name == r["diagnostic"] else None})
         write_csv(out / "predictive_validation.csv", pv)
+        sv_rows = []
+        for s, st in feat["states"].items():
+            for variant, p in st.get("survival", {}).items():
+                r = p["result"]; base = {"state": s, "variant": variant, "n_design": p["n_design"], "n_dropped": p["n_dropped"], "status": r["status"], "n_calibration": r["n_calibration"], "n_heldout": r["n_heldout"]}
+                if r["status"] != "fitted":
+                    sv_rows.append(base); continue
+                for name, m in r["models"].items():
+                    sv_rows.append({**base, "model": name, "lambda": m["lambda"], "cv_mae": m["cv_mae"], "heldout_mae": m["heldout_mae"], "null_mae": r["null_mae"],
+                                    "reduction_over_A": r["improvement_over_A"]["point"] if name == "A+P" else None, "reduction_over_A_low": r["improvement_over_A"]["low"] if name == "A+P" else None, "reduction_over_A_high": r["improvement_over_A"]["high"] if name == "A+P" else None,
+                                    "reduction_over_diagnostic": r["improvement_over_diagnostic"]["point"] if name == "A+B+P" else None, "reduction_over_diagnostic_low": r["improvement_over_diagnostic"]["low"] if name == "A+B+P" else None,
+                                    "reduction_over_diagnostic_high": r["improvement_over_diagnostic"]["high"] if name == "A+B+P" else None})
+        if sv_rows:
+            write_csv(out / "survival_validation.csv", sv_rows)
         for s, st in feat["states"].items():
             write_csv(out / f"per_context_{s}.csv", [{k: v for k, v in r.items()} for _, r in sorted(st["rows"].items())])
             write_csv(out / f"averaged_features_{s}.csv", [r for _, r in sorted(st["averaged_features"].items())])
@@ -189,11 +208,16 @@ def main(argv=None):
     ap.add_argument("--freeze", required=True); ap.add_argument("--core", required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--feature-dir", action="append", default=[], metavar="STATE=DIR"); ap.add_argument("--group-dir", action="append", default=[], metavar="STATE=DIR")
     ap.add_argument("--n-boot", type=int, default=ta.BOOTSTRAP_REPLICATES); ap.add_argument("--seed", type=int, default=ta.BOOTSTRAP_SEED)
+    ap.add_argument("--survival", help="a Phase 1 survival.pt (mask regime, the language list of the core): adds the secondary Pearson-survival diagnostic to the feature-level results")
     ap.add_argument("--cluster-mod", type=int, help="items with the same sentence index modulo this number share a bootstrap cluster (default: the dev sentences per language of the freeze, 997: the parallel FLORES sentence); the external panel uses a value above the number of passages")
     ap.add_argument("--group-languages", nargs="+", help="the languages of the group-level directories in the order of the run (default: the languages of the core; the external panel: its six)"); ap.add_argument("--group-sentences", type=int, help="sentences per language of the group-level run (default: the freeze's 300)")
     a = ap.parse_args(argv)
     freeze = json.loads(Path(a.freeze).read_text()); core = json.loads(Path(a.core).read_text()); spec = freeze["spec"]; parse = lambda xs: {x.split("=", 1)[0]: x.split("=", 1)[1] for x in xs}
-    feat = feature_level(parse(a.feature_dir), core, freeze["split"], a.cluster_mod or spec["feature_subset"]["dev_per_language"], a.n_boot, a.seed) if a.feature_dir else None
+    survival = None
+    if a.survival:
+        import torch
+        survival = torch.load(a.survival, weights_only=False)
+    feat = feature_level(parse(a.feature_dir), core, freeze["split"], a.cluster_mod or spec["feature_subset"]["dev_per_language"], a.n_boot, a.seed, survival=survival) if a.feature_dir else None
     group = group_level(parse(a.group_dir), a.group_languages or core["languages"], a.group_sentences or spec["group_panel"]["evaluation_sentences"], spec["group_panel"]["control_draws"], a.n_boot, a.seed) if a.group_dir else None
     write_outputs(a.out, feat, group, claim_status(feat, group))
     print(json.dumps(jsonable(claim_status(feat, group)["claims"]), indent=1, sort_keys=True))
