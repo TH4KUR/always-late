@@ -1,3 +1,18 @@
+# Course-report validation: revision 2 (2026-10-26 09:13 IST, 26 October 2026)
+
+Status: complete draft for team review; not a submitted course ZIP.
+
+- Revision 2 of the report was built with the installed pdfLaTeX and BibTeX (no unresolved references or citations; the only TeX box warning is a 1.4 pt vbox on the balanced reference page).
+- 12 PDF pages: the main content (with the second-model section) ends on page 8; the limitations section is on page 9 (outside the page count); references are on page 10; the appendix is pages 11 and 12 (two pages).
+- The official checker printed `All Clear!` with an empty JSON report, with the pinned version (`f626497...`, via `check.sh`) and with the newest upstream version, on the final PDF. A first run after an edit had flagged `Text on page 12 bleeds into the bottom margin` (a floating appendix table that was too tall); it was fixed by shortening the table and rechecked, not ignored. A deliberately non-ACL PDF was flagged by the same checker (`pubcheck-negative-control.txt`).
+- The ACL template was re-downloaded from the official repository (HEAD `d5adc82...`): `acl.sty`, `acl_natbib.bst`, the template `.tex` and `formatting.md` are byte-identical to the copies in this folder; none was modified.
+- All fonts are embedded and none is Type 3 (`fonts.txt`); the page size is A4.
+- Independent fact-check: a separate agent read `main.tex` against the repository's result files and found no wrong number among those it could trace. Its framing findings were applied: the Llama verdict is now attributed to the failed existence prediction P1 (21 of 27 languages, 24 required), "pre-registered" became "pre-specified" with a definition (committed before scoring, no external registry), a mismatched AUROC pair was corrected, rows for extension D and the alpha-star rule were added to the rules table, the status words of the Belebele row and the prompt-check point estimates were qualified, and wording on depth, specificity and compute was aligned with the sources. Not applied: the suggestion to add the functional-study reproduction count (69 of 69 outputs, an earlier run) to the reproducibility paragraph, and a statement on the repository's visibility; the wandb sentence was reworded to what is certain.
+- Not verified by the reviewer and not claimed: whether the post hoc wandb upload described in the repository has finished; author names and order (taken from the project roster).
+- The optional online reference check of the checker (`check_full.py`) again fails because the external service returns a web page instead of BibTeX; it is not claimed as passed. The bibliography (15 entries) was checked against the Anthology and arXiv records.
+
+Revision 1 record (kept verbatim):
+
 # Course-report validation — 26 October 2026
 
 Status: complete first draft for team review; not a submitted course ZIP.

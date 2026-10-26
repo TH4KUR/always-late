@@ -33,7 +33,7 @@ def save(fig, name):
 def main():
     (HERE / "figures").mkdir(exist_ok=True)
     data = rows("figures/f5/ladder_control_table.csv")
-    fig, ax = plt.subplots(figsize=(3.35, 2.1), layout="constrained")
+    fig, ax = plt.subplots(figsize=(3.35, 1.8), layout="constrained")
     x = list(range(len(data)))
     for label, stem, color, offset in [
         ("Feature", "features", "#17629a", -0.055),
@@ -50,7 +50,7 @@ def main():
     save(fig, "direction-control")
 
     data = rows("gain_study/results/curves.csv")
-    fig, ax = plt.subplots(figsize=(3.35, 2.05), layout="constrained")
+    fig, ax = plt.subplots(figsize=(3.35, 1.8), layout="constrained")
     doses = [1.0, 0.3535533905932738, 0.1767766952966369, 0.08838834764831845, 0.0]
     for state, color, marker in [("FP", "#252525", "o"), ("INT6", "#26835a", "s"),
                                  ("INT5", "#17629a", "^"), ("INT4", "#b95726", "D")]:
@@ -66,7 +66,7 @@ def main():
     save(fig, "gain-down")
 
     data = rows("gain_study/extension_c/bands.csv")
-    fig, ax = plt.subplots(figsize=(3.35, 2.1), layout="constrained")
+    fig, ax = plt.subplots(figsize=(3.35, 1.8), layout="constrained")
     for index, (state, color) in enumerate([("FP", "#252525"), ("INT6", "#26835a"),
                                            ("INT5", "#17629a"), ("INT4", "#b95726")]):
         selected = [next(r for r in data if r["state"] == state and float(r["ratio"]) == dose)

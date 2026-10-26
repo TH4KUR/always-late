@@ -24,8 +24,9 @@ course-report draft, not an assertion of conference acceptance or novelty.
 
 - `main.tex`: editable manuscript, using official ACL final mode.
 - `AlwaysLate-Final-Report.pdf`: the built report.
-- `references.bib`: six unmodified official Anthology entries and three
-  accurately identified preprints with persistent DOI links.
+- `references.bib`: six unmodified official Anthology entries and nine
+  accurately identified preprints with persistent DOI links (checked against
+  their arXiv pages).
 - `make_figures.py`: report plots from committed source CSVs, not model runs.
 - `evidence_map.md`: provenance and qualifications for numerical claims.
 - `validation/`: actual checker output, PDF metadata and validation summary.
@@ -56,6 +57,22 @@ The source is opened in the Codex LaTeX editor. Its bundled compiler could not
 download its runtime bundle in this session; the local multi-file build is the
 PDF and publication-check input. The local build, not the failed editor
 compiler, is the basis of any recorded compilation success.
+
+## Revision history
+
+- **Revision 1 (26 October 2026, 03:16):** first complete draft.
+- **Revision 2 (26 October 2026, at the user's request):** the text was
+  updated to the finished results and made a standalone record: new Section 8
+  (second-model check on Llama-3.2-1B, pre-registered verdict "not
+  consistent"), a table of the pre-registered rules and outcomes of Study G and
+  its extensions and a result inventory in the appendix, software, hardware and
+  links, six additional verified background references, and a fixed axis label
+  of Figure 2. The ACL style files were re-downloaded from the official
+  repository (same upstream commit `d5adc82...`, byte-identical to the copies
+  here) and are untouched. The official checker was run again (pinned and
+  newest upstream version): `All Clear!` with an empty JSON report; a
+  deliberately non-ACL PDF was also run as a negative control and the checker
+  flagged it (page size and font), so the check is not vacuous.
 
 ## Official assets
 
