@@ -153,24 +153,30 @@ def decompose_net(net):
 
 
 def a3_summary(dec):
-    """The pre-registered expectation A3 (the context term dominates the weight term) over languages: the number of languages with |C| > |W|, the medians of |C| and |W| and the median of the paired difference
-    |C| - |W|. `holds` is the median of the paired difference being positive (the reading used throughout; the two medians are reported next to it)."""
-    c, w = np.abs(np.asarray(dec["C"], dtype=float)), np.abs(np.asarray(dec["W"], dtype=float)); diff = c - w
-    return {"n_languages": int(len(c)), "c_gt_w": int((c > w).sum()), "median_abs_c": float(np.median(c)), "median_abs_w": float(np.median(w)), "median_difference": float(np.median(diff)), "holds": bool(np.median(diff) > 0)}
+    """The pre-registered expectation A3 (the context term dominates the weight term) over languages: the number of languages with |C| > |W|, the lower medians of |C| and |W| and the lower median of the paired
+    difference |C| - |W|. `holds` is the paired median difference being positive; `holds_medians` is the second reading of the frozen wording, median |C| > median |W|; the claim rule needs both. A language with
+    no value (a missing sentence set) is left out and counted in `n_missing_languages`."""
+    c0, w0 = np.abs(np.asarray(dec["C"], dtype=float)), np.abs(np.asarray(dec["W"], dtype=float)); ok = np.isfinite(c0) & np.isfinite(w0); c, w = c0[ok], w0[ok]; diff = c - w; n = int(ok.sum())
+    out = {"n_languages": n, "n_missing_languages": int((~ok).sum())}
+    if n == 0:
+        return {**out, "c_gt_w": 0, "median_abs_c": float("nan"), "median_abs_w": float("nan"), "median_difference": float("nan"), "holds": False, "holds_medians": False}
+    one = np.ones(n); mc, mw, md = weighted_median(c, one), weighted_median(w, one), weighted_median(diff, one)
+    return {**out, "c_gt_w": int((c > w).sum()), "median_abs_c": float(mc), "median_abs_w": float(mw), "median_difference": float(md), "holds": bool(md > 0), "holds_medians": bool(mc > mw)}
 
 
 def bootstrap_a3(A, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, level=BOOTSTRAP_LEVEL):
     """The A3 summary with percentile intervals from a bootstrap over the SOURCE sentences: the sentences are drawn with replacement once per replicate and the same multiplicities are used for every language
-    (FLORES is parallel, so the languages are not independent samples of the sentences). -> {"point": a3_summary of the data, "median_difference", "median_abs_c", "median_abs_w", "c_gt_w": (low, high),
-    "share_holds": fraction of replicates in which A3 holds, "n_boot", "seed", "level"}."""
+    (FLORES is parallel, so the languages are not independent samples of the sentences); the groups and the control draws are fixed, so the interval covers sentence sampling only. Replicates without any language
+    are left out of the intervals and counted (`n_finite`). -> {"point": a3_summary of the data, "median_difference", "median_abs_c", "median_abs_w", "c_gt_w": (low, high), "share_holds": fraction of the finite
+    replicates in which A3 holds, "n_finite", "n_boot", "seed", "level"}."""
     rng = np.random.default_rng(seed); S = A["dloss"].shape[1]; reps = []
     for _ in range(n_boot):
         mult = np.bincount(rng.integers(0, S, S), minlength=S)
         reps.append(a3_summary(decompose_net(pooled_harms(A, mult=mult)["net"])))
-    lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
-    out = {"point": a3_summary(decompose_net(pooled_harms(A)["net"])), "share_holds": float(np.mean([r["holds"] for r in reps])), "n_boot": int(n_boot), "seed": int(seed), "level": level}
+    reps = [r for r in reps if r["n_languages"] > 0]; lo, hi = (100 - level) / 2, 100 - (100 - level) / 2
+    out = {"point": a3_summary(decompose_net(pooled_harms(A)["net"])), "share_holds": float(np.mean([r["holds"] for r in reps])) if reps else float("nan"), "n_finite": len(reps), "n_boot": int(n_boot), "seed": int(seed), "level": level}
     for k in ("median_difference", "median_abs_c", "median_abs_w", "c_gt_w"):
-        v = [r[k] for r in reps]; out[k] = (float(np.percentile(v, lo)), float(np.percentile(v, hi)))
+        v = [r[k] for r in reps]; out[k] = (float(np.percentile(v, lo)), float(np.percentile(v, hi))) if v else (float("nan"), float("nan"))
     return out
 
 
@@ -299,7 +305,7 @@ def averaged_summary(hs, n_boot=BOOTSTRAP_REPLICATES, seed=BOOTSTRAP_SEED, split
 
 CONTROL_KINDS = ("matched_swapped", "random1", "random2", "random3")
 COLUMNS = {"A": ["act_cos", "log_amp_fp", "firing", "log_fp_norm", "log_resid_norm"], "B": ["generic_sensitivity"], "G": ["g_log_shift_native", "g_log_fp", "g_log_q_native", "g_log_norm_ratio"]}
-_REQUIRED = ("act_cos", "amp_fp_mean", "firing", "fp_norm", "resid_norm_fp", "g_shift_native", "g_pred_fp", "g_pred_q_native", "g_norm_fp", "g_norm_q")
+_REQUIRED = ("normalized_error", "act_cos", "amp_fp_mean", "firing", "fp_norm", "resid_norm_fp", "g_shift_native", "g_pred_fp", "g_pred_q_native", "g_norm_fp", "g_norm_q")
 SENSITIVITY_OFFSET = 0.01
 GRADIENT_OFFSET = 1e-6
 
@@ -318,10 +324,10 @@ def design(rows, kind="real", eligible_only=True, survival=None):
             controls.setdefault((r["feature"], r["sentence"]), []).append(r["normalized_error"])
     keys, y, A, B, G, P, split, feature, cluster, dropped = [], [], [], [], [], [], [], [], [], {}
     for r in sorted((r for r in rows.values() if r["kind"] == kind and (r["eligible"] or not eligible_only)), key=lambda r: (r["feature"], r["sentence"])):
-        missing = next((n for n in _REQUIRED if r.get(n) is None), None)
+        missing = next((n for n in _REQUIRED if r.get(n) is None or not np.isfinite(r[n])), None)                      # a missing OR non-finite value drops the item (never a NaN into a fit)
         if missing is not None:
             dropped[f"missing:{missing}"] = dropped.get(f"missing:{missing}", 0) + 1; continue
-        if survival is not None and r["feature"] not in survival:
+        if survival is not None and (r["feature"] not in survival or not np.isfinite(survival[r["feature"]]).all()):
             dropped["missing:survival"] = dropped.get("missing:survival", 0) + 1; continue
         ctrl = controls.get((r["feature"], r["sentence"]))
         if not ctrl:

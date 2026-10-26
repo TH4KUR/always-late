@@ -193,6 +193,33 @@ class GroupLevel(unittest.TestCase):
         self.assertEqual(s["n_languages"], 3); self.assertEqual(s["c_gt_w"], 2); self.assertAlmostEqual(s["median_abs_c"], 1.0); self.assertAlmostEqual(s["median_abs_w"], 0.5); self.assertAlmostEqual(s["median_difference"], 0.5); self.assertTrue(s["holds"])
         dec["C"] = np.array([0.1, 0.2, 0.1]); self.assertFalse(ta.a3_summary(dec)["holds"])
 
+    def test_a_language_without_a_value_is_left_out_and_counted_and_the_medians_are_lower_medians(self):
+        s = ta.a3_summary({"C": np.array([1.0, np.nan, 2.0, 4.0]), "W": np.array([0.5, 0.5, np.nan, 1.0])})
+        self.assertEqual((s["n_languages"], s["n_missing_languages"]), (2, 2)); self.assertEqual(s["median_abs_c"], 1.0); self.assertEqual(s["median_abs_w"], 0.5)                                # lower medians of [1, 4] and [0.5, 1]
+        e = ta.a3_summary({"C": np.array([1.0, 2.0]), "W": np.array([0.2, 0.3])}); self.assertEqual(e["median_abs_c"], 1.0); self.assertEqual(e["median_difference"], 0.8)                      # lower median of [0.8, 1.7]
+        self.assertEqual(ta.a3_summary({"C": np.array([np.nan]), "W": np.array([np.nan])})["n_languages"], 0)
+
+    def test_the_second_reading_of_the_frozen_wording_the_median_of_c_against_the_median_of_w_is_reported_next_to_the_paired_one(self):
+        both = ta.a3_summary({"C": np.array([1.0, 3.0, 0.1]), "W": np.array([0.5, 0.2, 0.4])}); self.assertTrue(both["holds"]); self.assertTrue(both["holds_medians"])
+        split = ta.a3_summary({"C": np.array([0.9, 0.9, 5.0]), "W": np.array([0.5, 1.0, 0.1])})                                            # paired differences 0.4, -0.1, 4.9: median 0.4 > 0; median |C| 0.9 against median |W| 0.5
+        self.assertTrue(split["holds"] and split["holds_medians"]); d = ta.a3_summary({"C": np.array([2.0, 0.1, 0.1]), "W": np.array([1.0, 0.5, 0.5])}); self.assertFalse(d["holds"]); self.assertFalse(d["holds_medians"])
+        tie = ta.a3_summary({"C": np.array([1.0, 1.0, 1.0]), "W": np.array([1.0, 1.0, 1.0])}); self.assertFalse(tie["holds"]); self.assertFalse(tie["holds_medians"])
+        x = ta.a3_summary({"C": np.array([1.0, 1.0, 0.2, 0.2, 0.2]), "W": np.array([0.5, 0.5, 0.1, 0.1, 5.0])}); self.assertTrue(x["holds"]); self.assertEqual(x["median_abs_c"], 0.2); self.assertEqual(x["median_abs_w"], 0.5); self.assertFalse(x["holds_medians"])
+
+    def test_the_bootstrap_interval_ignores_replicates_without_weight_and_reports_how_many_were_finite(self):
+        A = ta.group_arrays(group_items_for(LANGS2, 4, lambda l, j: [1.0, 1.0 + j, 1.0, 1.0, 1.0], [lambda l, j: [0.0] * 5]), LANGS2, 4, 1); r = ta.bootstrap_a3(A, n_boot=40, seed=2)
+        self.assertEqual(r["n_finite"], 40); self.assertTrue(np.isfinite(r["median_difference"]).all())
+        items = group_items_for(LANGS2, 4, lambda l, j: [1.0, 1.0 + j, 1.0, 1.0, 1.0], [lambda l, j: [0.0] * 5])
+        for j in range(4):
+            del items[("b", j, "control0")]                                                                                  # language b has no valid sentence at all
+        sparse = group_items_for(LANGS2, 4, lambda l, j: [1.0, 1.0 + j, 1.0, 1.0, 1.0], [lambda l, j: [0.0] * 5])
+        for j in (1, 2, 3):
+            del sparse[("a", j, "control0")]                                                                                 # language a is valid only at sentence 0 and language b only at sentence 1:
+        for j in (0, 2, 3):
+            del sparse[("b", j, "control0")]                                                                                 # a replicate that draws neither has no language at all
+        r = ta.bootstrap_a3(ta.group_arrays(sparse, LANGS2, 4, 1), n_boot=300, seed=2); self.assertTrue(0 < r["n_finite"] < 300); self.assertTrue(np.isfinite(r["median_difference"]).all()); self.assertTrue(0.0 <= r["share_holds"] <= 1.0)
+        r = ta.bootstrap_a3(ta.group_arrays(items, LANGS2, 4, 1), n_boot=40, seed=2); self.assertEqual(r["point"]["n_languages"], 1); self.assertEqual(r["point"]["n_missing_languages"], 1); self.assertTrue(np.isfinite(r["median_difference"]).all())
+
     def test_the_bootstrap_resamples_source_sentences_jointly_across_languages_and_is_seeded(self):
         rng = np.random.default_rng(0); eff = rng.normal(size=(2, 30))
         group = lambda l, j: [1.0, 1.0 + eff[LANGS2.index(l), j], 1.0, 1.0, 1.0]
@@ -544,6 +571,23 @@ class Diagnostic(unittest.TestCase):
     def test_the_criterion_needs_ten_percent_and_an_interval_above_zero(self):
         self.assertTrue(ta.utility_criterion({"point": 0.10, "low": 0.01, "high": 0.2})); self.assertFalse(ta.utility_criterion({"point": 0.0999, "low": 0.01, "high": 0.2}))
         self.assertFalse(ta.utility_criterion({"point": 0.3, "low": 0.0, "high": 0.4})); self.assertFalse(ta.utility_criterion({"point": 0.3, "low": -0.1, "high": 0.4}))
+
+
+class NonFinite(unittest.TestCase):
+    def setUp(self):
+        self.rows = {}
+        for f in (10, 11):
+            for s in (1000, 2000):
+                self.rows[(f, s, "real")] = prow(f, s, "real", err=1.0)
+                self.rows[(f, s, "random1")] = prow(f, s, "random1", err=0.2)
+
+    def test_a_nan_or_infinite_covariate_drops_the_item_and_is_counted_like_a_missing_one(self):
+        self.rows[(10, 1000, "real")]["g_pred_fp"] = float("nan"); self.rows[(11, 2000, "real")]["act_cos"] = float("inf"); d = ta.design(self.rows)
+        self.assertEqual(len(d["y"]), 2); self.assertEqual(d["dropped_reasons"], {"missing:g_pred_fp": 1, "missing:act_cos": 1}); self.assertTrue(np.isfinite(d["A"]).all() and np.isfinite(d["G"]).all() and np.isfinite(d["B"]).all())
+
+    def test_a_non_finite_target_or_survival_value_is_also_dropped_and_counted(self):
+        self.rows[(10, 1000, "real")]["normalized_error"] = float("nan"); d = ta.design(self.rows); self.assertEqual(len(d["y"]), 3); self.assertEqual(d["dropped_reasons"], {"missing:normalized_error": 1})
+        d = ta.design(self.rows, survival={10: [0.9, float("nan")], 11: [0.9, 0.8]}); self.assertEqual(d["dropped_reasons"], {"missing:normalized_error": 1, "missing:survival": 1}); self.assertEqual(len(d["y"]), 2); self.assertTrue(np.isfinite(d["P"]).all())
 
 
 class Specificity(unittest.TestCase):
