@@ -57,7 +57,7 @@ def terms_figure(res, suffix=""):
         L = [r for r in grp if r["state"] == state]; w = np.maximum(np.abs([float(r["W"]) for r in L]), lo); c = np.maximum(np.abs([float(r["C"]) for r in L]), lo); vals += list(w) + list(c)
         ax.scatter(w, c, s=9, color=col, alpha=0.85, lw=0, label=state)
     hi = max(vals) * 1.4; ax.plot([lo, hi], [lo, hi], color=GREY, lw=0.7, ls="--"); ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
-    ax.set_xlabel("|W| (weights), net harm"); ax.set_ylabel("|C| (context), net harm"); ax.legend(frameon=False, loc="lower right", handletextpad=0.1, markerscale=1.2); ax.set_title("(b) group level, 27 languages", fontsize=7.5, loc="left")
+    ax.set_xlabel("|W| (weights), net harm"); ax.set_ylabel("|C| (context), net harm"); ax.legend(frameon=False, loc="lower right", handletextpad=0.1, markerscale=1.2); ax.set_title(f"(b) group level, {len({r['language'] for r in grp})} languages", fontsize=7.5, loc="left")
     ax = axs[2]
     for i, state in enumerate(("INT16", "INT6", "INT4")):
         r = get(av, state=state, kind="real", split="all", metric="cos_gap"); p, l, h = float(r["point"]), float(r["low"]), float(r["high"])
