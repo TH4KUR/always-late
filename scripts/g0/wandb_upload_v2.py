@@ -313,28 +313,32 @@ def upload(payload, root, wandb, only=None, entity=ENTITY, project=PROJECT, out=
                 raise SpecError(f"{x['path']}: the file differs from the payload")
     results = []
     for r in runs:
-        run = wandb.init(project=project, entity=entity, id=r["id"], name=r["name"], group=r["group"], job_type=r["job_type"], tags=r["tags"], config=r["config"], resume="allow")
-        first = getattr(run, "step", 0) == 0
-        if r["history"] and first:
-            run.define_metric("bits")
-            for k in sorted({k for row in r["history"] for k in row if k != "bits"}):
-                run.define_metric(k, step_metric="bits")
-            for row in r["history"]:
-                run.log(dict(row))
-        media = {f"table/{k}": wandb.Table(columns=t["columns"], data=t["rows"]) for k, t in r["tables"].items()}
+        media = {f"table/{k}": wandb.Table(columns=t["columns"], data=t["rows"], allow_mixed_types=True) for k, t in r["tables"].items()}        # built before the run starts: a bad table leaves no half-finished run
         media.update({i["key"]: wandb.Image(str(root / i["path"]), caption=i["caption"]) for i in r["images"]})
-        if media and (first or force_media):                       # a re-run of a finished run adds no history row; --force-media repeats the tables and images of an interrupted run
-            run.log(media)
-        run.summary.update(r["summary"])
-        art = wandb.Artifact(f"{r['id']}-files", type="analysis-results", metadata={"upload_commit": payload["upload_commit"], "study": r["config"]["study"], "n_files": len(r["files"])})
-        for x in r["files"]:
-            art.add_file(str(root / x["path"]), name=x["path"])
-        with tempfile.TemporaryDirectory() as td:
-            mf = Path(td) / "MANIFEST.json"
-            mf.write_text(json.dumps({"id": r["id"], "upload_commit": payload["upload_commit"], "files": {x["path"]: x["sha256"] for x in r["files"]}}, indent=1, sort_keys=True) + "\n")
-            art.add_file(str(mf), name="MANIFEST.json")
-            run.log_artifact(art)
-            run.finish()
+        run = wandb.init(project=project, entity=entity, id=r["id"], name=r["name"], group=r["group"], job_type=r["job_type"], tags=r["tags"], config=r["config"], resume="allow")
+        try:
+            first = getattr(run, "step", 0) == 0
+            if r["history"] and first:
+                run.define_metric("bits")
+                for k in sorted({k for row in r["history"] for k in row if k != "bits"}):
+                    run.define_metric(k, step_metric="bits")
+                for row in r["history"]:
+                    run.log(dict(row))
+            if media and (first or force_media):                       # a re-run of a finished run adds no history row; --force-media repeats the tables and images of an interrupted run
+                run.log(media)
+            run.summary.update(r["summary"])
+            art = wandb.Artifact(f"{r['id']}-files", type="analysis-results", metadata={"upload_commit": payload["upload_commit"], "study": r["config"]["study"], "n_files": len(r["files"])})
+            for x in r["files"]:
+                art.add_file(str(root / x["path"]), name=x["path"])
+            with tempfile.TemporaryDirectory() as td:
+                mf = Path(td) / "MANIFEST.json"
+                mf.write_text(json.dumps({"id": r["id"], "upload_commit": payload["upload_commit"], "files": {x["path"]: x["sha256"] for x in r["files"]}}, indent=1, sort_keys=True) + "\n")
+                art.add_file(str(mf), name="MANIFEST.json")
+                run.log_artifact(art)
+                run.finish()
+        except BaseException:
+            run.finish(exit_code=1)
+            raise
         results.append({"id": r["id"], "name": r["name"], "url": getattr(run, "url", None), "history_logged": bool(r["history"] and first)})
         out(f"uploaded {r['id']}  {getattr(run, 'url', '')}")
     return results

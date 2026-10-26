@@ -343,7 +343,13 @@ class Dirty(Fixture):
 
 
 class FakeTable:
-    def __init__(self, columns=None, data=None): self.columns, self.data = columns, data
+    def __init__(self, columns=None, data=None, allow_mixed_types=False):
+        self.columns, self.data, self.allow_mixed_types = columns, data, allow_mixed_types
+        if not allow_mixed_types:                                                                              # the real wandb.Table refuses a column that holds numbers and text
+            for j in range(len(columns)):
+                kinds = {type(r[j]).__name__ in ("int", "float") for r in data if r[j] is not None}
+                if len(kinds) > 1:
+                    raise TypeError("Data row contained incompatible types")
 
 
 class FakeImage:
@@ -367,7 +373,7 @@ class FakeRun:
 
     def log_artifact(self, art): self.artifacts.append(art)
 
-    def finish(self): self.finished = True
+    def finish(self, exit_code=None): self.finished, self.exit_code = True, exit_code
 
 
 class FakeWandb:
@@ -461,6 +467,32 @@ class Upload(Fixture):
         with self.assertRaises(wu.SpecError):
             self.run_upload(wb)
         self.assertEqual(wb.inits, [])
+
+    def test_a_table_column_with_numbers_and_text_is_uploaded_with_mixed_types_allowed(self):
+        (self.root / "reports/x/mixed.csv").write_text("a,b\n1,x\n2,0.5\n3,\n")
+        self.payload = json.loads(json.dumps(wu.build_all(self.root, [fam(tables=[("m", "reports/x/mixed.csv")], images=[], history=None)], upload_commit="c")))
+        wb, _, _ = self.run_upload(); tab = {k: v for d in wb.runs[0].logged for k, v in d.items()}["table/m"]
+        self.assertTrue(tab.allow_mixed_types); self.assertEqual(tab.data, [[1, "x"], [2, 0.5], [3, None]])
+
+    def test_the_tables_are_built_before_a_run_starts_so_a_bad_table_leaves_no_half_run(self):
+        class Bad(FakeWandb):
+            class Table(FakeTable):
+                def __init__(self, columns=None, data=None, allow_mixed_types=False):
+                    raise TypeError("bad table")
+        wb = Bad()
+        with self.assertRaises(TypeError):
+            self.run_upload(wb)
+        self.assertEqual(wb.inits, [])
+
+    def test_a_failure_after_the_run_started_finishes_the_run_as_failed_and_raises(self):
+        class Boom(FakeWandb):
+            def init(self, **kw):
+                r = super().init(**kw); r.log_artifact = lambda art: (_ for _ in ()).throw(RuntimeError("network"))
+                return r
+        wb = Boom()
+        with self.assertRaises(RuntimeError):
+            self.run_upload(wb)
+        self.assertTrue(wb.runs[0].finished); self.assertEqual(wb.runs[0].exit_code, 1); self.assertEqual(len(wb.runs), 1)
 
     def test_the_uploader_never_deletes_or_logs_in(self):
         wb = FakeWandb(); self.run_upload(wb)
