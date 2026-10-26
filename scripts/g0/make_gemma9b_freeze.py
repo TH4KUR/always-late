@@ -46,11 +46,26 @@ def build(flores_sha, base_commit, date, compute_note=""):
     }
 
 
+def verify(path):
+    """Mismatching code files of an existing freeze: [] when this checkout is the frozen code (hashes with LF endings)."""
+    fr = json.loads(Path(path).read_text(encoding="utf-8"))
+    return [p for p, h in fr["code_sha256"].items() if sha(ROOT / p) != h]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--flores-sha256", required=True); ap.add_argument("--compute-note", default=""); ap.add_argument("--base-commit", required=True); ap.add_argument("--out", default=str(OUT)); ap.add_argument("--force", action="store_true")
+    ap.add_argument("--flores-sha256", default=""); ap.add_argument("--compute-note", default=""); ap.add_argument("--base-commit", default=""); ap.add_argument("--out", default=str(OUT)); ap.add_argument("--force", action="store_true")
+    ap.add_argument("--verify", action="store_true", help="check this checkout against an existing freeze and exit (0 = identical)")
     a = ap.parse_args(argv)
     out = Path(a.out)
+    if a.verify:
+        bad = verify(out)
+        if bad:
+            raise SystemExit(f"the code differs from the frozen code: {bad}")
+        print("freeze verified: the code files are the frozen ones")
+        return
+    if not a.flores_sha256 or not a.base_commit:
+        ap.error("--flores-sha256 and --base-commit are required unless --verify")
     if out.exists() and not a.force:
         raise SystemExit(f"{out} exists: a freeze is never silently rewritten (use a dated amendment, or --force only before any full run)")
     out.parent.mkdir(parents=True, exist_ok=True)

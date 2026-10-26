@@ -42,5 +42,25 @@ class Freeze(unittest.TestCase):
             self.assertEqual(json.loads(first)["flores"]["sha256"], "abc")
 
 
+class Verify(unittest.TestCase):
+    def test_a_matching_freeze_verifies_and_a_changed_code_hash_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "freeze.json"
+            mf.main(["--flores-sha256", "abc", "--base-commit", "b", "--out", str(out)])
+            self.assertEqual(mf.verify(out), [])
+            mf.main(["--verify", "--out", str(out)])                                  # exits normally
+            data = json.loads(out.read_text(encoding="utf-8"))
+            data["code_sha256"]["scripts/g0/phase1_gemma9b_run.py"] = "0" * 64
+            out.write_text(json.dumps(data), encoding="utf-8")
+            self.assertEqual(mf.verify(out), ["scripts/g0/phase1_gemma9b_run.py"])
+            with self.assertRaises(SystemExit):
+                mf.main(["--verify", "--out", str(out)])
+
+    def test_creating_without_the_sha_arguments_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(SystemExit):
+                mf.main(["--out", str(Path(d) / "f.json")])
+
+
 if __name__ == "__main__":
     unittest.main()
