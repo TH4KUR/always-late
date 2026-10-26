@@ -68,6 +68,34 @@ class Table(unittest.TestCase):
             self.assertAlmostEqual(r[f"{k}_norm"], n[k])
 
 
+class TableExtras(unittest.TestCase):
+    """Quantities of the hypotheses and of the baselines that the stored Gram and the scalars give exactly (H1: how much of the error a rescaling or the native amplitude removes; baseline A: activation cosine, firing; gradient scalars)."""
+    @staticmethod
+    def row(vecs, **extra):
+        it = {"gram": gram_of(vecs), "cells": list(tc.CELLS), "dloss": [0.1] * 5, "loss_base": [2.0] * 5, "n_rows": 2, "n_target_rows": 5, "n_active_q": 1, "n_positions": 2, **extra}
+        return ta.item_table({(10, 1000, "real"): it}, CORE, SPLIT, 997)[(10, 1000, "real")]
+
+    def test_the_native_error_and_the_error_left_after_the_best_rescaling_of_the_fp_effect(self):
+        r = self.row([[3.0, 0.0], [3.0, 0.0], [3.0, 0.0], [5.0, 4.0], [4.0, 2.0]])
+        self.assertAlmostEqual(r["error_norm"], float(np.hypot(2.0, 4.0))); self.assertAlmostEqual(r["native_error_norm"], float(np.hypot(1.0, 2.0)))
+        self.assertAlmostEqual(r["scalar_residual_norm"], 4.0); self.assertAlmostEqual(r["native_scalar_residual_norm"], 2.0)                                      # the component of the effect orthogonal to the FP effect
+
+    def test_a_zero_fp_effect_has_no_rescaling_residual(self):
+        r = self.row([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
+        self.assertIsNone(r["scalar_residual_norm"]); self.assertIsNone(r["native_scalar_residual_norm"]); self.assertAlmostEqual(r["error_norm"], float(np.sqrt(2.0)))
+
+    def test_the_activation_cosine_is_the_cosine_of_the_amplitude_vectors_zero_when_nothing_fires_and_the_firing_share_comes_from_the_counts(self):
+        base = [[1.0, 0.0]] * 5
+        self.assertAlmostEqual(self.row(base, amp_fp=[1.0, 2.0], amp_q=[2.0, 4.0], n_active_q=1, n_positions=2)["act_cos"], 1.0)
+        self.assertAlmostEqual(self.row(base, amp_fp=[1.0, 0.0], amp_q=[0.0, 1.0])["act_cos"], 0.0); self.assertAlmostEqual(self.row(base, amp_fp=[3.0, 4.0], amp_q=[4.0, 3.0])["act_cos"], 24.0 / 25.0)
+        self.assertEqual(self.row(base, amp_fp=[1.0], amp_q=[0.0])["act_cos"], 0.0); self.assertAlmostEqual(self.row(base, n_active_q=1, n_positions=4)["firing"], 0.25); self.assertNotIn("act_cos", self.row(base))
+
+    def test_the_gradient_scalars_pass_through_and_the_shift_is_the_change_of_the_first_order_loss_effect(self):
+        r = self.row([[1.0, 0.0]] * 5, g_pred_fp=0.5, g_pred_q_fixed=0.75, g_pred_q_native=1.25, g_norm_fp=2.0, g_norm_q=3.0)
+        self.assertEqual((r["g_pred_fp"], r["g_pred_q_fixed"], r["g_pred_q_native"], r["g_norm_fp"], r["g_norm_q"]), (0.5, 0.75, 1.25, 2.0, 3.0)); self.assertAlmostEqual(r["g_shift_native"], 0.75); self.assertAlmostEqual(r["g_shift_fixed"], 0.25)
+        self.assertNotIn("g_shift_native", self.row([[1.0, 0.0]] * 5))
+
+
 class Floor(unittest.TestCase):
     def rows(self, errs, kinds=("real",), split="calibration"):
         out = {}

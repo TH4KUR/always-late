@@ -38,18 +38,42 @@ def load_chunks(directory, prefix, state):
     return items, pooled, skipped
 
 
+def _quad(G, coef):
+    """Norm of the combination `coef` of the five cell vectors, from the Gram matrix."""
+    c = np.asarray(coef, dtype=np.float64); return float(np.sqrt(max(c @ np.asarray(G, dtype=np.float64)[:5, :5] @ c, 0.0)))
+
+
+def _rescaling_residual(G, cell):
+    """Norm of the part of the effect of `cell` (index into tc.CELLS) that is orthogonal to the FP effect: the error that remains after the best rescaling of the FP effect (None when the FP effect is zero)."""
+    G = np.asarray(G, dtype=np.float64); ff = G[0, 0]
+    return None if ff <= 0 else float(np.sqrt(max(G[cell, cell] - G[0, cell] ** 2 / ff, 0.0)))
+
+
 def item_table(items, core, split, cluster_mod):
     """One row per item {(feature, sentence, kind): row}: the language index of the feature, its calibration or held-out membership, the source cluster (dev index modulo `cluster_mod`), the norms of the FP
-    effect, the Q/Q effect and the error, the cosine and norm ratio, the norms of C, W, I and the total, and the stored per-item scalars."""
+    effect, the Q/Q effect and the error, the cosine and norm ratio, the norms of C, W, I and the total, the error of the native-amplitude cell, the errors that remain after the best rescaling of the FP effect
+    (fixed and native amplitude; H1), and the stored per-item scalars. Feature-level items with the amplitude vectors (amendment A10) add the activation cosine (cosine of the FP and the quantized amplitude
+    vectors over the edited positions, 0 when the feature does not fire in the quantized state) and the firing share; items with the gradient scalars (amendment A9) add the shifts of the first-order loss
+    effect (quantized minus FP, for the fixed and for the native edit)."""
     lang = dict(zip(core["feature_ids"], core["feature_language_index"])); where = {f: "calibration" for f in split["calibration"]}; where.update({f: "heldout" for f in split["heldout"]})
     rows = {}
     for (f, s, kind), it in items.items():
         if f not in where or f not in lang:
             raise ValueError(f"feature {f} is not in the split or in the core")
-        G = torch.tensor(np.asarray(it["gram"])); e = tc.transfer_error(G, 0.0); n = tc.decomposition_norms(G)
-        rows[(f, s, kind)] = {"feature": f, "sentence": s, "kind": kind, "language_index": lang[f], "split": where[f], "cluster": int(s) % int(cluster_mod), "fp_norm": e["fp_norm"], "q_norm": e["q_norm"],
-                              "error_norm": e["error_norm"], "cosine": e["cosine"], "norm_ratio": e["norm_ratio"], "C_norm": n["C"], "W_norm": n["W"], "I_norm": n["I"], "total_norm": n["total"],
-                              "n_rows": it["n_rows"], **{k: it[k] for k in ("edit_norm_fp", "edit_norm_native", "resid_norm_fp", "resid_norm_q", "amp_fp_mean", "amp_q_mean", "direction_norm") if k in it}}
+        G = torch.tensor(np.asarray(it["gram"])); e = tc.transfer_error(G, 1.0); n = tc.decomposition_norms(G); g = np.asarray(it["gram"])         # the floor argument only matters for the normalized error, which is formed in apply_floor
+        r = {"feature": f, "sentence": s, "kind": kind, "language_index": lang[f], "split": where[f], "cluster": int(s) % int(cluster_mod), "fp_norm": e["fp_norm"], "q_norm": e["q_norm"],
+             "error_norm": e["error_norm"], "cosine": e["cosine"], "norm_ratio": e["norm_ratio"], "C_norm": n["C"], "W_norm": n["W"], "I_norm": n["I"], "total_norm": n["total"],
+             "native_error_norm": _quad(g, [-1, 0, 0, 0, 1]), "scalar_residual_norm": _rescaling_residual(g, 3), "native_scalar_residual_norm": _rescaling_residual(g, 4),
+             "n_rows": it["n_rows"], "n_active_q": it.get("n_active_q"), "n_positions": it.get("n_positions"),
+             **{k: it[k] for k in ("edit_norm_fp", "edit_norm_native", "resid_norm_fp", "resid_norm_q", "amp_fp_mean", "amp_q_mean", "direction_norm", "g_pred_fp", "g_pred_q_fixed", "g_pred_q_native", "g_norm_fp", "g_norm_q") if k in it}}
+        if it.get("n_active_q") is not None and it.get("n_positions"):
+            r["firing"] = it["n_active_q"] / it["n_positions"]
+        if "amp_fp" in it and "amp_q" in it:
+            a, b = np.asarray(it["amp_fp"], dtype=np.float64), np.asarray(it["amp_q"], dtype=np.float64); na, nb = np.linalg.norm(a), np.linalg.norm(b)
+            r["act_cos"] = float(a @ b / (na * nb)) if na > 0 and nb > 0 else 0.0
+        if "g_pred_fp" in it and "g_pred_q_native" in it and "g_pred_q_fixed" in it:
+            r["g_shift_native"] = it["g_pred_q_native"] - it["g_pred_fp"]; r["g_shift_fixed"] = it["g_pred_q_fixed"] - it["g_pred_fp"]
+        rows[(f, s, kind)] = r
     return rows
 
 
