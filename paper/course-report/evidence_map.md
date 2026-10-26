@@ -27,6 +27,12 @@ analysis status. Sources are the current reports, not the retired pipeline.
 | Gain suppression figure and hypothesis failures | `reports/functional_validation/gain_study/results/curves.csv`; `report.md`; `calibration/calibration.md` | Plot medians of stored per-language net effects; main strict precision rule failed. |
 | Fine-gain figure | `reports/functional_validation/gain_study/extension_c/bands.csv`; `report.md`; `analysis.json` | Use saved interval endpoints exactly; primary ratios 1.1/1.2, 97.5% intervals, only 1.1 rule met. |
 | State-defined and optimum/shrinkage checks | `reports/functional_validation/gain_study/state_defined/results/report.md`; `extension_d/report.md` | Exploratory, conditional findings; no compensation mechanism and no feature-identity claim. |
+| Second-model check (Llama-3.2-1B): design, predictions, verdict function | `docs/superpowers/plans/2026-10-26-llama-consistency-check.md` sections 3, 6, 7; `reports/decisions_and_anomalies.md` D-087 | Written before any Llama number; predictions P1 to P3b and the verdict function are copied in the report's Table 2 and Section 8. |
+| Second-model check: results table, retention, diagnostics | `reports/functional_validation/llama/report.md`; `analysis.json`; `reports/decisions_and_anomalies.md` D-090 | Exploratory; model, SAE architecture and recipe, depth and tokenizer all differ from Gemma; the verdict is a statement about this model and SAE, not about other models. |
+| Second-model check: control draws, outlier draws, median of the retention ratios | `reports/functional_validation/llama_robust/report.md`; `robust.json`; `languages.csv` | Post hoc; labelled so; cannot change the pre-registered verdict. The perturbation norms at FP and INT4 are in `llama/analysis.json` (`diagnostics`). |
+| Appendix rules table (H-G1 to H-G6, H-Gc1 to H-Gc3, H-Gb1 to H-Gb4b) | `reports/functional_validation/gain_study/results/report.md`; `extension_c/report.md`; `state_defined/results/report.md` | Rules written in the design documents before the data; outcomes copied from the committed verdict tables. |
+| Appendix result inventory | `reports/functional_validation/RESULTS_SUMMARY.md` claims 1 to 17 | Same numbers as the sections above; status words as in the summary. |
+| Software, hardware and cost statement | `HANDOFF.md` section 5; `reports/functional_validation/STATUS.md` (job runtimes) | Versions of the Ada environment; per-state GPU hours are rounded. |
 | Reproduction counts and artifacts | `reports/phase1_reproduction.md`; `reports/functional_validation/REPRODUCE.md`; `reports/handoffs/039-2026-10-26-task17-prompt-check-done-all-queues-empty.md` | Regeneration of analysis outputs is not independent repetition of inference; newer inputs not all archived to HF. |
 
 ## Citation provenance
@@ -37,3 +43,5 @@ Anthology pages on 26 October 2026. Duan (2606.03002), Borobia et al.
 arXiv pages in this chat and are identified as preprints. They are linked using
 their genuine arXiv-issued DOI, rather than being mislabelled as proceedings
 papers. The manuscript does not make a first-ever or exhaustive novelty claim.
+
+Added 2026-10-26 (second revision): Gemma 2 (arXiv 2408.00118), JumpReLU SAEs (2407.14435), Cunningham et al. (2309.08600), Gao et al. TopK SAEs (2406.04093), the NLLB Team paper for FLORES-200 (2207.04672) and The Llama 3 Herd of Models (2407.21783) were checked against their arXiv abstract pages on 26 October 2026 (titles, author order, years); long author lists are truncated with `and others`, which the official bibliography style supports.

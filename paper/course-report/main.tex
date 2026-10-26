@@ -21,17 +21,17 @@ International Institute of Information Technology, Hyderabad}
 \maketitle
 
 \begin{abstract}
-Quantization changes sparse autoencoder (SAE) activations, but an activation change need not imply a loss of language association or causal contribution. We examine these distinctions in Gemma-2-2B using a frozen layer-12 Gemma Scope SAE, 27 FLORES-200 languages, and round-to-nearest weight quantization from INT8 to INT4. Of 8,086 development-selected features, 82.4\% reproduce their original language peak in full precision; among these, 70.8\% retain it at INT4. Removing top-64 language groups increases next-token loss beyond activity-matched controls in all 27 languages, and this dependence persists through INT5. However, the frozen Belebele comprehension test does not establish a corresponding group effect. Individual intervention effects drift at lower precision, but matched alternative directions drift similarly. Graded feature scaling reveals a small INT4 improvement at a 1.1 multiplier, without supporting a simple activation-shrinkage explanation. These results qualify the interpretation of feature survival and do not establish selective-feature destruction as the mechanism of multilingual quantization damage.
+Quantization changes sparse autoencoder (SAE) activations, but an activation change need not imply a loss of language association or causal contribution. We examine these distinctions in Gemma-2-2B using a frozen layer-12 Gemma Scope SAE, 27 FLORES-200 languages, and round-to-nearest weight quantization from INT8 to INT4. Of 8,086 development-selected features, 82.4\% reproduce their original language peak in full precision; among these, 70.8\% retain it at INT4. Removing top-64 language groups increases next-token loss beyond activity-matched controls in all 27 languages, and this dependence persists through INT5. However, the frozen Belebele comprehension test does not establish a corresponding group effect. Individual intervention effects drift at lower precision, but matched alternative directions drift similarly. Graded feature scaling reveals a small INT4 improvement at a 1.1 multiplier, without supporting a simple activation-shrinkage explanation. A minimum check on Llama-3.2-1B with a different SAE finds the dependence flat through INT6 but not the INT4 amplification or the graded ordering (pre-registered verdict: not consistent; model and dictionary are confounded). These results qualify the interpretation of feature survival and do not establish selective-feature destruction as the mechanism of multilingual quantization damage.
 \end{abstract}
 
 \section{Introduction}
 Weight quantization reduces the numerical precision required to store language-model parameters. Its effects need not be uniform across languages or tasks: multilingual evaluations find disparities that aggregate automatic scores can underestimate \citep{marchisio-etal-2024-quantization}. This motivates examining internal representations alongside model performance. An internal measurement is useful, however, only if its interpretation is explicit. Calling a feature ``lost'' can refer to a change in its activation pattern, preferred language, or effect on predictions. These are different outcomes.
 
-Sparse autoencoders decompose a model activation into a sparse combination of learned directions. Language-associated SAE features have been identified and manipulated in full-precision models \citep{deng-etal-2025-unveiling}. Separately, \citet{duan2026} measure activation correlations before and after weight quantization using a frozen SAE. Neither observation, by itself, establishes that quantization removes language-specific functionality. The representation can change while a contribution remains, or an intervention can change because the downstream model changes.
+Sparse autoencoders decompose a model activation into a sparse combination of learned directions \citep{cunningham2023}. Language-associated SAE features have been identified and manipulated in full-precision models \citep{deng-etal-2025-unveiling}. Separately, \citet{duan2026} measure activation correlations before and after weight quantization using a frozen SAE. Neither observation, by itself, establishes that quantization removes language-specific functionality. The representation can change while a contribution remains, or an intervention can change because the downstream model changes.
 
 We initially investigated whether language-selective features were more vulnerable than non-selective controls and whether that difference explained resource-tier disparities. After implementation audits and negative primary contrasts, we expanded the project to test the measurement assumptions directly. This report presents the completed investigation, including hypotheses that were not supported, rather than treating every additional analysis as confirmation of the original question.
 
-We address three questions. \textbf{RQ1:} how do activation preservation and language-association retention compare? \textbf{RQ2:} do selected language groups contribute to prediction and reading comprehension, and how do those contributions change with precision? \textbf{RQ3:} do individual intervention effects and graded group manipulations support an interpretation of feature-specific functional damage?
+We address three questions. \textbf{RQ1:} how do activation preservation and language-association retention compare? \textbf{RQ2:} do selected language groups contribute to prediction and reading comprehension, and how do those contributions change with precision? \textbf{RQ3:} do individual intervention effects and graded group manipulations support an interpretation of feature-specific functional damage? \textbf{RQ4:} does the group dependence appear on a second model with a different SAE?
 
 Our empirical contribution is a controlled case study combining per-language response profiles, native interventions, donor patches, and effect fingerprints across weight precisions. We also document the sensitivity of the initial replication to beginning-of-sequence (BOS) handling. We make no claim that ablation, activation patching, or feature-effect fingerprints are new methods. The main outcome is a set of distinctions and counterexamples to an overly broad interpretation of activation survival, within one model and measurement basis.
 
@@ -47,12 +47,12 @@ Our empirical contribution is a controlled case study combining per-language res
 
 \section{Experimental Setting and Research History}
 \subsection{Model, dictionary, and quantization}
-We use the Gemma-2-2B base model and a 16,384-feature JumpReLU Gemma Scope SAE at the layer-12 post-block residual stream. Model inference uses bfloat16; SAE encoding uses float32. The same dictionary is used in every condition. We apply the vendored reference round-to-nearest (RTN) quantization functions, restoring the original weights before each state. RTN uses output-channel scaling, with the reference implementation's shared indexing across heads for attention query, key, and value tensors. We do not claim to evaluate integer-kernel speed or memory savings: quantized values are represented in the inference model's floating-point storage.
+We use the Gemma-2-2B base model \citep{gemma2024} and a 16,384-feature JumpReLU \citep{rajamanoharan2024} Gemma Scope SAE at the layer-12 post-block residual stream. Model inference uses bfloat16; SAE encoding uses float32. The same dictionary is used in every condition. We apply the vendored reference round-to-nearest (RTN) quantization functions, restoring the original weights before each state. RTN uses output-channel scaling, with the reference implementation's shared indexing across heads for attention query, key, and value tensors. We do not claim to evaluate integer-kernel speed or memory savings: quantized values are represented in the inference model's floating-point storage.
 
 The main precision ladder is full precision (FP), INT8, INT7, INT6, INT5, and INT4. INT0 denotes the restore-only identity condition, not zero-bit quantization. INT16 and INT12 are near-lossless rounding references, not exact FP identities: re-rounding bfloat16 weights can still change them. For the individual-effect study, INT16 supplies the numerical reference. One BOS token is prepended; BOS and padding are excluded from statistics and edits.
 
 \subsection{Languages and data separation}
-The panel contains 27 parallel FLORES-200 languages in three descriptive resource tiers of nine languages each (Appendix~\ref{app:languages}). Feature discovery uses the development split. The original correlation and association studies use equal-budget sampling of 27,036 content-token positions per language on devtest, alongside an all-token sensitivity. Equalizing token counts controls sample size; it does not remove all tokenizer or linguistic confounds.
+The panel contains 27 parallel FLORES-200 \citep{nllb2022} languages in three descriptive resource tiers of nine languages each (Appendix~\ref{app:languages}). Feature discovery uses the development split. The original correlation and association studies use equal-budget sampling of 27,036 content-token positions per language on devtest, alongside an all-token sensitivity. Equalizing token counts controls sample size; it does not remove all tokenizer or linguistic confounds.
 
 The functional loss evaluation uses 300 fixed, aligned devtest sentence identifiers per language. Development-selected feature groups therefore do not use those evaluation sentences. Nevertheless, devtest had already been examined in the earlier studies, so all FLORES functional analyses are exploratory. The graded-gain extension uses 562 reserve sentences not scored in earlier intervention runs; it remains an exploratory follow-up motivated by the main results.
 
@@ -192,7 +192,7 @@ In FP, median net harm increases from 0.0223 to 0.0902 to 0.1687 to 0.2624 as th
 \end{figure}
 
 \subsection{A small INT4 benefit and two checks}
-The main sample suggests a small benefit from fine amplification at INT4 but is underpowered for that effect. The larger follow-up evaluates FP/INT6/INT5/INT4 on 562 reserve sentences per language, with five control draws and fixed primary multipliers 1.1 and 1.2. At INT4, 1.1 yields median net harm $-0.00135$ nats/token, with a 97.5\% interval $[-0.00197,-0.00032]$, and improves 20 of 27 languages. The 1.2 interval spans zero and its predefined rule is not met (Figure~\ref{fig:repair}). The matched controls do not show a clear corresponding decrease. The effect is approximately 0.05\% of loss, too small and narrowly evaluated to support a practical repair claim.
+The main sample suggests a small benefit from fine amplification at INT4 but is underpowered for that effect. The larger follow-up evaluates FP/INT6/INT5/INT4 on 562 reserve sentences per language, with five control draws and fixed primary multipliers 1.1 and 1.2. At INT4, 1.1 yields median net harm $-0.00135$ nats/token, with a 97.5\% interval $[-0.00197,-0.00032]$, and improves 20 of 27 languages. The 1.2 interval spans zero and its predefined rule is not met (Figure~\ref{fig:repair}). The same amplification slightly raises the loss at FP, INT6, and INT5 (+0.0004 to +0.0014), so its sign depends on precision (INT4 minus FP: $-0.0024$ and $-0.0041$ for the two multipliers). The matched controls do not show a clear corresponding decrease. The effect is approximately 0.05\% of loss, too small and narrowly evaluated to support a practical repair claim.
 
 \begin{figure}[t]
 \centering
@@ -205,10 +205,41 @@ Two follow-ups test the interpretation. First, selecting each state's own top-64
 
 Second, the language-specific gain minimizing INT4 group harm is reproducible across sentence halves (reliability 0.917). Its rank correlation with inverse group-activation shrinkage is nevertheless $-0.170$ (one-sided permutation $p=0.804$). The smooth estimator agrees qualitatively. Therefore, a simple compensation explanation is not supported, even though the aggregate optimum and shrinkage can look compatible. We did not search many alternative predictors for a successful explanation.
 
+\section{A Second-Model Check}
+\label{sec:llama}
+\paragraph{Design.} To ask whether the Gemma-2-2B picture is peculiar to one model and dictionary, we ran a minimum consistency check on Llama-3.2-1B \citep{grattafiori2024} (16 layers, width 2048) with the public TopK \citep{gao2024} SAE of \texttt{seonglae/Llama-3.2-1B-sae} (FineWeb, $k=48$, 14,336 features) at the residual stream entering block 12. Everything else is the frozen Gemma pipeline applied through an adapter: the same 27 languages and sentence identifiers, selectivity rule, K64 groups and matched controls (three draws), the Study G multipliers (not recalibrated), 300 held-out sentences, and the states FP, INT8, INT6, INT5, and INT4 (INT7 was not run). Five predictions and a verdict function were written before any Llama run (Table~\ref{tab:llama}); a language is tested if it has at least 16 selective features, which all 27 did. The verdict is \emph{consistent} if P1, P2b, and P3a are met; \emph{partly consistent} if P1 and P3a are met; \emph{limited} if only P1 is met; and \emph{not consistent} if P1 fails. P2a and P3b are reported and never change the verdict.
+
+\begin{table*}[t]
+\centering\small
+\begin{tabular}{p{4.2cm}p{4.9cm}p{3.5cm}p{1.1cm}}
+\toprule
+Prediction (fixed beforehand) & Llama-3.2-1B & Gemma-2-2B & Met\\
+\midrule
+P1: median $E>0$ with its interval above 0 and $E>0$ in $\geq 24$ of 27 languages & median $0.048$ $[0.018,0.173]$; 21 of 27 & median $0.262$; 27 of 27 & no\\
+P2a: macro retention in $[0.85,1.15]$ at INT8 and INT6 & $1.010$, $1.024$ & $1.006$, $1.038$ & yes\\
+P2b: INT4 retention $\geq$ INT6 $+0.30$ and the largest & INT5 $0.14$, INT4 $-3.57$ (median of ratios $0.86$) & $1.13$, $2.14$ (median $1.54$) & no\\
+P3a: down-dose ordering (H-G1) in $\geq 24$ of 27 languages and in the median, at FP and INT4 & 20 of 27 at FP, 15 of 27 at INT4 & met (Study~G) & no\\
+P3b (reported only): the deepest down multiplier costs more at INT4 in $\geq 20$ of 27 and the median ratio exceeds 1.3 & 14 of 27; median ratio $1.17$ & ratio $1.91$ & no\\
+\midrule
+Verdict & \multicolumn{3}{l}{not consistent (P1 fails)}\\
+\bottomrule
+\end{tabular}
+\caption{Pre-registered predictions and outcomes for the Llama-3.2-1B check. $E$ is the group effect of Equation~\ref{eq:effect} in nats per token; retention is the mean of per-language ratios $E^b_\ell/E^{\mathrm{FP}}_\ell$ over the languages with a clearly positive FP effect (21 of 27 for Llama). The median of the ratios is a post hoc addition and is not used for the verdict.}
+\label{tab:llama}
+\end{table*}
+
+\paragraph{Result.} The verdict is \emph{not consistent}. The group effect exists in most languages but is small: the median effect is $0.048$ nats/token (Gemma: $0.262$), positive in 21 of 27 languages when 24 are required. It is large in German, Yoruba, and Amharic (1.16, 1.50, 1.21) and negative in Russian, Chinese, Japanese, Korean, Hindi, and Kannada. As on Gemma, the dependence is flat through INT6 (P2a). The INT4 amplification is not found: the frozen mean retention is $-3.57$ because one language with a tiny FP effect (Tamil, $E=0.0027$) has a ratio of $-88.9$; the post hoc median of the ratios is $0.86$ $[0.74,1.03]$ at INT4, below its INT6 value of $1.08$. The graded ordering holds in 20 of 27 languages at FP and 15 of 27 at INT4.
+
+\paragraph{Robustness, post hoc.} The control draws are heavy-tailed: for Japanese the three control draws cost 0.07, 0.20, and 3.72 nats/token against a group harm of 0.095. Using the median of the three draws, $E>0$ in 23 of 27 languages at FP (24 required), and the group harm exceeds every single control draw in 17. With outlier draws removed (above five times the median of the others) it is positive in 22. At INT4 the zeroed groups and their controls no longer perturb the residual equally (median relative perturbation norm of the group against its controls: $0.12$ against $0.19$ at INT4, $0.18$ against $0.17$ at FP), so a control harm above the group harm at INT4 is partly a property of the matching. These tables cannot change the pre-registered verdict.
+
+\paragraph{What it does and does not show.} Model family, SAE architecture (TopK against JumpReLU), SAE training data, relative depth ($0.75$ against $0.50$), and tokenizer all differ. This dictionary also labels 91\% of its supported features language-selective (about three quarters for Gemma Scope) and leaves only 898 candidate controls (Gemma: 2,860), so its groups are less specific by construction. The check therefore does not show that the Gemma findings fail on other models, and it is not a replication; a same-family larger model with the same SAE type would separate model from dictionary and has not been run here.
+
 \section{Discussion and Conclusion}
 The original selective-destruction account is not established. Its primary contrasts were weak, its apparent threshold-dependent disadvantage changed after magnitude matching, and donor patches attributed little quantization loss to the selected language groups. Functional dependence on those groups persists on own-text prediction, but a frozen comprehension test does not establish the same dependence.
 
 The strongest methodological lesson is to specify what a survival measurement preserves. A correlation cutoff describes activation agreement; a peak-language label depends on the margin to competing languages; a logit fingerprint describes a sampled intervention in a changing downstream model. None alone certifies an invariant language mechanism. The matched-direction control particularly limits the interpretation of functional drift: effects change at low precision, but they also change for perturbations that are not the feature's own direction.
+
+The second-model check adds a caution: on Llama-3.2-1B with a TopK dictionary the dependence is present in most languages and flat through INT6, but smaller and without the INT4 amplification or the graded ordering. Because model and dictionary differ together, we attribute this to neither; the Gemma results are findings about one model and one dictionary until a same-family replication exists.
 
 For this course project, the outcome is a reproducible investigation that rejects parts of its motivating account and narrows others. We provide evidence of persistent group dependence, disagreement between survival views, and a small INT4 scaling benefit whose proposed compensation mechanism fails. These findings motivate better-calibrated compression audits; they do not establish a new quantization algorithm or broad multilingual capability recovery.
 
@@ -217,6 +248,8 @@ For this course project, the outcome is a reproducible investigation that reject
 One base model, layer, frozen SAE, and rounding scheme limit generalization. Dictionary fidelity can deteriorate after compression. Zero ablation can be off-distribution and does not establish unique necessity, sufficiency, or semantic identity. Imperfect matching and overlapping control draws constrain interpretation.
 
 Most results are exploratory. Language tiers confound script, tokenization, training distribution, and competence. Bootstrap intervals condition on the selected sample; discrete peak labels introduce resampling bias. The numerical threshold is an operational choice, and averaged fingerprints can hide context dependence.
+
+The second-model check confounds model family, SAE architecture and training data, depth, and tokenizer, and its control pool was smaller; a same-family larger model (Gemma-2-9B with Gemma Scope) was planned as a cleaner test and is not part of this report. A designed but unrun study would separate the effect of a fixed feature intervention into context, downstream weights, and their interaction by crossing full-precision and quantized prefixes and suffixes.
 
 Challenges included replacing the initial pipeline, accelerator memory limits, hardware heterogeneity, and CUDA failures. Future work should replicate the measurements across models and quantizers, assess dictionary variability, use task interventions with calibrated headroom, and prospectively test predictors of useful gains. These extensions are not completed results.
 
@@ -229,49 +262,79 @@ Challenges included replacing the initial pipeline, accelerator memory limits, h
 \appendix
 \section{Language Panel and Reproduction}
 \label{app:languages}
-\begin{table}[htbp]
-\centering
-\begin{tabular}{lll}
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lp{5.4cm}}
 \toprule
-Tier & Language & FLORES code\\
+Tier & Languages (FLORES-200 codes)\\
 \midrule
-High & English & eng\_Latn\\
- & German & deu\_Latn\\
- & Spanish & spa\_Latn\\
- & French & fra\_Latn\\
- & Portuguese & por\_Latn\\
- & Russian & rus\_Cyrl\\
- & Chinese & zho\_Hans\\
- & Japanese & jpn\_Jpan\\
- & Korean & kor\_Hang\\
-Mid & Hindi & hin\_Deva\\
- & Bengali & ben\_Beng\\
- & Tamil & tam\_Taml\\
- & Turkish & tur\_Latn\\
- & Vietnamese & vie\_Latn\\
- & Indonesian & ind\_Latn\\
- & Thai & tha\_Thai\\
- & Polish & pol\_Latn\\
- & Ukrainian & ukr\_Cyrl\\
-Low & Kannada & kan\_Knda\\
- & Telugu & tel\_Telu\\
- & Yoruba & yor\_Latn\\
- & Sundanese & sun\_Latn\\
- & Amharic & amh\_Ethi\\
- & Igbo & ibo\_Latn\\
- & Hausa & hau\_Latn\\
- & Khmer & khm\_Khmr\\
- & Lao & lao\_Laoo\\
+High & eng\_Latn, deu\_Latn, spa\_Latn, fra\_Latn, por\_Latn, rus\_Cyrl, zho\_Hans, jpn\_Jpan, kor\_Hang\\
+Mid & hin\_Deva, ben\_Beng, tam\_Taml, tur\_Latn, vie\_Latn, ind\_Latn, tha\_Thai, pol\_Latn, ukr\_Cyrl\\
+Low & kan\_Knda, tel\_Telu, yor\_Latn, sun\_Latn, amh\_Ethi, ibo\_Latn, hau\_Latn, khm\_Khmr, lao\_Laoo\\
 \bottomrule
 \end{tabular}
-\caption{The fixed 27-language roster. Tiers are descriptive project groupings informed by resource taxonomies, not a claim that languages have comparable training exposure within a tier.}
+\caption{The fixed 27-language roster in the order English, German, Spanish, French, Portuguese, Russian, Chinese, Japanese, Korean; Hindi, Bengali, Tamil, Turkish, Vietnamese, Indonesian, Thai, Polish, Ukrainian; Kannada, Telugu, Yoruba, Sundanese, Amharic, Igbo, Hausa, Khmer, Lao. Tiers are descriptive groupings, not equal training exposure.}
+\label{tab:languages}
 \end{table}
 
-The repository is \url{https://github.com/TH4KUR/always-late}. The report's companion evidence map identifies the generated source tables and analysis files for each numerical block. The private artifact dataset is \url{https://huggingface.co/datasets/karma-skz/always-late-artifacts}; access or a subsequent public release is needed for its contents. Newer item-level functional files are recorded by location and checksum and are not all archived there yet.
+The repository is \url{https://github.com/TH4KUR/always-late}; its results summary and figure index map every number to its source file, and the evidence map in the report folder lists the tables behind each numerical block. The private artifact dataset is \url{https://huggingface.co/datasets/karma-skz/always-late-artifacts}; newer item-level files are recorded by location and checksum and are not all archived there. Finished analyses are logged in \url{https://wandb.ai/karma-skz-/anlp-project}. Software: Python 3.10, PyTorch 2.14.1 (CUDA 12.6), TransformerLens 3.9.0, SAE Lens 6.54.5, Transformers 5.19.0. Jobs ran on single 11 GB RTX 2080 Ti GPUs: about 3 GPU hours per precision state for Gemma-2-2B and 1.5 for Llama-3.2-1B.
 
-The completed Phase 1 reproduction compared 89 output files against cached inputs and found all identical. The latest Study G and prompt-check reproduction compared 45 outputs with zero differences. These are regeneration checks of analyses, not independent repetitions of model inference. Evaluation freezes, sample identifiers, matching manifests, run metadata, and SHA-256 checksums identify the underlying runs. Standard-library and Torch test suites, mutation checks, sham gates, and restore-only identities provide additional implementation checks, not proof of the scientific interpretation.
+Regeneration checks: the Phase 1 reproduction compared 89 output files against cached inputs (all identical); the Study G and prompt-check reproduction compared 45 outputs (zero differences), and the five Llama outputs were regenerated identically. These regenerate analyses; they are not independent repetitions of model inference. Freezes, sentence identifiers, matching manifests, run metadata, and SHA-256 checksums identify the runs; test suites, mutation checks, sham gates, and restore-only identities check the implementation, not the scientific interpretation.
 
-\section{Hypotheses That Were Not Supported}
-The historical selective-versus-control family did not reject after correction in the primary regime. The frozen Belebele S0 statement was not met, making S1--S5 undefined. The strict Study G precision-monotonicity rule failed. Its original repair rules were not met before the larger follow-up; the larger follow-up supported only the 1.1 primary multiplier. State-defined groups were not more consequential than FP-defined groups, and inverse activation shrinkage did not predict the optimal language-specific gain. These outcomes are preserved rather than omitted or converted into successful hypotheses by changing thresholds.
+\section{Pre-registered Rules and Outcomes}
+\label{app:rules}
+Table~\ref{tab:rules} lists the rules of Study G and its three extensions as written before the data were scored, with their outcomes; the unsupported ones are named below it.
+\begin{table*}[!t]
+\centering\footnotesize
+\begin{tabular}{p{1.4cm}p{6.0cm}p{5.3cm}p{1.3cm}}
+\toprule
+Rule & Condition fixed beforehand (languages counted out of 27) & Outcome & Verdict\\
+\midrule
+H-G1 & net harm strictly ordered over the three down multipliers and zero ablation (FP), in $\geq 24$ and in the median & 27; medians 0.0223, 0.0902, 0.1687, 0.2624 & met\\
+H-G2 & lower bound of net harm above 0 at the deepest down multiplier (FP), in $\geq 24$ & 26 & met\\
+H-G3 & group harm increasing over the up multipliers in $\geq 24$ and net harm above 0 at the largest in $\geq 20$ (FP) & 27 and 24 & met\\
+H-G4 & tau $>0$ at the deepest down multiplier in $\geq 24$ and the median not falling by more than one bootstrap error & 27; median clause false & not met\\
+H-G5a, b & generic repair at INT4 (control harm below 0 at 1.1 or 1.2); group-specific repair (net-harm upper bound below 0 in $\geq 14$) & controls 0.0000 and 0.0002; 12 & not met\\
+H-G6 & net harm positive at the deepest down multiplier in $\geq 24$ in every state; rank correlation FP against INT4 $>0.5$ & 27 in every state; 0.936 & met\\
+H-Gc1 & INT4 repair on fresh sentences: median net-harm interval below 0 and $\geq 19$ negative & 1.1: $-0.0013$ $[-0.0020,-0.0003]$, 20 (met); 1.2: $-0.0017$ $[-0.0031,0.0003]$, 18 (not met) & met (1.1)\\
+H-Gc2 & INT4 minus FP paired difference below 0 at both primary multipliers & $-0.0024$ and $-0.0041$ & met\\
+H-Gc3 & matched controls not falling too at INT4 & $-0.0002$ and $+0.0001$ & met\\
+H-Gb1 & contributing features move with precision (Jaccard with FP smaller at INT4 than at INT6 in $\geq 24$) & 27; 0.488 against 0.855 & met\\
+H-Gb2 & state-defined minus FP-defined net harm positive in $\geq 18$ and in the median (INT4) & 11; median $-0.0098$ & not met\\
+H-Gb3, 4 & dose-response of state-defined groups (H-G1, H-G3) at FP, INT6, INT4; generic repair (4a); group-specific repair (4b) & met; 4a not met; 4b: 16 & 3, 4b met; 4a not met\\
+\bottomrule
+\end{tabular}
+\caption{Pre-registered rules of Study G and its extensions with their outcomes. Net harm is the group harm minus the matched controls scaled by the same multiplier, in nats per token. Rules were written in the design documents before the corresponding data were scored; the main-study repair rules were under-powered, which motivated the larger follow-up.}
+\label{tab:rules}
+\end{table*}
+
+\subsection*{Hypotheses That Were Not Supported}
+The original selective-versus-control tests (primary regime), the frozen Belebele statement S0 (making S1--S5 undefined), strict Study G precision monotonicity, the main-study repair rules (before the larger follow-up, which supported only the 1.1 multiplier), state-defined groups being more consequential, inverse shrinkage predicting the optimal gain, and on Llama-3.2-1B the predictions P1, P2b, P3a, and P3b were not met. They are reported as outcomes and were not converted by changing thresholds.
+
+\section{Result Inventory and Status}
+\label{app:inventory}
+Table~\ref{tab:inventory} lists every result block of the report with its headline numbers and its status (confirmatory, frozen, or exploratory). The repository's results summary numbers the same results as claims 1 to 17.
+\begin{table*}[!t]
+\centering\footnotesize
+\begin{tabular}{p{3.0cm}p{8.9cm}p{2.6cm}}
+\toprule
+Block & Headline result & Status\\
+\midrule
+Association retention & 6,663 of 8,086 selected features established; 70.8\% retain their peak at INT4; correlation survival at INT4 13.75\% & exploratory\\
+Original tests & no rejection after Holm (selective $-$ control survival $-0.28$ and $-1.44$ points at INT7, INT6); tier slope $+12.3$ to $-0.81$ after conditioning on scale & historical, not externally registered\\
+Group dependence on loss & macro effect 0.704 nats/token $[0.684,0.723]$, 27 of 27 languages; retention 1.01--1.04 through INT6, 1.13 at INT5, 2.14 at INT4 & exploratory, frozen setting\\
+Patching & language group recovers 2.6\% of the INT4 loss gap, whole residual 39.3\% & exploratory\\
+Association versus function & lost-minus-retained medians $+0.0006$, $+0.0007$, $+0.0002$; margin AUROC 0.90/0.81/0.75 for association loss against 0.58 (INT6) for function & exploratory\\
+Belebele & S0 not met: macro effect $-0.0001$ $[-0.0035,+0.0031]$; whole group $+0.0007$; frozen prompt above harness prompt in 18 of 18 languages & the only confirmatory family\\
+Individual effects & median cosine 0.997/0.988/0.961/0.839 at INT8/6/5/4; matched other direction 0.828 against 0.842 at INT4 & exploratory\\
+Graded scaling & H-G1, H-G2, H-G3, H-G6 met; H-G4 and repair rules not met; INT4 threshold & exploratory\\
+Fine amplification & 1.1 at INT4: net harm $-0.00135$ $[-0.00197,-0.00032]$, 20 of 27 languages; 1.2 not met & exploratory, fresh sentences\\
+Optimum and groups & optimum reliable (0.92), unrelated to shrinkage ($-0.17$); state-defined groups not more consequential ($-0.0098$) & exploratory, post hoc in origin\\
+Second model & Llama-3.2-1B: P1 not met (21 of 27), flat through INT6, no INT4 amplification; verdict not consistent & exploratory, pre-registered rule\\
+\bottomrule
+\end{tabular}
+\caption{Every result block with its status. ``Frozen'': setting and analysis fixed in a committed file before scoring; ``confirmatory'': a statement fixed in advance and reported whatever its outcome.}
+\label{tab:inventory}
+\end{table*}
 
 \end{document}

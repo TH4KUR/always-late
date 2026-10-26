@@ -60,7 +60,7 @@ def main():
         ax.plot(range(len(doses)), medians, marker=marker, color=color,
                 markersize=3, linewidth=1, label=state)
     ax.set_xticks(range(len(doses)), ["1", ".354", ".177", ".088", "0"])
-    ax.set(xlabel="Activation multiplier (stronger suppression →)",
+    ax.set(xlabel="Activation multiplier (0 = zero ablation)",
            ylabel="Net harm (nats/token)")
     ax.legend(frameon=False, ncol=2, loc="upper left")
     save(fig, "gain-down")
