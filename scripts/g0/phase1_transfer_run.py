@@ -136,3 +136,56 @@ def process_chunk(features, contexts, caches, positions, amplitudes, dirs, token
 
 def _cpu(e):
     return {**e, "vector": e["vector"].detach().cpu()}
+
+
+def subset_core(core, max_features, max_contexts):
+    """The smoke subset of the instrument job: evenly spaced features (first and last included), the first `max_contexts` contexts of each (the full core when both are None)."""
+    n = len(core["feature_ids"]); idx = list(range(n))
+    if max_features is not None and max_features < n:
+        idx = sorted(set(np.linspace(0, n - 1, max_features).round().astype(int).tolist()))
+    out = {k: [core[k][i] for i in idx] for k in ("feature_ids", "direction_ids", "feature_language_index", "contexts")}
+    if max_contexts is not None:
+        out["contexts"] = [c[:max_contexts] for c in out["contexts"]]
+    return out
+
+
+def run_transfer(states, setup, lower, suffix, encode, W_dec, core, dev_tokens, batcher, out_dir, freeze_sha, per_chunk, device="cpu", log=lambda *a: None, max_features=None, max_contexts=None):
+    """The feature-level core of the study for the quantized states `states` (labels, FP excluded: the FP prefix cache is built once). setup(label) puts the model weights in that state ('FP' or a quantized label);
+    lower(tokens) -> [B, L, d] prefix residual; suffix([B, L, d] float32) -> [B, L, V] float32 logits (upper layers, final norm, unembedding, soft cap); encode(rows) -> SAE activations;
+    W_dec [F, d]; core: the committed core sample (feature ids, matched direction ids, contexts as dev-sentence indices); dev_tokens: token ids of every dev sentence; batcher(sentences) -> batches (as the F5 runner).
+    Writes one resumable file per (state, chunk of features) and returns the metadata (counts, gates, timings)."""
+    import time
+    import phase1_func_f5_run as fr5
+    t0 = time.time(); sub = subset_core(core, max_features, max_contexts)
+    feats = [int(f) for f in sub["feature_ids"]]; matched = {f: int(m) for f, m in zip(feats, sub["direction_ids"])}; ctxs = {f: [int(s) for s in c] for f, c in zip(feats, sub["contexts"])}
+    uniq = sorted({s for f in feats for s in ctxs[f]}); local = {s: i for i, s in enumerate(uniq)}
+    plan = {"sentences": [dev_tokens[s] for s in uniq], "dev_index": uniq, "ctx": {k: [local[s] for s in ctxs[f]] for k, f in enumerate(feats)}}
+    fid = torch.tensor(feats, dtype=torch.long); batches = batcher(plan["sentences"]); out = Path(out_dir); out.mkdir(parents=True, exist_ok=True); W_cpu = W_dec.detach().float().cpu()
+    keyed = lambda cache: ({uniq[l]: r for l, r in cache["resid"].items()}, {(feats[k], uniq[l]): a for (k, l), a in cache["act"].items()})
+    gates = {"sham_exact": True, "sham_max_abs": 0.0}
+
+    def sham(resid_by_sentence):
+        for (f, s), p in list(pos_f.items())[:2]:
+            e = tc.effect(resid_by_sentence[s].float(), p + 1, torch.zeros(len(p), resid_by_sentence[s].shape[1]), suffix, context_targets(dev_tokens[s]))
+            worst = max(float(e["vector"].abs().max()), abs(e["dloss"])); gates["sham_max_abs"] = max(gates["sham_max_abs"], worst); gates["sham_exact"] = gates["sham_exact"] and worst == 0.0
+
+    setup("FP")
+    positions = fr5.fp_active_positions(lower, encode, batches, plan, fid, device); pos_f = {(feats[k], uniq[l]): p for (k, l), p in positions.items()}
+    cache_fp = fr5.cache_state(lower, encode, batches, plan, fid, positions, device); resid_fp, act_fp = keyed(cache_fp); sham(resid_fp)
+    log("FP caches:", len(uniq), "context sentences,", len(pos_f), "feature-context pairs,", sum(len(p) for p in pos_f.values()), "edited positions")
+    meta = {"n_features": len(feats), "n_context_sentences": len(uniq), "n_pairs": len(pos_f), "n_positions": int(sum(len(p) for p in pos_f.values())), "states": {}, "gates": gates}
+    for label in states:
+        setup(label); cache_q = fr5.cache_state(lower, encode, batches, plan, fid, positions, device); resid_q, act_q = keyed(cache_q); sham(resid_q)
+        caches = {"FP": resid_fp, "Q": resid_q}; amps = {"FP": act_fp, "Q": act_q}; chunks = plan_chunks(feats, per_chunk)
+        st = {"chunks": len(chunks), "resumed": 0, "items": 0, "skipped": 0, "seconds": 0.0}; meta["states"][label] = st
+        for ci, chunk in enumerate(chunks):
+            key = chunk_key(freeze_sha, label, chunk); path = out / f"transfer_{label}_c{ci:03d}.pt"
+            if load_chunk(path, key) is not None:
+                st["resumed"] += 1; continue
+            t1 = time.time()
+            res = process_chunk(chunk, {f: ctxs[f] for f in chunk}, caches, pos_f, amps, {f: build_directions(W_cpu, f, matched[f], RANDOM_SEEDS) for f in chunk},
+                                {s: dev_tokens[s] for f in chunk for s in ctxs[f]}, {"FP": suffix, "Q": suffix}, {"FP": lambda: setup("FP"), "Q": lambda l=label: setup(l)})
+            atomic_save({**res, "features": chunk}, path, key); st["items"] += len(res["items"]); st["skipped"] += len(res["skipped"]); st["seconds"] += time.time() - t1
+            log(f"state {label} chunk {ci + 1}/{len(chunks)}: {len(res['items'])} items, {time.time() - t1:.0f} s")
+    setup("FP"); meta["seconds"] = time.time() - t0
+    return meta

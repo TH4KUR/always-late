@@ -169,6 +169,176 @@ class Process(Fixture, unittest.TestCase):
             tr.process_chunk([2], {2: [10]}, self.caches, self.positions, self.amps, self.dirs, self.tokens, bad, self.switches)
 
 
+class FakeModel:
+    """A tiny stand-in for the real model: the prefix (embedding times a state-dependent scale), a ReLU 'SAE' and a tanh suffix with a state-dependent matrix. prefix_differs / suffix_differs decide which part
+    of the model changes between FP and the quantized states (both off: the states are identical)."""
+    d, V, F = 6, 10, 8
+
+    def __init__(self, prefix_differs=True, suffix_differs=True):
+        g = torch.Generator().manual_seed(11)
+        self.E = torch.randn(10, self.d, generator=g); self.We = torch.randn(self.d, self.F, generator=g); self.Ws = torch.randn(self.d, self.V, generator=g); self.W_dec = torch.randn(self.F, self.d, generator=g)
+        self.prefix_differs, self.suffix_differs, self.state, self.calls = prefix_differs, suffix_differs, "FP", []
+
+    def setup(self, label):
+        self.state = label; self.calls.append(label)
+
+    def lower(self, tokens):
+        s = 1.15 if (self.prefix_differs and self.state != "FP") else 1.0
+        return self.E[tokens] * s
+
+    def encode(self, x):
+        return torch.relu(x @ self.We + 0.4)
+
+    def suffix(self, x):
+        W = self.Ws * (1.3 if (self.suffix_differs and self.state != "FP") else 1.0)
+        return torch.tanh(x @ W)
+
+
+def fake_core():
+    return {"feature_ids": [0, 1, 2, 3], "direction_ids": [1, 0, 3, 2], "feature_language_index": [0, 0, 1, 1], "contexts": [[0, 1, 2], [1, 2, 3], [6, 7, 8], [7, 8, 9]]}
+
+
+def fake_dev():
+    g = torch.Generator().manual_seed(5)
+    return [torch.randint(2, 10, (int(torch.randint(3, 7, (1,), generator=g)),), generator=g).tolist() for _ in range(12)]
+
+
+def run_fake(model, out, states=("INT6",), per_chunk=2, freeze_sha="f", **kw):
+    import phase1_lib as p1
+    batcher = lambda sents: p1.make_batches({0: sents}, 1, "mask", 0, 256, 4, None)
+    return tr.run_transfer(list(states), model.setup, model.lower, model.suffix, model.encode, model.W_dec, kw.pop("core", fake_core()), fake_dev(), batcher, out, freeze_sha, per_chunk, **kw)
+
+
+def read_chunks(out, label):
+    items = {}
+    for p in sorted(Path(out).glob(f"transfer_{label}_c*.pt")):
+        items.update(torch.load(p, weights_only=False)["payload"]["items"])
+    return items
+
+
+class Subset(unittest.TestCase):
+    def test_the_smoke_subset_is_evenly_spaced_in_features_and_takes_the_first_contexts(self):
+        core = {"feature_ids": list(range(10)), "direction_ids": list(range(1, 10)) + [0], "feature_language_index": [0] * 10, "contexts": [[i, i + 1, i + 2] for i in range(10)]}
+        s = tr.subset_core(core, 4, 2)
+        self.assertEqual(s["feature_ids"], [0, 3, 6, 9]); self.assertEqual(s["direction_ids"], [1, 4, 7, 0]); self.assertEqual(s["contexts"], [[0, 1], [3, 4], [6, 7], [9, 10]])
+        self.assertEqual(tr.subset_core(core, None, None), core); self.assertEqual(tr.subset_core(core, 100, None)["feature_ids"], list(range(10)))
+
+
+class RunTransfer(unittest.TestCase):
+    def test_all_items_of_all_features_contexts_and_directions_are_written_for_every_state(self):
+        with tempfile.TemporaryDirectory() as out:
+            m = FakeModel(); meta = run_fake(m, out, states=("INT16", "INT6"))
+            for label in ("INT16", "INT6"):
+                items = read_chunks(out, label); core = fake_core()
+                want = {(f, s, k) for f, c in zip(core["feature_ids"], core["contexts"]) for s in c for k in tr.DIRECTION_KINDS}
+                skipped = {(f, s) for f, s, k in want} - {(f, s) for f, s, k in items}
+                self.assertEqual(set(items) | {(f, s, k) for f, s in skipped for k in tr.DIRECTION_KINDS}, want)
+                for it in items.values():
+                    self.assertEqual(it["gram"].shape, (5, 5)); self.assertTrue(np.allclose(it["gram"], it["gram"].T))
+            self.assertEqual(meta["states"]["INT6"]["chunks"], 2); self.assertEqual(meta["n_features"], 4)
+
+    def test_identical_states_give_zero_context_weight_and_interaction_terms_and_a_zero_error(self):
+        with tempfile.TemporaryDirectory() as out:
+            run_fake(FakeModel(prefix_differs=False, suffix_differs=False), out)
+            for it in read_chunks(out, "INT6").values():
+                n = tc.decomposition_norms(torch.tensor(it["gram"])); self.assertAlmostEqual(n["total"], 0.0, places=5); self.assertAlmostEqual(n["C"] + n["W"] + n["I"], 0.0, places=5)
+
+    def test_a_change_of_the_suffix_only_gives_no_context_term_and_a_change_of_the_prefix_only_no_weight_term(self):
+        with tempfile.TemporaryDirectory() as out:
+            run_fake(FakeModel(prefix_differs=False, suffix_differs=True), out); n = [tc.decomposition_norms(torch.tensor(i["gram"])) for i in read_chunks(out, "INT6").values()]
+            self.assertTrue(all(x["C"] < 1e-5 for x in n)); self.assertTrue(any(x["W"] > 1e-3 for x in n))
+        with tempfile.TemporaryDirectory() as out:
+            run_fake(FakeModel(prefix_differs=True, suffix_differs=False), out); n = [tc.decomposition_norms(torch.tensor(i["gram"])) for i in read_chunks(out, "INT6").values()]
+            self.assertTrue(all(x["W"] < 1e-5 for x in n)); self.assertTrue(any(x["C"] > 1e-3 for x in n))
+
+    def test_the_call_order_of_the_states_is_fp_first_then_one_cache_per_state_and_two_switches_per_chunk(self):
+        with tempfile.TemporaryDirectory() as out:
+            m = FakeModel(); run_fake(m, out, states=("INT6",), per_chunk=2)
+            self.assertEqual(m.calls[:2], ["FP", "INT6"]); self.assertEqual(m.calls[2:], ["FP", "INT6", "FP", "INT6", "FP"]); self.assertEqual(m.state, "FP")     # two chunks, then the weights are restored
+
+    def test_a_second_run_resumes_from_the_chunk_files_without_recomputing_them(self):
+        with tempfile.TemporaryDirectory() as out:
+            run_fake(FakeModel(), out); first = read_chunks(out, "INT6"); m = FakeModel(); meta = run_fake(m, out)
+            self.assertEqual(meta["states"]["INT6"]["resumed"], 2); self.assertEqual(m.calls, ["FP", "INT6", "FP"])                                              # only the caches were rebuilt, then the restore
+            second = read_chunks(out, "INT6"); self.assertEqual(set(first), set(second))
+            for k in first:
+                self.assertTrue(np.array_equal(first[k]["gram"], second[k]["gram"]))
+
+    def test_a_chunk_file_of_another_freeze_is_a_stale_error(self):
+        with tempfile.TemporaryDirectory() as out:
+            run_fake(FakeModel(), out)
+            with self.assertRaisesRegex(ValueError, "stale"):
+                run_fake(FakeModel(), out, freeze_sha="other")
+
+    def test_the_subset_arguments_limit_features_and_contexts(self):
+        with tempfile.TemporaryDirectory() as out:
+            meta = run_fake(FakeModel(), out, max_features=2, max_contexts=1)
+            self.assertEqual(meta["n_features"], 2); self.assertEqual({(f, s) for f, s, k in read_chunks(out, "INT6")}, {(0, 0), (3, 7)})
+
+    def test_the_matched_direction_of_every_feature_is_taken_from_the_core_and_the_sham_gate_is_exact(self):
+        with tempfile.TemporaryDirectory() as out:
+            meta = run_fake(FakeModel(), out)
+            self.assertTrue(meta["gates"]["sham_exact"]); self.assertEqual(meta["gates"]["sham_max_abs"], 0.0)
+
+
+class NoisyQ(FakeModel):
+    """The suffix of the quantized state is not deterministic: the unedited and the edited row would take different computations, so the sham gate must report it."""
+    def suffix(self, x):
+        z = super().suffix(x)
+        return z + (0.01 * torch.randn_like(z) if self.state != "FP" else 0.0)
+
+
+class Reference(unittest.TestCase):
+    def test_an_item_of_the_run_equals_the_cells_computed_by_hand_from_the_fake_model(self):
+        m = FakeModel(); core = fake_core(); f, s, kind = 1, 2, "matched_swapped"; dev = fake_dev()
+        with tempfile.TemporaryDirectory() as out:
+            run_fake(m, out); got = read_chunks(out, "INT6")[(f, s, kind)]
+        toks = torch.tensor([[1] + dev[s]])
+        def prefix(state):
+            m.state = state; return m.lower(toks)[0]
+        h_fp, h_q = prefix("FP"), prefix("INT6"); m.state = "FP"
+        act_fp = m.encode(h_fp[1:])[:, f]; pos = torch.nonzero(act_fp > 0, as_tuple=True)[0]; a_fp = act_fp[pos]
+        m.state = "INT6"; a_q = m.encode(h_q[1:])[:, f][pos]
+        d = m.W_dec[core["direction_ids"][core["feature_ids"].index(f)]]                                              # the matched swapped direction
+        tg = tr.context_targets(dev[s]); rows = pos + 1
+        def cell(h, state, amp):
+            m.state = state; return tc.effect(h, rows, amp[:, None] * d[None, :], m.suffix, tg)
+        cells = {"FP/FP": cell(h_fp, "FP", a_fp), "Q/FP": cell(h_q, "FP", a_fp), "FP/Q": cell(h_fp, "INT6", a_fp), "Q/Q": cell(h_q, "INT6", a_fp), "Q/Q-native": cell(h_q, "INT6", a_q)}
+        self.assertTrue(np.allclose(got["gram"], tc.gram(cells).numpy(), atol=1e-6)); self.assertEqual(got["n_rows"], len(pos))
+        for i, c in enumerate(tc.CELLS):
+            self.assertAlmostEqual(got["dloss"][i], cells[c]["dloss"], places=5)
+
+
+class NoisyFP(FakeModel):
+    def suffix(self, x):
+        z = super().suffix(x)
+        return z + (0.01 * torch.randn_like(z) if self.state == "FP" else 0.0)
+
+
+class NoisyBOS(FakeModel):
+    """Noise on row 0 only (never an edited row): the edited-row vector stays zero, the loss change over all rows does not."""
+    def suffix(self, x):
+        z = super().suffix(x).clone(); z[..., 0, :] = z[..., 0, :] + 0.05 * torch.randn_like(z[..., 0, :]); return z
+
+
+class ShamGate(unittest.TestCase):
+    def test_a_nondeterministic_quantized_suffix_fails_the_sham_gate(self):
+        with tempfile.TemporaryDirectory() as out:
+            meta = run_fake(NoisyQ(), out, states=("INT6",), per_chunk=4)
+        self.assertFalse(meta["gates"]["sham_exact"]); self.assertGreater(meta["gates"]["sham_max_abs"], 0.0)
+
+    def test_noise_in_the_fp_suffix_and_noise_on_unedited_rows_fail_the_gate_too(self):
+        with tempfile.TemporaryDirectory() as out:
+            self.assertFalse(run_fake(NoisyFP(), out, states=("INT6",), per_chunk=4)["gates"]["sham_exact"])
+        with tempfile.TemporaryDirectory() as out:
+            meta = run_fake(NoisyBOS(), out, states=("INT6",), per_chunk=4); self.assertFalse(meta["gates"]["sham_exact"])
+
+    def test_the_chunk_size_decides_the_number_of_chunks_and_of_weight_switches(self):
+        with tempfile.TemporaryDirectory() as out:
+            m = FakeModel(); meta = run_fake(m, out, states=("INT6",), per_chunk=1)
+        self.assertEqual(meta["states"]["INT6"]["chunks"], 4); self.assertEqual(m.calls.count("INT6"), 1 + 4)
+
+
 class Constants(unittest.TestCase):
     def test_the_direction_kinds_and_seeds_are_those_of_the_frozen_spec(self):
         import phase1_transfer_freeze as tf

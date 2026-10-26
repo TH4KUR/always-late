@@ -34,7 +34,7 @@ def effect(residual, rows, edit, suffix, targets=None, center=True):
     z = suffix(torch.stack([residual, edited])).float()
     if not bool(torch.isfinite(z).all()):
         raise ValueError("the suffix produced a non-finite value")
-    zb, ze = z[0], z[1]; diff = ze[rows] - zb[rows]
+    dev = z.device; zb, ze = z[0], z[1]; diff = ze[rows.to(dev)] - zb[rows.to(dev)]
     if center:
         diff = diff - diff.mean(-1, keepdim=True)
     out = {"vector": diff.mean(0), "dloss": None, "loss_base": None, "n_rows": int(len(rows))}
@@ -42,7 +42,7 @@ def effect(residual, rows, edit, suffix, targets=None, center=True):
         valid = targets >= 0
         if not bool(valid.any()):
             raise ValueError("no row of the context has a target")
-        ar = torch.arange(L); tg = targets.clamp(min=0)
+        ar = torch.arange(L, device=dev); tg = targets.clamp(min=0).to(dev); valid = valid.to(dev)
         nb = -torch.log_softmax(zb, -1)[ar, tg]; ne = -torch.log_softmax(ze, -1)[ar, tg]
         out["dloss"] = float((ne - nb)[valid].mean()); out["loss_base"] = float(nb[valid].mean())
     return out
