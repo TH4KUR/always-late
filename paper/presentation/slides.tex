@@ -143,20 +143,82 @@ $I = D[Q,Q]-D[Q,FP]-D[FP,Q]+D[FP,FP]$ \hfill (interaction)\\
 \vspace{0.5em}\par{\smallfont \textcolor{muted}{Status words by rule: supported / reversed / inconclusive. Baselines: A activation (cosine of amplitudes, log activation, firing, effect and residual norms), G gradient attribution, B generic sensitivity from the other directions of the same context.}}
 \end{slide}
 
-\begin{slide}{Group level: context and weight terms}
-\pending{Net harm (group minus matched controls) decomposed into C, W, I per language at INT6 and INT4; A3 with its sentence-bootstrap interval; figure \texttt{fig\_tr2\_crossed\_contrasts}.}
+\begin{slide}{Group level: the context term dominates at INT4}
+{\fontsize{18}{24}\selectfont
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+ & net harm & $|C|$ & $|W|$ & $|I|$ & $|C|>|W|$ in\\
+\midrule
+INT16 (rounding) & 0.262 & 0.0005 & 0.0003 & 0.0002 & 19 of 27$^\dagger$\\
+INT6 & 0.281 & 0.0091 & 0.0092 & 0.0010 & 12 of 27\\
+INT4 & \textbf{0.848} & \textbf{0.310} & \textbf{0.104} & 0.071 & \textbf{19 of 27}\\
+\bottomrule
+\end{tabular}}
+\vspace{0.6em}
+\begin{itemize}
+ \item Median over 27 languages, 300 sentences; net harm of removing the K64 group beyond matched controls (full precision: 0.263, as in the earlier study).
+ \item INT4: net harm 0.85 with the FP edit, 0.43 with the quantized state's own activation; interval of the median $|C|-|W|$: [+0.022, +0.073].
+ \item \key{A3} (context dominates): supported at INT4, undecided at INT6. $^\dagger$ counts at rounding size mean nothing.
+\end{itemize}
 \end{slide}
 
-\begin{slide}{Feature level: which term, and is it specific?}
-\pending{Median relative norms of C, W, I for the real direction against the four controls; the specificity contrast; H1 shares after rescaling and native amplitude; figure \texttt{fig\_tr2\_crossed\_contrasts}, \texttt{fig\_tr1\_activation\_effect}.}
+\begin{slide}{Feature level: the effect vector is rotated, mostly by the weights}
+{\fontsize{18}{24}\selectfont
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+ & cosine & error & in floors & $C$ & $W$ & $I$\\
+\midrule
+INT16 (rounding) & 0.998 & 0.056 & 0.7 & 0.055 & 0.053 & 0.074\\
+INT6 & 0.984 & 0.165 & 1.9 & 0.100 & 0.145 & 0.086\\
+INT4 & \textbf{0.768} & \textbf{0.664} & \textbf{7.7} & 0.359 & \textbf{0.560} & 0.315\\
+\bottomrule
+\end{tabular}}
+\vspace{0.4em}
+\begin{itemize}
+ \item 2,203 eligible items of 235 features (34\%). Terms relative to the FP effect norm plus the floor.
+ \item The error is 97--99\% orthogonal to the FP effect, and the quantized state's own activation leaves 97\% of it: not a rescaling, not an activation change (\key{H1} supported).
+ \item Weights above context in the effect vector (norm of a logit change), the opposite of the group-level loss: different quantities. The interaction is a third of the change at INT4.
+\end{itemize}
 \end{slide}
 
-\begin{slide}{Do averages hide the contexts?}
-\pending{H4: cosine of the averaged fingerprint against the mean cosine of the contexts per feature; coherence; figure \texttt{fig\_tr3\_averaged\_vs\_context}.}
+\begin{slide}{Which term, is it specific, and do averages hide the contexts?}
+\centering\includegraphics[width=10.0in]{transfer-terms.png}\par\vspace{0.2em}
+{\fontsize{15}{19}\selectfont\raggedright\textbf{(a)} Real direction (filled) against matched and random directions (hollow): weights above context, and the real direction is within or below its controls (INT4 gap +0.019 [+0.009, +0.032]): a generic response. \textbf{(b)} Group level: context above weights at INT4 (green), equal at INT6. \textbf{(c)} The averaged fingerprint looks better than its contexts: +0.126 [0.121, 0.131] at INT4 against +0.0145 in the rounding-only state (\key{H4}, features-only interval).\par}
 \end{slide}
 
-\begin{slide}{Can the transfer error be predicted?}
-\pending{Held-out error of A, A+G, A+B, A+B+G; reduction against the strongest baseline with its interval and the 10\% criterion at INT6 and INT4; eligible items and all items; secondary: does Pearson survival add anything; figure \texttt{fig\_tr4\_predictive}.}
+\begin{slide}{Can the transfer error be predicted for held-out features?}
+\begin{minipage}[t]{6.2in}\vspace{0pt}\includegraphics[width=6.1in]{transfer-predict.png}\end{minipage}\hfill
+\begin{minipage}[t]{5.6in}\vspace{0pt}\fontsize{19}{26}\selectfont
+A+B = activation baseline plus the sensitivity to \emph{other} directions of the same context, against the strongest baseline:\\[0.3em]
+INT4: \textbf{21.5\%} [12.7, 29.4], criterion met\\
+INT6: 10.9\% [$-$1.2, 21.4], not met\\
+INT16 (rounding only): 23.4\% [15.1, 30.8]\\[0.4em]
+\key{Utility not met} (needs both states).
+\end{minipage}
+\end{slide}
+
+\begin{slide}{What does not add to the prediction, and what it means}
+\begin{itemize}
+ \item \key{Gradient attribution} (loss form): INT4 held-out error 0.1241 against 0.1253 without it.
+ \item \key{Pearson survival} of the feature: A+P against A $-0.4\%$ [$-1.8$, 0.7] at INT4; A+B+P against A+B $-0.6\%$ [$-4.3$, 3.4].
+ \item The sensitivity to other directions measures how \emph{noise-prone a context} is (it works in a rounding-only state too), not a quantization-specific mechanism.
+ \item So: INT6 keeps the effect to about two numerical floors; INT4 does not (cosine 0.77); the transfer error is a generic response, hidden by averaging; activation survival does not track it.
+\end{itemize}
+\end{slide}
+
+\begin{slide}{Status of every pre-declared claim (rules fixed before the outcomes)}
+{\fontsize{18}{24}\selectfont
+\begin{tabular}{@{}p{1.6in}p{3.0in}p{6.7in}@{}}
+\toprule
+\key{A3} & mixed & supported at INT4, undecided at INT6 (interval spans zero)\\
+\key{H1} & supported & both states; the error clears the numerical floor (1.9 and 7.7 floors)\\
+\key{H2} & descriptive & calibration and held-out intervals of $C$, $W$, $I$ overlap\\
+\key{H3} & mixed & supported at INT4, inconclusive at INT6\\
+\key{H4} & supported & features-only interval; separates from the rounding-only state\\
+\key{Utility} & not met & INT4 met, INT6 not met (interval includes zero)\\
+\bottomrule
+\end{tabular}}
+\vspace{0.5em}\par{\fontsize{14}{18}\selectfont\textcolor{muted}{Rules tightened once after an independent code review, before any outcome was read (amendment A14). Held-out = held-out features (no document holdout).}}
 \end{slide}
 
 \begin{slide}{External panel: fresh text}
