@@ -1,0 +1,180 @@
+{
+ "P1": {
+  "count_positive": 21,
+  "required": 24,
+  "median": 0.04779724114319281,
+  "lo": 0.01787422038265997,
+  "hi": 0.1731304538872866,
+  "met": false
+ },
+ "diagnostics": {
+  "FP": {
+   "harm_group_median": 0.13285945467264007,
+   "harm_control_median": 0.08499786725305328,
+   "norm_ratio_group_median": 0.1789320576749995,
+   "norm_ratio_control_median": 0.17104614030707835
+  },
+  "INT4": {
+   "harm_group_median": 0.2453838135330259,
+   "harm_control_median": 0.26684281656119946,
+   "norm_ratio_group_median": 0.12074535873658558,
+   "norm_ratio_control_median": 0.18982993639120865
+  }
+ },
+ "P2": {
+  "retention": {
+   "INT8": 1.010106936909207,
+   "INT6": 1.0243462881333958,
+   "INT5": 0.13867806997603868,
+   "INT4": -3.570552529571056
+  }
+ },
+ "P2a": {
+  "band": [
+   0.85,
+   1.15
+  ],
+  "values": {
+   "INT8": 1.010106936909207,
+   "INT6": 1.0243462881333958
+  },
+  "met": true
+ },
+ "P2b": {
+  "int4": -3.570552529571056,
+  "int6": 1.0243462881333958,
+  "rise_required": 0.3,
+  "met": false
+ },
+ "P3a": {
+  "FP": {
+   "agree": 20,
+   "n": 27,
+   "median_net": [
+    0.011916126676835887,
+    0.031826723478526386,
+    0.035115982069837334,
+    0.04779724114319281
+   ],
+   "median_ordered": true,
+   "met": false
+  },
+  "INT4": {
+   "agree": 15,
+   "n": 27,
+   "median_net": [
+    0.04396915311825899,
+    0.05233214577864688,
+    0.05181396541675847,
+    0.04795381113341746
+   ],
+   "median_ordered": false,
+   "met": false
+  },
+  "met": false
+ },
+ "P3b": {
+  "ratio": 0.08838834764831845,
+  "count_larger": 14,
+  "required": 20,
+  "median_ratio": 1.1675898936473235,
+  "median_net": {
+   "FP": 0.035115982069837334,
+   "INT4": 0.05181396541675847
+  },
+  "met": false
+ },
+ "n_tested": 27,
+ "tested": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tam_Taml",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda",
+  "tel_Telu",
+  "yor_Latn",
+  "sun_Latn",
+  "amh_Ethi",
+  "ibo_Latn",
+  "hau_Latn",
+  "khm_Khmr",
+  "lao_Laoo"
+ ],
+ "untested": [],
+ "states": [
+  "FP",
+  "INT8",
+  "INT6",
+  "INT5",
+  "INT4"
+ ],
+ "n_sentences": 300,
+ "n_boot": 2000,
+ "n_boot_languages": 5000,
+ "seed": 0,
+ "verdict": "not consistent",
+ "gemma_reference": {
+  "median_E_FP": 0.26241236099798765,
+  "retention": {
+   "INT4": 2.1359636620783586,
+   "INT5": 1.1291452147046992,
+   "INT6": 1.0379249472192325,
+   "INT8": 1.0056094908426656
+  },
+  "deepest_net_median": {
+   "FP": 0.16870333634236098,
+   "INT4": 0.32327452476823776
+  },
+  "ratio_int4_over_fp_median": 1.9106589120093769
+ },
+ "meta": {
+  "runs": {
+   "FP": {
+    "file": "func_lm_eval_FP.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/llama-lm-a",
+    "sha256": "458f5170b141050e27b01f252c0a4a77e40e16b7bf0c3d3030d2aa3daabcedef",
+    "meta_sha256": "3af634d73cd636a285e2ace40ec3b606c5813415aa60906c5426f081a8b34c0b"
+   },
+   "INT6": {
+    "file": "func_lm_eval_INT6.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/llama-lm-a",
+    "sha256": "c26201e24c012523c7615db72008c62c9ef808fb922a415e450a309b53342bc1",
+    "meta_sha256": "3af634d73cd636a285e2ace40ec3b606c5813415aa60906c5426f081a8b34c0b"
+   },
+   "INT8": {
+    "file": "func_lm_eval_INT8.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/llama-lm-a",
+    "sha256": "15d8fd2b5543cc3c7baacd828fdaf61dc65adac2bbb14331a6623c4aa320bc5d",
+    "meta_sha256": "3af634d73cd636a285e2ace40ec3b606c5813415aa60906c5426f081a8b34c0b"
+   },
+   "INT4": {
+    "file": "func_lm_eval_INT4.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/llama-lm-b",
+    "sha256": "480058d6af2ec52afd23582357d6a24908db0009f4b9a0f77f61b79ced64294c",
+    "meta_sha256": "a307eb675a455cdafb1e4c21ba2777d9a18b38802039010d121ed4ba8f409c22"
+   },
+   "INT5": {
+    "file": "func_lm_eval_INT5.pt",
+    "dir": "/tmp/claude-1000/-home-karma-Documents-ANLP-project/155da99d-de46-40af-b974-3e522a77dd68/scratchpad/llama-lm-b",
+    "sha256": "af6b1ef56f121ce48fdb5d957c19e317130f76e0605fdeaadd3fa0db1b5862b5",
+    "meta_sha256": "a307eb675a455cdafb1e4c21ba2777d9a18b38802039010d121ed4ba8f409c22"
+   }
+  },
+  "manifest_sha256": "c1c735c210b458b189732ab3526c625948022a6ed4bde4dca31ae641d7ff2541",
+  "sae": "fineweb42"
+ }
+}

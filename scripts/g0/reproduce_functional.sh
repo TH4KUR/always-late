@@ -6,7 +6,7 @@
 #   rescue/     func-rescue-a files            f4-INT4/ f4-INT5/ f4-INT6/   func-f4-INT<b> files
 #   mc-eval/    func-mc-eval-a and -b files (their two meta_mc_eval.json renamed meta_mc_eval_a.json and meta_mc_eval_b.json)      mc-ksens/   func-mc-ksens files
 #   f5-a/ f5-b/ f5-smoke2/ f5-m8/ f5-m32/ f5-dir/ f5-dir2/ f5-fa/ f5-fa-dir/    the per-state files of the F5 jobs
-#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080); gainc-FP/ gainc-6/ gainc-5/ gainc-4b/   the extension C jobs (D-082); gain-sd-FP/ gain-sd-6/ gain-sd-4/ gain-sd-FPref-6/ gain-sd-FPref-4/   the extension B jobs (D-085); promptcheck-frozen/ promptcheck-harness/   the two variant directories of the Task 17 (b) job (D-086)
+#   d035/ profiles.pt selectivity.pt (Study G baseline); gain-cal-FP/ gain-cal-INT4/ gain-FP/ gain-8/ gain-7/ gain-6/ gain-5/ gain-4/   the item files and metadata of the Study G jobs of the same names (D-070 to D-080); gainc-FP/ gainc-6/ gainc-5/ gainc-4b/   the extension C jobs (D-082); gain-sd-FP/ gain-sd-6/ gain-sd-4/ gain-sd-FPref-6/ gain-sd-FPref-4/   the extension B jobs (D-085); promptcheck-frozen/ promptcheck-harness/   the two variant directories of the Task 17 (b) job (D-086); llama-lm-a/ llama-lm-b/ llama-tag/   the Llama-3.2-1B check (D-090: item files and meta of the two lm jobs, and llama-tag/groups_manifest.json)
 #   mc-pc-all/ mc-pc-1024/ mc-pc-256/   func-mc-pc-<dose> files func_mc_eval_letter_FP.pt and meta_mc_eval.json (the positive control, D-069)
 #   feature_status_eq.csv   Ada association-full/analysis-eq/feature_status.csv
 # Prints identical / DIFFERS / skipped (input missing) for every output file; exit 1 if anything DIFFERS. Needs the torch venv (numpy, scipy, statsmodels).
@@ -140,5 +140,12 @@ fi
 if [ -d "$ROOT/reports/functional_validation/promptcheck" ] && have promptcheck-frozen "promptcheck" && have promptcheck-harness "promptcheck"; then
     $PY -B scripts/g0/phase1_func_promptcheck_analysis.py --frozen-dir "$IN/promptcheck-frozen" --harness-dir "$IN/promptcheck-harness" --calibration-json reports/functional_validation/belebele_calibration.json --out "$OUT/promptcheck" > /dev/null
     cmpdir "$OUT/promptcheck" "$RES/../promptcheck" promptcheck languages.csv report.md; jsoneq "$OUT/promptcheck/analysis.json" "$RES/../promptcheck/analysis.json" promptcheck/analysis.json meta.frozen,meta.harness
+fi
+# Llama-3.2-1B consistency check (D-090): the pre-registered comparison and the post hoc robustness tables; inputs llama-lm-a/ (FP, INT8, INT6), llama-lm-b/ (INT5, INT4: func_lm_eval_<state>.pt and meta_lm_eval.json each) and llama-tag/groups_manifest.json; the Gemma reference is read from the committed outputs, the ratios from the committed ratios.json
+if [ -d "$ROOT/reports/functional_validation/llama" ] && have llama-lm-a "llama" && have llama-lm-b "llama" && have llama-tag/groups_manifest.json "llama"; then
+    $PY -B scripts/g0/phase1_llama_compare.py --runs "$IN/llama-lm-a" "$IN/llama-lm-b" --manifest "$IN/llama-tag/groups_manifest.json" --ratios-json reports/functional_validation/gain_study/calibration/ratios.json --gemma-root reports/functional_validation --out "$OUT/llama" --sae fineweb42 > /dev/null
+    cmpf "$OUT/llama/report.md" "$ROOT/reports/functional_validation/llama/report.md" llama/report.md; jsoneq "$OUT/llama/analysis.json" "$ROOT/reports/functional_validation/llama/analysis.json" llama/analysis.json meta.runs
+    $PY -B scripts/g0/phase1_llama_robust.py --runs "$IN/llama-lm-a" "$IN/llama-lm-b" --manifest "$IN/llama-tag/groups_manifest.json" --out "$OUT/llama_robust" > /dev/null
+    cmpdir "$OUT/llama_robust" "$ROOT/reports/functional_validation/llama_robust" llama_robust languages.csv report.md; jsoneq "$OUT/llama_robust/robust.json" "$ROOT/reports/functional_validation/llama_robust/robust.json" llama_robust/robust.json meta.runs
 fi
 [ $FAIL -eq 0 ] && echo "all compared outputs are identical" || { echo "SOME OUTPUTS DIFFER"; exit 1; }

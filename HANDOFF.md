@@ -9,7 +9,7 @@ Rewritten 2026-10-26 (documentation cleanup requested by the user). The previous
    - `NEXT STEP` is your task, in order;
    - `State` is the repository and test state;
    - the last entries of `Log` tell you what the previous agent did.
-3. Read the newest handoff in [`reports/handoffs/`](reports/handoffs/) (highest number). On 2026-10-26: [039](reports/handoffs/039-2026-10-26-task17-prompt-check-done-all-queues-empty.md) for the main line, and [040](reports/handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) for the Gemma-2-9B runs that another team does on another cluster.
+3. Read the newest handoff in [`reports/handoffs/`](reports/handoffs/) (highest number). On 2026-10-26: [041](reports/handoffs/041-2026-10-26-llama-check-done-not-consistent-intervention-transfer-next.md) for the main line (after [039](reports/handoffs/039-2026-10-26-task17-prompt-check-done-all-queues-empty.md)), and [040](reports/handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) for the Gemma-2-9B runs that another team does on another cluster.
 4. Read [`DECISIONS_FOR_REVIEW.md`](DECISIONS_FOR_REVIEW.md) for open questions (`STATUS: open`). Apply any `ANSWER:` that is not yet applied.
 5. Check the cluster: `ssh -o HostKeyAlias=ada-gw1 karma@10.4.24.30 'squeue -u karma'`. Plain `ssh karma@ada-gw1` fails while Cloudflare WARP is on. Never accept a changed host key.
 
@@ -27,7 +27,7 @@ Work is driven by a 40-minute recurring job. Its full instruction set is the fen
 8. after a finished task, write a handoff (next free number, [`TEMPLATE.md`](reports/handoffs/TEMPLATE.md)).
 
 **Current order (2026-10-26):**
-1. Finish the Llama-3.2-1B check, now exploratory only (D-089).
+1. ~~Finish the Llama-3.2-1B check, now exploratory only (D-089).~~ **Done 2026-10-26 08:38 (D-090): pre-registered verdict 'not consistent'** ([handoff 041](reports/handoffs/041-2026-10-26-llama-check-done-not-consistent-intervention-transfer-next.md)).
 2. Start the intervention-transfer study (D-088): plan `docs/superpowers/plans/2026-10-26-intervention-transfer-main-and-contingencies.md`, plus the corrections in [`reports/intervention_transfer/verification_2026-10-26.md`](reports/intervention_transfer/verification_2026-10-26.md).
 
 Gemma-2-9B is NOT run here (handoff 040, branch `gemma9b-confirmation`).

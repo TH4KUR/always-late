@@ -1,0 +1,14 @@
+# STATUS.md NEXT STEP block of 2026-10-26 08:30, replaced verbatim at 08:40 (the Llama check finished)
+
+Moved here unchanged from `reports/functional_validation/STATUS.md` when the state changed (the file's own protocol: replace the block, keep the old one). The block that replaced it is in STATUS.md; the step that did item 1 is the Log entry of 2026-10-26 08:40 and handoff 041.
+
+## NEXT STEP
+
+**Rewritten 2026-10-26 08:30 (documentation cleanup; the previous stacked updates are verbatim in [`../archive/status_2026-10-26_cleanup.md`](../archive/status_2026-10-26_cleanup.md) section 2). Do the items in this order. Replace this block when the state changes; append to the Log.**
+
+1. **Llama-3.2-1B check, finish and write up as EXPLORATORY (D-087, D-089).** When `llama-lm-a` 39721 ends: validate it (sacct exit 0, `GPU 0:` line, no CUDA warning, gates, 999 configurations per state, meta complete) and fetch its states with checksums, exactly as for `llama-lm-b` 39722 (Log 2026-10-26 07:11). Then run `phase1_llama_compare.py --runs <llama-lm-a dir> <llama-lm-b dir> --manifest <llama-tag>/groups_manifest.json --ratios-json reports/functional_validation/gain_study/calibration/ratios.json --gemma-root reports/functional_validation --out reports/functional_validation/llama --sae fineweb42` and `phase1_llama_robust.py --runs <both dirs> --manifest ... --out reports/functional_validation/llama_robust`. Write the D-entry (next free number), a README row update, a RESULTS_SUMMARY line with the limit "model, SAE type (TopK k=48), SAE recipe and relative depth confounded; not the replication", and a handoff. Do not cancel 39721.
+2. **Intervention-transfer study (D-088), Gemma-2-2B part.** Start at Task 1 (freeze) of `docs/superpowers/plans/2026-10-26-intervention-transfer-main-and-contingencies.md` (design: `docs/superpowers/specs/2026-10-26-intervention-transfer-research-design.md`; both are Codex's untracked files: read, never edit or commit). Apply the corrections in [`../intervention_transfer/verification_2026-10-26.md`](../intervention_transfer/verification_2026-10-26.md) (Chang §6.1-6.2 as precedent, pre-register that C is expected to dominate, gradient baseline mandatory, Bhandari 2609.06473, citation fixes). Its ledger: `reports/intervention_transfer/STATUS.md` (create it at Task 1). Second model: Gemma-2-9B, which waits for the merge of branch `gemma9b-confirmation`; record that as an amendment before the freeze. Q28 (extra states): default, plan as written. Done = `freeze.json` committed before any quantized intervention output is read, then Tasks 2 to 6 with their gates.
+3. **Gemma-2-9B: NOT here.** Another team, [handoff 040](../handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md). Do not touch branch `gemma9b-confirmation`.
+
+After each finished step: update this block and the Log, `reports/progress_log.md`, commit explicit paths and push; after a finished task write a handoff.
+

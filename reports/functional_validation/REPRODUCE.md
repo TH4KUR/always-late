@@ -20,6 +20,8 @@ It needs the torch venv (`~/.venvs/anlp-torch`: numpy, scipy, statsmodels, matpl
 
 **Update 2026-10-26 01:17 (Task 17 part (b) added): 45 outputs of Study G and of the prompt cross-check (the 42 above and the 3 of `promptcheck/`: `languages.csv`, `report.md`, `analysis.json`) re-run from the input files of the scratchpad and bit-identical (0 differ).**
 
+**Update 2026-10-26 08:37 (Llama-3.2-1B check added, D-090): the 5 outputs of the Llama check (`llama/report.md`, `llama/analysis.json`, `llama_robust/languages.csv`, `llama_robust/report.md`, `llama_robust/robust.json`) re-run from the item files of `llama-lm-a`, `llama-lm-b` and the manifest of `llama-tag` and bit-identical (0 differ; run paths ignored in the two json files). The other 45 outputs were not re-run in this step (they are unchanged).**
+
 ## Inputs: where they come from and the layout the script expects
 
 Files are fetched from Ada (`/home2/karma/duan-verify/out/phase1/<job>/<file>`) one `scp` per file (`-o HostKeyAlias=ada-gw1 karma@10.4.24.30`), then checked with `sha256sum` against `artifact_checksums.md`. Layout of the inputs root (`<IN>`):
@@ -39,6 +41,7 @@ Files are fetched from Ada (`/home2/karma/duan-verify/out/phase1/<job>/<file>`) 
 | `gainc-FP/`, `gainc-6/`, `gainc-5/`, `gainc-4b/` | the Study G extension C jobs of the same names (D-079, D-082) | `func_lm_eval_<state>.pt` and `meta_lm_eval.json` (562 reserve sentences, five control draws) |
 | `gain-sd-FP/`, `gain-sd-6/`, `gain-sd-4/`, `gain-sd-FPref-6/`, `gain-sd-FPref-4/` | the Study G extension B jobs (D-085) | `func_lm_eval_<state>.pt` and `meta_lm_eval.json` (300 evaluation sentences, three control draws) |
 | `promptcheck-frozen/`, `promptcheck-harness/` | the `frozen/` and `harness/` directories of the Ada job `promptcheck` 39406 (Task 17 part (b), D-086) | `func_mc_cal_letter_FP.pt` and `meta_mc_cal.json` each |
+| `llama-lm-a/`, `llama-lm-b/`, `llama-tag/` | the Ada jobs `llama-lm-a` 39721 (FP, INT8, INT6), `llama-lm-b` 39722 (INT5, INT4) and the manifest `groups_manifest.json` of `llama-tag` (Llama-3.2-1B check, D-087, D-090) | `func_lm_eval_<state>.pt` and `meta_lm_eval.json` of each job; `groups_manifest.json` (sha256 `c1c735c2...`) |
 | `feature_status_eq.csv` | `association-full/analysis-eq/feature_status.csv` | the D-035 per-feature statuses (16 MB; equal to `analysis-eq-rerun`) |
 
 ## Result directories, modules and commands
@@ -58,6 +61,7 @@ All commands from the repository root; `PY=~/.venvs/anlp-torch/bin/python`, `$FS
 | `gain_study/extension_d/` (D-084) | `$PY -B scripts/g0/phase1_gain_extd.py --runs <IN>/gainc-4b --baseline-csv gain_study/baseline/baseline.csv --out gain_study/extension_d` | `alpha.csv`, `report.md`, `analysis.json` (run paths ignored); the baseline file is the committed one |
 | `gain_study/state_defined/results/` and `gain_study/figures_state_defined/` (D-085) | `$PY -B scripts/g0/phase1_gain_extb.py --state-defined <IN>/gain-sd-FP <IN>/gain-sd-6 <IN>/gain-sd-4 --reference <IN>/gain-sd-FP <IN>/gain-sd-FPref-6 <IN>/gain-sd-FPref-4 --ratios-json gain_study/calibration/ratios.json --overlap gain_study/state_defined/overlap.csv --out gain_study/state_defined/results`; the figure: `$PY -B scripts/g0/phase1_gain_extb_figures.py --compare gain_study/state_defined/results/compare.csv --out gain_study/figures_state_defined --formats svg --note "exploratory (devtest, one model, layer and quantizer); 300 held-out sentences per language, 3 matched-control draws"` | `compare.csv`, `report.md`, `analysis.json` (run lists ignored) and the two svg figures |
 | `promptcheck/` (D-086) | `$PY -B scripts/g0/phase1_func_promptcheck_analysis.py --frozen-dir <IN>/promptcheck-frozen --harness-dir <IN>/promptcheck-harness --calibration-json belebele_calibration.json --out promptcheck` | `languages.csv`, `report.md`, `analysis.json` (run paths ignored) |
+| `llama/` and `llama_robust/` (D-090) | `$PY -B scripts/g0/phase1_llama_compare.py --runs <IN>/llama-lm-a <IN>/llama-lm-b --manifest <IN>/llama-tag/groups_manifest.json --ratios-json gain_study/calibration/ratios.json --gemma-root . --out llama --sae fineweb42` and `$PY -B scripts/g0/phase1_llama_robust.py --runs <IN>/llama-lm-a <IN>/llama-lm-b --manifest <IN>/llama-tag/groups_manifest.json --out llama_robust` | `llama/report.md`, `llama/analysis.json`, `llama_robust/languages.csv`, `report.md`, `robust.json` (run paths ignored) |
 | `results/mc_ksens/` (D-062) | the same analysis command with `--runs <IN>/mc-ksens` and the exploratory note (K64 stands for the whole group) |
 | `results/f5/` (D-059) | `$PY -B scripts/g0/phase1_func_f5_analysis.py --run <IN>/f5-a --run <IN>/f5-b --out results/f5` (the original run added `--figures ...` links) |
 | `results/f5_smoke/` | `$PY -B scripts/g0/phase1_func_f5_analysis.py --run <IN>/f5-smoke2 --out results/f5_smoke` |

@@ -255,3 +255,12 @@ Fetched 2026-10-26 07:11 IST from Ada, sha256 equal on both sides (the Llama-3.2
 | `llama-lm-b/func_lm_eval_INT5.pt` | 5594871 | `af6b1ef56f121ce48fdb5d957c19e317130f76e0605fdeaadd3fa0db1b5862b5` |
 | `llama-lm-b/func_lm_eval_INT4.pt` | 5594871 | `480058d6af2ec52afd23582357d6a24908db0009f4b9a0f77f61b79ced64294c` |
 | `llama-lm-b/meta_lm_eval.json` | 2168 | `a307eb675a455cdafb1e4c21ba2777d9a18b38802039010d121ed4ba8f409c22` |
+
+Fetched 2026-10-26 08:32 IST from Ada, sha256 equal on both sides (the Llama-3.2-1B consistency check, D-087; RTX 2080 Ti on gnode048, no CUDA warning in the log, snapshot `repo_0cf138e`, commit `0cf138e`): `llama-lm-a` 39721 (states FP, INT8, INT6: sacct COMPLETED exit 0, 4 h 12 min 59 s, started 04:04:32, 999 configurations per state, 300 evaluation sentences per language with ids equal to the freeze for all 27 languages, the Study G main preset, gates passed, complete, nothing skipped). The FP file had been fetched earlier (05:52, interim look) and its sha256 equals the one of the finished job.
+
+| file | bytes | sha256 |
+|---|---|---|
+| `llama-lm-a/func_lm_eval_FP.pt` | 5590755 | `458f5170b141050e27b01f252c0a4a77e40e16b7bf0c3d3030d2aa3daabcedef` |
+| `llama-lm-a/func_lm_eval_INT8.pt` | 5594871 | `15d8fd2b5543cc3c7baacd828fdaf61dc65adac2bbb14331a6623c4aa320bc5d` |
+| `llama-lm-a/func_lm_eval_INT6.pt` | 5594871 | `c26201e24c012523c7615db72008c62c9ef808fb922a415e450a309b53342bc1` |
+| `llama-lm-a/meta_lm_eval.json` | 2323 | `3af634d73cd636a285e2ace40ec3b606c5813415aa60906c5426f081a8b34c0b` |
