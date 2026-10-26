@@ -157,7 +157,7 @@ INT4 & \textbf{0.848} & \textbf{0.310} & \textbf{0.104} & 0.071 & \textbf{19 of 
 \vspace{0.6em}
 \begin{itemize}
  \item Median over 27 languages, 300 sentences; net harm of removing the K64 group beyond matched controls (full precision: 0.263, as in the earlier study).
- \item INT4: net harm 0.85 with the fixed FP edit, 0.43 with the quantized state's own activation, which is the weights-only value (0.428): for the natural intervention the amplification is that of the weights. Interval of the median $|C|-|W|$: [+0.022, +0.073].
+ \item INT4: net harm 0.85 with the fixed FP edit, 0.43 with the quantized state's own activation (weights-only cell 0.428). Paired per language (post hoc): native minus fixed $-0.35$ [$-0.36$, $-0.29$] in all 27 languages; native minus weights-only $+0.014$ [0.009, 0.023] in the median, range $-0.78$ to $+0.23$: close to the weights in the median language, not in every one. Interval of the median $|C|-|W|$: [+0.022, +0.073].
  \item \key{A3} (context dominates, for the fixed edit): supported at INT4, undecided at INT6. $^\dagger$ the count is also 19 at rounding size: the interval, not the count, is the evidence.
 \end{itemize}
 \end{slide}

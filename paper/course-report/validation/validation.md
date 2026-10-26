@@ -16,6 +16,8 @@ Status: complete draft for team review; not a submitted course ZIP. Revision 3 r
 
 - Update 2026-10-27 03:58 IST: rebuilt after the feature-level specificity sentence gained the support-matched result of D-098 (and lost the unmatched cosine-gap claim), and two short clauses were cut to keep the layout; 11 pages, main content and limitations end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!`; `pdfinfo.txt`, `fonts.txt` and the manifest hashes are those of this build.
 
+- Update 2026-10-27 04:37 IST: rebuilt after the group-level paragraph, the abstract and the discussion were softened with the paired per-language native-versus-fixed results of D-099, and a few phrases and one sentence were cut to keep the layout; 11 pages, main content and limitations end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!`; `pdfinfo.txt`, `fonts.txt` and the manifest hashes are those of this build.
+
 Revision 2 record (kept verbatim):
 
 # Course-report validation: revision 2 (2026-10-26 09:13 IST, 26 October 2026)
