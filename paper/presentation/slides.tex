@@ -218,11 +218,28 @@ INT16 (rounding only): 23.4\% [15.1, 30.8]: the gain is not quantization-specifi
 \key{Utility} & not met & INT4 met, INT6 not met (interval includes zero)\\
 \bottomrule
 \end{tabular}}
-\vspace{0.5em}\par{\fontsize{14}{18}\selectfont\textcolor{muted}{Rules tightened once after an independent code review, before any outcome was read (amendment A14). Held-out = held-out features (no document holdout).}}
+\vspace{0.5em}\par{\fontsize{14}{18}\selectfont\textcolor{muted}{Rules tightened once after an independent code review, before any outcome was read (amendment A14). Held-out = held-out features (no document holdout). Wikipedia panel, same rules: A3 mixed, H1 supported, H3 supported, H4 mixed, utility met.}}
 \end{slide}
 
-\begin{slide}{External panel: fresh text}
-\pending{The same claims on Wikipedia passages in six languages (group level and feature level), reported next to the main result; cross-corpus prediction.}
+\begin{slide}{External panel: fresh text, six languages (Wikipedia)}
+{\fontsize{17}{22}\selectfont
+\begin{tabular}{@{}p{2.2in}p{4.6in}p{5.4in}@{}}
+\toprule
+ & FLORES, 27 languages & Wikipedia, 6 languages\\
+\midrule
+\key{A3} context larger & INT4 supported, INT6 undecided & INT4 supported ($+0.053$ [0.040, 0.064]), \textbf{INT6 reversed} (weights larger, $-0.0049$)\\
+\key{H1} not a rescaling & supported (1.9 and 7.7 floors) & supported (1.8 and 7.1 floors)\\
+\key{H3} prediction & INT4 yes, INT6 no (10.9\% [$-$1.2, 21.4]) & both yes: 19.4\% [5.1, 31.8], 23.4\% [12.8, 32.5]\\
+\key{H4} averages hide & supported & INT4 supported ($+0.132$), INT6 inconclusive\\
+\key{Utility} (both states) & not met & \textbf{met}\\
+\bottomrule
+\end{tabular}}
+\vspace{0.5em}
+\begin{itemize}
+ \item \key{Cross-corpus, no refit:} models fitted on the FLORES calibration features score the Wikipedia held-out items: 20.6\% [9.3, 31.2] at INT4, 19.7\% [7.5, 29.5] at INT6, 26.7\% in the rounding-only state.
+ \item The rounding-only state is predicted as well (28.9\%): the predictor measures how noise-prone a context is, not a quantization-specific mechanism. Eligible items: 22.5\% against 34.1\%.
+ \item Six languages, group medians dominated by one heavy-tailed language: an external-validity check, not a replication.
+\end{itemize}
 \end{slide}
 
 \begin{slide}{What this does not show}
