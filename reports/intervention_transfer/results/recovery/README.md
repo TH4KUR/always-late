@@ -34,3 +34,27 @@ SECONDARY protocol (the external floors of D-095 for the target and the eligibil
 ## Limits
 
 Post hoc (selected after D-094) and written after the external panel had been analysed under the original rules (D-095) and the A11 E3 row had been read; no choice here depends on those numbers (revision_R1.json, `honesty_note`). Feature-held-out only for the external items (the same feature split as the main study; the external contexts are other documents, which is the point of the test). Six languages and one corpus family; `held-out` items share features with nothing in the calibration half. Pairwise-eligible real items still differ in FP effect scale from their controls (plan: common-support analysis, not done here). The prediction needs four extra control interventions per feature and context, so it is not shown to be a cheaper audit than measuring the target. The original UTILITY verdicts (main: not met; external: met, D-095) are unchanged and are not re-evaluated here.
+
+## Update 2026-10-27 03:18 IST: the stored gradient scalars against the signed NLL changes (revision R2, task 1b; POST HOC)
+
+Protocol: [`../../revision_R2_gradient_scalars.json`](../../revision_R2_gradient_scalars.json) (commit `a9184d5`, written before the code and the run). Code: `scripts/g0/phase1_transfer_gradient_check.py` (17 tests, 22 mutants killed; 345 transfer tests green). Command: `python scripts/g0/phase1_transfer_gradient_check.py --main <analysis_main> --external <analysis_external> --out <dir>`. Files: `gradient_vs_nll.csv` (corpus, state, comparison, group; 180 rows), `gradient_vs_nll.json` (also the noise thresholds, the check that C0 is identical across the state tables (it is, in both corpora), and the sha256 of the six inputs).
+
+**What is compared.** The A9 baseline stores per item the first-order loss prediction of the edit (minus the dot product of the autograd gradient of the mean NLL and the edit, summed over the edited rows) in the FP model (g_pred_fp, C0), in the quantized model for the fixed FP edit (C1) and for the native edit (C2); S1 and S2 are the quantized-minus-FP shifts of these predictions against the shifts of the actual signed NLL changes of the cells. This is the **scalar NLL gradient against a scalar NLL target**; the logit-vector JVP was never computed. Noise threshold of the actual change: the 95th percentile of the INT16 shift (0.0062 nats FLORES, 0.0034 Wikipedia). Intervals: crossed bootstrap, 2,000 replicates. Real direction, all 6,464 (FLORES) and 6,406 (Wikipedia) items unless stated.
+
+| | FLORES (27 languages) | Wikipedia (6 languages) |
+|---|---|---|
+| C0, FP model, FP edit: Pearson r | 0.63 [0.46, 0.80] | 0.53 [0.38, 0.69] |
+| C0 slope of actual on predicted | 1.29 [1.05, 1.51] | 0.95 [0.77, 1.22] |
+| C0 sign agreement above noise | 92 % [89, 95] | 90 % [86, 93] |
+| C1 at INT6 / INT4: r | 0.62 / 0.59 | 0.54 / 0.59 |
+| S2 (native edit shift), INT16 reference: r | 0.09 [0.03, 0.16] | 0.03 [-0.03, 0.08] |
+| S2, INT6: r | 0.20 [-0.29, 0.62] | 0.38 [0.23, 0.49] |
+| S2, INT4: r (slope, sign agreement above noise) | 0.58 [0.45, 0.70] (0.85, 87 %) | 0.66 [0.53, 0.76] (0.91, 86 %) |
+| S1 (fixed edit shift), INT4: r (slope) | 0.51 [0.35, 0.67] (0.76) | 0.67 [0.56, 0.76] (1.03) |
+
+By size of the intervention (terciles of the FP edit norm, C0): FLORES r 0.92 (slope 0.93), 0.88 (1.23), 0.57 (1.38); Wikipedia r 0.84 (1.01), 0.84 (1.12), 0.46 (0.89): the first-order approximation is accurate for the small edits and degrades for the largest ones, as expected for a full zero-ablation, which is not locally linear; the numbers are reported at the actual edit size only. Eligible real items (2,203 / 1,444) give the same picture (C0 r 0.62 / 0.45; S2 at INT4 r 0.52 / 0.52). The four control directions pooled are predicted better than the real direction (C0 r 0.89 / 0.79; S2 at INT4 0.82 / 0.67), consistent with their smaller, more linear effects.
+
+**Reading.**
+- On its own target the gradient baseline is not a failed predictor: it reproduces the sign of the signed NLL change in about nine of ten items above the noise level and its linear fit is moderate (r about 0.5 to 0.6, driven by the large edits). The earlier result that gradient attribution adds nothing to the prediction of the effect-VECTOR error (D-094) is therefore not evidence that gradients fail at the scalar loss; the vector-valued first-order effect remains untested.
+- The shift of the prediction between the FP and the quantized model tracks the actual shift of the loss change at INT4 (r 0.5 to 0.7, slope about 0.8 to 1.0, sign agreement above noise 86 to 88 %), is weak and unreliable at INT6 (on FLORES the interval of r spans [-0.29, 0.62]) and shows no relation in the INT16 rounding reference (r 0.0 to 0.1), which is the noise reference of the shift.
+- No threshold declares the baseline good or bad (protocol). Pearson correlations are sensitive to the few large edits (heavy tails); no rank correlation was in the protocol and none is reported. The result does not make gradients a cheaper audit than measuring the target.
