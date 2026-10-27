@@ -1,0 +1,141 @@
+{
+ "amendments": [],
+ "arms": {
+  "gptq": "the authors' GPTQ (pinned core) with the setting below",
+  "legacy_rtn": "the project's existing results; never rerun, never edited",
+  "matched_rtn": "authors' symmetric per-output-channel grid on canonical [out, in] matrices, FP32 arithmetic, nearest rounding, dead columns zeroed with the same mask as GPTQ, result stored in the weight's dtype (bf16)"
+ },
+ "audit": "reports/quantization_gptq_audit_2026-10-27.md",
+ "bits": {
+  "later_if_time": [
+   8,
+   7,
+   5
+  ],
+  "legacy_rounding_floors": [
+   12,
+   16
+  ],
+  "note": "floors and the restore control stay the legacy rounding / restore in every arm (audit section 7)",
+  "priority": [
+   4,
+   6
+  ],
+  "restore_control": 0
+ },
+ "bos_rule": "real BOS stays in the calibration forward passes and in the Hessian; the per-matrix share of the Hessian trace from the BOS rows is logged; the BOS-excluded variant (calibration-only) runs only if any share exceeds 0.2, with a D-entry before it",
+ "calibration": {
+  "exclusions": "FLORES dev and devtest (normalized substring) and the articles of the six-language Wikipedia panel; no filling of a short language from another",
+  "freeze_file": "reports/gptq_extension/calibration_freeze.json",
+  "freeze_file_sha256": "ef36fe86dcee81c7f6eae4b6db9aba944207c8929d47e66aa8866dd50fd93ca5",
+  "languages": 27,
+  "pool_sha256": "543234593913c4434b42bac71de8231618afbd5a035f248c1e13d284f73dd816",
+  "source": {
+   "config_date": "20231101",
+   "dataset": "wikimedia/wikipedia",
+   "licences": [
+    "cc-by-sa-3.0",
+    "gfdl"
+   ],
+   "revision": "b04c8d1ceb2f5cd4588862100d08de323dccfbaa"
+  },
+  "tokens_per_language": 8192,
+  "total_tokens": 221184
+ },
+ "commit": "790615e",
+ "contrast_conventions": "every arm contrast is paired by identical keys (matched RTN minus legacy RTN, GPTQ minus matched RTN, GPTQ minus legacy RTN), resampled with the dependence structure of the old analysis (sentences within language, then the 27 languages); 95 % percentile intervals; all contrasts are exploratory (D-101); a null stays a null; absolute effects are shown before ratios or percentages",
+ "created": "2026-10-27 18:23 IST",
+ "dead_columns": "as upstream: columns whose Hessian diagonal is exactly 0 are zeroed; the matched RTN uses the same mask; counts are reported per matrix",
+ "decision": "D-101",
+ "drop_order_if_time_runs_out": [
+  "external panel",
+  "Study G",
+  "F4/F5",
+  "Belebele (E7)",
+  "association retention (E3)",
+  "E4/E5 at other bit widths than 4 and 6",
+  "ladder bit widths 5, 7, 8"
+ ],
+ "endpoints": {
+  "E1": "ordinary degradation: per-language mean next-token cross-entropy (nats per token) of a quantized state minus that of FP on the same tokens (BOS excluded), from the Phase 1 run on FLORES devtest (all sentences, mask regime); tier and median summaries",
+  "E2": "Phase 1 survival: per-language share of FP-active features whose token correlation with FP is at least 0.9 (equal-budget stream), the pooled share, and the three pre-set tests T1 to T3 recomputed by the unchanged phase1_analysis.py on each arm's files",
+  "E3": "association retention: the D-035 statuses (retained / lost / shifted) of the language-selective features from the unchanged association analysis on each arm",
+  "E4": "group-removal effect: the K64 zero-ablation effect on the language's own devtest text in the state divided by the FP effect (macro rule D-041, median and pooled as secondaries), per language",
+  "E5": "rescue: the share of the quantization-induced loss recovered by patching FP activations (matched controls, the language group, all features, error term, whole residual); absolute recovered nats before shares (audit section 7)",
+  "E6": "intervention transfer: C, W and I (context, weights, interaction) and the pre-set UTILITY rule (D-094) at the feature level and the group level, fixed and native amplitude, FLORES; the external panel later",
+  "E7": "Belebele accuracy under removal of the K64 group and of all features (mc_eval preset), per language and macro"
+ },
+ "environment": {
+  "gpu": "RTX 2080 Ti 11 GB (Ada u22)",
+  "model": "google/gemma-2-2b (the cache of the old runs)",
+  "note": "the weights are built on the same stack as the experiments: no other model implementation enters",
+  "torch": "2.14.1",
+  "transformer_lens": "3.9.0",
+  "transformers": "5.19.0"
+ },
+ "gates": {
+  "G_cross_node": "MEASUREMENT: the artifact sha256 of two jobs on two different nodes; the decision rule is in the plan's Update of 2026-10-27: equal keeps rebuild-and-check, different switches to persisting the compact integer form (Q30)",
+  "G_fp_bridge": "in every stage job the FP numbers equal the historical run's FP numbers (the FP path is unchanged and was bit-for-bit reproducible, A-017); a difference is shown, never merged silently",
+  "G_rebuild_in_job": "a second build of the first artifact gives the same sha256 in the same job",
+  "G_restore": "after every state the model equals the full-precision state exactly; FP logits bit-identical before and after all switches",
+  "G_split_and_sham": "the transfer and functional runs' own gates (split equals full, zero-amplitude sham exact, gradient scalars) pass in every new state, not only in FP",
+  "G_target_set": "an artifact has exactly the 7 target tensors per block (182 for the 26 blocks) in the parameter's own shape and dtype; every other tensor is byte-identical after apply"
+ },
+ "gptq_config": {
+  "actorder": false,
+  "bits": "per state",
+  "blocksize": 128,
+  "calibration": "true-sequential through the whole model: Q/K/V, then O, then input and gate, then MLP output, block after block; inputs recomputed after the already quantized stages; one Hessian per stage input over the non-padding rows (real BOS included); the Hessian is the authors' running average (one add_batch call per calibration batch)",
+  "groupsize": -1,
+  "mse": false,
+  "percdamp": 0.01,
+  "static_groups": false,
+  "sym": true
+ },
+ "hessian_failure": "no silent retry: a Cholesky failure aborts the build and names the matrix; a retry with a larger damping is a D-entry and an amendment first",
+ "how_a_stage_is_run": "the old study's own entry point and command line, unchanged, through scripts/g0/gptq_ext/run_with_weights.py with --weights gptq or --weights rtn-matched and its own output directory (the old files are never touched; hash-pinned entry points stay byte-identical)",
+ "kind": "gptq-extension-freeze",
+ "note": "Written and committed BEFORE any artifact is built on the real model and before any GPTQ or matched-RTN number exists. Artifact hashes are NOT in this file: they are recorded afterwards in reports/gptq_extension/artifact_hashes.json (an amendment that cites this file's sha256). A change to anything below is a new D-entry and an amendment file, never an edit.",
+ "pairing_keys": [
+  "language",
+  "sentence id",
+  "feature id",
+  "context id",
+  "direction id",
+  "control draw index"
+ ],
+ "plan": "docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md",
+ "schema": 1,
+ "stage_order": [
+  "build and gates",
+  "E1 and E2 (Phase 1 runs)",
+  "E6 transfer matrix (INT4 and INT6)",
+  "E4, E5, E3, E7 and F4/F5/Study G",
+  "external panel"
+ ],
+ "unchanged_from_the_old_experiments": [
+  "Gemma-2-2B and its exact checkpoint",
+  "TransformerLens loader and version",
+  "Gemma Scope layer-12 canonical 16k SAE",
+  "token ids",
+  "BOS-masked regime only",
+  "feature groups (K16, K64, all) and their matched controls",
+  "feature, context and sentence samples and their freezes",
+  "decoder directions",
+  "FP-active edit positions",
+  "batching and masks",
+  "gradient target",
+  "arithmetic precision and readout",
+  "fixed-FP-amplitude and native-amplitude edits",
+  "sample floors of Study G (D-075) and every old freeze",
+  "the old analysis code and its pre-set rules"
+ ],
+ "upstream": {
+  "commit": "2d65066eeb06a5c9ff5184d8cebdf33662c67faf",
+  "repository": "https://github.com/IST-DASLab/gptq",
+  "sha256": {
+   "gptq.py": "bb47468cc2c788577562751de414d76eeb9968ff1c6098e21153557ef3d154c7",
+   "quant.py": "211528568b962b868d20fc58b55200b615f41ebd9f36b4d2d7e4a196a095ea5a"
+  }
+ }
+}

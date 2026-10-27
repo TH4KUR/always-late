@@ -116,7 +116,7 @@ def calibrate(model, batches, cfg, method, device, log=print, observer=None):
     if method not in METHODS:
         raise ValueError(f"unknown method {method!r}; choose from {METHODS}")
     targets = canonical.targets(model); params = dict(targets)
-    originals = {n: p.data.detach().clone() for n, p in targets}
+    originals = {n: p.data.detach().cpu().clone() for n, p in targets}                      # on the host: 4 GB of bf16 targets must not also sit on an 11 GB GPU
     report = {"method": method, "bits": cfg.bits, "config": asdict(cfg), "n_batches": len(batches), "n_rows": sum(int(b["mask"].sum()) for b in batches), "targets": {}}
     t0 = time.time()
     try:

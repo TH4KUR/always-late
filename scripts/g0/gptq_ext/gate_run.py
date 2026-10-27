@@ -36,7 +36,7 @@ def _mean(nll):
 
 
 def _state_equal(model, original):
-    return all(torch.equal(v, original[k]) for k, v in model.state_dict().items()) and set(model.state_dict()) == set(original)
+    return all(torch.equal(v.cpu(), original[k]) for k, v in model.state_dict().items()) and set(model.state_dict()) == set(original)
 
 
 def run_gates(env, model, probe, bos, pad, methods, bits, install_args, log, out_dir=None, max_len=64, batch_size=16):
@@ -44,7 +44,7 @@ def run_gates(env, model, probe, bos, pad, methods, bits, install_args, log, out
     device = next(model.parameters()).device
     restore = env["restore_model_work"]; legacy = env["quantize_rtn_per_output_channel_tl"]
     batches = p1.make_batches(probe, bos, "mask", pad, max_len, batch_size)
-    original = {k: v.detach().clone() for k, v in model.state_dict().items()}
+    original = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}                  # on the host: the model and a second copy must not both sit on an 11 GB GPU
     t0 = time.time(); report = {"methods": methods, "bits": bits, "nll": {}, "gates": {}, "manifests": {}, "rebuild": None}
     restore(); fp_logits = model(batches[0]["tokens"].to(device)).detach().clone(); report["nll"]["FP"] = _mean(probe_nll(model, batches, device))
     for b in bits:
@@ -57,8 +57,8 @@ def run_gates(env, model, probe, bos, pad, methods, bits, install_args, log, out
         for b in bits:
             restore(); env2["quantize_rtn_per_output_channel_tl"](model, bits=b)
             sd = model.state_dict(); tgt = {n for n, _ in canonical.targets(model)}
-            report["gates"][f"{method}_{b}"] = {"non_targets_unchanged": all(torch.equal(sd[k], original[k]) for k in sd if k not in tgt),
-                                               "targets_changed": all(not torch.equal(sd[k], original[k]) for k in tgt)}
+            report["gates"][f"{method}_{b}"] = {"non_targets_unchanged": all(torch.equal(sd[k].cpu(), original[k]) for k in sd if k not in tgt),
+                                               "targets_changed": all(not torch.equal(sd[k].cpu(), original[k]) for k in tgt)}
             report["nll"][f"{method}_{b}"] = _mean(probe_nll(model, batches, device))
             restore(); report["gates"][f"{method}_{b}"]["restore_exact"] = _state_equal(model, original)
         if report["rebuild"] is None and manifest["bits"]:
