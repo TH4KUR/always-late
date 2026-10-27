@@ -18,15 +18,22 @@ cd "$BASE"
 echo "=== Setting up Gemma-2-9B workspace in $BASE ==="
 
 # ── 1. Python virtual environment ──────────────────────────────────────────────
-echo "[1/5] Creating Python virtual environment..."
-python3 -m venv env
+if [ -d "env/bin" ]; then
+    echo "[1/5] Python virtual environment already exists, reusing it."
+else
+    echo "[1/5] Creating Python virtual environment..."
+    python3 -m venv env
+fi
 source env/bin/activate
 
 # ── 2. Install pinned packages (versions matching the 2B study on Ada) ─────────
-echo "[2/5] Installing Python packages..."
-pip install --upgrade pip
+if python -c "import torch, transformer_lens, sae_lens" 2>/dev/null; then
+    echo "[2/5] Packages already installed, skipping."
+else
+    echo "[2/5] Installing Python packages..."
+    pip install --upgrade pip
 
-pip install \
+    pip install \
     "torch==2.14.1" \
     "transformer-lens==3.9.0" \
     "sae-lens==6.54.5" \
@@ -47,6 +54,7 @@ pip install \
     "scikit-learn==1.7.2" \
     "statsmodels==0.15.0" \
     "ipython==8.39.0"
+fi
 
 echo "Installed versions:"
 python -c "import torch; print(f'  torch {torch.__version__}, CUDA available: {torch.cuda.is_available()}')"
