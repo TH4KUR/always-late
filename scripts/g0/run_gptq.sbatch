@@ -1,7 +1,7 @@
 #!/bin/bash
 # GPTQ extension (D-101): ONE job on ONE GPU of Ada (u22, RTX 2080 Ti 11 GB), Gemma-2-2B, jobs offline. Two modes:
 #   gate : build the artifacts and run the gates (scripts/g0/gptq_ext/gate_run.py): sbatch -t 02:00:00 --exclude=gnode068,gnode069,gnode076 --export=ALL,REPO=<snapshot>,RECORD=1 scripts/g0/run_gptq.sbatch gptq-gate gate --methods gptq rtn-matched --bits 4
-#   wrap : run an OLD entry point with another weight method (scripts/g0/gptq_ext/run_with_weights.py); the entry point's own arguments follow `--`, the token {OUT} stands for the output directory:
+#   wrap : run an OLD entry point with another weight method (scripts/g0/gptq_ext/run_with_weights.py); the entry point's own arguments follow `--`, the tokens {OUT} {COMMIT} {REPO} {BASE} are replaced by the output directory, the snapshot's commit, the snapshot and the project base:
 #          sbatch ... --export=ALL,REPO=<snapshot>,FROZEN=1 scripts/g0/run_gptq.sbatch gptq-p1 wrap --entry phase1_run:main --weights gptq -- --corpus flores --regime mask --out {OUT} --flores-root /home2/karma/duan-verify/phase1/data --commit <c>
 # The calibration pool is read from $BASE/gptq/calibration (token files, not in git) and verified against reports/gptq_extension/calibration_freeze.json. RECORD=1 adds --record-weights-hashes (gate jobs only);
 # FROZEN=1 adds --gptq-freeze reports/gptq_extension/artifact_hashes.json (the recorded artifact hashes: a stage job refuses an artifact whose hash differs).
@@ -32,7 +32,7 @@ MONPID=$!
 CAL="--calibration-freeze $REPO/reports/gptq_extension/calibration_freeze.json --calibration-text $BASE/gptq/calibration"
 [ "${RECORD:-0}" = 1 ] && CAL="$CAL --record-weights-hashes"
 [ "${FROZEN:-0}" = 1 ] && CAL="$CAL --gptq-freeze $REPO/reports/gptq_extension/artifact_hashes.json"
-ARGS=(); for a in "$@"; do ARGS+=("${a//\{OUT\}/$OUT}"); done
+ARGS=(); for a in "$@"; do a=${a//\{OUT\}/$OUT}; a=${a//\{COMMIT\}/$COMMIT}; a=${a//\{REPO\}/$REPO}; a=${a//\{BASE\}/$BASE}; ARGS+=("$a"); done
 cd $REPO/scripts/g0
 if [ "$MODE" = gate ]; then
     $BASE/env/bin/python -m gptq_ext.gate_run --out "$OUT" --flores-root $BASE/phase1/data --roster $REPO/reports/g0/phase1_languages.json --commit "$COMMIT" $CAL "${ARGS[@]}"
