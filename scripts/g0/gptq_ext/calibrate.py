@@ -4,7 +4,8 @@ of the `ln1` module, i.e. after the norm's learned scale), (2) O (input: `attn.h
 after the last stage the quantized block produces the residuals of the next block. One Hessian per stage input, accumulated with the pinned authors' `add_batch` (one call per calibration batch over its non-padding rows;
 the real BOS row is included), shared by the matrices of the stage. The per-matrix rule is `gptq` (the authors' `fasterquant`, unmodified) or `rtn_matched` (the same grid, nearest rounding; dead input columns zeroed with the same
 mask as GPTQ); `identity` returns the original weights (a control: every stage input must then equal the original model's activation). The model is left exactly as it was found; the artifact is returned as {parameter name:
-tensor in the parameter's own TransformerLens shape and dtype}. A Hessian that is not positive definite raises `HessianError` naming the matrix (no silent retry: upstream has none)."""
+tensor in the parameter's own TransformerLens shape and dtype}. A Hessian that is not positive definite raises `HessianError` naming the matrix (no silent retry: upstream has none). The report gives, per matrix, the share of the Hessian trace that comes from the BOS rows
+(position 0 of every sequence), so that the BOS question (massive activations at the attention sink) is decided on a number."""
 import contextlib
 import io
 import re
@@ -125,12 +126,13 @@ def calibrate(model, batches, cfg, method, device, log=print, observer=None):
                 tb = time.time()
                 for stage, leaves in STAGES:
                     names = [f"blocks.{l}.{leaf}" for leaf in leaves]
-                    acc, kept = None, []
+                    acc, kept, bos_e, all_e = None, [], 0.0, 0.0
                     for r, b in zip(resid, batches):
                         store = {}
                         with _capture(block, stage, store):
                             block(r.to(device))
                         rows = valid_rows(store["x"], b["mask"].to(device))
+                        bos_e += float((store["x"][:, 0].float() ** 2).sum()); all_e += float((rows.float() ** 2).sum())      # the trace of X^T X is the sum of the squared row norms; position 0 is the BOS of every sequence
                         if acc is None:
                             acc = HessianAccumulator(rows.shape[1], device)
                         acc.add(rows)
@@ -141,7 +143,7 @@ def calibrate(model, batches, cfg, method, device, log=print, observer=None):
                         p = params[name]
                         q, info = quantize_matrix(canonical.to_linear(name, p.data), acc.H, cfg, method, name)
                         p.data.copy_(canonical.from_linear(name, q, p.data))
-                        report["targets"][name] = {**info, "block": l, "stage": stage, "rows": report["n_rows"], "seconds": time.time() - ts}
+                        report["targets"][name] = {**info, "block": l, "stage": stage, "rows": report["n_rows"], "seconds": time.time() - ts, "bos_trace_share": bos_e / all_e if all_e else 0.0}
                         if observer is not None:
                             observer(l, stage, name, torch.cat(kept))
                     del acc, kept
@@ -153,6 +155,8 @@ def calibrate(model, batches, cfg, method, device, log=print, observer=None):
             for n, p in targets:
                 p.data.copy_(originals[n])
     report["dead_total"] = sum(v["dead"] for v in report["targets"].values())
+    shares = {n: v["bos_trace_share"] for n, v in report["targets"].items()}
+    report["bos_trace_share"] = {"max": max(shares.values()), "mean": sum(shares.values()) / len(shares), "max_target": max(shares, key=shares.get)}
     report["seconds"] = time.time() - t0
     report["peak_gpu_gb"] = torch.cuda.max_memory_allocated() / 1e9 if torch.cuda.is_available() else 0.0
     return tensors, report

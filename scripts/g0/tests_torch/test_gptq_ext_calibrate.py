@@ -234,6 +234,26 @@ class WithModel(unittest.TestCase):
             self.assertEqual(report["targets"]["blocks.0.attn.W_O"]["dead"], 0)
             self.assertEqual(report["dead_total"], 3, method)
 
+    def test_the_report_gives_the_share_of_the_hessian_trace_that_comes_from_the_bos_rows(self):
+        _, _, report = self.run_cal("identity")
+        ref = tiny_gemma2(); bos_e = all_e = 0.0
+        for b in self.batches:
+            cap = {}
+            h = ref.blocks[0].ln1.register_forward_hook(lambda m, i, o: cap.setdefault("x", o.detach().clone()))
+            try:
+                with torch.no_grad():
+                    ref.run_with_hooks(b["tokens"], stop_at_layer=1)
+            finally:
+                h.remove()
+            x = cap["x"].double(); bos_e += float((x[:, 0] ** 2).sum()); all_e += float((x[b["mask"]] ** 2).sum())
+        want = bos_e / all_e
+        for name in ("blocks.0.attn.W_Q", "blocks.0.attn._W_K", "blocks.0.attn._W_V"):
+            self.assertAlmostEqual(report["targets"][name]["bos_trace_share"], want, places=5, msg=name)
+        self.assertTrue(0.0 < want < 0.2)
+        self.assertTrue(all(0.0 <= v["bos_trace_share"] <= 1.0 for v in report["targets"].values()))
+        self.assertEqual(set(report["bos_trace_share"]), {"max", "mean", "max_target"})
+        self.assertEqual(report["bos_trace_share"]["max"], max(v["bos_trace_share"] for v in report["targets"].values()))
+
     def test_report_lists_every_target_with_its_dead_columns_and_error(self):
         _, tensors, report = self.run_cal("gptq")
         self.assertEqual(set(report["targets"]), set(tensors))

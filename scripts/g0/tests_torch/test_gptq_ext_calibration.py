@@ -138,6 +138,18 @@ class Freeze(unittest.TestCase):
             self.assertEqual(cal.pool_sha256(back), cal.pool_sha256(pool))
             self.assertEqual({c: r["tokens"] for c, r in back.items()}, {"aaa_Latn": 300, "bbb_Latn": 200})
 
+    def test_load_pool_orders_the_languages_like_the_roster_not_like_a_key_sorted_json(self):
+        import tempfile
+        pool = {"eng_Latn": build(make_rows(40), budget=300), "deu_Latn": build(make_rows(40, prefix="d"), budget=200)}       # roster order: eng before deu; alphabetical: deu before eng
+        with tempfile.TemporaryDirectory() as d:
+            files = cal.write_text_files(pool, d)
+            freeze = {"pool_sha256": cal.pool_sha256(pool), "languages": {c: {"shortfall": 0, "text_file": files[c], "passages": [{k: p[k] for k in ("article_id", "rank", "n_tokens", "n_used", "sha256")} for p in r["passages"]]} for c, r in pool.items()}}
+            freeze = json.loads(json.dumps(freeze, sort_keys=True))                                                              # what `main` writes: keys sorted
+            self.assertEqual(list(freeze["languages"]), ["deu_Latn", "eng_Latn"])
+            back = cal.load_pool(freeze, d)
+            self.assertEqual(list(back), ["eng_Latn", "deu_Latn"])
+            self.assertEqual(cal.pool_sha256(back), cal.pool_sha256(pool))
+
     def test_load_pool_detects_a_tampered_file_a_changed_hash_and_a_missing_passage(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:

@@ -186,6 +186,7 @@ class Install(unittest.TestCase):
         self.assertEqual(m["config"]["blocksize"], 128)
         self.assertIn("calibrate.py", m["code_sha256"])
         self.assertEqual(m["bits"], [4, 6])
+        self.assertEqual(set(m["calibration_report"]["4"]["bos_trace_share"]), {"max", "mean", "max_target"})
         self.assertTrue(all(len(h) == 64 for h in m["artifact_sha256"].values()))
 
     def test_install_refuses_when_the_hash_differs_from_the_freeze(self):

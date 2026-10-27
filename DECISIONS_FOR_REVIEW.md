@@ -254,6 +254,7 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Default:** (a) and the plan's full stage order; you stop it at any point by saying so. If the build gives different hashes on two nodes (Task 8 of the plan), I stop and ask before anything else.
 - ANSWER:
 - STATUS: open (asked 2026-10-27 17:34)
+- **Update 2026-10-27 18:21:** a reviewer session pointed out that bit-identical artifacts on different nodes are not guaranteed. The plan now fixes the rule in advance: equal hashes on two nodes keep option (a); different hashes switch to persisting the compact integer form (about 1 GB at four bits packed, 1.5 GB at six, 2.0 GB with int8 codes), which needs free disk on `/home2` (1.9 to 2.7 GB free now) or a place the compute nodes can read. Time plan and drop order are in `reports/gptq_extension/STATUS.md`; tell me if you want a different stop point.
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.

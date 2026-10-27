@@ -123,7 +123,9 @@ def write_text_files(pool, text_dir):
 def load_pool(freeze, text_dir):
     """The pool of a freeze from its token files, verified: file sha256, every passage hash, counts, shortfalls and the pool hash must equal the freeze."""
     pool = {}
-    for code, rec in freeze["languages"].items():
+    order = freeze.get("language_order") or ([c for c in LANGS if c in freeze["languages"]] + [c for c in freeze["languages"] if c not in LANGS])       # the freeze file has sorted keys: the roster order is the pool's order
+    for code in order:
+        rec = freeze["languages"][code]
         fp = Path(text_dir) / rec["text_file"]["file"]
         if pp.sha256_file(fp) != rec["text_file"]["sha256"]:
             raise ValueError(f"{code}: sha256 of {fp.name} differs from the freeze")
@@ -177,7 +179,7 @@ def main(argv=None):
            "tokenizer": {"name": a.tokenizer, "special_tokens": False}, "parameters": {"salt": SALT, "budget_tokens_per_language": a.budget, "max_len": MAX_LEN, "min_tokens": MIN_TOKENS, "min_script_fraction": MIN_SCRIPT_FRACTION,
                                                                                       "head_chars": HEAD_CHARS, "filter_characters_zho_Hans": pp.TRADITIONAL_ONLY},
            "exclusions": {"external_freeze_sha256": hashlib.sha256(ext_text.encode()).hexdigest(), "external_article_ids": {c: len(v) for c, v in ext_ids.items()}, "flores": "dev and devtest, normalized substring test"},
-           "pool_sha256": pool_sha256(pool), "total_tokens": sum(r["tokens"] for r in pool.values()), "complete": all(r["shortfall"] == 0 for r in pool.values()),
+           "language_order": list(pool), "pool_sha256": pool_sha256(pool), "total_tokens": sum(r["tokens"] for r in pool.values()), "complete": all(r["shortfall"] == 0 for r in pool.values()),
            "languages": {code: {"config": LANGS[code]["config"], "n_articles_available": r["n_articles_available"], "n_flores_lines": r["n_flores_lines"], "rejected": r["rejected"], "shortfall": r["shortfall"], "tokens": r["tokens"],
                                 "text_file": files[code], "passages": [{k: p[k] for k in ("article_id", "rank", "n_tokens", "n_used", "sha256")} for p in r["passages"]]} for code, r in pool.items()}}
     Path(a.freeze_out).write_text(json.dumps(rec, indent=1, sort_keys=True) + "\n")

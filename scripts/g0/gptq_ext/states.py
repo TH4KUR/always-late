@@ -72,7 +72,7 @@ def build_artifacts(model, args, log, bits, bos_id, pad_id):
         if expected is not None and expected != sha:
             raise artifact.ArtifactHashMismatch(f"{method} at {b} bits: built sha256 {sha} differs from the frozen {expected}")
         artifacts[b], hashes[str(b)] = tensors, sha
-        reports[str(b)] = {k: report[k] for k in ("dead_total", "seconds", "peak_gpu_gb", "n_rows")}
+        reports[str(b)] = {k: report[k] for k in ("dead_total", "seconds", "peak_gpu_gb", "n_rows", "bos_trace_share")}
         log(f"{method} {b} bits: artifact sha256 {sha[:16]}..., dead columns {report['dead_total']}, {report['seconds']:.0f}s")
     part = {"method": method, "bits": wanted, "config": cb.GptqConfig(bits=0).__dict__ | {"bits": "per state"}, "pool_sha256": pool_sha, "calibration_freeze_sha256": _sha_file(args.calibration_freeze),
             "gptq_freeze_sha256": _sha_file(args.gptq_freeze) if args.gptq_freeze else None, "code_sha256": code_hashes(), "artifact_sha256": hashes, "calibration_report": reports}
