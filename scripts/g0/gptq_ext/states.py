@@ -121,29 +121,40 @@ class _Eager(_Applier):
 
 
 class LazyQuantizer(_Applier):
-    """Builds the artifact of a bit width on its first request (the model must then be in its full-precision state, checked against `env['original_state_cpu']`) and reuses it afterwards."""
+    """Builds the artifact of a bit width on its first request (the model must then be in its full-precision state, checked against `env['original_state_cpu']`) and reuses it afterwards; `prebuild` builds the
+    artifacts of the bit widths the job will use before the job starts working."""
     def __init__(self, env, args, log, out_dir):
         super().__init__(env["quantize_rtn_per_output_channel_tl"], args.weights)
         self.env, self.args, self.log, self.out_dir, self.artifacts = env, args, log, out_dir, {}
 
-    def _assert_full_precision(self, model):
-        orig = self.env.get("original_state_cpu")
+    def _assert_full_precision(self, model, original=None):
+        orig = original if original is not None else self.env.get("original_state_cpu")
         if orig is None:
             raise RuntimeError("cannot build an artifact: the entry point did not provide env['original_state_cpu'] to verify the full-precision state")
         for name, p in canonical.targets(model):
             if not torch.equal(p.data.cpu(), orig[name]):
                 raise RuntimeError(f"cannot build an artifact: {name} is not in its full-precision state (restore before the first request of a bit width)")
 
+    def _build(self, model, bits, original=None):
+        self._assert_full_precision(model, original)
+        tok = model.tokenizer; bos = tok.bos_token_id; pad = tok.pad_token_id if tok.pad_token_id is not None else 0
+        arts, part = build_artifacts(model, self.args, self.log, [bits], bos, pad)
+        self.artifacts.update(arts)
+        if self.out_dir is not None:
+            write_manifest(self.out_dir, part)
+
+    def prebuild(self, model, bits, original):
+        """Build the artifacts of the artifact bit widths among `bits` now (the model is freshly loaded and full precision; `original` is the state just cloned): a hash mismatch or an out-of-memory error then stops the job
+        before it has done any work, and the builds never compete for GPU memory with the experiment's own tensors."""
+        for b in sorted(set(bits_in(bits)) & set(ARTIFACT_BITS)):
+            if b not in self.artifacts:
+                self._build(model, b, original)
+
     def _have(self, model, bits):
         if bits not in ARTIFACT_BITS:
             raise ValueError(f"no weight state for {bits} bits under --weights {self.weights} (artifact bit widths: {ARTIFACT_BITS}; legacy rounding floors: {LEGACY_BITS})")
         if bits not in self.artifacts:
-            self._assert_full_precision(model)
-            tok = model.tokenizer; bos = tok.bos_token_id; pad = tok.pad_token_id if tok.pad_token_id is not None else 0
-            arts, part = build_artifacts(model, self.args, self.log, [bits], bos, pad)
-            self.artifacts.update(arts)
-            if self.out_dir is not None:
-                write_manifest(self.out_dir, part)
+            self._build(model, bits)
         return self.artifacts[bits]
 
 

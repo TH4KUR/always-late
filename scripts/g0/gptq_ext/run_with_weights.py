@@ -27,14 +27,33 @@ def out_dir_of(entry_argv):
     return p.parse_known_args(entry_argv)[0].out
 
 
-def patch_loader(args, out_dir, log):
-    """Make `their_code.build_namespace` leave a LazyQuantizer in `env`. -> the original function (to restore it)."""
+def bits_hint(entry_argv):
+    """The integer bit widths an entry point will use, read from its own arguments (`--bits`, `--precisions`, `--states`; labels such as FP, FP_rebatched are ignored): [] when it names none (then the builds stay lazy)."""
+    p = argparse.ArgumentParser(add_help=False)
+    for opt in ("--bits", "--precisions", "--states"):
+        p.add_argument(opt, nargs="*", default=[])
+    ns = p.parse_known_args(entry_argv)[0]
+    return states.bits_in(ns.bits + ns.precisions + ns.states)
+
+
+def patch_loader(args, out_dir, log, hint=()):
+    """Make `their_code.build_namespace` leave a LazyQuantizer in `env`, and make `env['clone_state_to_cpu']` (which every entry point calls right after loading the model, while it is still full precision) build
+    the artifacts named by `hint` first. -> the original function (to restore it)."""
     import their_code
     original = their_code.build_namespace
 
     def patched(extracted, env):
         env = original(extracted, env)
-        env["quantize_rtn_per_output_channel_tl"] = states.LazyQuantizer(env, args, log, out_dir)
+        lazy = states.LazyQuantizer(env, args, log, out_dir)
+        env["quantize_rtn_per_output_channel_tl"] = lazy
+        if hint and "clone_state_to_cpu" in env:
+            clone = env["clone_state_to_cpu"]
+
+            def clone_and_prebuild(model):
+                state = clone(model)
+                lazy.prebuild(model, hint, state)
+                return state
+            env["clone_state_to_cpu"] = clone_and_prebuild
         return env
     their_code.build_namespace = patched
     return original
@@ -52,8 +71,9 @@ def main(argv=None):
             raise SystemExit("the entry point has no --out: the weights manifest needs an output directory")
         if not (a.calibration_freeze and a.calibration_text):
             raise SystemExit("--calibration-freeze and --calibration-text are required for --weights " + a.weights)
-        patch_loader(a, out, log)
-        log("weights:", a.weights, "entry:", a.entry, "out:", out)
+        hint = bits_hint(theirs)
+        patch_loader(a, out, log, hint)
+        log("weights:", a.weights, "entry:", a.entry, "out:", out, "artifact bits built before the job starts:", [b for b in hint if b in states.ARTIFACT_BITS] or "none (lazy)")
     return getattr(importlib.import_module(mod), func)(theirs)
 
 

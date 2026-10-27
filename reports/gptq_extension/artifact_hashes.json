@@ -1,0 +1,64 @@
+{
+ "artifact_sha256": {
+  "gptq": {
+   "4": "e595f8af1cb47de7f01b42c1b646bdc5f3b076f52d34ec1ed64430e9045b3ae5"
+  },
+  "rtn_matched": {
+   "4": "edad0da22a5d00a980d973d09416fbf7db30ce9216a7f559711dac035ec493c4"
+  }
+ },
+ "calibration": {
+  "freeze_file_sha256": "ef36fe86dcee81c7f6eae4b6db9aba944207c8929d47e66aa8866dd50fd93ca5",
+  "pool_sha256": "543234593913c4434b42bac71de8231618afbd5a035f248c1e13d284f73dd816"
+ },
+ "calibration_numbers": {
+  "gptq": {
+   "bos_trace_share": {
+    "max": 0.009030258913823992,
+    "max_target": "blocks.12.mlp.W_in",
+    "mean": 0.002779072568949875
+   },
+   "dead_total": 9,
+   "n_rows": 222994,
+   "peak_gpu_gb": 9.290893824,
+   "seconds": 1123.579992055893
+  },
+  "rtn-matched": {
+   "bos_trace_share": {
+    "max": 0.008746328509347569,
+    "max_target": "blocks.12.mlp.W_in",
+    "mean": 0.0027772436150681145
+   },
+   "dead_total": 9,
+   "n_rows": 222994,
+   "peak_gpu_gb": 9.290893824,
+   "seconds": 895.549129486084
+  }
+ },
+ "cites_freeze_sha256": "598a0df9c4603b19b777c3c296d17bb6efe545edd047ea38dde92fa72908936e",
+ "created": "2026-10-27 19:42 IST",
+ "decision": "D-103",
+ "evidence": "reports/gptq_extension/gateA/ and gateB/ (gate_report.json and the two weights manifests of each job): all gates ok in both jobs; the in-job rebuild of the GPTQ INT4 artifact equal; the artifact hashes of the two nodes equal for both methods",
+ "kind": "gptq-extension-artifact-hashes",
+ "other_bit_widths": "recorded by the stage jobs in their weights_manifest.json (D-103) and compared across all jobs after the fact",
+ "probe_loss_nats_per_token": {
+  "FP": 3.275364,
+  "gptq_4": 3.40824,
+  "legacy_rtn_4": 3.967161,
+  "rtn-matched_4": 3.710802
+ },
+ "probe_note": "864 FLORES dev sentences, 37,318 tokens, a sanity diagnostic and not an endpoint",
+ "recorded_by": {
+  "gate_job_A": {
+   "commit": "3d08d201c1d6ae2483e230cdc854ef4e3c232720",
+   "node": "gnode049",
+   "slurm": 42848
+  },
+  "gate_job_B": {
+   "commit": "3d08d201c1d6ae2483e230cdc854ef4e3c232720",
+   "node": "gnode080",
+   "slurm": 42849
+  }
+ },
+ "schema": 1
+}

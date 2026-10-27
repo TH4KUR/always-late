@@ -1,0 +1,47 @@
+{
+ "artifact_sha256": {
+  "4": "edad0da22a5d00a980d973d09416fbf7db30ce9216a7f559711dac035ec493c4"
+ },
+ "bits": [
+  4
+ ],
+ "calibration_freeze_sha256": "ef36fe86dcee81c7f6eae4b6db9aba944207c8929d47e66aa8866dd50fd93ca5",
+ "calibration_report": {
+  "4": {
+   "bos_trace_share": {
+    "max": 0.008746328509347569,
+    "max_target": "blocks.12.mlp.W_in",
+    "mean": 0.0027772436150681145
+   },
+   "dead_total": 9,
+   "n_rows": 222994,
+   "peak_gpu_gb": 9.290893824,
+   "seconds": 977.5771017074585
+  }
+ },
+ "code_sha256": {
+  "__init__.py": "d19e0a0db09193da217aef5281a35b08e8246e67472be1fa25eab3569cdc9c18",
+  "artifact.py": "34b5b320c75b60f9e6a6f18338cafc6066effef01df662bd3acbaa222996aaa6",
+  "calibrate.py": "06bc987889434970e661ed3a3ab0761b5e021bcbf24bf88b054f0641c41cec5d",
+  "calibration.py": "ba65a74e16bea3045e2e94ccd66fa58c5783a1801ca676e71289cd6bfa8dd798",
+  "canonical.py": "c6d99bce6638b4819ec5ab654456275ce1bd5023f3f3a8dd534098e57d35ccc8",
+  "gate_run.py": "3578f26e42bd6c3fbe8f9f5cc03b658f2a3f7a9c39b5652538b108852cfc75ae",
+  "grids.py": "009ff71babec956d6bb2ce217b7c1f31744edc8609e46eddc7c57eadc6306b15",
+  "run_with_weights.py": "679a9b6d7cd4d25b837cd7786534f5421525af70dad98e00774af6804b20fc49",
+  "states.py": "cbe40ac92761b492358124e31136b93327f4eba55df2b56ead5eb182583cecc6",
+  "upstream/gptq.py": "bb47468cc2c788577562751de414d76eeb9968ff1c6098e21153557ef3d154c7",
+  "upstream/quant.py": "211528568b962b868d20fc58b55200b615f41ebd9f36b4d2d7e4a196a095ea5a"
+ },
+ "config": {
+  "actorder": false,
+  "bits": "per state",
+  "blocksize": 128,
+  "groupsize": -1,
+  "mse": false,
+  "percdamp": 0.01,
+  "sym": true
+ },
+ "gptq_freeze_sha256": null,
+ "method": "rtn_matched",
+ "pool_sha256": "543234593913c4434b42bac71de8231618afbd5a035f248c1e13d284f73dd816"
+}

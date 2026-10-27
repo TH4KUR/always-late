@@ -28,16 +28,18 @@ class Tok:
 def make_fake_entry(record, requests):
     """A stand-in for an entry point: builds env the way the real ones do (their functions through `their_code.build_namespace`), restores, then quantizes the requested (restore_first, bits) sequence."""
     def main(argv):
-        ex = their_code.extract_functions(their_code.PRISTINE, ["target_tl_weight", "quantize_rtn_per_output_channel_tl"])
-        env = {"torch": torch}
+        ex = their_code.extract_functions(their_code.PRISTINE, ["target_tl_weight", "quantize_rtn_per_output_channel_tl", "clone_state_to_cpu"])
+        env = {"torch": torch, "tqdm": lambda it, **k: it}
         their_code.build_namespace(ex, env)
         model = tiny_gemma2(); model.tokenizer = Tok()
-        env["model_work"] = model; env["original_state_cpu"] = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        record["events"] = []
+        env["model_work"] = model; env["original_state_cpu"] = env["clone_state_to_cpu"](model); record["events"].append("cloned")
         restore = lambda: model.load_state_dict(env["original_state_cpu"], strict=True)
         record["env"], record["model"], record["argv"] = env, model, list(argv)
         for restore_first, bits in requests:
             if restore_first:
                 restore()
+            record["events"].append(f"quantize {bits}")
             record.setdefault("returns", []).append(env["quantize_rtn_per_output_channel_tl"](model, bits=bits))
         return "entry-result"
     return main
@@ -55,13 +57,13 @@ class Wrapper(unittest.TestCase):
     def tearDown(self):
         their_code.build_namespace = self.orig_bn; sys.modules.pop("fake_entry", None); self.tmp.cleanup()
 
-    def run_wrapper(self, requests, extra=(), weights=None, out=None):
+    def run_wrapper(self, requests, extra=(), weights=None, out=None, entry_extra=()):
         sys.modules["fake_entry"] = types.SimpleNamespace(main=make_fake_entry(self.record, requests))
         out = out or str(self.dir / "out")
-        return rww.main(["--entry", "fake_entry:main"] + (weights if weights is not None else self.weights) + list(extra) + ["--", "--out", out, "--states", "4", "6"]), out
+        return rww.main(["--entry", "fake_entry:main"] + (weights if weights is not None else self.weights) + list(extra) + ["--", "--out", out] + list(entry_extra)), out
 
     def test_the_entry_point_gets_its_own_arguments_unchanged_and_its_result_is_returned(self):
-        res, out = self.run_wrapper([(True, 4)])
+        res, out = self.run_wrapper([(True, 4)], entry_extra=["--states", "4", "6"])
         self.assertEqual(res, "entry-result")
         self.assertEqual(self.record["argv"], ["--out", out, "--states", "4", "6"])
 
@@ -104,6 +106,45 @@ class Wrapper(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.run_wrapper([(True, 4), (False, 6)])                            # no restore between the states: 6 bits would be calibrated on the 4-bit weights
 
+    def test_the_artifacts_of_the_requested_states_are_built_right_after_the_model_is_cloned_before_any_work(self):
+        calls = []
+        real = cb.calibrate
+        def counting(*a, **k):
+            calls.append(self.record["events"][:]); return real(*a, **k)
+        sys.modules["fake_entry"] = types.SimpleNamespace(main=make_fake_entry(self.record, [(True, 4), (True, 6), (True, 4)]))
+        with mock.patch.object(cb, "calibrate", counting):
+            rww.main(["--entry", "fake_entry:main"] + self.weights + ["--", "--out", str(self.dir / "pb"), "--states", "FP", "4", "6", "16"])
+        self.assertEqual(len(calls), 2)                                          # one build per artifact bit width, none of the floors
+        self.assertEqual(calls, [[], []])                                        # both happened inside clone_state_to_cpu: before 'cloned' was recorded and before any quantize
+        self.assertEqual(self.record["events"][0], "cloned")
+        m = json.loads((self.dir / "pb" / "weights_manifest.json").read_text())
+        self.assertEqual(m["bits"], [4, 6])
+
+    def test_a_frozen_hash_mismatch_stops_the_job_before_the_entry_point_does_any_work(self):
+        fz = self.dir / "gfreeze.json"; fz.write_text(json.dumps({"artifact_sha256": {"rtn_matched": {"4": "0" * 64}}}))
+        sys.modules["fake_entry"] = types.SimpleNamespace(main=make_fake_entry(self.record, [(True, 4)]))
+        with self.assertRaises(artifact.ArtifactHashMismatch):
+            rww.main(["--entry", "fake_entry:main"] + self.weights + ["--gptq-freeze", str(fz), "--", "--out", str(self.dir / "mm"), "--states", "4"])
+        self.assertEqual(self.record["events"], [])                              # the entry point never got past its model clone
+
+    def test_floor_only_states_build_nothing_and_write_no_manifest(self):
+        calls = []
+        real = cb.calibrate
+        with mock.patch.object(cb, "calibrate", lambda *a, **k: calls.append(1) or real(*a, **k)):
+            res, out = self.run_wrapper([(True, 16), (True, 12)], entry_extra=["--states", "FP", "16", "12"])
+        self.assertEqual(calls, [])
+        self.assertFalse((Path(out) / "weights_manifest.json").exists())
+
+    def test_without_a_state_hint_the_build_stays_lazy(self):
+        calls = []
+        real = cb.calibrate
+        def counting(*a, **k):
+            calls.append(self.record["events"][:]); return real(*a, **k)
+        sys.modules["fake_entry"] = types.SimpleNamespace(main=make_fake_entry(self.record, [(True, 4)]))
+        with mock.patch.object(cb, "calibrate", counting):
+            rww.main(["--entry", "fake_entry:main"] + self.weights + ["--", "--out", str(self.dir / "lz")])
+        self.assertEqual(calls, [["cloned", "quantize 4"]])
+
     def test_an_entry_point_without_the_original_state_is_refused(self):
         def main(argv):
             env = {"torch": torch}; their_code.build_namespace(their_code.extract_functions(their_code.PRISTINE, ["target_tl_weight", "quantize_rtn_per_output_channel_tl"]), env)
@@ -131,6 +172,12 @@ class Wrapper(unittest.TestCase):
 
 
 class Argv(unittest.TestCase):
+    def test_bit_hint_reads_bits_precisions_and_states_of_the_entry_points(self):
+        self.assertEqual(rww.bits_hint(["--out", "o", "--bits", "8", "7", "16", "0"]), [0, 7, 8, 16])
+        self.assertEqual(rww.bits_hint(["--precisions", "FP", "6", "4", "--split", "eval"]), [4, 6])
+        self.assertEqual(rww.bits_hint(["--states", "FP", "4", "INT6", "--chunk-features", "25"]), [4, 6])
+        self.assertEqual(rww.bits_hint(["--out", "o"]), [])
+
     def test_split_and_out(self):
         self.assertEqual(rww.split_argv(["--a", "1", "--", "--out", "x"]), (["--a", "1"], ["--out", "x"]))
         self.assertEqual(rww.out_dir_of(["--flores-root", "r", "--out", "o", "--states", "4"]), "o")
