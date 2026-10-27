@@ -2,6 +2,8 @@
 
 **Update 2026-10-27 (the user: "stop the cron jobs"): the three recurring entries listed below were deleted (CronDelete of `955a5cc5`, `e33ac7eb`, `ea207eac`; the list of scheduled jobs is empty). No recurring job exists. This page is history; the text below is unchanged.**
 
+**Update 2026-10-27 17:34 IST (the user asked for the GPTQ extension and a 40-minute cron again): a NEW recurring job with its own prompt exists, see [`../gptq_extension/cron_prompt.md`](../gptq_extension/cron_prompt.md); this page stays history and is not used by it.**
+
 **RECREATED 2026-10-22 07:17 at the user's request** (the entries of 2026-10-22 02:02 had been cancelled at 02:06 and the loop run by hand for one chat step; see [handoff 025](../handoffs/025-2026-10-22-chat-end-functional-study-midrun.md), Appendix A, for that history). Three session-only recurring entries, each with the SHORT pointer prompt below (the fenced block further down is the full instruction set and is read at every firing, so it can be edited without recreating the jobs):
 
 | id | cron expression | listed times | actual firing times |

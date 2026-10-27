@@ -1,6 +1,6 @@
 # Decisions for your review (the questions I would have asked you)
 
-**Open questions at a glance (2026-10-27; the rest of this file is the full record):** Q29 start Task 2 of the recovery plan (new), Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
+**Open questions at a glance (2026-10-27; the rest of this file is the full record):** Q30 GPTQ extension: disk and scope (new), Q29 start Task 2 of the recovery plan (new), Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
 
 **New, 2026-10-21 (D-040): Q17 and Q18** (Q18: the scoop risk from Duan's announced causal follow-up; also not blocking)
 
@@ -247,6 +247,13 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Default:** (a): your standing instruction of 2026-10-26 15:37 ('continue working till i tell you to stop') and the plan's status as your latest research priority. The report, deck and archive are not affected by the experiment unless it changes a claim.
 - ANSWER:
 - STATUS: open (asked 2026-10-27 05:12)
+
+## Q30. GPTQ extension (D-101): how to keep the weight sets on a disk with 2.7 GB free, and how far to go with the full re-run?  [MEDIUM, scope and storage; not blocking]
+- **Context.** Each GPTQ or matched-RTN weight set (target tensors only, bf16) is about 4 GB; the Ada home (`/home2/karma`, 50 GB quota) has 2.7 GB free and compute nodes do not mount `/share1` (100 GB quota, 3.9 GB used). The cluster cache holds the 10.5 GB model and 13 GB of caches; I will not delete anything there on my own. A full re-run of every old study with two new arms is larger than the time left before 31 October allows (the transfer study alone took about 32 GPU hours); the plan fixes the order and the cron works down it.
+- **Options.** (a) default: rebuild each weight set at the start of every job (calibration takes minutes), refuse to run unless its hash equals the frozen value, persist nothing; (b) free about 10 GB on `/home2` (for example the Llama-3.2-1B cache and old deployed snapshots; your call) and persist packed weight sets; (c) restrict the re-run to the central stages (ordinary loss, survival, transfer matrix) and stop there.
+- **Default:** (a) and the plan's full stage order; you stop it at any point by saying so. If the build gives different hashes on two nodes (Task 8 of the plan), I stop and ask before anything else.
+- ANSWER:
+- STATUS: open (asked 2026-10-27 17:34)
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.

@@ -12,6 +12,7 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 |---|---|
 | [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md) | **All results from the start in plain words:** why they are not conclusive, what the null results tell us, the second-model and downstream-task checks, per-language tables, guide to every data file |
 | [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | **Current state page:** evidence state, the HOLD, open choice Q29, deliverables |
+| [`gptq_extension/STATUS.md`](gptq_extension/STATUS.md) | **GPTQ extension ledger (D-101, 2026-10-27):** plan, task table, Ada jobs, log; [cron prompt](gptq_extension/cron_prompt.md); [plan](../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md) |
 | [`quantization_gptq_audit_2026-10-27.md`](quantization_gptq_audit_2026-10-27.md) | GPTQ feasibility audit: method versus bit width, verified grid/head-scale mismatches, a matched comparison and integration gates; source/CPU checks only, no real-model run |
 | [`../README.md`](../README.md), [`../HANDOFF.md`](../HANDOFF.md) | orientation; rules, environment and rerun notes for whoever continues |
 | [`../docs/CODEBASE.md`](../docs/CODEBASE.md) | code ownership map |
