@@ -6,33 +6,22 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 
 **Progress tracking is never removed, shortened or overwritten**: the decision records, the dated logs, the handoffs, the plans and designs with their predictions, the question files with their options and answers, the search logs, the audits and the archive. Cleaning up documentation means only: (a) moving a stale block VERBATIM into `reports/archive/` with a pointer; (b) adding a pointer or an 'Update <date>' line; (c) removing byte-identical generated copies (checked by hash) or text that exists unchanged elsewhere. A direction that was dropped, not selected or judged redundant stays recorded, with its reason. The rule is also written into [`functional_validation/cron_prompt.md`](functional_validation/cron_prompt.md), [`scheduled_routine.md`](scheduled_routine.md) and [`../HANDOFF.md`](../HANDOFF.md).
 
-## 1. Start here (current entry points; dated records are labelled)
+## 1. Start here (shortened 2026-10-27; the previous 22-row table is kept verbatim in [`archive/doc_cleanup_2026-10-27/reports__INDEX.md.txt`](archive/doc_cleanup_2026-10-27/reports__INDEX.md.txt))
 
 | file | what it is |
 |---|---|
-| [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | **Single current-state page:** latest completed evidence, active work, next action and publication limits |
-| [`handoffs/046-2026-10-27-modular-cleanup.md`](handoffs/046-2026-10-27-modular-cleanup.md) | Latest maintenance handoff: package extraction, compatibility, preservation proof and current-state routing |
-| [`../docs/CODEBASE.md`](../docs/CODEBASE.md) | **Code ownership map:** experiment families, completed follow-up package, compatibility commands and verification |
-| [`novelty_assessment_2026-10-26.md`](novelty_assessment_2026-10-26.md) | **26 October literature verdict (dated):** direct overlaps, remaining candidate, evidence gaps and fresh primary-source search |
-| [`publication_reassessment_2026-10-26/README.md`](publication_reassessment_2026-10-26/README.md) | **Historical post-D-094 publication reassessment (before external results):** new descriptive checks of document overlap, control support and native edits; locked FLORES fits; recovery plan and publication gates |
-| [`../RESEARCH_DIRECTION.md`](../RESEARCH_DIRECTION.md) | **Current research interpretation:** main/external evidence, completed recovery analyses, precision question and publication limits |
-| [`../paper/course-report/README.md`](../paper/course-report/README.md) | **31 October course-report draft (2026-10-26):** fresh official-ACL source and PDF, evidence map, reproducible build and pinned official publication-check output; separate from the obsolete paper draft |
-| [`../README.md`](../README.md) | **orientation (rewritten 2026-10-26):** what the project is, the studies and their state, where to look for what |
-| [`../HANDOFF.md`](../HANDOFF.md) | **how to take over (rewritten 2026-10-26):** start order, the work loop, the durable rules, the do-not list, the environment facts |
-| [`functional_validation/gain_study/README.md`](functional_validation/gain_study/README.md) | **STUDY G, the user's major study (2026-10-24): graded gain of language-selective features, per language, across the precision ladder; completed study; original request, final status, design, plan and results** |
-| [`functional_validation/STATUS.md`](functional_validation/STATUS.md) | **Historical runbook and dated log**; current execution lives in CURRENT_STATUS.md |
-| [`handoffs/045-2026-10-27-external-panel-analysed-report-deck-final-recovery-plan-next.md`](handoffs/045-2026-10-27-external-panel-analysed-report-deck-final-recovery-plan-next.md) | **Latest scientific handoff at cleanup:** external/recovery results and appended precision-audit implementation updates |
-| [`handoffs/044-2026-10-26-main-results-analysed-report-rev3-deck-external-running.md`](handoffs/044-2026-10-26-main-results-analysed-report-rev3-deck-external-running.md) | **Historical handoff before 045**: the main matrix analysed (D-094), course report revision 3, the deck, external runs finishing |
-| [`handoffs/043-2026-10-26-intervention-transfer-twelve-jobs-running-analysis-ready.md`](handoffs/043-2026-10-26-intervention-transfer-twelve-jobs-running-analysis-ready.md) | (before 044) main line: the intervention-transfer study (D-088), twelve full jobs running on Ada, analysis, report, figures and validator ready, course deliverables prepared |
-| [`handoffs/042-2026-10-26-wandb-uploaded-course-report-revision-2.md`](handoffs/042-2026-10-26-wandb-uploaded-course-report-revision-2.md) | (before 043) main line: wandb Option A done (D-091), course report revision 2, cron scope (D-092) |
-| [`handoffs/041-2026-10-26-llama-check-done-not-consistent-intervention-transfer-next.md`](handoffs/041-2026-10-26-llama-check-done-not-consistent-intervention-transfer-next.md) | (superseded by 042) the Llama check is finished (D-090), next the intervention-transfer study (D-088) |
-| [`wandb_schema_v2.md`](wandb_schema_v2.md) | **wandb schema v2 and the post-hoc upload of the finished results (2026-10-26, D-091):** the 15 new runs `v2-*` in `karma-skz-/anlp-project` (one per study family), what is uploaded and what is not, the run URLs, the flaws left in five runs, how to re-run (code `scripts/g0/wandb_upload_v2.py`) |
-| [`handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md`](handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) | **the Gemma-2-9B confirmation for another team on a separate cluster** (branch `gemma9b-confirmation`, D-089) |
-| [`intervention_transfer/verification_2026-10-26.md`](intervention_transfer/verification_2026-10-26.md) | frozen design-stage verification (D-088); retained for provenance, superseded for novelty by the current assessment |
-| [`functional_validation/RESULTS_SUMMARY.md`](functional_validation/RESULTS_SUMMARY.md) | the results on one page, with a claim map (evidence and the limit to state with each claim) |
-| [`functional_validation/FIGURE_INDEX.md`](functional_validation/FIGURE_INDEX.md) | every finished figure of the functional study and Study G: file, the question its title asks, the claim it supports, status and limit (no new numbers) |
-| [`functional_validation/REPRODUCE.md`](functional_validation/REPRODUCE.md) | one command re-runs every analysis of the functional study and compares with the committed outputs |
-| [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) | the questions for the user (Q1 to Q28) with their options, defaults and answers |
+| [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md) | **All results from the start in plain words:** why they are not conclusive, what the null results tell us, the second-model and downstream-task checks, per-language tables, guide to every data file |
+| [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | **Current state page:** evidence state, the HOLD, open choice Q29, deliverables |
+| [`../README.md`](../README.md), [`../HANDOFF.md`](../HANDOFF.md) | orientation; rules, environment and rerun notes for whoever continues |
+| [`../docs/CODEBASE.md`](../docs/CODEBASE.md) | code ownership map |
+| [`functional_validation/RESULTS_SUMMARY.md`](functional_validation/RESULTS_SUMMARY.md), [`FIGURE_INDEX.md`](functional_validation/FIGURE_INDEX.md), [`REPRODUCE.md`](functional_validation/REPRODUCE.md) | the functional study's claim map (evidence and limit per claim), every finished figure, one command that reruns the analyses |
+| [`functional_validation/gain_study/README.md`](functional_validation/gain_study/README.md) | Study G (the user's major study, 2026-10-24), full record |
+| [`intervention_transfer/results/`](intervention_transfer/results/main/README.md) | main, external and recovery results of the transfer study (D-094 to D-099) |
+| [`handoffs/`](handoffs/) | numbered handoffs; newest at cleanup: 045 (scientific), 046 (modular cleanup), 047 (this documentation cleanup); 040 = the Gemma-2-9B hand-over to another team |
+| [`novelty_assessment_2026-10-26.md`](novelty_assessment_2026-10-26.md), [`publication_reassessment_2026-10-26/README.md`](publication_reassessment_2026-10-26/README.md) | dated novelty verdict; Codex's post-D-094 reassessment (historical) |
+| [`wandb_schema_v2.md`](wandb_schema_v2.md) | wandb schema v2 and the post-hoc upload of the finished results (D-091) |
+| [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) | the questions for the user (Q1 to Q29) with options, defaults and answers |
+| [`../paper/course-report/README.md`](../paper/course-report/README.md) | course report (31 October) |
 
 ## 2. The trail (progress tracking; keep forever)
 
@@ -84,6 +73,8 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 [`wandb_schema.md`](wandb_schema.md), [`artifacts.md`](artifacts.md), [`g0/README.md`](g0/README.md), [`g0/hf_dataset_card.md`](g0/hf_dataset_card.md), [`handoffs/TEMPLATE.md`](handoffs/TEMPLATE.md).
 
 ## 6. What was moved or removed, and how to restore
+
+- **27 October documentation cleanup (afternoon, requested by the user):** cron jobs stopped; `README.md`, `HANDOFF.md`, `RESEARCH_DIRECTION.md`, `CURRENT_STATUS.md` and section 1 of this index shortened; their full pre-edit text is in [`archive/doc_cleanup_2026-10-27/`](archive/doc_cleanup_2026-10-27/README.md) with checksums; new single results document [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md). No progress record was touched. Handoff 047.
 
 - **27 October modular cleanup:** living summaries now route to [CURRENT_STATUS.md](CURRENT_STATUS.md); code ownership is mapped separately. Full pre-edit bytes of 12 pages are [archived](archive/modular_cleanup_2026-10-27/README.md), with checksums. Historical ledger/log bodies, research protocols, decisions, results and prior archives are retained. Five completed analysis implementations moved into a package, with all original entry points preserved.
 

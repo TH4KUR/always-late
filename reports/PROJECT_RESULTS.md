@@ -1,0 +1,688 @@
+# Does compression forget language? What we found, in plain words
+
+Written 2026-10-27 14:30 IST by Claude (Sonnet 5.5), from the result files committed in this repository. One document, start to end: the short answers first, then the story in order, then every study, then where all the data is, then the per-language tables.
+Nothing here is new analysis. Every number comes from a committed file (the path is given next to it), and the appendix tables are produced by `scripts/g0/make_project_results_tables.py` from the committed CSV files, not typed by hand.
+The full record of how the project moved (every decision, every wrong turn) is untouched: `reports/decisions_and_anomalies.md`, `reports/progress_log.md`, `reports/handoffs/`, `DECISIONS_FOR_REVIEW.md`. This page is the summary; those are the evidence.
+
+**The setting, in one paragraph.** One language model (Gemma-2-2B). One "dictionary" of 16,384 features that reads the model's middle (layer 12) and says which ideas are active at each word (Gemma Scope, a sparse autoencoder, "SAE"). One way of shrinking the model: rounding every weight to fewer bits ("RTN", INT8 down to INT4; fewer bits = smaller and rougher; INT16 and INT12 are almost no change at all and serve as the "just rounding" baseline). 27 languages from FLORES-200, nine each in three groups we call high, mid and low resource. The question: **when we compress the model, do the features that belong to a language get damaged more than other features, and does that hurt the language?**
+
+---
+
+## 1. The short answers
+
+### Why are the findings not conclusive?
+
+Six reasons. Each one is explained with numbers later.
+
+1. **The tests we fixed in advance mostly said "no difference".** Two sets of tests were confirmatory: the three Phase 1 tests and the downstream reading test (Belebele). Both came out "no difference found". The later studies (Study G, Llama, transfer) also had their rules written down before the data, but they ran on test sentences that earlier work had already looked at, so we call them exploratory: a lead to follow, not a proof.
+2. **A "no difference" is not the same as "no effect".** It means: if there is an effect, it is too small for this test to see. We can say how small, and that is useful (section 1, next question), but it cannot say "zero".
+3. **Our tools are tangled.** Quantization changes every weight at once. We can only look through one window (layer 12, one dictionary) and poke at features one group at a time. When we remove a group of features the model changes in many other ways too. The effects overlap and cannot be cleanly pulled apart.
+4. **The measuring stick has noise.** The model runs in a 16-bit number format (bfloat16). Even "no change" rounding moves the numbers a little. At INT6 the effects we study are only about two times that noise. So small differences cannot be told from noise.
+5. **At 4 bits the whole model breaks**, so everything changes together. Measurements at INT4 are large but not specific: a *random* direction in the model changes about as much as a language feature does.
+6. **The second model did not agree on everything.** Llama-3.2-1B (different model, different dictionary) showed a weaker version of the picture, not the same one.
+
+### Does a "null result" tell us something? Yes. Here is what.
+
+A null result is a measured answer of the form "no difference bigger than X". It rules things out.
+
+| what we tested | what came out | what it rules out | what it does *not* rule out |
+|---|---|---|---|
+| Do language-specific features survive 6–7 bit rounding worse than matched ordinary features? (Phase 1, fixed in advance) | INT7: −0.28 points; INT6: −1.44 points (range −2.65 to −0.13); after adjusting for running three tests, p = 0.51 and 0.13 | A large "language features die first" effect: any gap is at most a couple of points, while overall survival falls from 95 % to 59 % to 14 % between INT6, INT5 and INT4 | A small gap. Also: with stricter "how language-specific" cut-offs the gap grows (−7 points) but turns into +4.6 points once features are matched on how strongly they fire. So the gap is about weak activations, not about being language-specific |
+| Do low-resource languages lose more features because they are low-resource? (Phase 1, fixed in advance) | Slope across tiers −0.005; equivalence test passes (no tier effect bigger than 0.02 in correlation) | That the *selective-versus-matched* gap depends on resource tier | That low-resource languages are hurt more *overall*: at INT6, 69 % / 91 % / 95 % of a language's active features survive for low / mid / high. That gap is real, but it shrinks to nothing once you account for how strongly features fire (low-resource languages simply have weaker activations) |
+| Does removing a language's feature group hurt a reading-comprehension test (Belebele)? (fixed in advance) | Accuracy 0.426 untouched, 0.426 group removed, 0.425 matched controls removed (18 languages, 385 questions each) | Large group-specific effects. Removing a *random* set of 1,024 to 2,860 features lowers accuracy by 1.2 to 6.0 points, so the test can see damage. Even removing up to 1,719 features of the language group (everything we had) gives 0.4257 → 0.4209 | An effect of a few tenths of a point. A random set of just 256 features already costs 0.7–0.8 points, so the group's half point is not special |
+| Does the language tag of a feature ("this feature is a Swahili feature") predict that the feature matters for function? | No: association status relates to functional change at AUROC 0.51 (0.5 = no relation) | Using the tag as a stand-in for "this feature still works" | That features keep their function (we show the opposite is hard to claim too) |
+| Is the INT4 "repair" (turning the group up a little) explained by the group shrinking? (Study G extension D) | Correlation −0.17, p = 0.80 | That simple compensation story | Any other story |
+| Does a second model show the same INT4 blow-up? (Llama) | The ratio is 0.86, not 1.54 as on Gemma | That the INT4 blow-up is a general property of all models and dictionaries | That it is real on Gemma: it still is |
+
+So the nulls are results. Together they say: **the first story we set out to test (quantization destroys language-specific features, especially for low-resource languages) is not supported, and the part of it that looked real is explained by how strongly features fire.**
+
+### Why can we not decide causality at all?
+
+We can decide **a small piece**, and we should say which one.
+
+- **Settled, in full precision:** these features *do* matter for their language. We set the 64 most language-specific features to zero and the model's error on that language went up in **27 of 27 languages**, much more than when we removed matched ordinary features (median extra error 0.26, average 0.70, "nats per token"; see section 4.4). That is an intervention, so it is a causal statement, in full precision, at layer 12, for next-word prediction.
+- **Not settled: "does quantization hurt a language *because of* these features?"** To say yes, we would need to change the features *only*, leave the rest of the model alone, and see the damage disappear. We tried the closest thing (put the full-precision language group back into the quantized model, "patching"): it repairs **at most about 3 %** of the damage (2.6 % at INT4). So the damage is mostly somewhere else. That is evidence *against* "because of these features", but because the group is small and the rest is tangled, it is not a proof either way.
+- **Not settled: "do low-resource languages suffer more *because* they are low-resource?"** Resource level moves together with script, tokenizer, training data and the model's own skill. We cannot change one without the others, and we have only nine languages per group.
+- **Not settled: "is the INT4 change *specific* to language features?"** At INT4 the effect of a feature changes a lot (median cosine with full precision 0.84 in the single-feature study, 0.77 in the transfer study). But if we remove a *different* feature's direction instead, we see about the same change (0.003 to 0.014 less similar than the real one). So the change is mostly how the broken model reacts to *any* poke, not something about language.
+- **Not settled: "context or weights?"** In the transfer study we split the INT4 damage into (a) the activations reaching the edit changed, (b) the weights above the edit changed, (c) both together beyond the sum. Which part is biggest depends on what is measured and on the language (section 4.10). The "both together" part is never small at INT4, so one split alone would mislead.
+
+Plain version: **we can poke the model and see that it reacts; we cannot hold everything else still while quantization is going on, so we cannot say *which* change causes *which* damage.**
+
+### What did the second-model check say?
+
+**Llama-3.2-1B with its own dictionary (a TopK SAE, 12 of 16 layers deep): the pre-set verdict was "not consistent".** (`reports/functional_validation/llama/report.md`, `llama_robust/report.md`; D-087, D-090.)
+
+- Removing a language's group *does* hurt that language, but much less than on Gemma: median extra error 0.048 against 0.262 on Gemma. It is above zero in 21 of 27 languages; the rule asked for 24. (23 of 27 if the median of the control draws is used.)
+- Flat through INT6 as on Gemma: retention 1.010 at INT8 and 1.024 at INT6 (met).
+- **The INT4 blow-up is not found.** Gemma's median ratio at INT4 is 1.54; Llama's is 0.86 [0.74, 1.03]. (The pre-set measure, a mean, gives −3.57 because one language has a tiny full-precision effect; the median is the fairer number and says the same thing.)
+- Graded dose ordering holds in 20 of 27 languages at full precision and 15 of 27 at INT4 (Gemma: all 27).
+
+What this check can and cannot say: the model family, the dictionary type, the dictionary training, the depth and the tokenizer all differ, and this dictionary calls 91 % of its features language-specific (Gemma Scope: about 75 %) with a smaller control pool (898 against 2,860). So "not consistent" does **not** mean "the Gemma findings are wrong", and it is not a replication. It means we cannot claim the Gemma picture holds on another model.
+
+**Gemma-2-9B** (the bigger sibling, with Gemma Scope) was planned as the proper confirmation. It was handed to another team (D-089). The branch `origin/gemma9b-confirmation` has **no results in this repository**. So nothing from a third model exists here.
+
+### What about the downstream task?
+
+The only confirmatory downstream test was **Belebele**, a multiple-choice reading test in 122 languages. We used it in 18 of our 27 languages (the other 9: the model cannot read them well enough for the test to measure anything: accuracy not clearly above chance). Each language: 385 questions. We asked: does removing the language's feature group lower the accuracy more than removing matched ordinary features? (`reports/functional_validation/results/mc_eval/`, `mc_ksens/`, `mc_posctrl/`, `promptcheck/`; D-047, D-050, D-062, D-069, D-072, D-086.)
+
+- **No.** Accuracy: 0.426 untouched, 0.426 group removed, 0.425 matched controls removed. Effect −0.0001 [−0.0035, +0.0031]. The pre-set statement "is met" fails. Because no language has a clear full-precision effect, the five follow-up statements about quantization (S1–S5) cannot even be evaluated.
+- **The test is not blind.** Removing random sets of 1,024–2,860 features lowers accuracy by 1.2–6.0 points, in proportion to size; a do-nothing edit changes it by exactly 0 (`results/mc_posctrl/`).
+- **Not because the group was too small.** Removing the *whole* group (up to 1,719 features) gives the same null (`results/mc_ksens/`): 0.4257 → 0.4209, controls 0.4226.
+- **Not because the question wording was weak.** Our prompt scores *higher* than the standard lm-evaluation-harness prompt in all 18 languages (`promptcheck/`). (Absolute numbers depend on the prompt by about ten points, so do not compare with published Belebele numbers.)
+- **INT4 is at chance.** Quantized to 4 bits, the model gets 0.236 (chance is 0.25). At INT5 it is 0.387, at INT6/INT7/INT8 about 0.42. So at 4 bits there is nothing left to measure.
+- **Meanwhile the same removal raises next-word error in 27 of 27 languages.** So these features matter for predicting text in the language, but not (at this size of test) for answering reading questions the model gets 43 % right.
+
+*Why* the two differ is **not explained**. Guesses, none tested: (a) reading questions can be answered through many routes, so losing 64 features at one layer is absorbed; (b) language identity is easy to recover from the context; (c) a test at 43 % accuracy with 385 questions is a blunt instrument. We did not run the experiments that would separate these.
+
+### Why is it so hard to be conclusive here?
+
+Because **we are asking a cause-and-effect question about a change that touches everything at once, while looking through one small window**. Add a model that gets noisy at the exact precision where the effect begins (INT5 → INT4), one model, one layer, one dictionary, one rounding method, and only 27 languages that cannot be varied one at a time. The honest result is: *a large, clean, specific "language features break first" story is not there; there are several smaller, well-measured facts instead* (section 5).
+
+---
+
+## 2. Words used (simple)
+
+| word | what it means here |
+|---|---|
+| **feature** | one of the 16,384 directions of the dictionary (SAE) that reads layer 12. Each fires on some words and stays quiet on others |
+| **language-selective feature** | a feature that fires much more on one language than on others (we pick the top 64 per language for the group tests, "K64") |
+| **matched control** | features chosen to fire as often (and often as strongly) as the group, but not language-specific; the fair comparison |
+| **INT8 … INT4** | weights rounded to 8 … 4 bits. INT16, INT12 = almost no change ("rounding only"). INT0 = put the original weights back (a check that nothing else changed) |
+| **survival** | a feature "survives" if its activation, over many words, still correlates at least 0.9 with its full-precision self |
+| **association retention** | does the feature still count as "belonging" to its language after compression? (a different question from survival) |
+| **zero-ablation** | set a feature to zero and see what happens |
+| **nats per token** | how surprised the model is by each word, on average. Lower is better. For scale, its normal value on this text is about 3. A harm of 0.26 is roughly 9 % worse |
+| **net harm / effect** | harm from removing the group minus harm from removing matched controls. "How much more the language features matter than ordinary ones" |
+| **retention (function)** | the effect in the quantized model divided by the effect in full precision. 1.0 = same; above 1 = bigger; below 1 = smaller |
+| **floor / numerical noise** | how much the answer moves from rounding alone (INT16). Effects close to this size cannot be trusted |
+| **confidence interval** (the numbers in brackets) | the range in which the true value probably lies |
+| **pre-set / confirmatory** | a rule written down and committed *before* the data was scored. Everything else is "exploratory": worth following up, not proof |
+| **cosine** | how similar two directions are: 1.0 = same, 0 = unrelated |
+| **context (C), weights (W), interaction (I)** | the transfer study's three parts: the activations reaching the edit changed (C), the layers above the edit changed (W), and both changed beyond the sum of the two (I) |
+| **Holm** | an adjustment of p-values because three tests were run at once |
+| **AUROC** | how well one number separates two groups: 0.5 = not at all, 1.0 = perfectly |
+
+---
+
+## 3. The story in order
+
+| when (2026) | what we did | what we found, in one line |
+|---|---|---|
+| 28 Sep | Built the first pipeline: Gemma-2-2B + Gemma Scope dictionary, rounding, survival statistic; first sanity check (Kannada against English); first bigger run ran out of memory (another process, not a code bug) | The tools work; nothing scientific yet |
+| 29 Sep – 2 Oct | Team plan; re-run at 20,000 words per language on a big GPU | First numbers, later retired |
+| 15 – 16 Oct | Audit of our code and of the earlier paper's code (Duan et al.). Our first pipeline disagreed with theirs, so we used their own code | **Their published table is reproduced with their code** (job 23472). Our first pipeline was retired and its outputs are not used |
+| 16 – 19 Oct | Phase 1: 27 languages on the university cluster ("Ada"), the three pre-set tests, many follow-ups, a clean-room recomputation | **No pre-set test rejects.** The result depends on whether a start token is added to the text (section 4.1). Recomputation: 89 of 89 files identical |
+| 21 Oct | **Association retention:** how many "language-tagged" features keep the tag | 98 % at INT8, 71 % at INT4; mostly features that were borderline to begin with |
+| 21 – 23 Oct | **Functional study F1–F5:** do the features matter, does it survive quantization, where is the damage, does the tag predict it, is a feature's effect the same after compression? | Removing a group hurts in 27 of 27 languages; the dependence is kept to INT5 and doubles at INT4; the damage mostly lies elsewhere; changes at INT4 are generic |
+| 22 – 23 Oct | **Belebele** (downstream, confirmatory) | **Null** |
+| 24 – 26 Oct | **Study G:** turn group features down and up, per language, across the precision ladder | Graded, specific and consistent; a clear step at INT4; a tiny "repair" at INT4 |
+| 26 Oct | **Llama-3.2-1B check** (second model) | "Not consistent" |
+| 26 – 27 Oct | **Intervention transfer:** a fixed edit, quantized in two parts (below and above the edit) | INT6 effect almost kept (cosine 0.98); INT4 effect rotated (0.77); mostly a generic reaction |
+| 27 Oct | Four extra analyses of the transfer study (recovery analyses R1–R4); a last test ("precision audit") was written and tested but **never run** | Details in 4.11. User put the project on hold at 09:50 on 27 Oct to finalise |
+
+---
+
+## 4. Study by study
+
+Each block: the question, how we tested it, what came out, what it means, and what it does not mean. Numbers in brackets are 95 % ranges.
+
+### 4.1 Copying the earlier paper, and a hidden catch (Phase 1 start)
+
+**Question.** The earlier paper (Duan 2026) showed on English text that after INT6 rounding the model's perplexity barely moves while only about 51 % of the active features keep their activation pattern (a "blind spot" of ordinary quality checks). Our project asked whether that blind spot hits language-specific features, and low-resource languages, harder (proposal questions RQ1–RQ3 in `anlp_revised.txt`).
+
+**What we did.** We first ran our own pipeline and found it disagreed with theirs, so we used *their vendored code*. It reproduced their published table (INT7: 81.19 % against their 81.26 %; INT6: 51.15 % against 51.30 %), on WikiText.
+
+**The catch.** The model is run on text *without* a special start token (BOS). Without it, the model is confused: perplexity on that text is 458. With a start token added and ignored in the statistics ("masked"), perplexity is about 16 and INT6 survival on WikiText is about **97.5 %** (not 51 %). So the published survival numbers depend on the input format. We therefore use the masked regime as the main one and keep the other as history. (`reports/phase1_reproduction.md`, `issues.md`, anomalies A-029, A-030.)
+
+**What it means.** The survival numbers in that style of paper are sensitive to a technical detail of the input. That is a warning about how to read them, not a claim that anyone's result is wrong.
+
+### 4.2 Phase 1: do language-specific features break first? (three pre-set tests)
+
+(`reports/phase1_summary.md`, `reports/phase1_results.md`, `reports/phase1/`.)
+
+**Pooled survival** (masked, equal words per language): INT8 100 %, INT7 99.97 %, INT6 94.9 %, INT5 59.0 %, INT4 13.75 %. INT16: 100 %. Perplexity changes: +0.08 %, +0.40 %, +2.67 %, +11.5 %, +104 %.
+
+**The three tests, fixed before the run** (language-selective features against matched universal ones; Holm-adjusted):
+
+| test | result | adjusted p |
+|---|---|---|
+| T1: INT7, selective minus control survival | −0.28 points [−0.63, +0.13] | 0.514 |
+| T2: INT6, same | −1.44 points [−2.65, −0.13] | 0.128 |
+| T3: gap as a function of resource tier | slope −0.0048 (high minus low −0.008) | 0.990 |
+
+None rejects. An equivalence test says any tier effect is inside ±0.02 correlation.
+
+**What happened when we looked closer (all after the fact, so exploratory):**
+- *Stricter definitions of "selective".* The gap grows: INT6 −1.0, −2.1, −7.2 points at thresholds S > 2, 3, 5 (the last two survive adjustment).
+- *Then we matched on how strongly the feature fires.* Selective features fire more weakly than the controls. With strength matched the gap **reverses**: +3 to +5 points at INT6. So "selective features die more" is really "weakly firing features die more".
+- *Resource tier.* At INT6, 69.4 % / 90.6 % / 95.1 % of active features survive for low / mid / high. This is a real gap, but when we account for activation size the slope across tiers goes from +12.3 points to −0.8 (p = 0.67). It is correlation only.
+- *Does it hurt the language?* Across the 27 languages, languages whose selective features are damaged more also lose more next-word accuracy (rank correlation +0.46 at INT6, +0.54 at INT7). But overall damage and selective damage move together, so we cannot say the selective part is responsible.
+- *Broken regime.* Without the start token, the model's own error is huge and the sign of the gap flips (+9 points at INT7). That instrument is not valid (A-029).
+- *Checked.* A clean-room recomputation of all files: 89 of 89 identical (`reports/phase1_reproduction.md`).
+
+**What it means.** The headline idea, "compression selectively destroys language-specific features, hitting low-resource languages hardest", is **not supported** in the main regime. The size of a feature's activation explains most of what looks like selectivity.
+**What it does not mean.** That language features are safe: the language-specific class used here was broad (74 % of supported features count as selective at the pre-set cut), so this tests "most features against a minority", not "one-language features against the rest".
+
+### 4.3 Do language tags survive? (association retention)
+
+(`reports/association_retention/`; D-035, D-066, D-067.) Question: among the 6,663 features that carry a language tag in full precision, how many still carry it after rounding?
+
+Retained: **98.1 % (INT8), 97.5 % (INT7), 94.7 % (INT6), 89.1 % (INT5), 70.8 % (INT4)**; the rounding-only floor (INT16) is 99.2 %. Lost features: 124, 168, 356, 726, 1,945.
+
+**Why they are lost.** Mostly because they were borderline: how far the feature already sat from the tagging line in full precision predicts the loss with AUROC 0.90 (INT6), 0.81 (INT5), 0.75 (INT4). Only at INT4 do clearly tagged features lose their tag too. But that margin hardly predicts whether the feature's *function* changes (AUROC 0.58 at INT6). **So the tag changes mostly because of a technical boundary, not because the feature's job changed.** Per-language numbers: appendix A3.
+
+### 4.4 Do the features matter, and does that survive compression? (functional study F1, F2)
+
+(`reports/functional_validation/results/eval/`; D-041, D-050, D-068.) For each language: the 64 most selective features set to zero, compared with 64 matched controls, on 300 sentences, measured as extra next-word error.
+
+- **F1.** The group matters in **27 of 27** languages. Average extra error 0.704 [0.684, 0.723] nats per token; the median language 0.262 (a few languages have large values and pull the average up: Mandarin 7.6, Lao 1.9, Yoruba 1.6). On the 18 Belebele languages: 0.713 (18 of 18).
+- **F2: after rounding.** Retention of the effect: 1.01 to 1.13 through INT5 (rounding-only controls 1.00) and **2.14 at INT4** (median language 1.54). So the dependence is kept, then larger at INT4. At INT4 the quantized model is already damaged, so this inflation is not a "stronger dependence" in a simple sense.
+
+**Means:** these features carry something real for next-word prediction. **Does not mean:** they are the only carrier (zero-ablation shows necessity of that part, not sufficiency), nor that the effect is a property of the *language* rather than of those features' size (controls are matched, but imperfectly). The feature selection and the test sentences come from the same source family (FLORES), and the test sentences had been seen before, so this is exploratory. Per-language table: appendix A4.
+
+### 4.5 Where does the quantization damage sit? (F3, patching)
+
+(`results/rescue/`; D-058.) We took the INT4 model and put back the full-precision activations of the group. Result: it repairs **about 3 % at most** of the extra loss (2.6 % at INT4, nothing at INT5 and INT6). At most 30–40 % of the damage sits in the layer-12 residual at all. **So the language groups hold little of what quantization breaks**; it is in the rest of the model. Limit: one layer. Per-language table: appendix A5.
+
+### 4.6 Does the tag predict function? Is a feature's effect the same after compression? (F4, F5)
+
+(`results/f4/`, `results/f5/`, `results/f5_sensitivity/`; D-059 to D-064, D-066, D-067.)
+- **F5.** The effect of one feature on the output words stays within rounding noise through INT8: median cosine with full precision **0.997 (INT8), 0.988 (INT6), 0.961 (INT5), 0.839 (INT4)**; the rounding floor is 0.949. Each feature is still individually identifiable (retrieval 0.997 to 1.000). 1,487 features, stratified sample.
+- **But the change is generic.** If we remove the direction of a *different* feature at the same places and strengths, the similarity drops almost as much (0.003 to 0.014 less). Fixing the activation amplitudes changes almost nothing. (To our knowledge this control is new; the team has to confirm that from the papers.)
+- **F4.** The language tag adds nothing to predicting functional continuity at equal activity (AUROC 0.506 [0.469, 0.543]).
+- **The survival number misleads:** about 31 % of the features whose function is intact at INT5 are counted as "lost" by the correlation rule; at INT4 the rule keeps 13 % while function changes for every feature.
+
+**Means:** the usual "survival" numbers and the tag are not reliable stand-ins for whether a feature still *does* the same thing. **Does not mean:** features keep their function; the correct reading is that we cannot tell a feature's own change from the model's general reaction.
+
+### 4.7 The downstream task: Belebele (the only confirmatory family)
+
+Covered in section 1. All numbers: appendix A6 and `reports/functional_validation/results/mc_eval/`, `statements.md`.
+
+### 4.8 Study G: turning the group up and down (exploratory)
+
+(`reports/functional_validation/gain_study/README.md`; D-070 to D-085.) Idea: not only remove the group; scale it to 1/32, 1/16, 1/8 … 0 (down) and up to 1.1, 1.2, 1.4, 1.7, 2.8, 5.7, 11.3 times, in each language, at six precisions (FP, INT8 … INT4), always against matched controls. 27 languages × 6 states × 300 sentences × 3 control draws.
+
+| claim | verdict |
+|---|---|
+| Down is graded: every step bigger than the one before (27 of 27 languages ordered). Median harm 0.022 / 0.090 / 0.169 / 0.262 at ratio 0.35 / 0.18 / 0.088 / zero | **met** |
+| Down is specific to the group (26 of 27 beat controls) | **met** |
+| Up is graded and costs (27 and 24 of 27) | **met** |
+| Same pattern in every language (27 of 27, rank correlation FP vs INT4 0.94) | **met** |
+| Precision changes the dose-response (H-G4) | **narrowly not met** by the pre-set rule (a fall of 0.012 from FP to INT8 is bigger than one error); met with a looser error rule, chosen after the fact |
+| Repair at INT4, the pre-set rules (H-G5) | **not met**, under-powered |
+| Baseline check (H-G7) | not met |
+
+What the curves say:
+1. **A step at INT4.** Zero-ablation net harm across FP, INT8, INT7, INT6, INT5, INT4: 0.262, 0.268, 0.266, 0.271, 0.281, **0.432**. Flat until INT5, then 1.6 times larger (1.9 times at the 1/11 ratio). The activations themselves also shrink by about 15 % at INT4 (1 to 1.5 % up to INT5).
+2. **Turning it up costs less at INT4**: 0.81 against 1.21 at 11.3 times.
+3. **A tiny repair at INT4 only.** Turn the group up by 10 % and the loss goes *down* by about 0.001 nats per token (about 0.05 % of the loss); at FP, INT5, INT6 the same turn-up costs a little. A second set of 562 fresh sentences per language with five control draws (extension C) agreed at ×1.1 (median −0.00135 [−0.00197, −0.00032], 20 of 27 languages; at ×1.2 the range includes zero, 18 of 27). A shallow minimum near 1.1 to 1.2, gone by 1.4, a cost at 1.7.
+4. **Extension D** (is the repair "turn the group up by its own shrinkage"?): **not supported** (rank correlation −0.17, p = 0.80). The best gain per language is a reliable property (split-half reliability 0.92) but the shrinkage does not explain it; what does is unknown.
+5. **Extension B** (does it matter which precision you choose the group in?): the 64 chosen features change (only 49 % overlap with the full-precision selection at INT4, 86 % at INT6) but the effect curves coincide (INT4 zero-ablation 0.452 against 0.477). So choosing the group in full precision does not limit the INT4 results.
+6. The up-side effect is not language-independent (the harm at 11.3 times as a multiple of the zero-ablation harm runs from −8.7 to 72.9).
+
+**Means:** the dependence on precision is a **threshold at INT4**, not a gradual slide. **Does not mean:** a usable repair (a thousandth of a nat) or a mechanism. Per-language: appendix A7.
+
+### 4.9 The second model (Llama-3.2-1B) and the bigger Gemma
+
+Covered in section 1. Per-language numbers: appendix A10. Gemma-2-9B: no results here.
+
+### 4.10 Intervention transfer: context or weights? (main matrix + outside text)
+
+(`reports/intervention_transfer/results/main/`, `external/`; D-088, D-094.) **Design.** Take one fixed edit (remove a feature's direction by the full-precision amount) and apply it to four combinations: full-precision or quantized layers below the edit (the "context" = what reaches the edit) × full-precision or quantized layers above it (the "weights"). The change of the edit's effect, in loss, is split into C (context), W (weights) and I (interaction). Also measured at the level of the output-word effect (a vector). Main set: 404 features, 27 languages, FLORES. Outside check: Wikipedia text, six languages.
+
+**Group level (net harm in nats per token, median over languages)** (main):
+- Full precision 0.263. INT6: nothing clear: |C| 0.0091 and |W| 0.0092 (rounding alone 0.0005).
+- **INT4:** the same edit now harms 0.848; with the model's own scaled activation 0.433. |C| 0.310 [0.258, 0.334], |W| 0.104 [0.094, 0.122], |I| 0.071; C bigger in 19 of 27 languages. The pre-set expectation "context dominates" (A3): supported at INT4, inconclusive at INT6, **overall mixed**.
+- Outside text (six languages): INT4 C 0.133, W 0.073 (supported), **INT6 reversed** (W bigger).
+
+**Effect-vector level (2,203 eligible items of 235 features):**
+- Error of the effect after quantization: 17 % of the effect at INT6 (cosine 0.984; about two numerical floors), **66 % at INT4** (cosine 0.768): the effect is **rotated, not shrunk** (size ratio 1.09). Almost all the error (97–99 %) points at right angles to the original effect. Using the quantized model's own activation barely helps (97 % of the error remains).
+- Here the **weights** part has the bigger norm (0.145 against 0.100 at INT6, 0.560 against 0.359 at INT4): the opposite order from the loss-level result. The two measure different things (a vector length against a signed loss), so both are reported.
+- Specificity is weak: the real direction's error is about the same as for swapped or random directions (+0.019 [+0.009, +0.032] at INT4). The error is largely **a generic reaction of the model**.
+- The averaged fingerprint of a feature over its contexts overstates how well a single context transfers (in all 404 features at INT4).
+
+**Can we predict the error for features we held out?** The "generic sensitivity" (how much the error of the *other* directions at the same place moves) reduces the held-out error by **21.5 % [12.7, 29.4] at INT4** (rule met) and **10.9 % [−1.2, 21.4] at INT6** (not met), so the pre-set overall verdict on the main set is **not met**. On the outside text both states are met (19.4 % and 23.4 %): overall **met**. But the same predictor also predicts the rounding-only error (23.4 % in the main set, 28.9 % outside), so it measures **how noise-prone a context is**, not something specific to quantization. Survival numbers and gradient attribution add nothing at INT4.
+
+**Means:** at INT6 an intervention's effect is almost kept (about two noise units off); at INT4 it is rotated; most of that is generic. **Does not mean:** a cheap audit; one language-specific mechanism; a result for deployed integer kernels. Per-language: appendices A8 and A9.
+
+### 4.11 The four recovery analyses (27 October, after the main run)
+
+All post hoc: protocol files were written before the code and each recorded what had been seen before (`reports/intervention_transfer/revision_R1..R4*.json`, D-096 to D-099, `results/recovery/`).
+- **R1, FLORES-fitted predictor on fresh Wikipedia text** (1,368 eligible items): held-out error falls 28.2 % [21.3, 35.1] at INT16, 18.6 % [4.9, 29.5] at INT6, **19.9 % [7.8, 31.3] at INT4**. Add a "just use the median" null and INT6 becomes 15.8 % [−2.7, 28.7]: **at INT6 the predictor is not clearly better than the median**. INT16 is predicted as well, so still not specific to quantization.
+- **R2, gradient scalars against the real loss change:** correlation 0.63 [0.46, 0.80] on FLORES, 0.53 on Wikipedia; the INT4 shift tracks at 0.58 and 0.66; at INT6 weak; at INT16 none. So gradients are not hopeless for the scalar loss; the earlier null was about the vector target.
+- **R3, real direction against swapped direction at the *same* effect size** (only 144 FLORES pairs and 107 Wikipedia pairs qualified, about 2 % of the pairs): the real direction's error is ×1.12 (INT6) and ×1.14 (INT4) that of the swapped one (INT16 ×1.00–1.02). **So there is a modest direction-specific part on top of the large generic one.** The earlier "less rotated" look was the real direction's larger effect size.
+- **R4, own activation against fixed edit, per language:** at INT4 the model's own-activation harm is smaller than the fixed-edit harm in **27 of 27** languages (median difference −0.351 [−0.358, −0.293]). The leftover above the weights-only effect is **+0.014 in the median language**, but ranges from −0.78 to +0.23 across languages. So "the harm is that of the weights" is true **for the median language only**.
+
+### 4.12 Planned but not run
+
+- **Precision audit (D-100, R5):** a paired check of whether the INT16/INT4 difference in these edits is real arithmetic effect or batching noise. Fully built and tested locally (476 transfer tests). **Never deployed**: the 27 October hold came first.
+- **Gemma-2-9B:** handed to another team; nothing in this repository.
+- Other things never run: another quantizer (not round-to-nearest), integer kernels, activation quantization, other layers, steering tests, a quantization-specific alternative to the generic-sensitivity predictor.
+
+---
+
+## 5. What we can say, and what we cannot
+
+**We can say (with how sure):**
+
+| statement | how sure |
+|---|---|
+| The 64 most language-selective features matter for their language's next-word loss in full precision (27 of 27 languages, far above matched controls) | solid for this model, layer, dictionary; exploratory sentences |
+| That dependence is kept through INT5 and larger at INT4 | solid; INT4 inflation not a "stronger dependence" |
+| Quantization damage is **not** mostly in those groups (patching repairs at most ~3 %) | solid for layer 12 |
+| Language-selective features do not survive rounding clearly worse than matched ones once activation size is accounted for | solid for the main regime; the pre-set tests are null |
+| The group matters for reading comprehension | **not found** (and at most ~0.5 point could hide) |
+| A feature's effect is nearly unchanged through INT6 and rotated at INT4, and most of the change is shared with other directions | solid for the 404-feature sample; weaker per feature |
+| A small specific part exists on top of the generic part (×1.12–1.14) | fragile: 2 % of pairs, post hoc |
+| Survival numbers and association tags are not reliable stand-ins for functional continuity | solid within this setting |
+
+**We cannot say:**
+- That quantization hurts low-resource languages *because* their language features break.
+- That any of this holds on another model, layer, dictionary or rounding method (the Llama check disagreed in parts; Gemma-2-9B was not run here).
+- That the INT4 changes are about language: they look generic.
+- That the tiny INT4 repair (0.001 nats) is useful or has a known mechanism.
+- Anything about deployed integer kernels or activation quantization.
+
+---
+
+## 6. Where all the data is
+
+Everything below is in the repository unless marked. Appendix tables A1–A10 are the same data per language.
+
+| what | where |
+|---|---|
+| This summary, per-language tables | this file; regenerate with `python3 -B scripts/g0/make_project_results_tables.py --doc reports/PROJECT_RESULTS.md` |
+| Phase 1 (survival, the three tests, follow-ups) | `reports/phase1_summary.md` (generated tables), `reports/phase1_results.md` (full account), `reports/phase1/{mask,none}/{eq,all}/` (`per_language.csv`, `summary.csv`, `analysis.md/json`, `behavior.*`, `magnitude/`, `margin/`, `thresholds/`, `language_level/`, `mixed_variants/`); `reports/phase1_reproduction.md` |
+| Association retention | `reports/association_retention/results/{eq,all,within-language,margin-function,robustness-eq,crosscheck-eq}/` (`language_summary.csv`, `association_retention.md`), `reports/association_retention/interpretation.md` |
+| Function (F1, F2) | `reports/functional_validation/results/eval/` (`effects_by_language.csv`, `families.csv`, `retention.csv`, `fidelity.csv`, `report.md`); pilot: `results/pilot/` |
+| Patching (F3) | `results/rescue/` (`rescue.csv`, `report.md`) |
+| F4, F5 | `results/f4/{INT4,INT5,INT6}/`, `results/f5/` (`f5_tables.csv`, `f5_results.json`, `report.md`), `results/f5_sensitivity/{m8,m32,direction_swap,...}/`, `results/assoc_rank/` |
+| Belebele | `results/mc_eval/` (`accuracy.csv`, `effects_by_language.csv`, `statements.csv/md`), `results/mc_ksens/` (whole group), `results/mc_posctrl/` (random sets), `results/mc_pilot/`, `promptcheck/`, `belebele_calibration.md` |
+| Study G | `reports/functional_validation/gain_study/results/` (`curves.csv`, `alpha_star.csv`, `reliability.csv`, `report.md`), `extension_c/`, `extension_d/`, `state_defined/results/`, `figures*/`, `README.md` (the full story) |
+| Llama-3.2-1B | `reports/functional_validation/llama/` (`analysis.json`, `report.md`), `llama_robust/` (`languages.csv`, `robust.json`) |
+| Intervention transfer | `reports/intervention_transfer/results/{main,external,recovery}/` (`group_per_language.csv`, `component_summary.csv`, `specificity.csv`, `predictive_validation.csv`, `claim_status.json`, `analysis_summary.json`, `cross_corpus_locked.csv`, `gradient_vs_nll.csv`, `support_*.csv`, `native_fixed_*.csv`, `figures/`) |
+| Per-claim map of all 18 functional claims | `reports/functional_validation/RESULTS_SUMMARY.md`, figures: `FIGURE_INDEX.md` |
+| Pre-set rules, freezes, protocols | `reports/functional_validation/evaluation_freeze_*.json`, `reports/intervention_transfer/*.json`, `docs/superpowers/` |
+| How each decision was made | `reports/decisions_and_anomalies.md` (D-, A-, V-entries), `DECISIONS_FOR_REVIEW.md` (open questions), `reports/progress_log.md`, `reports/handoffs/` |
+| Rerun everything | `reports/functional_validation/REPRODUCE.md`; checksums of raw outputs `reports/functional_validation/artifact_checksums.md`, `reports/intervention_transfer/artifact_checksums.md` |
+| **Outside git** (too big): item-level raw outputs (e.g. `per_context_*.csv`, 26 MB each), run directories | `/home/karma/Documents/ANLP/project/transfer_runs/` and on Ada; also the private Hugging Face dataset `karma-skz/always-late-artifacts` |
+| Run logs | Weights & Biases project `karma-skz-/anlp-project` (schema `reports/wandb_schema_v2.md`) |
+| Report and slides | `paper/course-report/` (11 pages), `paper/presentation/`; final bundle: `scripts/make_final_archive.sh` |
+
+---
+
+## 7. Per-language tables (generated)
+
+<!-- BEGIN GENERATED TABLES -->
+
+### A1. The 27 languages
+
+Nine languages per resource tier. 'Tier' is the project's own sorting (D-011); the sources are in `reports/g0/phase1_languages.json`.
+
+| code | language | resource tier | script |
+|---|---|---|---|
+| eng_Latn | english | high | Latn |
+| deu_Latn | german | high | Latn |
+| spa_Latn | spanish | high | Latn |
+| fra_Latn | french | high | Latn |
+| por_Latn | portuguese | high | Latn |
+| rus_Cyrl | russian | high | Cyrl |
+| zho_Hans | mandarin | high | Hans |
+| jpn_Jpan | japanese | high | Jpan |
+| kor_Hang | korean | high | Hang |
+| hin_Deva | hindi | mid | Deva |
+| ben_Beng | bengali | mid | Beng |
+| tam_Taml | tamil | mid | Taml |
+| tur_Latn | turkish | mid | Latn |
+| vie_Latn | vietnamese | mid | Latn |
+| ind_Latn | indonesian | mid | Latn |
+| tha_Thai | thai | mid | Thai |
+| pol_Latn | polish | mid | Latn |
+| ukr_Cyrl | ukrainian | mid | Cyrl |
+| kan_Knda | kannada | low | Knda |
+| tel_Telu | telugu | low | Telu |
+| yor_Latn | yoruba | low | Latn |
+| sun_Latn | sundanese | low | Latn |
+| amh_Ethi | amharic | low | Ethi |
+| ibo_Latn | igbo | low | Latn |
+| hau_Latn | hausa | low | Latn |
+| khm_Khmr | khmer | low | Khmr |
+| lao_Laoo | lao | low | Laoo |
+
+### A2. Phase 1: share of active features that survive (token correlation with full precision above 0.9), per language
+
+Source: `reports/phase1/mask/eq/per_language.csv` (BOS masked, equal budget). One row per language, in percent. The median row (INT6 90.4 %) differs from the pooled figure of section 4.2 (INT6 94.9 %), which pools all active features of all languages.
+
+| language | INT8 | INT7 | INT6 | INT5 | INT4 |
+|---|---|---|---|---|---|
+| english (eng, high) | 100.0 | 99.9 | 97.2 | 76.9 | 31.8 |
+| german (deu, high) | 100.0 | 99.9 | 95.6 | 66.7 | 20.4 |
+| spanish (spa, high) | 100.0 | 99.9 | 96.3 | 70.1 | 24.3 |
+| french (fra, high) | 100.0 | 99.9 | 95.6 | 69.4 | 23.0 |
+| portuguese (por, high) | 100.0 | 99.9 | 95.7 | 69.3 | 22.5 |
+| russian (rus, high) | 100.0 | 99.8 | 95.5 | 67.1 | 20.3 |
+| mandarin (zho, high) | 100.0 | 99.8 | 95.8 | 67.8 | 20.6 |
+| japanese (jpn, high) | 100.0 | 99.8 | 93.5 | 59.6 | 15.4 |
+| korean (kor, high) | 100.0 | 99.7 | 90.4 | 48.9 | 10.0 |
+| hindi (hin, mid) | 100.0 | 99.7 | 90.3 | 50.2 | 11.5 |
+| bengali (ben, mid) | 99.9 | 99.0 | 83.1 | 37.6 | 5.8 |
+| tamil (tam, mid) | 100.0 | 99.0 | 82.4 | 34.6 | 4.6 |
+| turkish (tur, mid) | 100.0 | 99.6 | 90.3 | 50.8 | 12.0 |
+| vietnamese (vie, mid) | 100.0 | 99.7 | 93.5 | 59.8 | 14.6 |
+| indonesian (ind, mid) | 100.0 | 99.8 | 94.8 | 64.2 | 19.1 |
+| thai (tha, mid) | 100.0 | 99.7 | 92.2 | 53.1 | 9.1 |
+| polish (pol, mid) | 100.0 | 99.8 | 94.6 | 61.9 | 16.2 |
+| ukrainian (ukr, mid) | 100.0 | 99.9 | 93.8 | 59.4 | 15.1 |
+| kannada (kan, low) | 99.9 | 98.5 | 78.5 | 31.0 | 4.3 |
+| telugu (tel, low) | 99.9 | 98.9 | 80.8 | 33.4 | 4.9 |
+| yoruba (yor, low) | 99.5 | 94.9 | 67.6 | 27.9 | 6.8 |
+| sundanese (sun, low) | 99.9 | 98.5 | 78.0 | 34.6 | 8.4 |
+| amharic (amh, low) | 99.5 | 94.9 | 62.8 | 22.3 | 3.8 |
+| igbo (ibo, low) | 99.5 | 95.9 | 66.5 | 28.0 | 6.4 |
+| hausa (hau, low) | 99.8 | 97.2 | 73.1 | 30.0 | 6.3 |
+| khmer (khm, low) | 99.7 | 96.2 | 64.0 | 21.3 | 2.6 |
+| lao (lao, low) | 99.1 | 93.2 | 53.0 | 19.3 | 2.8 |
+| **median of the 27** | 100.0 | 99.7 | 90.4 | 50.8 | 11.5 |
+
+### A3. Association retention: of the features that carry the language tag in full precision, how many still carry it (%)
+
+Source: `reports/association_retention/results/eq/language_summary.csv`, group 'selective', column `conditional_fraction`. INT16 is the rounding-only floor.
+
+| language | features with the language tag in full precision | INT16 kept % | INT8 kept % | INT7 kept % | INT6 kept % | INT5 kept % | INT4 kept % |
+|---|---|---|---|---|---|---|---|
+| english (eng, high) | 1447 | 99.3 | 98.1 | 98.9 | 96.1 | 89.8 | 87.8 |
+| german (deu, high) | 164 | 97.0 | 97.6 | 96.3 | 92.7 | 88.4 | 73.8 |
+| spanish (spa, high) | 139 | 98.6 | 97.8 | 96.4 | 92.1 | 88.5 | 61.9 |
+| french (fra, high) | 127 | 99.2 | 97.6 | 95.3 | 92.9 | 91.3 | 78.0 |
+| portuguese (por, high) | 39 | 100.0 | 94.9 | 100.0 | 97.4 | 89.7 | 79.5 |
+| russian (rus, high) | 46 | 100.0 | 97.8 | 93.5 | 97.8 | 78.3 | 67.4 |
+| mandarin (zho, high) | 365 | 98.9 | 97.3 | 96.4 | 95.9 | 88.8 | 75.9 |
+| japanese (jpn, high) | 407 | 98.8 | 96.6 | 95.8 | 92.9 | 89.9 | 64.1 |
+| korean (kor, high) | 174 | 98.3 | 98.9 | 97.7 | 96.0 | 87.9 | 67.2 |
+| hindi (hin, mid) | 123 | 98.4 | 97.6 | 95.1 | 95.9 | 83.7 | 69.9 |
+| bengali (ben, mid) | 88 | 97.7 | 96.6 | 95.5 | 90.9 | 87.5 | 61.4 |
+| tamil (tam, mid) | 179 | 98.9 | 97.8 | 95.5 | 95.5 | 88.3 | 67.6 |
+| turkish (tur, mid) | 244 | 98.8 | 97.5 | 97.5 | 95.5 | 87.7 | 59.0 |
+| vietnamese (vie, mid) | 233 | 99.1 | 99.6 | 96.6 | 96.1 | 88.0 | 73.4 |
+| indonesian (ind, mid) | 98 | 100.0 | 99.0 | 98.0 | 95.9 | 94.9 | 74.5 |
+| thai (tha, mid) | 270 | 100.0 | 98.9 | 98.5 | 96.7 | 88.5 | 76.3 |
+| polish (pol, mid) | 87 | 98.9 | 98.9 | 97.7 | 95.4 | 90.8 | 66.7 |
+| ukrainian (ukr, mid) | 61 | 100.0 | 100.0 | 96.7 | 85.2 | 90.2 | 73.8 |
+| kannada (kan, low) | 138 | 98.6 | 98.6 | 97.8 | 93.5 | 85.5 | 54.3 |
+| telugu (tel, low) | 118 | 100.0 | 97.5 | 96.6 | 96.6 | 87.3 | 69.5 |
+| yoruba (yor, low) | 424 | 99.3 | 98.8 | 97.4 | 94.8 | 90.6 | 65.1 |
+| sundanese (sun, low) | 217 | 100.0 | 99.5 | 98.2 | 96.3 | 87.6 | 71.9 |
+| amharic (amh, low) | 174 | 99.4 | 96.6 | 97.1 | 92.0 | 91.4 | 59.8 |
+| igbo (ibo, low) | 257 | 99.6 | 98.8 | 98.1 | 95.3 | 89.5 | 64.2 |
+| hausa (hau, low) | 214 | 98.6 | 99.1 | 96.7 | 90.2 | 91.6 | 50.9 |
+| khmer (khm, low) | 404 | 99.8 | 98.5 | 97.8 | 93.6 | 89.6 | 63.1 |
+| lao (lao, low) | 426 | 99.3 | 98.1 | 98.1 | 92.7 | 88.0 | 57.3 |
+| **all 27 pooled** | 6663 | 99.2 | 98.1 | 97.5 | 94.7 | 89.1 | 70.8 |
+
+### A4. Function: what zeroing the 64 most language-specific features does to the language's loss, and how much of that is kept when the model is quantized
+
+Source: `reports/functional_validation/results/eval/effects_by_language.csv` and `retention.csv`. Ratio = effect in the quantized model divided by effect in full precision. ▲ = clearly amplified, ? = inconclusive, no mark = within the band of 'kept'.
+
+| language | harm of zeroing the group (nats/token) | harm of zeroing matched controls | effect = group − control [95 % interval] | INT8 ratio | INT7 ratio | INT6 ratio | INT5 ratio | INT4 ratio |
+|---|---|---|---|---|---|---|---|---|
+| english (eng, high) | 0.209 | 0.036 | 0.173 [0.151, 0.197] | 0.99 | 0.99 | 0.96 | 1.02 | 0.97 |
+| german (deu, high) | 1.087 | 0.013 | 1.073 [0.997, 1.161] | 0.99 | 1.04 | 1.09 | 0.91 | 0.72 ? |
+| spanish (spa, high) | 0.514 | 0.020 | 0.494 [0.429, 0.560] | 1.05 | 1.02 | 1.04 | 1.17 | 1.28 ? |
+| french (fra, high) | 0.609 | 0.026 | 0.584 [0.538, 0.631] | 1.03 | 0.97 | 1.16 | 0.95 | 1.54 ▲ |
+| portuguese (por, high) | 1.031 | 0.007 | 1.024 [0.939, 1.107] | 0.96 | 1.01 | 1.09 | 1.22 | 0.95 |
+| russian (rus, high) | 0.080 | 0.007 | 0.073 [0.061, 0.087] | 1.05 | 1.08 | 1.08 | 1.02 | 2.92 ▲ |
+| mandarin (zho, high) | 7.599 | 0.024 | 7.575 [7.206, 7.937] | 1.02 | 1.03 | 1.06 | 0.96 | 1.08 |
+| japanese (jpn, high) | 0.286 | 0.024 | 0.262 [0.240, 0.286] | 1.02 | 1.02 | 1.03 | 1.07 | 1.42 ▲ |
+| korean (kor, high) | 0.363 | 0.012 | 0.351 [0.306, 0.405] | 0.89 | 1.24 | 0.88 | 1.04 | 2.63 ▲ |
+| hindi (hin, mid) | 0.121 | 0.016 | 0.104 [0.088, 0.122] | 0.97 | 1.10 | 1.36 ? | 0.91 | 2.90 ▲ |
+| bengali (ben, mid) | 0.016 | 0.006 | 0.010 [0.007, 0.013] | 0.99 | 1.12 | 0.94 | 1.26 ? | 3.89 ▲ |
+| tamil (tam, mid) | 0.041 | 0.013 | 0.028 [0.024, 0.033] | 0.96 | 1.05 | 1.01 | 1.37 ? | 2.63 ▲ |
+| turkish (tur, mid) | 0.244 | 0.036 | 0.208 [0.188, 0.229] | 1.00 | 1.03 | 0.96 | 1.09 | 2.75 ▲ |
+| vietnamese (vie, mid) | 0.023 | 0.011 | 0.012 [0.004, 0.020] | 1.06 | 1.25 ? | 0.83 ? | 1.26 ? | 5.70 ▲ |
+| indonesian (ind, mid) | 0.036 | 0.010 | 0.027 [0.013, 0.041] | 1.04 | 0.96 | 0.99 | 1.38 ? | 1.05 ? |
+| thai (tha, mid) | 0.058 | 0.012 | 0.046 [0.040, 0.053] | 0.96 | 1.04 | 1.11 | 1.35 ? | 3.74 ▲ |
+| polish (pol, mid) | 0.388 | 0.028 | 0.360 [0.318, 0.403] | 1.05 | 0.87 | 0.92 | 1.15 | 1.58 ▲ |
+| ukrainian (ukr, mid) | 0.429 | 0.010 | 0.419 [0.382, 0.453] | 1.04 | 1.13 | 1.15 | 0.89 | 2.30 ▲ |
+| kannada (kan, low) | 0.052 | 0.018 | 0.034 [0.028, 0.040] | 1.03 | 1.03 | 1.00 | 1.00 | 1.29 ? |
+| telugu (tel, low) | 0.054 | 0.026 | 0.028 [0.023, 0.034] | 1.02 | 1.04 | 1.24 ? | 1.08 | 5.75 ▲ |
+| yoruba (yor, low) | 1.640 | 0.062 | 1.578 [1.520, 1.637] | 1.00 | 1.00 | 1.02 | 1.28 | 1.38 ▲ |
+| sundanese (sun, low) | 0.972 | 0.099 | 0.873 [0.822, 0.924] | 0.99 | 1.02 | 0.90 | 1.07 | 1.18 |
+| amharic (amh, low) | 1.047 | 0.027 | 1.020 [0.998, 1.045] | 0.99 | 1.02 | 1.15 | 1.11 | 2.31 ▲ |
+| igbo (ibo, low) | 0.391 | 0.046 | 0.346 [0.322, 0.368] | 1.01 | 0.98 | 0.98 | 1.05 | 1.25 |
+| hausa (hau, low) | 0.215 | 0.053 | 0.162 [0.145, 0.179] | 0.99 | 1.01 | 1.03 | 1.11 | 1.29 ? |
+| khmer (khm, low) | 0.251 | 0.032 | 0.220 [0.200, 0.241] | 1.01 | 0.99 | 1.03 | 1.28 ? | 1.89 ▲ |
+| lao (lao, low) | 1.941 | 0.026 | 1.915 [1.837, 1.994] | 1.04 | 0.92 | 1.00 | 1.49 ▲ | 1.27 |
+| **median of the 27** | 0.286 | 0.024 | 0.262 | 1.01 | 1.02 | 1.03 | 1.09 | 1.54 |
+
+### A4b. The same ratio for the control rows (rounding only, and no quantization)
+
+These rows show what 'no change' looks like: INT0 is exactly 1.00; INT16 and INT12 are rounding only.
+
+| precision | median ratio over the 27 languages | meaning |
+|---|---|---|
+| INT16 | 1.00 | rounding only (control) |
+| INT12 | 1.00 | rounding only (control) |
+| INT0 | 1.00 | no quantization at all (control) |
+| INT8 | 1.01 | quantized |
+| INT7 | 1.02 | quantized |
+| INT6 | 1.03 | quantized |
+| INT5 | 1.09 | quantized |
+| INT4 | 1.54 | quantized |
+
+### A5. Patching experiment (F3): how much of the INT4 loss gap is repaired when the group's full-precision activations are put back
+
+Source: `reports/functional_validation/results/rescue/rescue.csv`, part 'group'. Small numbers mean the language groups hold little of the damage.
+
+| language | loss gap INT4 minus full precision (nats/token) | recovered by putting the group's full-precision activations back | share of the gap [95 % interval] |
+|---|---|---|---|
+| english (eng, high) | 0.175 | 0.0015 | 0.9 % [-0.7, 2.5] |
+| german (deu, high) | 0.399 | -0.0001 | -0.0 % [-0.7, 0.7] |
+| spanish (spa, high) | 0.287 | 0.0032 | 1.1 % [0.3, 1.9] |
+| french (fra, high) | 0.315 | 0.0068 | 2.2 % [1.1, 3.4] |
+| portuguese (por, high) | 0.345 | 0.0094 | 2.7 % [1.7, 3.7] |
+| russian (rus, high) | 0.356 | 0.0044 | 1.2 % [0.5, 2.1] |
+| mandarin (zho, high) | 0.389 | 0.0034 | 0.9 % [0.0, 1.7] |
+| japanese (jpn, high) | 0.418 | 0.0074 | 1.8 % [1.0, 2.5] |
+| korean (kor, high) | 0.526 | 0.0153 | 2.9 % [2.4, 3.5] |
+| hindi (hin, mid) | 0.495 | 0.0058 | 1.2 % [0.7, 1.7] |
+| bengali (ben, mid) | 0.591 | 0.0121 | 2.0 % [1.6, 2.5] |
+| tamil (tam, mid) | 0.595 | 0.0049 | 0.8 % [0.5, 1.2] |
+| turkish (tur, mid) | 0.548 | 0.0321 | 5.9 % [4.8, 7.1] |
+| vietnamese (vie, mid) | 0.439 | 0.0087 | 2.0 % [1.2, 2.8] |
+| indonesian (ind, mid) | 0.495 | 0.0018 | 0.4 % [-0.0, 0.8] |
+| thai (tha, mid) | 0.499 | 0.0145 | 2.9 % [2.4, 3.5] |
+| polish (pol, mid) | 0.517 | 0.0246 | 4.8 % [3.7, 5.9] |
+| ukrainian (ukr, mid) | 0.458 | 0.0041 | 0.9 % [0.4, 1.4] |
+| kannada (kan, low) | 0.600 | 0.0065 | 1.1 % [0.8, 1.4] |
+| telugu (tel, low) | 0.593 | 0.0142 | 2.4 % [2.0, 2.8] |
+| yoruba (yor, low) | 0.582 | 0.0389 | 6.7 % [5.7, 7.6] |
+| sundanese (sun, low) | 0.806 | 0.0620 | 7.7 % [6.6, 8.8] |
+| amharic (amh, low) | 1.482 | 0.0258 | 1.7 % [1.3, 2.2] |
+| igbo (ibo, low) | 0.660 | 0.0208 | 3.1 % [2.6, 3.6] |
+| hausa (hau, low) | 0.832 | 0.0295 | 3.5 % [3.0, 4.1] |
+| khmer (khm, low) | 0.813 | 0.0102 | 1.2 % [0.7, 1.8] |
+| lao (lao, low) | 1.740 | 0.1506 | 8.7 % [8.1, 9.2] |
+
+### A6. Downstream task (Belebele reading comprehension), accuracy per language
+
+Source: `reports/functional_validation/results/mc_eval/accuracy.csv`. Chance is 0.25. Nine languages are not covered because the model cannot read them well enough for the task to measure anything.
+
+| language | items | FP: nothing removed | FP: group removed | FP: matched controls removed | no edit, INT8 | no edit, INT7 | no edit, INT6 | no edit, INT5 | no edit, INT4 |
+|---|---|---|---|---|---|---|---|---|---|
+| english (eng, high) | 385 | 0.548 | 0.558 | 0.555 | 0.556 | 0.545 | 0.545 | 0.494 | 0.278 |
+| german (deu, high) | 385 | 0.468 | 0.447 | 0.451 | 0.455 | 0.442 | 0.457 | 0.400 | 0.260 |
+| spanish (spa, high) | 385 | 0.475 | 0.470 | 0.472 | 0.481 | 0.468 | 0.455 | 0.397 | 0.234 |
+| french (fra, high) | 385 | 0.462 | 0.460 | 0.452 | 0.444 | 0.449 | 0.436 | 0.395 | 0.236 |
+| portuguese (por, high) | 385 | 0.416 | 0.423 | 0.424 | 0.416 | 0.429 | 0.423 | 0.410 | 0.229 |
+| russian (rus, high) | 385 | 0.460 | 0.460 | 0.461 | 0.468 | 0.421 | 0.455 | 0.408 | 0.231 |
+| mandarin (zho, high) | 385 | 0.452 | 0.475 | 0.442 | 0.470 | 0.439 | 0.455 | 0.392 | 0.242 |
+| japanese (jpn, high) | 385 | 0.397 | 0.395 | 0.417 | 0.395 | 0.384 | 0.403 | 0.397 | 0.226 |
+| korean (kor, high) | 385 | 0.436 | 0.455 | 0.458 | 0.439 | 0.439 | 0.439 | 0.410 | 0.226 |
+| hindi (hin, mid) | 385 | 0.371 | 0.369 | 0.371 | 0.369 | 0.374 | 0.364 | 0.348 | 0.223 |
+| bengali (ben, mid) | 385 | 0.379 | 0.387 | 0.375 | 0.379 | 0.369 | 0.395 | 0.335 | 0.226 |
+| tamil (tam, mid) | not covered |  |  |  |  |  |  |  |  |
+| turkish (tur, mid) | 385 | 0.403 | 0.392 | 0.398 | 0.397 | 0.410 | 0.392 | 0.377 | 0.252 |
+| vietnamese (vie, mid) | 385 | 0.387 | 0.392 | 0.386 | 0.387 | 0.400 | 0.403 | 0.384 | 0.252 |
+| indonesian (ind, mid) | 385 | 0.439 | 0.442 | 0.438 | 0.452 | 0.431 | 0.434 | 0.364 | 0.221 |
+| thai (tha, mid) | 385 | 0.387 | 0.369 | 0.376 | 0.392 | 0.379 | 0.374 | 0.338 | 0.223 |
+| polish (pol, mid) | 385 | 0.423 | 0.421 | 0.423 | 0.431 | 0.434 | 0.431 | 0.384 | 0.239 |
+| ukrainian (ukr, mid) | 385 | 0.421 | 0.410 | 0.411 | 0.405 | 0.400 | 0.436 | 0.390 | 0.223 |
+| kannada (kan, low) | 385 | 0.338 | 0.335 | 0.342 | 0.340 | 0.348 | 0.314 | 0.351 | 0.223 |
+| telugu (tel, low) | not covered |  |  |  |  |  |  |  |  |
+| yoruba (yor, low) | not covered |  |  |  |  |  |  |  |  |
+| sundanese (sun, low) | not covered |  |  |  |  |  |  |  |  |
+| amharic (amh, low) | not covered |  |  |  |  |  |  |  |  |
+| igbo (ibo, low) | not covered |  |  |  |  |  |  |  |  |
+| hausa (hau, low) | not covered |  |  |  |  |  |  |  |  |
+| khmer (khm, low) | not covered |  |  |  |  |  |  |  |  |
+| lao (lao, low) | not covered |  |  |  |  |  |  |  |  |
+| **mean of the covered languages** |  | 0.426 | 0.426 | 0.425 | 0.426 | 0.420 | 0.423 | 0.387 | 0.236 |
+
+### A7. Study G (scaling the group up and down): net harm per language in nats per token (group minus matched controls)
+
+Source: `reports/functional_validation/gain_study/results/curves.csv`. First table: group removed (ratio 0). Second table: group scaled UP; negative = the loss got slightly lower (a 'repair').
+
+| language | FP, group removed | INT8, group removed | INT7, group removed | INT6, group removed | INT5, group removed | INT4, group removed |
+|---|---|---|---|---|---|---|
+| english (eng, high) | +0.173 | +0.171 | +0.170 | +0.165 | +0.176 | +0.167 |
+| german (deu, high) | +1.073 | +1.060 | +1.113 | +1.166 | +0.981 | +0.770 |
+| spanish (spa, high) | +0.494 | +0.520 | +0.503 | +0.514 | +0.576 | +0.633 |
+| french (fra, high) | +0.584 | +0.602 | +0.567 | +0.676 | +0.551 | +0.898 |
+| portuguese (por, high) | +1.024 | +0.986 | +1.032 | +1.121 | +1.248 | +0.973 |
+| russian (rus, high) | +0.073 | +0.077 | +0.079 | +0.079 | +0.074 | +0.213 |
+| mandarin (zho, high) | +7.575 | +7.718 | +7.776 | +7.995 | +7.277 | +8.218 |
+| japanese (jpn, high) | +0.262 | +0.268 | +0.266 | +0.271 | +0.280 | +0.373 |
+| korean (kor, high) | +0.351 | +0.314 | +0.434 | +0.310 | +0.364 | +0.925 |
+| hindi (hin, mid) | +0.104 | +0.101 | +0.115 | +0.142 | +0.095 | +0.302 |
+| bengali (ben, mid) | +0.010 | +0.010 | +0.011 | +0.009 | +0.012 | +0.038 |
+| tamil (tam, mid) | +0.028 | +0.027 | +0.029 | +0.028 | +0.038 | +0.074 |
+| turkish (tur, mid) | +0.208 | +0.209 | +0.213 | +0.199 | +0.227 | +0.572 |
+| vietnamese (vie, mid) | +0.012 | +0.013 | +0.015 | +0.010 | +0.015 | +0.067 |
+| indonesian (ind, mid) | +0.027 | +0.028 | +0.026 | +0.026 | +0.037 | +0.028 |
+| thai (tha, mid) | +0.046 | +0.044 | +0.048 | +0.051 | +0.062 | +0.172 |
+| polish (pol, mid) | +0.360 | +0.377 | +0.313 | +0.330 | +0.414 | +0.569 |
+| ukrainian (ukr, mid) | +0.419 | +0.436 | +0.472 | +0.482 | +0.372 | +0.966 |
+| kannada (kan, low) | +0.034 | +0.035 | +0.035 | +0.034 | +0.034 | +0.044 |
+| telugu (tel, low) | +0.028 | +0.029 | +0.029 | +0.035 | +0.031 | +0.163 |
+| yoruba (yor, low) | +1.578 | +1.585 | +1.578 | +1.616 | +2.016 | +2.186 |
+| sundanese (sun, low) | +0.873 | +0.860 | +0.891 | +0.790 | +0.930 | +1.029 |
+| amharic (amh, low) | +1.020 | +1.007 | +1.041 | +1.169 | +1.135 | +2.360 |
+| igbo (ibo, low) | +0.346 | +0.348 | +0.339 | +0.340 | +0.364 | +0.432 |
+| hausa (hau, low) | +0.162 | +0.161 | +0.163 | +0.168 | +0.181 | +0.209 |
+| khmer (khm, low) | +0.220 | +0.221 | +0.216 | +0.226 | +0.281 | +0.416 |
+| lao (lao, low) | +1.915 | +1.990 | +1.760 | +1.907 | +2.862 | +2.438 |
+| **median of the 27** | +0.262 | +0.268 | +0.266 | +0.271 | +0.281 | +0.432 |
+
+| language | FP ×1.1 | FP ×1.2 | INT6 ×1.1 | INT6 ×1.2 | INT4 ×1.1 | INT4 ×1.2 | FP ×11.3 | INT4 ×11.3 |
+|---|---|---|---|---|---|---|---|---|
+| english (eng, high) | -0.0007 | -0.0008 | -0.0005 | -0.0010 | -0.0010 | -0.0017 | -0.220 | -0.383 |
+| german (deu, high) | +0.0020 | +0.0041 | +0.0026 | +0.0045 | +0.0026 | +0.0041 | +1.529 | +1.312 |
+| spanish (spa, high) | +0.0007 | +0.0025 | +0.0010 | +0.0025 | -0.0009 | -0.0009 | +0.721 | +0.436 |
+| french (fra, high) | +0.0011 | +0.0020 | +0.0008 | +0.0029 | -0.0022 | -0.0015 | +0.844 | +0.599 |
+| portuguese (por, high) | +0.0008 | +0.0022 | +0.0006 | +0.0009 | -0.0006 | -0.0005 | +0.893 | +0.940 |
+| russian (rus, high) | +0.0017 | +0.0034 | +0.0020 | +0.0032 | -0.0007 | -0.0005 | +1.235 | +0.525 |
+| mandarin (zho, high) | +0.0048 | +0.0121 | +0.0055 | +0.0126 | -0.0005 | +0.0030 | +1.613 | +1.239 |
+| japanese (jpn, high) | +0.0035 | +0.0069 | +0.0024 | +0.0066 | -0.0002 | +0.0007 | +0.999 | +0.493 |
+| korean (kor, high) | +0.0026 | +0.0052 | +0.0009 | +0.0036 | -0.0049 | -0.0094 | +0.837 | +0.403 |
+| hindi (hin, mid) | +0.0017 | +0.0059 | +0.0024 | +0.0064 | +0.0003 | +0.0016 | +1.541 | +1.069 |
+| bengali (ben, mid) | +0.0003 | +0.0012 | +0.0009 | +0.0012 | -0.0010 | -0.0011 | +0.635 | +0.451 |
+| tamil (tam, mid) | -0.0002 | +0.0009 | -0.0000 | +0.0005 | -0.0019 | -0.0034 | +2.051 | +1.624 |
+| turkish (tur, mid) | +0.0002 | -0.0003 | -0.0004 | +0.0007 | -0.0052 | -0.0107 | +0.504 | -0.446 |
+| vietnamese (vie, mid) | +0.0034 | +0.0069 | +0.0037 | +0.0067 | -0.0003 | +0.0004 | +0.772 | +0.519 |
+| indonesian (ind, mid) | +0.0010 | +0.0018 | +0.0008 | +0.0014 | +0.0010 | +0.0027 | +0.221 | +0.332 |
+| thai (tha, mid) | +0.0006 | +0.0019 | +0.0005 | +0.0014 | -0.0040 | -0.0068 | +0.069 | -0.402 |
+| polish (pol, mid) | +0.0007 | +0.0029 | +0.0013 | +0.0036 | -0.0011 | -0.0013 | +1.390 | +1.242 |
+| ukrainian (ukr, mid) | +0.0024 | +0.0060 | +0.0027 | +0.0053 | -0.0019 | -0.0029 | +2.530 | +1.608 |
+| kannada (kan, low) | +0.0002 | +0.0011 | +0.0008 | +0.0013 | +0.0009 | +0.0010 | +1.213 | +1.927 |
+| telugu (tel, low) | +0.0007 | +0.0008 | -0.0002 | +0.0002 | -0.0049 | -0.0089 | +1.227 | +0.810 |
+| yoruba (yor, low) | -0.0099 | -0.0135 | -0.0107 | -0.0142 | -0.0160 | -0.0229 | -0.015 | -0.268 |
+| sundanese (sun, low) | -0.0059 | -0.0119 | -0.0057 | -0.0092 | -0.0223 | -0.0412 | +0.311 | +0.180 |
+| amharic (amh, low) | -0.0036 | -0.0027 | -0.0042 | -0.0027 | +0.0064 | +0.0264 | +6.179 | +4.147 |
+| igbo (ibo, low) | -0.0011 | -0.0003 | -0.0009 | -0.0006 | -0.0085 | -0.0144 | +1.739 | +1.231 |
+| hausa (hau, low) | +0.0008 | +0.0024 | +0.0004 | +0.0023 | -0.0009 | -0.0018 | +1.326 | +1.276 |
+| khmer (khm, low) | +0.0003 | +0.0020 | +0.0000 | +0.0016 | +0.0015 | +0.0061 | +5.430 | +2.674 |
+| lao (lao, low) | -0.0012 | +0.0010 | -0.0027 | -0.0013 | -0.0181 | -0.0191 | +7.159 | +4.490 |
+
+### A8. Intervention transfer, main matrix (27 languages, FLORES): harm of removing the group, split into a context part and a weights part
+
+Source: `reports/intervention_transfer/results/main/group_per_language.csv`. C = change from the activations (context), W = change from the weights, I = the two together beyond the sum. Net harm in nats per token.
+
+| language | full precision: harm of removing the group | INT6: C | INT6: W | INT6: I | INT4: nothing quantized | INT4: only the layers below the edit quantized | INT4: only the layers above the edit quantized | INT4: both quantized, same edit as before | INT4: both quantized, edit scaled to the model's own activations | INT4: C | INT4: W | INT4: I |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| english (eng, high) | 0.172 | -0.0053 | -0.0027 | -0.0002 | 0.172 | 0.162 | 0.184 | 0.179 | 0.168 | -0.011 | +0.012 | +0.005 |
+| german (deu, high) | 1.075 | +0.0507 | +0.0079 | +0.0031 | 1.075 | 2.039 | 0.852 | 1.806 | 0.768 | +0.964 | -0.224 | -0.010 |
+| spanish (spa, high) | 0.492 | -0.0510 | +0.0119 | +0.0018 | 0.492 | 1.248 | 0.617 | 1.530 | 0.627 | +0.755 | +0.125 | +0.157 |
+| french (fra, high) | 0.583 | -0.0114 | +0.0606 | -0.0036 | 0.583 | 1.260 | 1.093 | 1.947 | 0.884 | +0.677 | +0.509 | +0.178 |
+| portuguese (por, high) | 1.022 | -0.0010 | +0.0144 | -0.0051 | 1.022 | 0.686 | 1.728 | 1.156 | 0.944 | -0.336 | +0.706 | -0.235 |
+| russian (rus, high) | 0.073 | +0.0010 | +0.0061 | +0.0007 | 0.073 | 0.279 | 0.169 | 0.564 | 0.210 | +0.206 | +0.096 | +0.190 |
+| mandarin (zho, high) | 7.582 | +0.0973 | +0.1161 | -0.0010 | 7.582 | 9.013 | 8.159 | 9.543 | 8.218 | +1.431 | +0.577 | -0.047 |
+| japanese (jpn, high) | 0.263 | +0.0083 | +0.0092 | +0.0007 | 0.263 | 0.684 | 0.366 | 0.848 | 0.373 | +0.421 | +0.104 | +0.061 |
+| korean (kor, high) | 0.350 | -0.0238 | -0.0152 | +0.0066 | 0.350 | 0.825 | 0.809 | 1.481 | 0.905 | +0.475 | +0.459 | +0.197 |
+| hindi (hin, mid) | 0.104 | +0.0133 | +0.0287 | +0.0055 | 0.104 | 0.414 | 0.228 | 0.651 | 0.300 | +0.310 | +0.125 | +0.113 |
+| bengali (ben, mid) | 0.010 | +0.0002 | -0.0002 | -0.0001 | 0.010 | 0.029 | 0.032 | 0.088 | 0.038 | +0.019 | +0.022 | +0.037 |
+| tamil (tam, mid) | 0.028 | +0.0006 | +0.0002 | -0.0001 | 0.028 | 0.057 | 0.053 | 0.097 | 0.074 | +0.029 | +0.025 | +0.015 |
+| turkish (tur, mid) | 0.208 | +0.0332 | -0.0255 | -0.0036 | 0.208 | 0.720 | 0.537 | 1.582 | 0.569 | +0.513 | +0.330 | +0.532 |
+| vietnamese (vie, mid) | 0.012 | +0.0033 | -0.0053 | -0.0009 | 0.012 | 0.087 | 0.053 | 0.127 | 0.067 | +0.076 | +0.042 | -0.002 |
+| indonesian (ind, mid) | 0.027 | +0.0007 | -0.0005 | -0.0000 | 0.027 | 0.029 | 0.026 | 0.028 | 0.028 | +0.002 | -0.001 | +0.000 |
+| thai (tha, mid) | 0.046 | +0.0038 | +0.0028 | +0.0003 | 0.046 | 0.133 | 0.137 | 0.329 | 0.171 | +0.087 | +0.091 | +0.105 |
+| polish (pol, mid) | 0.360 | +0.0091 | -0.0184 | +0.0011 | 0.360 | 0.697 | 0.449 | 0.915 | 0.564 | +0.337 | +0.089 | +0.129 |
+| ukrainian (ukr, mid) | 0.419 | +0.0129 | +0.0701 | +0.0031 | 0.419 | 1.054 | 0.857 | 1.789 | 0.955 | +0.636 | +0.438 | +0.297 |
+| kannada (kan, low) | 0.034 | -0.0006 | +0.0008 | -0.0002 | 0.034 | 0.043 | 0.042 | 0.051 | 0.045 | +0.009 | +0.008 | -0.000 |
+| telugu (tel, low) | 0.029 | +0.0039 | +0.0047 | +0.0000 | 0.029 | 0.102 | 0.109 | 0.254 | 0.163 | +0.073 | +0.081 | +0.071 |
+| yoruba (yor, low) | 1.578 | +0.0263 | +0.0355 | -0.0028 | 1.578 | 2.255 | 2.072 | 2.781 | 2.183 | +0.676 | +0.494 | +0.032 |
+| sundanese (sun, low) | 0.872 | +0.0168 | -0.1060 | -0.0030 | 0.872 | 0.956 | 1.097 | 1.103 | 1.028 | +0.084 | +0.225 | -0.078 |
+| amharic (amh, low) | 1.020 | +0.0037 | +0.1127 | -0.0008 | 1.020 | 1.429 | 2.133 | 2.715 | 2.358 | +0.409 | +1.113 | +0.173 |
+| igbo (ibo, low) | 0.347 | +0.0008 | -0.0023 | +0.0002 | 0.347 | 0.441 | 0.428 | 0.505 | 0.433 | +0.094 | +0.082 | -0.018 |
+| hausa (hau, low) | 0.161 | +0.0108 | +0.0051 | -0.0000 | 0.161 | 0.262 | 0.195 | 0.274 | 0.209 | +0.101 | +0.034 | -0.023 |
+| khmer (khm, low) | 0.220 | +0.0106 | +0.0003 | -0.0014 | 0.220 | 0.374 | 0.291 | 0.511 | 0.416 | +0.154 | +0.071 | +0.066 |
+| lao (lao, low) | 1.911 | -0.2082 | +0.1781 | +0.0090 | 1.911 | 2.803 | 3.107 | 3.302 | 2.440 | +0.892 | +1.196 | -0.697 |
+
+### A9. Intervention transfer, external panel (six languages, Wikipedia text)
+
+Source: `reports/intervention_transfer/results/external/group_per_language.csv`. Same columns as A8, on fresh text.
+
+| language | full precision: harm of removing the group | INT6: C | INT6: W | INT6: I | INT4: nothing quantized | INT4: only the layers below the edit quantized | INT4: only the layers above the edit quantized | INT4: both quantized, same edit as before | INT4: both quantized, edit scaled to the model's own activations | INT4: C | INT4: W | INT4: I |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| english (eng, high) | 0.106 | -0.0007 | -0.0016 | -0.0002 | 0.106 | 0.107 | 0.111 | 0.113 | 0.102 | +0.001 | +0.005 | +0.001 |
+| spanish (spa, high) | 0.259 | -0.0308 | +0.0143 | -0.0018 | 0.259 | 0.793 | 0.377 | 1.195 | 0.470 | +0.534 | +0.118 | +0.284 |
+| russian (rus, high) | 0.069 | +0.0016 | +0.0070 | +0.0004 | 0.069 | 0.202 | 0.134 | 0.353 | 0.143 | +0.133 | +0.064 | +0.086 |
+| mandarin (zho, high) | 7.884 | -0.0294 | +0.1134 | +0.0026 | 7.884 | 8.517 | 8.914 | 9.368 | 8.409 | +0.633 | +1.030 | -0.179 |
+| hindi (hin, mid) | 0.056 | +0.0076 | +0.0124 | +0.0013 | 0.056 | 0.181 | 0.129 | 0.306 | 0.149 | +0.126 | +0.073 | +0.052 |
+| yoruba (yor, low) | 1.195 | +0.0543 | +0.0274 | -0.0073 | 1.195 | 1.774 | 1.674 | 2.169 | 1.684 | +0.579 | +0.479 | -0.084 |
+
+### A10. Second model check (Llama-3.2-1B): the group effect in full precision, next to Gemma
+
+Source: `reports/functional_validation/llama_robust/languages.csv` and the Gemma table above. The pre-set rule needed 24 of 27 languages above zero.
+
+| language | Gemma-2-2B effect (group − control) | Llama-3.2-1B effect, mean of 3 control draws | Llama effect, median of the draws | group beats all draws? |
+|---|---|---|---|---|
+| english (eng, high) | 0.173 | 0.057 | 0.062 | True |
+| german (deu, high) | 1.073 | 1.163 | 1.222 | True |
+| spanish (spa, high) | 0.494 | 0.266 | 0.256 | True |
+| french (fra, high) | 0.584 | 0.185 | 0.166 | True |
+| portuguese (por, high) | 1.024 | 0.239 | 0.239 | True |
+| russian (rus, high) | 0.073 | -0.082 | -0.069 | False |
+| mandarin (zho, high) | 7.575 | -0.012 | -0.011 | False |
+| japanese (jpn, high) | 0.262 | -1.234 | -0.103 | False |
+| korean (kor, high) | 0.351 | -0.592 | 0.004 | False |
+| hindi (hin, mid) | 0.104 | -0.085 | -0.019 | False |
+| bengali (ben, mid) | 0.010 | 0.017 | 0.017 | True |
+| tamil (tam, mid) | 0.028 | 0.003 | 0.015 | False |
+| turkish (tur, mid) | 0.208 | 0.048 | 0.092 | False |
+| vietnamese (vie, mid) | 0.012 | 0.297 | 0.308 | True |
+| indonesian (ind, mid) | 0.027 | 0.173 | 0.254 | False |
+| thai (tha, mid) | 0.046 | 0.121 | 0.128 | True |
+| polish (pol, mid) | 0.360 | 0.233 | 0.179 | True |
+| ukrainian (ukr, mid) | 0.419 | 0.030 | 0.030 | True |
+| kannada (kan, low) | 0.034 | -0.002 | 0.019 | False |
+| telugu (tel, low) | 0.028 | 0.018 | 0.018 | True |
+| yoruba (yor, low) | 1.578 | 1.496 | 1.496 | True |
+| sundanese (sun, low) | 0.873 | 0.032 | 0.021 | True |
+| amharic (amh, low) | 1.020 | 1.210 | 1.209 | True |
+| igbo (ibo, low) | 0.346 | 0.059 | 0.061 | True |
+| hausa (hau, low) | 0.162 | 0.091 | 0.086 | True |
+| khmer (khm, low) | 0.220 | 0.025 | 0.026 | True |
+| lao (lao, low) | 1.915 | 0.037 | 0.104 | False |
+| **median of the 27** | 0.262 | 0.048 | 0.062 |  |
+
+<!-- END GENERATED TABLES -->

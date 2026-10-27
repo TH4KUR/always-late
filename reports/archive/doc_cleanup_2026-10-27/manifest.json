@@ -1,0 +1,27 @@
+{
+ "HANDOFF.md": {
+  "archived_copy": "reports/archive/doc_cleanup_2026-10-27/HANDOFF.md.txt",
+  "sha256_of_archived_copy_(=_the_page_before_this_cleanup)": "a8cf96caed5fed0f881e778465371ffbba8d397fa346ff2cfd46a3a91e6ebf88",
+  "bytes_before": 7372
+ },
+ "README.md": {
+  "archived_copy": "reports/archive/doc_cleanup_2026-10-27/README.md.txt",
+  "sha256_of_archived_copy_(=_the_page_before_this_cleanup)": "5d9a847b03e46ec59a230457fdc59f115c588428d03491c518ed8fdbee66a21b",
+  "bytes_before": 3710
+ },
+ "RESEARCH_DIRECTION.md": {
+  "archived_copy": "reports/archive/doc_cleanup_2026-10-27/RESEARCH_DIRECTION.md.txt",
+  "sha256_of_archived_copy_(=_the_page_before_this_cleanup)": "106337d40013f8ce144f2cc1895354203c40b678275d1688a4ac24543db14c91",
+  "bytes_before": 3671
+ },
+ "reports/CURRENT_STATUS.md": {
+  "archived_copy": "reports/archive/doc_cleanup_2026-10-27/reports__CURRENT_STATUS.md.txt",
+  "sha256_of_archived_copy_(=_the_page_before_this_cleanup)": "7cf8eba0ea00033fb927f9e211a595d2d1a867dd161161fbf9f7afccf4610887",
+  "bytes_before": 5540
+ },
+ "reports/INDEX.md": {
+  "archived_copy": "reports/archive/doc_cleanup_2026-10-27/reports__INDEX.md.txt",
+  "sha256_of_archived_copy_(=_the_page_before_this_cleanup)": "8c3bdeffdf048333ed66d93a66b2101f0c135a65e2df82bc110d733aa89eeace",
+  "bytes_before": 20091
+ }
+}
