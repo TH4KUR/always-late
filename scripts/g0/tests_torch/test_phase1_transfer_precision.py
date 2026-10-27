@@ -125,6 +125,31 @@ class Switch(unittest.TestCase):
         self.assertEqual(m.blocks[2].attn.W_Q.dtype, torch.float32)
 
 
+class SwitchRecord(unittest.TestCase):
+    def test_every_state_change_appends_the_hash_check_with_the_label_the_tensor_count_and_a_digest_of_the_stored_values(self):
+        m = FakeModel(); snap = pp.snapshot(m, LAYER); orig = m.blocks[2].attn.W_Q.data.clone(); pp.promote_suffix(m, LAYER); rec = []
+        def setup(label):
+            m.blocks[2].attn.W_Q.data = (orig.float() * (2.0 if label == "INT4" else 1.0)).to(torch.bfloat16)                  # restore, then 'quantize'
+        
+        w = pp.fp32_setup(setup, m, LAYER, snap, record=rec); w("INT16"); w("INT4"); self.assertEqual([r["label"] for r in rec], ["INT16", "INT4"]); self.assertTrue(all(r["ok"] for r in rec)); self.assertEqual(rec[0]["n_tensors"], len(snap)); self.assertNotEqual(rec[0]["digest"], rec[1]["digest"])
+        w("INT16"); self.assertNotEqual(rec[2]["digest"], rec[1]["digest"])
+
+    def test_a_promotion_that_does_not_convert_back_to_the_stored_values_raises_the_g1_error_and_is_recorded_as_failed(self):
+        m = FakeModel(); snap = pp.snapshot(m, LAYER); pp.promote_suffix(m, LAYER); rec = []; real = pp.promote_suffix
+        def corrupt(model, layer):
+            real(model, layer); model.blocks[2].attn.W_Q.data[0, 0] += 1e-3                                        # a value that is not a bf16 value
+        pp.promote_suffix = corrupt
+        try:
+            with self.assertRaisesRegex(RuntimeError, "G1"):
+                pp.fp32_setup(lambda label: None, m, LAYER, snap, record=rec)("INT4")
+        finally:
+            pp.promote_suffix = real
+        self.assertEqual(rec[0]["ok"], False)
+
+    def test_without_a_record_nothing_is_hashed_and_the_return_value_of_the_setup_is_passed_on(self):
+        m = FakeModel(); snap = pp.snapshot(m, LAYER); pp.promote_suffix(m, LAYER); self.assertEqual(pp.fp32_setup(lambda label: ("done", label), m, LAYER, snap)("INT4"), ("done", "INT4"))
+
+
 class ModeSuffix(unittest.TestCase):
     def setUp(self):
         self.m = FakeModel(); self.snap = pp.snapshot(self.m, LAYER); g = torch.Generator().manual_seed(5); self.x = (torch.randn(2, 3, 8, generator=g) * 4.0 + 1.0 + 2 ** -10).float()

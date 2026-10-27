@@ -40,5 +40,10 @@
   "gates": "any of G1 to G4 failing stops the job and the log head must show 'GPU 0:' (a node without a GPU stops, as the sbatch guard does)"
  },
  "not_claimed": "No claim about deployed integer kernels, full-prefix precision, other layers, other quantizers or other models; no equivalence of the modes; no safety or behavioural claim. A result in which the INT4 drift persists is a statement about robustness within the tested suffix setup only; a result in which it changes is an instrument result.",
- "outputs": "reports/intervention_transfer/results/precision/ (per_item.csv, summary.csv, gates.json, README.md); raw cell vectors are not stored (5 MB per item and cell set); code scripts/g0/phase1_transfer_precision.py with scripts/g0/tests_torch/test_phase1_transfer_precision.py"
+ "outputs": "reports/intervention_transfer/results/precision/ (per_item.csv, summary.csv, gates.json, README.md); raw cell vectors are not stored (5 MB per item and cell set); code scripts/g0/phase1_transfer_precision.py with scripts/g0/tests_torch/test_phase1_transfer_precision.py",
+ "update_2026-10-27_0756": {
+  "date": "2026-10-27 07:56 IST",
+  "what": "ORDER OF EXECUTION and the instrument chunk. The stop rule of this amendment names 'the first 16 features of the freeze order'; the freeze file lists the features by (FP-effect quartile, hash), so a literal reading would make the instrument chunk 16 features of the lowest quartile only (median FP effect norm 26, at the numerical floor), which would not represent the sample. The features are therefore executed in ROUND-ROBIN order over the quartiles (rank inside the quartile in the frozen order, then quartile; implemented by audit_order in scripts/g0/phase1_transfer_precision_run.py) and the instrument chunk is the first 16 features of that order: four per quartile, 64 pairs. The SELECTION (the 128 features and their contexts, selection sha256 a230ec73...) is unchanged; only the order in which the chunks run differs. Written before any run.",
+  "also": "the readings are computed for two populations: all real-direction items (primary) and the real-direction items eligible under the old fixed floors in both modes (secondary, fixed before any data exists); the matched-swapped items are summarized as a third population without readings."
+ }
 }

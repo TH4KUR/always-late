@@ -73,14 +73,22 @@ def roundtrip_equal(model, layer, snap, hashes):
     return suffix_hashes(model, layer, snap) == hashes
 
 
-def fp32_setup(setup, model, layer, snap):
-    """The state change of the fp32 mode: demote the suffix to its stored precision, run the unchanged `setup(label)` (restore and quantize exactly as in the main runs), promote again (also if `setup` fails)."""
+def fp32_setup(setup, model, layer, snap, record=None):
+    """The state change of the fp32 mode: demote the suffix to its stored precision, run the unchanged `setup(label)` (restore and quantize exactly as in the main runs), promote again (also if `setup` fails).
+    With `record` (a list) gate G1 is checked at every state change: the sha256 of every suffix tensor right after `setup` (in the stored precision) is compared with the promoted suffix converted back; an entry
+    {"label", "ok", "n_tensors", "digest"} is appended and a failed check raises RuntimeError (G1)."""
     def wrapped(label):
         demote_suffix(model, layer, snap)
         try:
-            return setup(label)
+            result = setup(label)
+            hashes = suffix_hashes(model, layer) if record is not None else None
         finally:
             promote_suffix(model, layer)
+        if record is not None:
+            ok = roundtrip_equal(model, layer, snap, hashes); record.append({"label": label, "ok": bool(ok), "n_tensors": len(hashes), "digest": hashlib.sha256("".join(hashes[k] for k in sorted(hashes)).encode()).hexdigest()})
+            if not ok:
+                raise RuntimeError(f"gate G1: the promoted suffix does not convert back to the stored values after the state change {label!r}")
+        return result
     return wrapped
 
 
