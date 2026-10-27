@@ -19,8 +19,11 @@ BOS, PAD = 1, 0
 
 def make_pool(n_seq=24, seed=0, lo=18, hi=40):
     g = torch.Generator().manual_seed(seed)
-    passages = [{"article_id": f"a{i}", "rank": i, "ids": torch.randint(3, DIMS["d_vocab"], (int(torch.randint(lo, hi, (1,), generator=g)),), generator=g).tolist()} for i in range(n_seq)]
-    return {"xx": {"passages": passages, "shortfall": 0}}
+    passages = []
+    for i in range(n_seq):
+        ids = torch.randint(3, DIMS["d_vocab"], (int(torch.randint(lo, hi, (1,), generator=g)),), generator=g).tolist()
+        passages.append({"article_id": f"a{i}", "rank": i, "ids": ids, "n_tokens": len(ids), "n_used": len(ids), "sha256": cal.ids_sha256(ids)})
+    return {"xx": {"passages": passages, "shortfall": 0, "tokens": sum(p["n_used"] for p in passages)}}
 
 
 def correlated_rows(n=600, d=32, seed=0):
