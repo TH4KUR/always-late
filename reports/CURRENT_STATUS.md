@@ -33,6 +33,8 @@ to amplitude. Preserve all main and external verdicts next to these later analys
 
 ## Next action
 
+**HOLD (the user, 27 October 2026 09:50 IST): stop at this checkpoint and finalise.** Ada is idle and the precision audit is not deployed. Do NOT deploy, submit any Ada job, or start new analyses. Items 1 to 3 below are paused until the user confirms the finalisation plan; until then a recurring firing only checks the queue, notes the hold in the log and stops.
+
 1. Follow the latest update of [handoff 045](handoffs/045-2026-10-27-external-panel-analysed-report-deck-final-recovery-plan-next.md)
    and the [precision-audit implementation plan](../docs/superpowers/plans/2026-10-27-precision-audit-task2-implementation.md):
    deploy a committed snapshot and validate the bounded instrument job before a
