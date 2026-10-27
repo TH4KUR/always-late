@@ -1,0 +1,8 @@
+{
+  "source": "reports/PROJECT_RESULTS.md",
+  "snapshot": "PROJECT_RESULTS.md.txt",
+  "bytes": 69204,
+  "sha256": "82ec30c268b49788a112575d799240f6592f42121d5f38bb193f5c8a46c9d0dc",
+  "parent_commit": "b0ef852f9d2c165e3f6ed9facb03070cd295af3a",
+  "reason": "Correct causal-effect, mediation, generalization and null-result distinctions after user feedback; no numerical result changed"
+}

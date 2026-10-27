@@ -1,10 +1,17 @@
 # Does compression forget language? What we found, in plain words
 
+**Causal-claims clarification, 27 October 2026:** a single-model study can identify
+causal effects of defined interventions. Generalization, natural-mechanism faithfulness,
+and the treatment of statistical nulls are separate questions. The earlier wording is
+[preserved verbatim](archive/causal_wording_2026-10-27/README.md). No new experiment or
+numerical result is introduced by this correction.
+
+
 Written 2026-10-27 14:30 IST by Claude (Sonnet 5.5), from the result files committed in this repository. One document, start to end: the short answers first, then the story in order, then every study, then where all the data is, then the per-language tables.
 Nothing here is new analysis. Every number comes from a committed file (the path is given next to it), and the appendix tables are produced by `scripts/g0/make_project_results_tables.py` from the committed CSV files, not typed by hand.
 The full record of how the project moved (every decision, every wrong turn) is untouched: `reports/decisions_and_anomalies.md`, `reports/progress_log.md`, `reports/handoffs/`, `DECISIONS_FOR_REVIEW.md`. This page is the summary; those are the evidence.
 
-**The setting, in one paragraph.** One language model (Gemma-2-2B). One "dictionary" of 16,384 features that reads the model's middle (layer 12) and says which ideas are active at each word (Gemma Scope, a sparse autoencoder, "SAE"). One way of shrinking the model: rounding every weight to fewer bits ("RTN", INT8 down to INT4; fewer bits = smaller and rougher; INT16 and INT12 are almost no change at all and serve as the "just rounding" baseline). 27 languages from FLORES-200, nine each in three groups we call high, mid and low resource. The question: **when we compress the model, do the features that belong to a language get damaged more than other features, and does that hurt the language?**
+**The setting, in one paragraph.** One language model (Gemma-2-2B). One "dictionary" of 16,384 features that reads the model's middle (layer 12) and says which ideas are active at each word (Gemma Scope, a sparse autoencoder, "SAE"). One way of shrinking the model: rounding selected transformer weights to fewer bits (the quantizer leaves embeddings and normalization parameters unchanged) ("RTN", INT8 down to INT4; fewer bits = smaller and rougher; INT16 and INT12 are almost no change at all and serve as the "just rounding" baseline). 27 languages from FLORES-200, nine each in three groups we call high, mid and low resource. The question: **when we compress the model, do the features that belong to a language get damaged more than other features, and does that hurt the language?**
 
 ---
 
@@ -14,39 +21,64 @@ The full record of how the project moved (every decision, every wrong turn) is u
 
 Six reasons. Each one is explained with numbers later.
 
-1. **The tests we fixed in advance mostly said "no difference".** Two sets of tests were confirmatory: the three Phase 1 tests and the downstream reading test (Belebele). Both came out "no difference found". The later studies (Study G, Llama, transfer) also had their rules written down before the data, but they ran on test sentences that earlier work had already looked at, so we call them exploratory: a lead to follow, not a proof.
+1. **The tests we fixed in advance mostly said "no difference".** Two sets of tests were confirmatory: the three Phase 1 tests and the downstream reading test (Belebele). Both came out "no difference found". The later studies (Study G, Llama, transfer) also had their rules written down before the data, but they ran on test sentences that earlier work had already looked at, so we call them exploratory: the statistical interpretation must allow for that earlier data use. This does not prevent the specified interventions from having measurable causal effects.
 2. **A "no difference" is not the same as "no effect".** It means: if there is an effect, it is too small for this test to see. We can say how small, and that is useful (section 1, next question), but it cannot say "zero".
 3. **Our tools are tangled.** Quantization changes every weight at once. We can only look through one window (layer 12, one dictionary) and poke at features one group at a time. When we remove a group of features the model changes in many other ways too. The effects overlap and cannot be cleanly pulled apart.
-4. **The measuring stick has noise.** The model runs in a 16-bit number format (bfloat16). Even "no change" rounding moves the numbers a little. At INT6 the effects we study are only about two times that noise. So small differences cannot be told from noise.
-5. **At 4 bits the whole model breaks**, so everything changes together. Measurements at INT4 are large but not specific: a *random* direction in the model changes about as much as a language feature does.
-6. **The second model did not agree on everything.** Llama-3.2-1B (different model, different dictionary) showed a weaker version of the picture, not the same one.
+4. **The arithmetic limits the interpretation of small changes.** The model body runs in bfloat16. INT16 RTN is a small actual weight perturbation, not an exact no-change or pure-noise control. INT6 transfer errors are about two reference floors. We measure intervention effects under this arithmetic; the unrun paired-precision audit would test which conclusions depend on that arithmetic.
+5. **At INT4, a substantial response is shared with control directions.** That limits claims of language-feature specificity. The later common-support comparison finds a modest additional component on a small selected subset; neither result establishes that all model behavior is broken.
+6. **The second model did not agree on everything.** Llama-3.2-1B (different model, different dictionary) showed a weaker version of the picture, not the same one. That limits cross-model generalization; it does not invalidate the controlled Gemma comparisons.
 
 ### Does a "null result" tell us something? Yes. Here is what.
 
-A null result is a measured answer of the form "no difference bigger than X". It rules things out.
+A non-significant result means the test did not establish the specified effect. It does **not** by itself establish zero or an upper bound. Report the effect estimate and interval. A useful bound on practical importance requires an appropriate interval relative to a stated meaningful-effect threshold, or an equivalence test. These conclusions concern the tested intervention and population, not every hidden mechanism.
 
-| what we tested | what came out | what it rules out | what it does *not* rule out |
+| what we tested | what came out | what this supports | what it does *not* rule out |
 |---|---|---|---|
-| Do language-specific features survive 6–7 bit rounding worse than matched ordinary features? (Phase 1, fixed in advance) | INT7: −0.28 points; INT6: −1.44 points (range −2.65 to −0.13); after adjusting for running three tests, p = 0.51 and 0.13 | A large "language features die first" effect: any gap is at most a couple of points, while overall survival falls from 95 % to 59 % to 14 % between INT6, INT5 and INT4 | A small gap. Also: with stricter "how language-specific" cut-offs the gap grows (−7 points) but turns into +4.6 points once features are matched on how strongly they fire. So the gap is about weak activations, not about being language-specific |
+| Do language-specific features survive 6–7 bit rounding worse than matched ordinary features? (Phase 1, fixed in advance) | INT7: −0.28 points; INT6: −1.44 points (range −2.65 to −0.13); after adjusting for running three tests, p = 0.51 and 0.13 | No robust selective penalty under the prespecified corrected tests; the reported intervals describe the tested contrasts, not a universal bound | A small gap. Also: with stricter "how language-specific" cut-offs the gap grows (−7 points) but turns into +4.6 points once features are matched on how strongly they fire. So the gap is about weak activations, not about being language-specific |
 | Does the gap between language-specific and matched features get worse for lower-resource languages? (Phase 1, fixed in advance) | Slope across tiers −0.005; equivalence test passes (no tier effect bigger than 0.02 in correlation) | That the *selective-versus-matched* gap depends on resource tier | That low-resource languages are hurt more *overall*: at INT6, 69 % / 91 % / 95 % of a language's active features survive for low / mid / high. That gap is real, but it shrinks to nothing once you account for how strongly features fire (low-resource languages simply have weaker activations) |
 | Does removing a language's feature group hurt a reading-comprehension test (Belebele)? (fixed in advance) | Accuracy 0.426 untouched, 0.426 group removed, 0.425 matched controls removed (18 languages, 385 questions each) | Large group-specific effects. Removing a *random* set of 1,024 to 2,860 features lowers accuracy by 1.2 to 6.0 points, so the test can see damage. Even removing up to 1,719 features of the language group (everything we had) gives 0.4257 → 0.4209 | An effect of a few tenths of a point. A random set of just 256 features already costs 0.7–0.8 points, so the group's half point is not special |
-| Does the language tag of a feature ("this feature is a Yoruba feature") predict that the feature matters for function? | No: association status relates to functional change at AUROC 0.51 (0.5 = no relation) | Using the tag as a stand-in for "this feature still works" | That features keep their function (we show the opposite is hard to claim too) |
-| Is the INT4 "repair" (turning the group up a little) explained by the group shrinking? (Study G extension D) | Correlation −0.17, p = 0.80 | That simple compensation story | Any other story |
+| Does the language tag of a feature ("this feature is a Yoruba feature") predict that the feature matters for function? | No: association status relates to functional change at AUROC 0.51 (0.5 = no relation) | Little predictive separation from this tag in the measured population; not a universal impossibility result | That features keep their function (we show the opposite is hard to claim too) |
+| Is the INT4 "repair" (turning the group up a little) explained by the group shrinking? (Study G extension D) | Correlation −0.17, p = 0.80 | No evidence for the proposed shrinkage–optimal-gain relationship in this analysis; p = 0.80 alone does not disprove the mechanism | Other mechanisms, or a relationship this analysis cannot resolve |
 | Does a second model show the same INT4 blow-up? (Llama) | The ratio is 0.86, not 1.54 as on Gemma | That the INT4 blow-up is a general property of all models and dictionaries | That it is real on Gemma: it still is |
 
 So the nulls are results. Together they say: **the first story we set out to test (quantization destroys language-specific features, especially for low-resource languages) is not supported, and the part of it that looked real is explained by how strongly features fire.**
 
-### Why can we not decide causality at all?
+### What causal claims do the experiments establish?
 
-We can decide **a small piece**, and we should say which one.
+**We can identify effects of specified interventions in this model.** Repeating the
+study with every SAE, layer, model or quantizer is not a prerequisite for that.
+Those repetitions test generalization. Different claims require different evidence:
 
-- **Settled, in full precision:** these features *do* matter for their language. We set the 64 most language-specific features to zero and the model's error on that language went up in **27 of 27 languages**, much more than when we removed matched ordinary features (median extra error 0.26, average 0.70, "nats per token"; see section 4.4). That is an intervention, so it is a causal statement, in full precision, at layer 12, for next-word prediction.
-- **Not settled: "does quantization hurt a language *because of* these features?"** To say yes, we would need to change the features *only*, leave the rest of the model alone, and see the damage disappear. We tried the closest thing (put the full-precision language group back into the quantized model, "patching"): it repairs **at most about 3 %** of the damage (2.6 % at INT4). So the damage is mostly somewhere else. That is evidence *against* "because of these features", but because the group is small and the rest is tangled, it is not a proof either way.
-- **Not settled: "do low-resource languages suffer more *because* they are low-resource?"** Resource level moves together with script, tokenizer, training data and the model's own skill. We cannot change one without the others, and we have only nine languages per group.
-- **Not settled: "is the INT4 change *specific* to language features?"** At INT4 the effect of a feature changes a lot (median cosine with full precision 0.84 in the single-feature study, 0.77 in the transfer study). But if we remove a *different* feature's direction instead, we see about the same change (0.003 to 0.014 less similar than the real one). So the change is mostly how the broken model reacts to *any* poke, not something about language.
-- **Not settled: "context or weights?"** In the transfer study we split the INT4 damage into (a) the activations reaching the edit changed, (b) the weights above the edit changed, (c) both together beyond the sum. Which part is biggest depends on what is measured and on the language (section 4.10). The "both together" part is never small at INT4, so one split alone would mislead.
+- **Feature-group edits:** compare the same input with and without the defined
+  K64 removal while keeping the model, arithmetic and other settings fixed. The
+  increase in next-token loss is a causal effect of that edit. The excess over
+  the specified control edit is a difference between two intervention effects.
+  It does not establish that these are the only features the model uses for a
+  language, or that every part of the effect is specific to language.
+- **Weight quantization:** applying RTN to the selected weights and rerunning the
+  same inputs identifies the effect of that weight transformation under the
+  specified execution settings. Changing many weights at once does not prevent
+  estimating the total effect of that controlled transformation.
+- **Prefix/suffix hybrids:** the crossed experiment explicitly holds one part
+  fixed while changing the other. Its contrasts identify effects in those
+  engineered model states, including interactions, for the stated edit and
+  endpoint. We should not say that holding the other parts fixed is impossible.
+- **Feature mediation:** whether the total quantization effect occurs *through*
+  a natural language mechanism is a stronger question. Our FP-donor group patch
+  recovers 2.6% of the INT4 loss gap under that patching operation. This measures
+  the repair achieved by the patch. It is not an upper bound on the group's
+  causal contribution, because intervention definition and interactions matter.
+- **Language resource tier:** this is an observational language characteristic,
+  not an experimentally manipulated training-resource treatment. Its association
+  with outcomes does not identify the effect of changing training resources.
+- **Null interventions:** a small or non-significant average change concerns the
+  tested edit, metric and inputs. Only sufficiently precise intervals or a
+  suitable equivalence test support a bound; it does not prove that the language
+  or computation has no causal mechanism.
 
-Plain version: **we can poke the model and see that it reacts; we cannot hold everything else still while quantization is going on, so we cannot say *which* change causes *which* damage.**
+One model and one SAE restrict the scope of these statements. They do not erase
+the causal contrasts. A causal effect, an explanation of the model's natural
+computation, and generalization to other systems are separate achievements.
 
 ### What did the second-model check say?
 
@@ -76,7 +108,7 @@ The only confirmatory downstream test was **Belebele**, a multiple-choice readin
 
 ### Why is it so hard to be conclusive here?
 
-Because **we are asking a cause-and-effect question about a change that touches everything at once, while looking through one small window**. Add a model that gets noisy at the exact precision where the effect begins (INT5 → INT4), one model, one layer, one dictionary, one rounding method, and only 27 languages that cannot be varied one at a time. The honest result is: *a large, clean, specific "language features break first" story is not there; there are several smaller, well-measured facts instead* (section 5).
+Because **we are asking a cause-and-effect question about a change that touches everything at once, while looking through one small window**. Add a model that gets noisy at the exact precision where the effect begins (INT5 → INT4), one model, one layer, one dictionary, one rounding method, and only 27 languages that cannot be varied one at a time. The main selective-destruction story is unsupported, but the controlled intervention effects remain informative (section 5). One model/layer/SAE limits generalization rather than invalidating those effects.
 
 ---
 
@@ -117,7 +149,7 @@ Because **we are asking a cause-and-effect question about a change that touches 
 | 15 – 16 Oct | Audit of our code and of the earlier paper's code (Duan et al.). Our first pipeline disagreed with theirs, so we used their own code | **Their published table is reproduced with their code** (job 23472). Our first pipeline was retired and its outputs are not used |
 | 16 – 19 Oct | Phase 1: 27 languages on the university cluster ("Ada"), the three pre-set tests, many follow-ups, a clean-room recomputation | **No pre-set test rejects.** The result depends on whether a start token is added to the text (section 4.1). Recomputation: 89 of 89 files identical |
 | 21 Oct | **Association retention:** how many "language-tagged" features keep the tag | 98 % at INT8, 71 % at INT4; mostly features that were borderline to begin with |
-| 21 – 23 Oct | **Functional study F1–F5:** do the features matter, does it survive quantization, where is the damage, does the tag predict it, is a feature's effect the same after compression? | Removing a group hurts in 27 of 27 languages; the dependence is kept to INT5 and doubles at INT4; the damage mostly lies elsewhere; changes at INT4 are generic |
+| 21 – 23 Oct | **Functional study F1–F5:** do the features matter, does it survive quantization, where is the damage, does the tag predict it, is a feature's effect the same after compression? | Removing a group hurts in 27 of 27 languages; the dependence is kept to INT5 and increases at INT4; the group patch repairs little of the loss gap; much INT4 drift is shared with controls |
 | 22 – 23 Oct | **Belebele** (downstream, confirmatory) | **Null** |
 | 24 – 26 Oct | **Study G:** turn group features down and up, per language, across the precision ladder | Graded, specific and consistent; a clear step at INT4; a tiny "repair" at INT4 |
 | 26 Oct | **Llama-3.2-1B check** (second model) | "Not consistent" |
@@ -186,7 +218,7 @@ Retained: **98.1 % (INT8), 97.5 % (INT7), 94.7 % (INT6), 89.1 % (INT5), 70.8 % (
 
 ### 4.5 Where does the quantization damage sit? (F3, patching)
 
-(`results/rescue/`; D-058.) We took the INT4 model and put back the full-precision activations of the group. Result: it repairs **about 3 % at most** of the extra loss (2.6 % at INT4, nothing at INT5 and INT6). At most 30–40 % of the damage sits in the layer-12 residual at all. **So the language groups hold little of what quantization breaks**; it is in the rest of the model. Limit: one layer. Per-language table: appendix A5.
+(`results/rescue/`; D-058.) We took the INT4 model and put back the full-precision activations of the group. This patch recovers **2.6%** of the extra loss at INT4; the whole-residual patch recovers about 39%. These are repair effects of different interventions, not additive shares of the damage or upper bounds on causal responsibility. The small group rescue shows that this patch is insufficient to repair most of the loss gap. It does not prove that the group mediates at most 2.6% of quantization harm. Limit: one layer and the specified donor/patch construction. Per-language table: appendix A5.
 
 ### 4.6 Does the tag predict function? Is a feature's effect the same after compression? (F4, F5)
 
@@ -273,7 +305,7 @@ All post hoc: protocol files were written before the code and each recorded what
 |---|---|
 | The 64 most language-selective features matter for their language's next-word loss in full precision (27 of 27 languages, far above matched controls) | solid for this model, layer, dictionary; exploratory sentences |
 | That dependence is kept through INT5 and larger at INT4 | solid; INT4 inflation not a "stronger dependence" |
-| Quantization damage is **not** mostly in those groups (patching repairs at most ~3 %) | solid for layer 12 |
+| The specified FP-donor group patch repairs 2.6% of the INT4 loss gap; it is insufficient to repair most of that gap | measured repair effect in this setup; not a bound on mediation |
 | Language-selective features do not survive rounding clearly worse than matched ones once activation size is accounted for | solid for the main regime; the pre-set tests are null |
 | The group matters for reading comprehension | **not found** (and at most ~0.5 point could hide) |
 | A feature's effect is nearly unchanged through INT6 and rotated at INT4, and most of the change is shared with other directions | solid for the 404-feature sample; weaker per feature |
@@ -282,7 +314,7 @@ All post hoc: protocol files were written before the code and each recorded what
 
 **We cannot say:**
 - That quantization hurts low-resource languages *because* their language features break.
-- That any of this holds on another model, layer, dictionary or rounding method (the Llama check disagreed in parts; Gemma-2-9B was not run here).
+- That the results automatically generalize to other models, layers, dictionaries or quantizers. This scope limit does not invalidate the causal effects measured here (the Llama check differed in parts; no Gemma-2-9B results are present).
 - That the INT4 changes are about language: they look generic.
 - That the tiny INT4 repair (0.001 nats) is useful or has a known mechanism.
 - Anything about deployed integer kernels or activation quantization.
