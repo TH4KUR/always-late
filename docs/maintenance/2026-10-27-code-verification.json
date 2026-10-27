@@ -1,0 +1,29 @@
+{
+  "baseline_commit": "e17f926",
+  "transfer_tests_before": 476,
+  "transfer_tests_after": 484,
+  "stdlib_tests": 390,
+  "new_contract_tests": 8,
+  "real_data_outputs_byte_identical": 13,
+  "bootstrap_replicates": 2000,
+  "output_sha256": {
+    "native_fixed/native_fixed.json": "4fb3ee84f36e73d58586adb1318a3b381360a0c6d558f6e9d216f61077cf9367",
+    "native_fixed/native_fixed_summary.csv": "57386ccd9dbb930735c58a9103969ed3867ea37fa13ebf6d92e5c38d4817ba3f",
+    "native_fixed/native_fixed_per_language.csv": "274c0f21b082c2df4e197817deadf8e469cbc6fc712e5bed2c59e5f78dd52f57",
+    "support/support.json": "b582ef72a6aba08db4078e87d08b52f3d3a0a5553b7227cfc070f1d6be30b952",
+    "support/support_contrast.csv": "f50a34561c3c04813f8154d77698336bd32dd22cceb35e9129702742f4869794",
+    "support/support_coverage.csv": "b13ea415b1f80d47bb03d5edba36bfc9dd63bc00b83c206af8b0668af3733b1f",
+    "gradients/gradient_vs_nll.json": "efaab2afa5a3de6527f80e4d7e9def058f06a511a8d261c805404a6be8de8d8d",
+    "gradients/gradient_vs_nll.csv": "195bd3604387bfb119c5d22aa2dc4870f6cb743569b6786fe8a3195d58968932",
+    "recovery/cross_corpus_locked.json": "2ca9b2a3b6f52312ac96b9b99f5a0d5e2611edb94177d56f2c44c4e7c044fa1f",
+    "recovery/cross_corpus_locked.csv": "0e9eea44e408b910151322e035ec821e5dd7d828633660034b459b5805d4e6c8",
+    "recovery/verification.json": "e236f17925b45980d0c4598f924fe49f47fbe4b5cf5d48f65e53e46f400cc3c8",
+    "cross_corpus/cross_corpus.json": "7aae88b02bffd31a1635623f20081ce4debad2c80aeb5bbff617644024295365",
+    "cross_corpus/cross_corpus.csv": "12140dd511bba7d406e32b760800bd1f4b5b732358738cb2451a62339d83373e"
+  },
+  "legacy_cli_help_unchanged": 5,
+  "original_scripts_retained": true,
+  "frozen_engine_changed": false,
+  "new_dependencies": false,
+  "experiments_submitted": false
+}
