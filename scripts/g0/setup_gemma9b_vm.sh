@@ -50,7 +50,7 @@ pip install \
 
 echo "Installed versions:"
 python -c "import torch; print(f'  torch {torch.__version__}, CUDA available: {torch.cuda.is_available()}')"
-python -c "import transformer_lens; print(f'  transformer-lens {transformer_lens.__version__}')"
+python -c "from importlib.metadata import version; print(f'  transformer-lens {version(\"transformer-lens\")}')"
 python -c "import sae_lens; print(f'  sae-lens {sae_lens.__version__}')"
 python -c "import transformers; print(f'  transformers {transformers.__version__}')"
 
