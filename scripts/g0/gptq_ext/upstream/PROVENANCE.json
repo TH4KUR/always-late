@@ -1,0 +1,21 @@
+{
+ "repository": "https://github.com/IST-DASLab/gptq",
+ "commit": "2d65066eeb06a5c9ff5184d8cebdf33662c67faf",
+ "license": "Apache-2.0",
+ "fetched": "2026-10-27 (curl from raw.githubusercontent.com on the pinned commit; read in full before use; hashes equal the audit's evidence.json)",
+ "files": {
+  "gptq.py": {
+   "sha256": "bb47468cc2c788577562751de414d76eeb9968ff1c6098e21153557ef3d154c7",
+   "source": "https://raw.githubusercontent.com/IST-DASLab/gptq/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/gptq.py"
+  },
+  "quant.py": {
+   "sha256": "211528568b962b868d20fc58b55200b615f41ebd9f36b4d2d7e4a196a095ea5a",
+   "source": "https://raw.githubusercontent.com/IST-DASLab/gptq/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/quant.py"
+  },
+  "LICENSE": {
+   "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "source": "https://raw.githubusercontent.com/IST-DASLab/gptq/2d65066eeb06a5c9ff5184d8cebdf33662c67faf/LICENSE"
+  }
+ },
+ "used": "classes/functions GPTQ, Quantizer, quantize, extracted by AST in scripts/g0/gptq_ext/upstream/__init__.py; files are never edited; the other upstream files (llama.py, opt.py, datautils.py, the CUDA kernels) are not vendored"
+}

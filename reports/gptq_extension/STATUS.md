@@ -8,14 +8,14 @@ Started 2026-10-27 17:34 IST at the user's request ("run tests again with GPTQ q
 
 (Rewritten by every firing; the first line says which task of the plan comes next and what "done" looks like.)
 
-**Task 1 of the plan:** vendor the authors' pinned GPTQ core into `scripts/g0/gptq_ext/upstream/` (hash-checked) with the two tests of the plan; done = tests pass, mutation check shown, commit pushed.
+**Task 2 of the plan:** local CPU environment `~/.venvs/anlp-tl` with the Ada versions of torch, transformer_lens and transformers (no model weights), then `scripts/g0/gptq_ext/canonical.py` with the tests of the plan (tiny random-weight Gemma-2 `HookedTransformer`); done = tests pass, mutation check shown, commit pushed.
 
 ## Task table (the plan's task numbers)
 
 | task | what | state |
 |---|---|---|
 | 0 | governance: D-101, Q30, plan, ledger, cron prompt, cron, handoff 048 | done 2026-10-27 |
-| 1 | vendor the pinned GPTQ core + tests | not started |
+| 1 | vendor the pinned GPTQ core + tests | **done 2026-10-27 17:38** (10 tests, 8/8 mutants killed) |
 | 2 | local CPU TransformerLens environment + canonical adapter | not started |
 | 3 | grids and matched RTN | not started |
 | 4 | calibration pool (Wikipedia, 27 languages) and its freeze | not started |
@@ -39,3 +39,4 @@ Started 2026-10-27 17:34 IST at the user's request ("run tests again with GPTQ q
 
 - 2026-10-27 17:34 IST (Claude, the user's request): **Task 0 done.** Read the audit and the code; wrote the plan and D-101 and Q30; created this ledger and the cron prompt. Facts found: the five entry points call the injected `env["quantize_rtn_per_output_channel_tl"](model, bits=...)`, so one shim covers them (`phase1_run.py:312`, `phase1_func_run.py:484,619`, `phase1_func_f5_run.py:386`, `phase1_transfer_run.py:477`, `phase1_transfer_precision_main.py:175`); the local environment has torch but no TransformerLens (Task 2 adds a CPU environment); Ada: queue empty, `/home2/karma` 50 GB quota with 2.7 GB free, compute nodes have node-local `/scratch` and no `/share1`, the login node has internet and the `datasets` library; the six-language Wikipedia panel (`wikimedia/wikipedia` 20231101, revision b04c8d1c) is the text source to reuse for calibration.
 - 2026-10-27 17:35 IST (Claude): **CRON CREATED**: three recurring entries `bf1ae581` (`1 0-22/2 * * *`), `ad8593e3` (`41 0-22/2 * * *`) and `8db9afdb` (`21 1-23/2 * * *`), pointer prompt of `cron_prompt.md`; printed next runs 18:31, 19:11 and 19:51, so the firings are 18:31, 19:11, 19:51, 20:31, ... exactly 40 minutes apart (the scheduler adds a fixed delay of 30 minutes to each listed time; 3 candidates created and deleted: `5e0e859d`, `39143488`, `0197a0fc`). They expire after 7 days (about 2026-11-03) and live only in this session. Plan, D-101, Q30, ledger, cron prompt and handoff 048 are committed and pushed (`1bb362c`).
+- 2026-10-27 17:38 IST (Claude): **TASK 1 DONE.** Vendored the pinned authors' core (`scripts/g0/gptq_ext/upstream/`, hashes equal the audit's), read in full before use; loader `upstream.load()` verifies the sha256 and extracts the classes by AST (dummy `transformers.Conv1D`, no-op synchronise without CUDA, TF32 off). 10 tests (`scripts/g0/tests_torch/test_gptq_ext_upstream.py`), mutation battery 8 of 8 applicable killed. Findings from the code (plan Update of the same time): upstream zeroes dead columns, has no damping retry, and weights the Hessian per call. Next: Task 2.
