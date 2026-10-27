@@ -1,62 +1,51 @@
-# Does Compression Forget Language? Language-selective SAE features under weight quantization
+# Always Late: SAE feature survival and intervention transfer
 
-ANLP course project (IIIT Hyderabad, 2026). Gemma-2-2B, the Gemma Scope 16k JumpReLU SAE at layer 12, 27 FLORES-200 languages, round-to-nearest weight quantization from INT16 to INT4, built on Duan (2026)'s own code (vendored in `third_party/duan2026/`). Full original README (before the 2026-10-26 cleanup): [`reports/archive/root_pages_2026-10-26/README.md`](reports/archive/root_pages_2026-10-26/README.md).
+ANLP course project, 2026. The main study uses Gemma-2-2B, its layer-12
+Gemma Scope 16k SAE, 27 FLORES languages and simulated weight-only RTN.
+The external panel uses Wikipedia passages in six languages.
 
-## New here? Start in this order
+**Start with [current status and next action](reports/CURRENT_STATUS.md).**
+That is the one page to update when an experiment, analysis or deliverable changes.
+The [research direction](RESEARCH_DIRECTION.md) explains the publication question
+and its limits. A completed experiment does not establish a publishable contribution.
 
-1. **[`HANDOFF.md`](HANDOFF.md)**: how to take over (the work loop, the rules, the environment, the do-not list).
-2. **[`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md), block `NEXT STEP`**: exactly what to do next. The `Log` below it says what was done last.
-3. **[`reports/INDEX.md`](reports/INDEX.md)**: the full map of every document, and the trail of directions explored.
+## Find the right document
 
-## Where to look for what
-
-| you want | look in |
+| Need | Entry point |
 |---|---|
-| the results on one page, with what each claim may and may not say | [`reports/functional_validation/RESULTS_SUMMARY.md`](reports/functional_validation/RESULTS_SUMMARY.md) |
-| Study G (graded gain, the user's major study, finished 2026-10-25) | [`reports/functional_validation/gain_study/README.md`](reports/functional_validation/gain_study/README.md) |
-| what is running, what is next, the dated log of the current work | [`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md) |
-| the newest handoffs | [`reports/handoffs/`](reports/handoffs/) (highest number; 040 is the Gemma-2-9B handoff for the other cluster) |
-| questions waiting for the user, with defaults | [`DECISIONS_FOR_REVIEW.md`](DECISIONS_FOR_REVIEW.md) |
-| every decision and anomaly (append-only, D-/A-/V- ids) | [`reports/decisions_and_anomalies.md`](reports/decisions_and_anomalies.md) |
-| designs and plans (written before the data) | [`docs/superpowers/specs/`](docs/superpowers/specs/), [`docs/superpowers/plans/`](docs/superpowers/plans/) |
-| figures for the paper | [`reports/functional_validation/FIGURE_INDEX.md`](reports/functional_validation/FIGURE_INDEX.md) |
-| re-running every analysis | [`reports/functional_validation/REPRODUCE.md`](reports/functional_validation/REPRODUCE.md) |
-| literature and novelty checks | [`reports/research_sources.md`](reports/research_sources.md), [`reports/functional_validation/prior_art.md`](reports/functional_validation/prior_art.md) |
-| the 40-minute cron job's instructions | [`reports/functional_validation/cron_prompt.md`](reports/functional_validation/cron_prompt.md) |
-| old text moved out of living pages (verbatim) | [`reports/archive/`](reports/archive/) |
+| Current execution state, results and next action | [Current status](reports/CURRENT_STATUS.md) |
+| Take over the work, operational rules and environment | [Handoff/runbook](HANDOFF.md) |
+| Code ownership, module structure and tests | [Codebase map](docs/CODEBASE.md) |
+| Complete document/history map | [Reports index](reports/INDEX.md) |
+| Earlier studies and claim qualifications | [Functional results](reports/functional_validation/RESULTS_SUMMARY.md), [Study G](reports/functional_validation/gain_study/README.md) |
+| Main and external transfer results | [Main](reports/intervention_transfer/results/main/README.md), [external](reports/intervention_transfer/results/external/README.md) |
+| Locked prediction, gradient, support and native/fixed analyses | [Post hoc recovery results](reports/intervention_transfer/results/recovery/README.md) |
+| Novelty search and source history | [26 October assessment](reports/novelty_assessment_2026-10-26.md), [source register](reports/research_sources.md) |
+| Decisions and unanswered questions | [Decisions/anomalies](reports/decisions_and_anomalies.md), [review questions](DECISIONS_FOR_REVIEW.md) |
+| Report, presentation and submission | [Paper/deliverables](paper/README.md), [course report](paper/course-report/README.md) |
+| Reproduction and figure inventory | [Reproduction](reports/functional_validation/REPRODUCE.md), [figures](reports/functional_validation/FIGURE_INDEX.md) |
+| Original plans and frozen protocols | [Designs](docs/superpowers/specs/), [plans](docs/superpowers/plans/) |
+| Previous page text and experiment history | [Archive](reports/archive/), [progress log](reports/progress_log.md) |
 
-## Studies and their state (2026-10-26)
+## Repository structure
 
-| study | state | entry point |
-|---|---|---|
-| Replication of Duan (2026) on Ada | done; reproduced within 0.15 pp | [`reports/duan_codebase_audit.md`](reports/duan_codebase_audit.md) |
-| Phase 1: selective vs control survival | done; pre-registered tests null after Holm | [`reports/phase1_summary.md`](reports/phase1_summary.md) |
-| D-035: language association retention, 27 languages | done | [`reports/association_retention/README.md`](reports/association_retention/README.md) |
-| Functional validation F1 to F5, Belebele (confirmatory) | done | [`RESULTS_SUMMARY.md`](reports/functional_validation/RESULTS_SUMMARY.md) |
-| Study G: graded gain, extensions B, C, D | done | [`gain_study/README.md`](reports/functional_validation/gain_study/README.md) |
-| Llama-3.2-1B consistency check (D-087) | last job running; now **exploratory only** (D-089) | `STATUS.md` |
-| **Gemma-2-9B confirmation** (replaces Llama, D-089) | handed to another team on a separate cluster, branch `gemma9b-confirmation` | [handoff 040](reports/handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) |
-| **Intervention-transfer study** (Codex's design, D-088) | queued in the cron after the Llama write-up | [verification](reports/intervention_transfer/verification_2026-10-26.md), [`RESEARCH_DIRECTION.md`](RESEARCH_DIRECTION.md) |
-| Course report | draft by another session | `paper/course-report/` |
+- `scripts/g0/`: historical experiment/analysis entry points and tests.
+  Completed transfer follow-ups live in [their package](scripts/g0/transfer_followup/README.md);
+  the old script commands remain valid.
+- `reports/`: generated evidence, source registers, freezes, decisions and history.
+- `docs/`: code ownership, maintenance records and original research designs/plans.
+- `paper/`: ACL course report and viva presentation; the older paper draft is retained.
+- `third_party/duan2026/`: vendored reference implementation; preserve pristine code.
+- `data/`: local data where available; large artifacts remain outside git.
 
-## Headline results (exploratory unless marked; one model, one layer, one SAE)
+## Data and tracking
 
-- Zeroing a language's 64 most selective features harms that language's next-token loss beyond activity-matched controls in 27 of 27 languages (macro 0.704 nats per token). The dependence is flat through INT5 and larger at INT4 (macro retention 2.14).
-- **Confirmatory:** the dependence does not show on Belebele reading comprehension.
-- The language groups carry at most about 3 % of the quantization damage.
-- A single feature's effect on the logits stays within rounding noise through INT8. The loss of similarity at INT4 is generic: arbitrary directions drift as much.
-- Study G: harm is graded in the down-scaling ratio in 27 of 27 languages; turning features up gives only a very small repair at INT4, and only near ratio 1.1 (extension C, D-082). Inverse shrinkage does not predict the best gain.
+The main dataset is FLORES-200 (dev for feature selection, devtest for evaluation);
+Belebele supplies the comprehension task. Model access is gated. Large artifacts are
+in the private [Hugging Face dataset](https://huggingface.co/datasets/karma-skz/always-late-artifacts)
+and local/cluster run directories. Tracking uses wandb entity `karma-skz-`, project
+`anlp-project`; see [artifact inventory](reports/artifacts.md) and
+[tracking schema](reports/wandb_schema_v2.md). No credentials belong in documentation.
 
-Details and limits: [`RESULTS_SUMMARY.md`](reports/functional_validation/RESULTS_SUMMARY.md).
-
-## External models, data and tracking
-
-- **Base model:** [`google/gemma-2-2b`](https://huggingface.co/google/gemma-2-2b) (gated).
-- **SAE:** [`google/gemma-scope-2b-pt-res`](https://huggingface.co/google/gemma-scope-2b-pt-res) `layer_12/width_16k/canonical`. Second model (D-089): `google/gemma-2-9b` with `gemma-scope-9b-pt-res-canonical` `layer_20/width_16k/canonical`.
-- **Data:** FLORES-200, the original archive `https://dl.fbaipublicfiles.com/nllb/flores200_dataset.tar.gz` (dev for tagging, devtest for evaluation). Belebele for the task test.
-- **Reference implementation:** Duan (2026), arXiv:2606.03002.
-- **Tracking and artifacts:** wandb project `anlp-project` (entity `karma-skz-`). Large artifacts are in the private Hugging Face dataset [`karma-skz/always-late-artifacts`](https://huggingface.co/datasets/karma-skz/always-late-artifacts); index in [`reports/artifacts.md`](reports/artifacts.md).
-
-## Repository layout
-
-`scripts/g0/` all code (runners, analyses, `tests/` stdlib, `tests_torch/` torch) · `third_party/duan2026/` their code, never edited by hand · `reports/` everything written (see [`reports/INDEX.md`](reports/INDEX.md)) · `docs/superpowers/` designs and plans · `paper/` the team's paper (agents do not edit it) · `anlp_revised.txt` the original proposal · `project_guidelines.txt` the course rules.
+The [original proposal](anlp_revised.txt) and [course guidelines](project_guidelines.txt)
+remain available. Prior README text is [preserved verbatim](reports/archive/modular_cleanup_2026-10-27/README.md).

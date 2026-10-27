@@ -33,9 +33,9 @@ Current execution status lives on one page; other entry points link to it.
 - [x] Move implementations; consolidate identical CSV/hash code without altering ordering/errors.
 - [x] Run the same suite, legacy CLI checks, and byte-compare all five real-data analyses.
 - [x] Add a code map and module README; verify scripts remain included by existing deployment.
-- [ ] Integrate only the verified code changes into the active checkout, preserving concurrent work.
-- [ ] Archive stale living-doc text verbatim, refresh current pointers/status and log the cleanup.
-- [ ] Check links, archive integrity, protected-file hashes and final diff.
+- [x] Integrate only the verified code changes into the active checkout, preserving concurrent work.
+- [x] Archive stale living-doc text verbatim, refresh current pointers/status and log the cleanup.
+- [x] Check links, archive integrity, protected-file hashes and final diff.
 
 ## Proof and review focus
 

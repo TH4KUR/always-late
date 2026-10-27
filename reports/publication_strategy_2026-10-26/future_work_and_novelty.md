@@ -1,4 +1,7 @@
 # Verified future-work anchors and novelty boundaries
+
+> **Historical assessment / design-stage record.** The [26 October post-D-094 novelty assessment](../novelty_assessment_2026-10-26.md) supersedes novelty verdicts and forward priorities below. The broad claims have direct precedents; an exact protocol match was not found, but novelty is not verified. Keep this source/search history; use current results and the recovery plan for decisions.
+
 Date: 26 October 2026. Targeted primary-source review, not an exhaustive systematic review.
 This register supports the main plan and two conditional branches. A future-work statement
 establishes motivation, not novelty or a likelihood of a positive result.

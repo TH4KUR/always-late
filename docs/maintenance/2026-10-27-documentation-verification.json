@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-27",
+  "markdown_files_checked": 253,
+  "broken_links": 0,
+  "archive_snapshots_verified": 12,
+  "protected_files_unchanged": 176,
+  "ledger_tails_unchanged": true,
+  "original_freeze_inputs_match": true,
+  "code_commit": "c72a090",
+  "deleted_files": [],
+  "deployment_archive_smoke": "all five legacy CLIs passed from committed scripts/g0 archive",
+  "whitespace_check": "git -c core.whitespace=-blank-at-eof diff --cached --check",
+  "whitespace_note": "Historical plans, notes and verbatim snapshots retain their original blank EOF lines; other whitespace checks remain enabled."
+}

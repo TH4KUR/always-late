@@ -2,35 +2,36 @@
 
 Rewritten 2026-10-26 (documentation cleanup requested by the user). The previous text of this file is kept verbatim in [`reports/archive/root_pages_2026-10-26/HANDOFF.md`](reports/archive/root_pages_2026-10-26/HANDOFF.md), including the baseline runbook and the Phase 1 build notes. Older sections are in [`reports/archive/handoff_md_stale_sections_2026-10-23.md`](reports/archive/handoff_md_stale_sections_2026-10-23.md).
 
-## 1. Start here (30 minutes)
+## 1. Start here
 
-1. Read [`README.md`](README.md): what the project is and which studies exist.
-2. Read [`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md):
-   - `NEXT STEP` is your task, in order;
-   - `State` is the repository and test state;
-   - the last entries of `Log` tell you what the previous agent did.
-3. Read the newest handoff in [`reports/handoffs/`](reports/handoffs/) (highest number). On 2026-10-26: [044](reports/handoffs/044-2026-10-26-main-results-analysed-report-rev3-deck-external-running.md) for the main line now (main results analysed), after [043](reports/handoffs/043-2026-10-26-intervention-transfer-twelve-jobs-running-analysis-ready.md) (the intervention-transfer study), [042](reports/handoffs/042-2026-10-26-wandb-uploaded-course-report-revision-2.md) (after [041](reports/handoffs/041-2026-10-26-llama-check-done-not-consistent-intervention-transfer-next.md), [039](reports/handoffs/039-2026-10-26-task17-prompt-check-done-all-queues-empty.md)), and [040](reports/handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) for the Gemma-2-9B runs that another team does on another cluster.
-4. Read [`DECISIONS_FOR_REVIEW.md`](DECISIONS_FOR_REVIEW.md) for open questions (`STATUS: open`). Apply any `ANSWER:` that is not yet applied.
-5. Check the cluster: `ssh -o HostKeyAlias=ada-gw1 karma@10.4.24.30 'squeue -u karma'`. Plain `ssh karma@ada-gw1` fails while Cloudflare WARP is on. Never accept a changed host key.
+1. Read [current status](reports/CURRENT_STATUS.md): current evidence and the next action.
+2. Read the newest [numbered handoff](reports/handoffs/) and its latest dated update.
+   Handoff 045 covers external results, recovery and precision-audit implementation;
+   handoff 046 records the modular cleanup and preservation checks.
+3. Read [research direction](RESEARCH_DIRECTION.md) for claim limits and the
+   [codebase map](docs/CODEBASE.md) before changing implementation.
+4. Apply any unanswered/unapplied user choices from [review questions](DECISIONS_FOR_REVIEW.md).
+5. Check the queue once when execution work requires it, using the SSH runbook below.
 
 ## 2. The work loop
 
 Work is driven by a 40-minute recurring job. Its full instruction set is the fenced block in [`reports/functional_validation/cron_prompt.md`](reports/functional_validation/cron_prompt.md), which also has the recipe to recreate the entries; they expire after 7 days and die with the Claude session. Without the cron, do the same by hand. Each step:
 
-1. orient (STATUS, git, queue);
+1. orient (CURRENT_STATUS, newest handoff, git, queue);
 2. take the first item of the priority list;
 3. tests first, then code;
 4. validate each job before analysing it;
 5. write the result with its limits;
-6. update `NEXT STEP` and append to `Log`;
+6. update `reports/CURRENT_STATUS.md` and append to the dated log;
 7. commit explicit paths and push;
 8. after a finished task, write a handoff (next free number, [`TEMPLATE.md`](reports/handoffs/TEMPLATE.md)).
 
-**Current order (2026-10-26):**
-1. ~~Finish the Llama-3.2-1B check, now exploratory only (D-089).~~ **Done 2026-10-26 08:38 (D-090): pre-registered verdict 'not consistent'** ([handoff 041](reports/handoffs/041-2026-10-26-llama-check-done-not-consistent-intervention-transfer-next.md)).
-2. Start the intervention-transfer study (D-088): plan `docs/superpowers/plans/2026-10-26-intervention-transfer-main-and-contingencies.md`, plus the corrections in [`reports/intervention_transfer/verification_2026-10-26.md`](reports/intervention_transfer/verification_2026-10-26.md).
-
-Gemma-2-9B is NOT run here (handoff 040, branch `gemma9b-confirmation`).
+**Execution priorities:** maintained only in [current status](reports/CURRENT_STATUS.md).
+Update that page after a completed step, even when this runbook or an older status
+page has uncommitted documentation changes. Keep detailed evidence in dated handoffs,
+decisions and the experiment ledger. Do not resume an old task from a historical banner.
+Gemma-2-9B remains outside this routine (D-092).
+Previous text is [preserved verbatim](reports/archive/modular_cleanup_2026-10-27/README.md).
 
 ## 3. Rules that matter (the user's, durable)
 

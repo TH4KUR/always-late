@@ -1,5 +1,9 @@
-# Team plan (superseded)
+# Plan entry point
 
-**Superseded; kept as a pointer (documentation cleanup of 2026-10-26).** The full previous text is preserved verbatim in [`reports/archive/root_pages_2026-10-26/PLAN.md`](reports/archive/root_pages_2026-10-26/PLAN.md).
+Current state and next action: [reports/CURRENT_STATUS.md](reports/CURRENT_STATUS.md).
+Research interpretation: [RESEARCH_DIRECTION.md](RESEARCH_DIRECTION.md).
+Implementation ownership: [docs/CODEBASE.md](docs/CODEBASE.md).
+Full history: [reports/INDEX.md](reports/INDEX.md), decisions, handoffs and dated logs.
 
-Current plans are the dated files in [`docs/superpowers/plans/`](docs/superpowers/plans/). What to do next is the `NEXT STEP` block of [`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md). The original course plan and its scope are in the archived text and in `project_guidelines.txt` and `anlp_revised.txt`.
+Original plans and frozen designs remain in `docs/superpowers/`. This entry point does
+not replace them. Previous page text is [preserved verbatim](reports/archive/modular_cleanup_2026-10-27/README.md).

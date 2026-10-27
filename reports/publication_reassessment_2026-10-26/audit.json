@@ -1,0 +1,142 @@
+{
+  "status": "post hoc descriptive audit; no new uncertainty intervals",
+  "states": {
+    "INT16": {
+      "eligible_heldout_items": 1066,
+      "unseen_document_items": 136,
+      "unseen_documents": 65,
+      "calibration_selected_baseline": "A+G",
+      "unseen_document_diagnostic_relative_improvement": 0.29431902515340025,
+      "mae": {
+        "A": {
+          "original_heldout_mae": 0.016377893622384645,
+          "unseen_document_subset_mae": 0.018054131622983208
+        },
+        "A+G": {
+          "original_heldout_mae": 0.015911474702249774,
+          "unseen_document_subset_mae": 0.016925547557193305
+        },
+        "A+B": {
+          "original_heldout_mae": 0.012186927056591402,
+          "unseen_document_subset_mae": 0.011944036899972655
+        },
+        "A+B+G": {
+          "original_heldout_mae": 0.01228034887692859,
+          "unseen_document_subset_mae": 0.012122573714972822
+        },
+        "calibration_median": {
+          "original_heldout_mae": 0.024404891848659897,
+          "unseen_document_subset_mae": 0.02805333060370712
+        }
+      },
+      "joint_real_swapped_eligible_items": 986,
+      "joint_real_all_controls_eligible_items": 323,
+      "joint_swapped_median_normalized_error_gap": -0.03514573845222367,
+      "joint_swapped_median_fp_effect_norm_ratio": 2.0241282926462087
+    },
+    "INT6": {
+      "eligible_heldout_items": 1066,
+      "unseen_document_items": 136,
+      "unseen_documents": 65,
+      "calibration_selected_baseline": "A",
+      "unseen_document_diagnostic_relative_improvement": 0.004583558028580681,
+      "mae": {
+        "A": {
+          "original_heldout_mae": 0.02899311542691989,
+          "unseen_document_subset_mae": 0.0251833846305185
+        },
+        "A+G": {
+          "original_heldout_mae": 0.02897370545607196,
+          "unseen_document_subset_mae": 0.024929651207443157
+        },
+        "A+B": {
+          "original_heldout_mae": 0.02584224814229182,
+          "unseen_document_subset_mae": 0.025067955125708453
+        },
+        "A+B+G": {
+          "original_heldout_mae": 0.025884399417334326,
+          "unseen_document_subset_mae": 0.024327997587478743
+        },
+        "calibration_median": {
+          "original_heldout_mae": 0.027053793182780353,
+          "unseen_document_subset_mae": 0.025023480725506912
+        }
+      },
+      "joint_real_swapped_eligible_items": 986,
+      "joint_real_all_controls_eligible_items": 323,
+      "joint_swapped_median_normalized_error_gap": -0.00594985341180658,
+      "joint_swapped_median_fp_effect_norm_ratio": 2.0241282926462087
+    },
+    "INT4": {
+      "eligible_heldout_items": 1066,
+      "unseen_document_items": 136,
+      "unseen_documents": 65,
+      "calibration_selected_baseline": "A+G",
+      "unseen_document_diagnostic_relative_improvement": 0.06733894385009043,
+      "mae": {
+        "A": {
+          "original_heldout_mae": 0.12534701237456627,
+          "unseen_document_subset_mae": 0.11405685332461228
+        },
+        "A+G": {
+          "original_heldout_mae": 0.1241400461993968,
+          "unseen_document_subset_mae": 0.11393416972531967
+        },
+        "A+B": {
+          "original_heldout_mae": 0.09746969581871817,
+          "unseen_document_subset_mae": 0.10626196306757969
+        },
+        "A+B+G": {
+          "original_heldout_mae": 0.09673713405508291,
+          "unseen_document_subset_mae": 0.10373810815025146
+        },
+        "calibration_median": {
+          "original_heldout_mae": 0.12685529242641974,
+          "unseen_document_subset_mae": 0.12363354481382063
+        }
+      },
+      "joint_real_swapped_eligible_items": 986,
+      "joint_real_all_controls_eligible_items": 323,
+      "joint_swapped_median_normalized_error_gap": 0.04277191456335283,
+      "joint_swapped_median_fp_effect_norm_ratio": 2.0241282926462087
+    }
+  },
+  "inputs_sha256": {
+    "transfer_runs/analysis_main/per_context_INT16.csv": "be221b2bf485e113e07f525be55dffea0262d4793bce3e2a908e451ebabffb14",
+    "transfer_runs/analysis_main/per_context_INT6.csv": "d071acd53419447678d1929df98804193d36963c6fbb4f82a75d43e019c6b346",
+    "transfer_runs/analysis_main/per_context_INT4.csv": "9fd618f2697fab2674026725d48f7e0aa9e72a9c54526aeffdc3ea6d48b5370f",
+    "reports/intervention_transfer/results/main/group_per_language.csv": "c4f684720ca1c7e3746943cf43d405e7342d497ae61a53f9ba0cff66d2022f6b"
+  },
+  "limits": [
+    "Unseen-document restriction was chosen after main outcomes; not confirmatory.",
+    "The strict subset has only 65 documents and 136 eligible items.",
+    "Joint eligibility does not equate FP effect norm or intervention strength.",
+    "No original fit, outcome, success rule or freeze is overwritten."
+  ],
+  "group_native_contrasts": {
+    "INT16": {
+      "n_languages": 27,
+      "median_native_net_harm": 0.2623974322507624,
+      "median_fixed_net_harm": 0.2621020553749168,
+      "median_weights_only_net_harm": 0.2621212506907544,
+      "median_paired_native_minus_weights_only": -2.325252166756643e-05,
+      "median_abs_native_minus_weights_only": 0.000308289333010886
+    },
+    "INT6": {
+      "n_languages": 27,
+      "median_native_net_harm": 0.2701727463993376,
+      "median_fixed_net_harm": 0.28111042753044635,
+      "median_weights_only_net_harm": 0.27207225856489825,
+      "median_paired_native_minus_weights_only": 0.0015522872153906353,
+      "median_abs_native_minus_weights_only": 0.006300242734598449
+    },
+    "INT4": {
+      "n_languages": 27,
+      "median_native_net_harm": 0.43250007367585214,
+      "median_fixed_net_harm": 0.8478718070597416,
+      "median_weights_only_net_harm": 0.42835246134793226,
+      "median_paired_native_minus_weights_only": 0.013835964103897702,
+      "median_abs_native_minus_weights_only": 0.05370429656807074
+    }
+  }
+}

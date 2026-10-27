@@ -1,5 +1,8 @@
 # Publication direction decision — 26 October 2026
 
+> **Historical assessment / design-stage record.** The [26 October post-D-094 novelty assessment](novelty_assessment_2026-10-26.md) supersedes novelty verdicts and forward priorities below. The broad claims have direct precedents; an exact protocol match was not found, but novelty is not verified. Keep this source/search history; use current results and the recovery plan for decisions.
+
+
 > **Update 2026-10-26 (Claude, documentation sweep; Codex's text below is unchanged):** (1) The user replaced Llama-3.2-1B by **Gemma-2-9B with Gemma Scope** (`layer_20/width_16k/canonical`) as the second model (D-089). Read every 'Llama' below as the second model. The 9B runs are done by another team on another cluster (handoff 040, branch `gemma9b-confirmation`), so this study runs its Gemma-2-2B part first and its second-model arm after that branch is merged. The Llama check finished on 2026-10-26 and is reported as exploratory only. (2) Verified and adopted with corrections (D-088): [verification](intervention_transfer/verification_2026-10-26.md) (Chang EMNLP 2025 §6.1-6.2 is the loss-level precedent, so C > W alone is not a contribution; the gradient baseline 2610.15850 is mandatory; Bhandari 2609.06473 added; three citation fixes). The current order of work is the NEXT STEP block of `reports/functional_validation/STATUS.md`.
 
 Status: research proposal, not a new experimental finding. No GPU jobs submitted by this chat.

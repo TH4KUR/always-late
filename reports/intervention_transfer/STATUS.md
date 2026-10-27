@@ -1,8 +1,15 @@
-# Intervention-transfer study: run ledger (D-088)
+# Intervention-transfer study: historical run ledger (D-088)
 
-Owner: Claude (execution), design by Codex. Design: [`docs/superpowers/specs/2026-10-26-intervention-transfer-research-design.md`](../../docs/superpowers/specs/2026-10-26-intervention-transfer-research-design.md). Plan: [`docs/superpowers/plans/2026-10-26-intervention-transfer-main-and-contingencies.md`](../../docs/superpowers/plans/2026-10-26-intervention-transfer-main-and-contingencies.md) (Codex's files: read, never edit). Verification and required corrections: [`verification_2026-10-26.md`](verification_2026-10-26.md). Cron order: item 1 of the NEXT STEP block of [`../functional_validation/STATUS.md`](../functional_validation/STATUS.md). Created 2026-10-26 (the first firing of the study).
+Current execution state and next action: [CURRENT_STATUS.md](../CURRENT_STATUS.md).
+This ledger retains the original amendments, pre-run checkpoints, accounting and dated
+execution log. Main and external results and CPU recovery analyses are now complete;
+see the current page and handoff 045 for later developments.
 
-**Status: Task 1 (reconcile evidence, freeze): the CORE FREEZE IS WRITTEN (2026-10-26 10:35, [`freeze.json`](freeze.json) and [`core_sample.json`](core_sample.json), committed in the step that follows `b045b94`); the external panel is FROZEN by the amendment [`freeze_external.json`](freeze_external.json) (2026-10-26 11:18; `freeze.json` still says `pending` and is not edited: the amendment supersedes that field). No job has run, no intervention output exists. The 48-hour cap and the 32 GPU-hour ceiling start with the first Ada job (none yet).**
+Original [design](../../docs/superpowers/specs/2026-10-26-intervention-transfer-research-design.md),
+[plan](../../docs/superpowers/plans/2026-10-26-intervention-transfer-main-and-contingencies.md),
+[verification](verification_2026-10-26.md) and freezes are retained unchanged.
+Their chronological amendments below apply to the original experiment; they are not
+an instruction to repeat completed work. The old header is [preserved verbatim](../archive/modular_cleanup_2026-10-27/README.md).
 
 ## 1. Amendments to the plan (dated, in force)
 
@@ -48,6 +55,8 @@ Owner: Claude (execution), design by Codex. Design: [`docs/superpowers/specs/202
 - **H. Hypotheses (two-sided), as in the spec, plus A3.** H1 native effect error needs more than activation drift or a scalar change of perturbation size; H2 the crossed contrasts explain a reproducible part of the error and the interaction I is measured; H3 generic sensitivity predicts some transfer error and feature- or context-specific variation may remain; H4 per-context transfer differs from similarity of averaged fingerprints (same feature-context pairs); A3 |C| > |W|.
 
 ## 5. Open items before the freeze can be committed
+
+Historical pre-run checklist; for current work use [NEXT STEP](../functional_validation/STATUS.md#next-step).
 
 1. ~~Write `phase1_transfer_freeze.py` ...~~ **DONE 2026-10-26 10:35** (see the Log): `scripts/g0/phase1_transfer_freeze.py`, 21 tests written first, 25 mutants (24 killed, 1 equivalent), committed `b045b94`; `freeze.json` built from the committed inputs and the stage-A file of the 404-feature run and verified (`verify` recomputes the core from the stage file and compares every input hash and the spec).
 2. ~~Build and checksum the external panel (item X)~~ **DONE 2026-10-26 11:18** (inside the 4-hour time box): all six languages complete, 100 calibration and 300 evaluation passages each (see the Log); the amendment `freeze_external.json` holds article ids, text hashes, token counts, reject counts and the verified shard hashes; the text stays on Ada in `/home2/karma/duan-verify/transfer_panel/text/` (not in git: CC BY-SA text, rebuildable from the pinned revision with `phase1_transfer_panel.py`).

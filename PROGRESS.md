@@ -1,5 +1,9 @@
-# Progress at a glance (superseded)
+# Progress entry point
 
-**Superseded; kept as a pointer (documentation cleanup of 2026-10-26).** The full previous text is preserved verbatim in [`reports/archive/root_pages_2026-10-26/PROGRESS.md`](reports/archive/root_pages_2026-10-26/PROGRESS.md).
+Current state and next action: [reports/CURRENT_STATUS.md](reports/CURRENT_STATUS.md).
+Research interpretation: [RESEARCH_DIRECTION.md](RESEARCH_DIRECTION.md).
+Implementation ownership: [docs/CODEBASE.md](docs/CODEBASE.md).
+Full history: [reports/INDEX.md](reports/INDEX.md), decisions, handoffs and dated logs.
 
-Current progress: [`README.md`](README.md) (studies and their state), [`reports/functional_validation/STATUS.md`](reports/functional_validation/STATUS.md) (next step and dated log), [`reports/progress_log.md`](reports/progress_log.md) (the dated evidence log of finished steps).
+Original plans and frozen designs remain in `docs/superpowers/`. This entry point does
+not replace them. Previous page text is [preserved verbatim](reports/archive/modular_cleanup_2026-10-27/README.md).

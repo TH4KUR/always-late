@@ -1,6 +1,9 @@
 # Study G: graded gain of language-selective features, per language, across the precision ladder
 
-**THE USER'S MAJOR STUDY (instruction of 2026-10-24). AT THE START OF EVERY RUN (every cron firing and every new session): READ THIS PAGE FIRST, check the status table below, and continue the study before any other work.** The cron prompt (`../cron_prompt.md`, priority 0) and `../STATUS.md` (`Immediate`) say the same.
+**Completed (25 October 2026), including extensions B, C and D.** This page retains the
+original request, methodology and dated results. Its earlier instruction to continue Study G
+first is satisfied; current work is in [STATUS / NEXT STEP](../STATUS.md#next-step).
+The previous page is [preserved verbatim](../../archive/novelty_cleanup_2026-10-26/README.md).
 
 ## The request, in the user's words (verbatim, 2026-10-24)
 

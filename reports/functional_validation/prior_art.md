@@ -1,5 +1,8 @@
 # Prior-art check for the functional study (D-040), 2026-10-21
 
+> **Historical assessment / design-stage record.** The [26 October post-D-094 novelty assessment](../novelty_assessment_2026-10-26.md) supersedes novelty verdicts and forward priorities below. The broad claims have direct precedents; an exact protocol match was not found, but novelty is not verified. Keep this source/search history; use current results and the recovery plan for decisions.
+
+
 Question checked: has anyone studied (i) feature-level causal effects of language-selective SAE feature groups, (ii) compared across weight-quantization levels, (iii) with full-precision-donor patching to localise quantization damage by language, (iv) with multilingual task scores, and (v) whether association retention predicts functional retention?
 
 Method and trust. One subagent searched and read primary pages (arXiv abstract, HTML or PDF; ACL Anthology; ICLR pages) on 2026-10-21 and returned a report. **I re-read two of its central claims myself** (the abstract page of 2603.25325 and the full text of 2609.23125, both confirmed below). Everything else is **agent-reported** and marked so in the register (P30 and later); venue statements taken from arXiv comments are not proceedings checks. Search coverage is limited and the field moves fast: **re-check before submission.**
