@@ -46,6 +46,13 @@ class Freeze(unittest.TestCase):
         self.assertTrue(FREEZE["drop_order_if_time_runs_out"])
         self.assertFalse(any("E1" in d or "E6" in d or "transfer" in d for d in FREEZE["drop_order_if_time_runs_out"]))
 
+    def test_amendment_a1_cites_this_freeze_and_keeps_the_whole_phase1_ladder(self):
+        am = json.loads((ROOT / "reports/gptq_extension/amendment_A1_stage1_ladder.json").read_text())
+        self.assertEqual(am["cites_freeze_sha256"], hashlib.sha256((ROOT / "reports/gptq_extension/freeze.json").read_bytes()).hexdigest())
+        self.assertEqual(am["changes"]["stage_1_bits"], [8, 7, 6, 5, 4, 16, 12, 0])
+        import phase1_run
+        self.assertEqual(am["changes"]["stage_1_bits"], phase1_run.DEFAULT_BITS)                     # exactly the old p1-mask run
+
     def test_the_wrapper_is_the_documented_way_to_run_a_stage(self):
         self.assertIn("run_with_weights.py", FREEZE["how_a_stage_is_run"])
 

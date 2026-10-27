@@ -1,0 +1,26 @@
+{
+ "changes": {
+  "consequence": "artifact hashes must be recorded for 8, 7, 5 as well (a gate job C) before the stage-1 jobs are queued with FROZEN=1",
+  "drop_order": "the drop-list entry 'ladder bit widths 5, 7, 8' concerns the stages after stage 1; stage 1 keeps its whole ladder",
+  "later_stages_bits": "unchanged: priority INT4 and INT6 for the transfer matrix and the functional panels; the freeze's 'later_if_time' list [8, 7, 5] applies to those later stages only",
+  "stage_1_bits": [
+   8,
+   7,
+   6,
+   5,
+   4,
+   16,
+   12,
+   0
+  ],
+  "stage_1_note": "stage 1 (the Phase 1 runs of E1 and E2) runs the whole ladder INT8, 7, 6, 5, 4 plus the legacy floors INT16, INT12 and the restore control INT0 for BOTH arms, exactly as the old p1-mask run (DEFAULT_BITS of phase1_run.py, D-006); floors and the restore control are the unchanged legacy rounding / restore"
+ },
+ "cites_freeze_sha256": "598a0df9c4603b19b777c3c296d17bb6efe545edd047ea38dde92fa72908936e",
+ "commit": "8b05207",
+ "created": "2026-10-27 18:35 IST",
+ "decision": "D-102",
+ "id": "A1",
+ "kind": "gptq-extension-amendment",
+ "reason": "The pre-set Phase 1 family is defined at INT7 (T1) and INT6 (T2), and T3 (language-level tier slope) uses INT7 and INT6 together (D-014; phase1_analysis.py tests T1_int7, T2_int6, T3_tier). It cannot be recomputed from INT4 and INT6 alone, and the survival ladder is the project's flagship result.",
+ "schema": 1
+}
