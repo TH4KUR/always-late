@@ -1,0 +1,164 @@
+{
+ "en": {
+  "file": "20231101.en/train-00000-of-00041.parquet",
+  "sha256": "382e7f6f09e488b24793a7f7cfc659879d5a22da2cf2efec6491665f0c019677",
+  "size": 420296449,
+  "n_shards": 41
+ },
+ "de": {
+  "file": "20231101.de/train-00000-of-00020.parquet",
+  "sha256": "8778fa2f0907e4eb65917b27092a911a400f9f2ee2eea4271423b706c29249a6",
+  "size": 781271996,
+  "n_shards": 20
+ },
+ "es": {
+  "file": "20231101.es/train-00000-of-00013.parquet",
+  "sha256": "905d5162b5b8fa45f50ea8371cd1b7f4c6510b43ab2e5e8f0fd247462d0be1cc",
+  "size": 688430059,
+  "n_shards": 13
+ },
+ "fr": {
+  "file": "20231101.fr/train-00000-of-00017.parquet",
+  "sha256": "da77fab28b8ce151ebe14d5af0099270b73f54853993f1d4fe980b6b6fc0645b",
+  "size": 769165548,
+  "n_shards": 17
+ },
+ "pt": {
+  "file": "20231101.pt/train-00000-of-00006.parquet",
+  "sha256": "059136d457150f9c033a4bdfb7fbea2eef2b6e58e03e2c0cb8275144ce99fb34",
+  "size": 425972594,
+  "n_shards": 6
+ },
+ "ru": {
+  "file": "20231101.ru/train-00000-of-00021.parquet",
+  "sha256": "9f8eaf92accb29a4641010655a50d1c8a5880d22020a5c98ea2666a28c7be66a",
+  "size": 581024230,
+  "n_shards": 21
+ },
+ "zh": {
+  "file": "20231101.zh/train-00000-of-00006.parquet",
+  "sha256": "853ddf4a138c792ad7386d6de831788f96326c03e1e3349f7a315498392e8b56",
+  "size": 587109027,
+  "n_shards": 6
+ },
+ "ja": {
+  "file": "20231101.ja/train-00000-of-00015.parquet",
+  "sha256": "4751c14478e712fd637bd83c2cf3537b0e299ea5115e9a78ddededf42f34c29d",
+  "size": 611504422,
+  "n_shards": 15
+ },
+ "ko": {
+  "file": "20231101.ko/train-00000-of-00003.parquet",
+  "sha256": "28ff69a402878eba3be42dfd187f37876b917b72eb9b05896ed7469fa681bb03",
+  "size": 400000634,
+  "n_shards": 3
+ },
+ "hi": {
+  "file": "20231101.hi/train-00000-of-00002.parquet",
+  "sha256": "48001d229cb28d1e74c1f6bac76a1d0ccfc2ffa05c8fb9c2201a5b56108e7c58",
+  "size": 134883945,
+  "n_shards": 2
+ },
+ "bn": {
+  "file": "20231101.bn/train-00000-of-00002.parquet",
+  "sha256": "98a8189cf1d0e4b41d647b3d88bd6201e571e002344b5648496c6bfda402841b",
+  "size": 192390559,
+  "n_shards": 2
+ },
+ "ta": {
+  "file": "20231101.ta/train-00000-of-00002.parquet",
+  "sha256": "f49faeaaf3acb71f0992530f900e905ba61adbe3508f2fae94d3cb002ced3bb0",
+  "size": 146422662,
+  "n_shards": 2
+ },
+ "vi": {
+  "file": "20231101.vi/train-00000-of-00004.parquet",
+  "sha256": "ec53cc9899be9287b10785c794745eeef94b2df52970ba2ebd1808bfa8d1599a",
+  "size": 291484901,
+  "n_shards": 4
+ },
+ "th": {
+  "file": "20231101.th/train-00000-of-00003.parquet",
+  "sha256": "465879f56560ff1602833581dcc9a48306b7c2e125aa806ca62a3c549c8405c6",
+  "size": 172699370,
+  "n_shards": 3
+ },
+ "uk": {
+  "file": "20231101.uk/train-00000-of-00010.parquet",
+  "sha256": "8e7e98f6b80d0e391adcfee52779f50bd09e2821d17a9019b01879ddbbd975b8",
+  "size": 382143946,
+  "n_shards": 10
+ },
+ "kn": {
+  "file": "20231101.kn/train-00000-of-00001.parquet",
+  "sha256": "48cf705042fa685b649a83d802b760387803a01fc57393f77a759e48fdb31845",
+  "size": 147156434,
+  "n_shards": 1
+ },
+ "te": {
+  "file": "20231101.te/train-00000-of-00002.parquet",
+  "sha256": "f0a9f65730ac89a60312b92ddab4e77d99018cdbee5ac9fef06acd98f9b80498",
+  "size": 117608766,
+  "n_shards": 2
+ },
+ "yo": {
+  "file": "20231101.yo/train-00000-of-00001.parquet",
+  "sha256": "f884b35dfd0204abb76a83eb36cedaabe91267df58c61680436326234d34b43b",
+  "size": 8861465,
+  "n_shards": 1
+ },
+ "su": {
+  "file": "20231101.su/train-00000-of-00001.parquet",
+  "sha256": "1acc7c6a0513d3fa5e274a8682eb56a86555ddb0a388790b83a27f9bef337450",
+  "size": 19806020,
+  "n_shards": 1
+ },
+ "am": {
+  "file": "20231101.am/train-00000-of-00001.parquet",
+  "sha256": "93688b7ba38c4ee80581a0e49f4d91efe7c30d290c02833173c25f317f7d6f64",
+  "size": 10720027,
+  "n_shards": 1
+ },
+ "ig": {
+  "file": "20231101.ig/train-00000-of-00001.parquet",
+  "sha256": "f9fd124f5c726fb4e05869ff581bab116ab4b40e7da0d441d95e63fa6bea5547",
+  "size": 34663540,
+  "n_shards": 1
+ },
+ "ha": {
+  "file": "20231101.ha/train-00000-of-00001.parquet",
+  "sha256": "92a9b653d0bbf5184cb9a5c5a7598d324e8c4dabc78a2e62744ffecf608f7760",
+  "size": 43131815,
+  "n_shards": 1
+ },
+ "km": {
+  "file": "20231101.km/train-00000-of-00001.parquet",
+  "sha256": "329b1bdc81a392e4c401a1ff70f9894454db136b58cf71fe90cf31d80afdda64",
+  "size": 35567417,
+  "n_shards": 1
+ },
+ "lo": {
+  "file": "20231101.lo/train-00000-of-00001.parquet",
+  "sha256": "7bdb2ab5bdd070ff95ce886d483a39da6ba238b6fdba7d6d7c84b783d8c6bda7",
+  "size": 5646554,
+  "n_shards": 1
+ },
+ "tr": {
+  "file": "20231101.tr/train-00000-of-00002.parquet",
+  "sha256": "6994014607c0920f049ff62c3ea03bfaa218848fa31fa331b6ad1e17ef8f393a",
+  "size": 339973499,
+  "n_shards": 2
+ },
+ "id": {
+  "file": "20231101.id/train-00000-of-00003.parquet",
+  "sha256": "ff54e23415c8e62cddb75dcb7d5f4ae95ab6868306ea9c4735516381dbb4c559",
+  "size": 266839014,
+  "n_shards": 3
+ },
+ "pl": {
+  "file": "20231101.pl/train-00000-of-00006.parquet",
+  "sha256": "e138c56e16acc8724e851c206f2b2f586e3cdf511105b1d8a81d90b6d374248c",
+  "size": 430727499,
+  "n_shards": 6
+ }
+}
