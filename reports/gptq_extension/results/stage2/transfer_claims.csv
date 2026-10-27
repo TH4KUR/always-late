@@ -1,0 +1,17 @@
+claim,scope,legacy RTN,matched RTN,GPTQ
+A3,overall,mixed,inconclusive,mixed
+A3,INT4,supported,inconclusive,supported
+A3,INT6,inconclusive,inconclusive,inconclusive
+H1,overall,supported,supported,supported
+H1,INT4,supported,supported,supported
+H1,INT6,supported,supported,supported
+H2,status,descriptive,descriptive,descriptive
+H3,overall,mixed,mixed,mixed
+H3,INT4,supported,supported,supported
+H3,INT6,inconclusive,inconclusive,reversed
+H4,overall,supported,supported,mixed
+H4,INT4,supported,supported,supported
+H4,INT6,supported,supported,inconclusive
+UTILITY,overall,not met,not met,not met
+UTILITY,INT4,met,met,met
+UTILITY,INT6,not met,not met,not met
