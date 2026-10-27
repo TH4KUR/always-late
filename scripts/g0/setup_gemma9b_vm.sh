@@ -57,33 +57,28 @@ python -c "import transformers; print(f'  transformers {transformers.__version__
 # ── 3. Download models and SAEs from Hugging Face ──────────────────────────────
 echo "[3/5] Downloading Gemma-2-9B model and Gemma Scope SAE..."
 
-if [ -z "${HF_TOKEN:-}" ]; then
-    echo "WARNING: HF_TOKEN is not set. Downloads of gated models (google/gemma-2-9b) will fail."
-    echo "Set it with: export HF_TOKEN=hf_..."
-    echo "Make sure you have accepted the Gemma-2 terms at https://huggingface.co/google/gemma-2-9b"
-fi
+echo "Make sure you are logged in to Hugging Face: run 'huggingface-cli login' or 'hf login' first."
+echo "You must have accepted the Gemma-2 terms at https://huggingface.co/google/gemma-2-9b"
 
 export HF_HOME="$BASE/hf_cache"
 mkdir -p "$HF_HOME"
 
 # Gemma-2-9B model (~18 GB)
 echo "  Downloading google/gemma-2-9b..."
-huggingface-cli download google/gemma-2-9b --token "${HF_TOKEN:-}"
+hf download google/gemma-2-9b
 
 # Gemma Scope 9B SAE (only the layer we need)
 echo "  Downloading google/gemma-scope-9b-pt-res (layer_20/width_16k/canonical)..."
-huggingface-cli download google/gemma-scope-9b-pt-res \
-    --include "layer_20/width_16k/canonical/*" \
-    --token "${HF_TOKEN:-}"
+hf download google/gemma-scope-9b-pt-res \
+    --include "layer_20/width_16k/canonical/*"
 
 # Also grab the 2B model and SAE (needed for the 2B vs 9B comparison, and the frozen runners reference it)
 echo "  Downloading google/gemma-2-2b..."
-huggingface-cli download google/gemma-2-2b --token "${HF_TOKEN:-}"
+hf download google/gemma-2-2b
 
 echo "  Downloading google/gemma-scope-2b-pt-res (layer_12/width_16k/canonical)..."
-huggingface-cli download google/gemma-scope-2b-pt-res \
-    --include "layer_12/width_16k/canonical/*" \
-    --token "${HF_TOKEN:-}"
+hf download google/gemma-scope-2b-pt-res \
+    --include "layer_12/width_16k/canonical/*"
 
 # ── 4. Download FLORES-200 dataset ────────────────────────────────────────────
 echo "[4/5] Downloading FLORES-200 dataset..."
