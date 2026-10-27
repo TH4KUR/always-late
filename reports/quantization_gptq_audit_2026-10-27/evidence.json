@@ -1,0 +1,75 @@
+{
+  "scope": "Source audit and CPU mathematical checks only; no Gemma inference or scientific experiment",
+  "audited_repository_commit": "3d5c6d7160907bfc6bf75459faf1cb836b64f7a8",
+  "torch_version": "2.14.1+cpu",
+  "upstream_commit": "2d65066eeb06a5c9ff5184d8cebdf33662c67faf",
+  "upstream_sha256": {
+    "gptq.py": "bb47468cc2c788577562751de414d76eeb9968ff1c6098e21153557ef3d154c7",
+    "quant.py": "211528568b962b868d20fc58b55200b615f41ebd9f36b4d2d7e4a196a095ea5a"
+  },
+  "legacy_script_sha256": "ddc43cc7856a0217360763054d96c4741ccba08b905f54851cef4a0f490164cf",
+  "inspected_transformer_lens_release": "3.9.0",
+  "inspected_gemma_conversion_sha256": "65e84ef124c324331486ee4317c3e12782133cf4c2ba0f10eb57963f7b1f1442",
+  "upstream_algorithm_body_modified": false,
+  "substitutions": "Unused Transformers Conv1D type stub; CUDA timing synchronize skipped on CPU; optimization arithmetic unchanged",
+  "layout_and_grid_checks": {
+    "qkv_projection_mapping_max_abs": 0.0,
+    "qkv_roundtrip_exact": true,
+    "o_projection_mapping_max_abs": 1.7763568394002505e-15,
+    "o_roundtrip_exact": true,
+    "qkv_legacy_scale_count": 3,
+    "qkv_standard_scale_count": 12,
+    "target_filter_includes_gqa_storage": true,
+    "author_sym_scale": [
+      0.13333334028720856
+    ],
+    "legacy_scale": [
+      0.14285714285714285
+    ],
+    "same_sym_flag_same_grid": false,
+    "author_quantized_example": [
+      [
+        -0.9333333969116211,
+        -0.5333333611488342,
+        0.0,
+        0.5333333611488342,
+        0.9333333969116211
+      ]
+    ],
+    "legacy_quantized_example": [
+      [
+        -1.0,
+        -0.4285714626312256,
+        0.0,
+        0.4285714626312256,
+        1.0
+      ]
+    ]
+  },
+  "upstream_core_checks": [
+    {
+      "dtype": "torch.float32",
+      "bits": 4,
+      "identity_hessian_matches_same_grid_nearest_exactly": true,
+      "output_dtype_preserved": true
+    },
+    {
+      "dtype": "torch.float32",
+      "bits": 6,
+      "identity_hessian_matches_same_grid_nearest_exactly": true,
+      "output_dtype_preserved": true
+    },
+    {
+      "dtype": "torch.bfloat16",
+      "bits": 4,
+      "identity_hessian_matches_same_grid_nearest_exactly": true,
+      "output_dtype_preserved": true
+    },
+    {
+      "dtype": "torch.bfloat16",
+      "bits": 6,
+      "identity_hessian_matches_same_grid_nearest_exactly": true,
+      "output_dtype_preserved": true
+    }
+  ]
+}

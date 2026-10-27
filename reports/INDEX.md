@@ -12,6 +12,7 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 |---|---|
 | [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md) | **All results from the start in plain words:** why they are not conclusive, what the null results tell us, the second-model and downstream-task checks, per-language tables, guide to every data file |
 | [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | **Current state page:** evidence state, the HOLD, open choice Q29, deliverables |
+| [`quantization_gptq_audit_2026-10-27.md`](quantization_gptq_audit_2026-10-27.md) | GPTQ feasibility audit: method versus bit width, verified grid/head-scale mismatches, a matched comparison and integration gates; source/CPU checks only, no real-model run |
 | [`../README.md`](../README.md), [`../HANDOFF.md`](../HANDOFF.md) | orientation; rules, environment and rerun notes for whoever continues |
 | [`../docs/CODEBASE.md`](../docs/CODEBASE.md) | code ownership map |
 | [`functional_validation/RESULTS_SUMMARY.md`](functional_validation/RESULTS_SUMMARY.md), [`FIGURE_INDEX.md`](functional_validation/FIGURE_INDEX.md), [`REPRODUCE.md`](functional_validation/REPRODUCE.md) | the functional study's claim map (evidence and limit per claim), every finished figure, one command that reruns the analyses |
