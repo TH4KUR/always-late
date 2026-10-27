@@ -1,0 +1,44 @@
+{
+ "id": "R5",
+ "kind": "intervention-transfer-revision-amendment",
+ "schema": 1,
+ "created": "2026-10-27 05:52 IST",
+ "title": "Paired arithmetic-precision audit of the suffix (publication recovery plan, Task 2): protocol fixed before the code and before any run",
+ "status": "POST HOC (selected after D-094; started under the default of Q29, D-100). Written before the code. The frozen transfer code, the sample, the original outputs, D-094 to D-099 and the failed original UTILITY criterion are unchanged; the frozen selection is reports/intervention_transfer/precision_audit_freeze.json (committed before this file).",
+ "honesty_note": "The main-matrix and external results are known (INT4 effect vectors strongly rotated, cosine 0.77, about 7.7 INT16 floors; INT6 about 1.9 floors). The thresholds below (margins, cost rules) are fixed from the plan's wording and from the size of those effects, before any output of the audit exists; the sample was selected from FP quantities only.",
+ "source": "docs/superpowers/plans/2026-10-26-publication-recovery-after-results.md Task 2 (Codex); implementation plan docs/superpowers/plans/2026-10-27-precision-audit-task2-implementation.md",
+ "question": "Which transfer conclusions persist when the numerical implementation of the SUFFIX (the layers above the SAE site, the final norm and the readout) changes while the cached prefix residuals, the stored weight values, the edits and the readout definition are fixed? It tests a measurement alternative to the 'INT4 rotates the effect vector' result. It does not validate full-prefix precision, a deployed integer kernel or the truth of either mode: the fp32 mode is the same RTN-quantized bf16-valued weights executed in float32, not a different quantization.",
+ "inputs_sha256": {
+  "reports/intervention_transfer/precision_audit_freeze.json": "c24bb9812b4cd38b0538c8368eb485c7db4e5fa4eafc61a29c3da0fa90937dd5",
+  "reports/intervention_transfer/core_sample.json": "3b7b266add9eb575ad601b460b03021e6f2f27ca5f1fd9378657b3641ca6530c",
+  "reports/intervention_transfer/freeze.json": "3226c94b7e4dff30dda0166eac01fac01813facbdb62654cb36672dc66dbbf5f",
+  "reports/publication_reassessment_2026-10-26/locked_flores_models.json (the old fixed floors)": "5658d5ef7f369366004f467678d43a6b37a01dff1315dda4e4d4fd95c7e7c28a"
+ },
+ "sample": "the 512 pairs (128 features x 4 contexts) of the frozen selection, the real and the matched swapped direction (1,024 items per state and mode), the three random directions are not run; states FP, INT16 (rounding reference) and INT4; the same five cells (FF, QF, FQ, QQ, Q/Q-native) with the fixed FP edit and the native edit of the main study; the cached FP and Q prefix residuals, the SAE activations (amplitudes) and the edits are computed ONCE in the bf16 prefix exactly as in the main runs and shared by both modes",
+ "modes": {
+  "bf16_suffix": "the existing suffix: bf16 parameters of blocks 13 to 25 and the final norm, bf16 matmuls and attention, float32 residual stream, float32 readout (make_logits_fn); cfg.dtype bfloat16",
+  "fp32_suffix": "the SAME stored bf16-valued parameters of blocks 13 to 25 and the final norm promoted exactly to float32 after the weight state was set (the order is: demote the suffix to bf16, set the state with the unchanged setup, promote), cfg.dtype float32 during the suffix call only, float32 readout as before"
+ },
+ "controls_and_gates": {
+  "G1_promotion": "after every state change the promoted float32 parameters converted back to bf16 equal the pre-promotion bf16 values byte for byte; the sha256 of the pre-promotion values of every suffix parameter is recorded per state",
+  "G2_dtype_probe": "forward hooks at representative blocks (13 and 25) record the dtypes of the normalized input, q, the attention pattern and the MLP post-activation in each mode; the fp32 mode must show float32 in all of them; the bf16 mode's observed dtypes are recorded as they are (the RTX 2080 Ti has no native bf16 and the kernels may upcast: that is itself a finding)",
+  "G3_sham": "a zero edit gives an exactly zero effect vector and loss change in both modes (as the existing sham gate)",
+  "G4_logit_agreement": "on a probe of 512 rows the top-1 token of the fp32-mode logits agrees with the bf16-mode logits in at least 90 % of the rows and the largest absolute logit difference is at most 5.0 (a wrong computation gives chance agreement and differences of ten or more; the observed arithmetic differences are expected to be of the size 0.25 to 2); a failed gate stops the job",
+  "C1_repeated_batching": "the INT16 state is executed twice per mode with different batch composition (max_rows 256 and 192, so that the sub-batches of a context differ); per item the norm of the difference of the FF effect vectors of the two executions (the FP-versus-FP execution sensitivity in that mode, distinct from INT16 RTN's genuine small weight perturbation) and of the QQ(INT16) vectors; reported next to the between-arithmetic change"
+ },
+ "outputs_per_item": "from the within-mode 5 x 5 Gram and the cross-mode 10 x 10 Gram of the cell vectors (captured by an observer on the raw logits; the frozen runner is not changed): per mode and state the norms of FF and QQ, the transfer error E = |D[QQ] - D[FF]|, the cosine between D[QQ] and D[FF], the normalized error with the OLD fixed floors (real 28.7225, matched swapped 27.1656) and with MODE-SPECIFIC floors (the 95th percentile of E(INT16) over the sample's items of the kind, per mode), the signed NLL changes of the cells; across modes |D_fp32[c] - D_bf16[c]| for c = FF and QQ, their ratios to E_bf16(INT4) and E_fp32(INT4) and to the FP effect norm, and the cosine between the arithmetic-change vector (D_fp32[QQ] - D_bf16[QQ]) and the transfer error (D_bf16[QQ] - D_bf16[FF]). No subtraction of squared noise norms, no rescaling of any stored vector.",
+ "statistics": "per kind, state and mode: medians over items with crossed-bootstrap intervals over features and source-sentence clusters (the cluster column of the main per-context table for the same (feature, sentence)), 2,000 replicates, seed 20261026, 95 % percentile; paired per-item differences between modes with the same bootstrap; coverage (items eligible: FP effect norm above five floors) under both floor definitions; ALL selected pairs, near-zero effects and mode-specific failures are reported (the per-item table is committed)",
+ "pre_declared_readings": {
+  "A_conclusion_changes": "the INT4 description changes with the arithmetic if the paired per-item difference of the INT4 cosine (fp32 minus bf16) has a median whose interval excludes zero and whose absolute value is at least 0.10, or the same for the normalized error (old floors) with absolute value at least 0.15 (about 15 % of the main INT4 values 0.77 and 0.66)",
+  "B_drift_persists": "the INT4 drift persists in both modes if in each mode the median INT4 error in mode-specific floors has an interval lower end above 1 and the median INT4 cosine is below 0.9",
+  "C_reference_depends": "the rounding reference itself depends on the arithmetic if the median INT16 transfer error differs by a factor of at least 2 between the modes (either direction)",
+  "D_arithmetic_vs_weights": "the between-arithmetic change of QQ is reported as a ratio to the between-weight-state change E(INT4); it is read as small below 0.2 and as comparable above 0.5 (descriptive bands, not tests)"
+ },
+ "stop_rules": {
+  "memory": "peak GPU memory above 10.6 GB on the instrument chunk (the first 16 features of the freeze order, 64 pairs) or an out-of-memory error: report infeasible with the numbers; do not reduce the sample or the contexts until it fits",
+  "throughput": "the cost of the full scope extrapolated from the instrument chunk (both modes, both executions of INT16, INT4) above 8 GPU hours: report infeasible; the user's ceiling is soft but the plan's allowance for this revision is 8 additional GPU hours",
+  "gates": "any of G1 to G4 failing stops the job and the log head must show 'GPU 0:' (a node without a GPU stops, as the sbatch guard does)"
+ },
+ "not_claimed": "No claim about deployed integer kernels, full-prefix precision, other layers, other quantizers or other models; no equivalence of the modes; no safety or behavioural claim. A result in which the INT4 drift persists is a statement about robustness within the tested suffix setup only; a result in which it changes is an instrument result.",
+ "outputs": "reports/intervention_transfer/results/precision/ (per_item.csv, summary.csv, gates.json, README.md); raw cell vectors are not stored (5 MB per item and cell set); code scripts/g0/phase1_transfer_precision.py with scripts/g0/tests_torch/test_phase1_transfer_precision.py"
+}
