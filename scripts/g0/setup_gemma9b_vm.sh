@@ -107,9 +107,24 @@ else
 fi
 cd "$BASE"
 
-# ── 5. Summary ─────────────────────────────────────────────────────────────────
+# ── 5. Extract GPTQ calibration pool ─────────────────────────────────────────
+echo "[5/6] Extracting GPTQ calibration pool..."
+REPO_ROOT=$(find "$HOME" -maxdepth 3 -name "gptq_calibration_pool.tar.gz" -print -quit 2>/dev/null)
+if [ -d "$BASE/data/gptq" ]; then
+    echo "  gptq/ already exists, skipping."
+elif [ -n "$REPO_ROOT" ]; then
+    echo "  Found archive at $REPO_ROOT"
+    tar xzf "$REPO_ROOT" -C "$BASE/data"
+    echo "  Extracted $(ls "$BASE/data/gptq/calibration/"*.jsonl 2>/dev/null | wc -l) calibration files."
+else
+    echo "  WARNING: gptq_calibration_pool.tar.gz not found."
+    echo "  Copy it to the VM and extract manually:"
+    echo "    tar xzf gptq_calibration_pool.tar.gz -C $BASE/data"
+fi
+
+# ── 6. Summary ─────────────────────────────────────────────────────────────────
 echo ""
-echo "[5/5] Setup complete."
+echo "[6/6] Setup complete."
 echo ""
 echo "Workspace:    $BASE"
 echo "Python env:   $BASE/env  (activate with: source $BASE/env/bin/activate)"
@@ -124,3 +139,4 @@ echo "  4. Build the adapter, write the freeze, then run the experiments per the
 echo ""
 echo "Key paths for the scripts:"
 echo "  FLORES_ROOT=$BASE/data"
+echo "  GPTQ_CALIBRATION=$BASE/data/gptq/calibration"
