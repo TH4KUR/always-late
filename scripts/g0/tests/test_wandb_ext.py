@@ -126,6 +126,19 @@ class Verify(unittest.TestCase):
         def m(s, c): s["headline/w1_median_INT4_gptq"] = 0.5
         probs = ext.verify_runs(self.payload, self.api(m)); self.assertEqual(len(probs), 1); self.assertIn("w1_median_INT4_gptq", probs[0])
 
+    def test_float_round_trips_that_differ_in_the_last_digits_are_not_differences_but_real_changes_are(self):
+        # wandb stores floats with fewer digits than Python's round-trip form (seen on the real upload: 0.042195780421957804 comes back as 0.04219578042195781)
+        def tiny(s, c): s["headline/w1_median_INT4_gptq"] = s["headline/w1_median_INT4_gptq"] * (1 + 3e-16)
+        self.assertEqual(ext.verify_runs(self.payload, self.api(tiny)), [])
+        def small(s, c): s["headline/w1_median_INT4_gptq"] = s["headline/w1_median_INT4_gptq"] * (1 + 1e-9)
+        self.assertEqual(len(ext.verify_runs(self.payload, self.api(small))), 1)
+
+    def test_strings_booleans_and_integers_are_compared_exactly(self):
+        r = self.payload["runs"][0]; ints = [k for k, v in r["summary"].items() if isinstance(v, int) and not isinstance(v, bool)]
+        def m(s, c): s[ints[0]] = s[ints[0]] + 1
+        self.assertEqual(len(ext.verify_runs(self.payload, self.api(m))), 1)
+        self.assertFalse(ext.same(True, 1)); self.assertFalse(ext.same("1", 1)); self.assertTrue(ext.same(3, 3.0)); self.assertFalse(ext.same(float("nan"), 0.0)); self.assertFalse(ext.same(10 ** 15, 10 ** 15 + 1))   # integers are never compared with a tolerance
+
     def test_a_missing_summary_key_a_changed_file_hash_and_a_missing_table_are_reported(self):
         def m(s, c):
             del s["headline/s2_auroc_legacy"]; c["files_sha256"] = "{}"; del s["table/gptq_f5_tables"]

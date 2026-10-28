@@ -6,6 +6,7 @@ survival-versus-effect analyses (Gemma, Llama). The v2 builder and uploader (`sc
   python  scripts/g0/gptq_ext/wandb_ext.py verify --payload DIR/payload.json                  reads every run back through the API and lists every difference (empty = identical)"""
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -122,6 +123,18 @@ FAMILIES_EXT = [
 ]
 
 
+def same(a, b, rel_tol=1e-12):
+    """Equality of a payload value and what wandb returns: booleans, strings and integers exactly; floats up to a relative 1e-12 (wandb stores floats with fewer digits than Python's round-trip form: on the real
+    upload 0.042195780421957804 came back as 0.04219578042195781); a NaN is never equal."""
+    if isinstance(a, bool) or isinstance(b, bool):
+        return a is b
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        if isinstance(a, int) and isinstance(b, int):
+            return a == b
+        return math.isclose(a, b, rel_tol=rel_tol, abs_tol=0.0)
+    return a == b
+
+
 def verify_runs(payload, api):
     """Read every run of the payload back and list every difference: a run that is missing, a summary value that differs or is missing, the config `files_sha256`, a table that is not in the summary."""
     problems = []
@@ -134,7 +147,7 @@ def verify_runs(payload, api):
         for k, v in r["summary"].items():
             if k not in run.summary:
                 problems.append(f"{r['id']}: summary key {k} is missing")
-            elif run.summary[k] != v:
+            elif not same(run.summary[k], v):
                 problems.append(f"{r['id']}: summary {k} is {run.summary[k]!r}, the payload says {v!r}")
         if run.config.get("files_sha256") != r["config"]["files_sha256"]:
             problems.append(f"{r['id']}: config files_sha256 differs from the payload")
