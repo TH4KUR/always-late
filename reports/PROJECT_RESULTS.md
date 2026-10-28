@@ -15,6 +15,9 @@ The full record of how the project moved (every decision, every wrong turn) is u
 
 ---
 
+
+> **Update 2026-10-28 10:32 IST (GPTQ extension):** the same experiments were rerun with two other ways of rounding the weights (matched RTN, GPTQ) and compared with the results below: [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md). The text below is unchanged and describes the original (legacy RTN) runs.
+
 ## 1. The short answers
 
 ### Why are the findings not conclusive?

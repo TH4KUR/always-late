@@ -2,7 +2,7 @@
 
 Updated 2026-10-27 14:34 IST (documentation cleanup requested by the user). This is a snapshot from the repository, not a live cluster check. The previous text of this page is kept verbatim in [`archive/doc_cleanup_2026-10-27/reports__CURRENT_STATUS.md.txt`](archive/doc_cleanup_2026-10-27/reports__CURRENT_STATUS.md.txt).
 
-**All results, in plain words, with per-language tables and a guide to the data: [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md).**
+**All results, in plain words, with per-language tables and a guide to the data: [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md).** **GPTQ extension (rounding with GPTQ instead of RTN, same experiments, three arms): [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md).**
 
 ## Evidence state
 
