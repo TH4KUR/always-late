@@ -67,13 +67,13 @@ def check_meta_f5(meta, expected):
     return {"ok": not why, "why": why, "peak_gpu_gb": meta.get("peak_gpu_gb"), "seconds": meta.get("seconds")}
 
 
-def check_files(local, files, meta_name):
+def check_files(local, files, meta_name, need_weights=True):
     present = {p.name for p in Path(local).iterdir()}
-    missing = sorted((set(files) | {meta_name, "weights_manifest.json"}) - present)
+    missing = sorted((set(files) | {meta_name} | ({"weights_manifest.json"} if need_weights else set())) - present)
     return {"ok": not missing, "missing": missing, "files": sorted(present)}
 
 
-def validate(job, jobname, name, files, meta_name, expected, method, bits, recorded, remote_exec, fetch, local_root=LOCAL, task="lm"):
+def validate(job, jobname, name, files, meta_name, expected, method, bits, recorded, remote_exec, fetch, local_root=LOCAL, task="lm", check_weights=True):
     new = f"{jobname}-{job}.out"
     remote = remote_exec
     checks = {}
@@ -85,11 +85,12 @@ def validate(job, jobname, name, files, meta_name, expected, method, bits, recor
     local_sums = subprocess.run("sha256sum *", shell=True, cwd=local, capture_output=True, text=True).stdout
     checks["checksums"] = tv.compare_checksums(remote(f"cd {tv.REMOTE_OUT}/{name} && sha256sum *"), local_sums)
     mp = local / meta_name
-    checks["files"] = check_files(local, files, meta_name)
+    checks["files"] = check_files(local, files, meta_name, need_weights=check_weights)
     meta_check = check_meta_f5 if task == "f5" else check_meta
     checks["meta"] = meta_check(json.loads(mp.read_text()), expected) if mp.exists() else {"ok": False, "why": [f"no {meta_name}"]}
-    wp = local / "weights_manifest.json"
-    checks["weights"] = vj.check_weights_manifest(json.loads(wp.read_text()), method, bits, recorded) if wp.exists() else {"ok": False, "why": ["no weights_manifest.json"]}
+    if check_weights:
+        wp = local / "weights_manifest.json"
+        checks["weights"] = vj.check_weights_manifest(json.loads(wp.read_text()), method, bits, recorded) if wp.exists() else {"ok": False, "why": ["no weights_manifest.json"]}
     failed = [k for k, v in checks.items() if not v.get("ok")]
     return {"ok": not failed, "failed": failed, "checks": checks}
 
@@ -126,6 +127,7 @@ def main(argv=None):
     ap.add_argument("--precisions", nargs="+"); ap.add_argument("--preset"); ap.add_argument("--split", default="eval"); ap.add_argument("--n-sentences", type=int, default=300)
     ap.add_argument("--states", nargs="+", help="F5: the planned states, e.g. FP 6 4"); ap.add_argument("--reference-meta", help="F5: the old job's meta_f5.json (every design field must equal it)")
     ap.add_argument("--manifest-sha256", default="2f0422c2c4c4fdeae9024b8afa9c0b68a2baca926f0df5a16aac838e5a0db3f6", help="sha256 of groups_manifest.json as recorded by the old jobs")
+    ap.add_argument("--no-weights", action="store_true", help="the job wrote no weights_manifest.json (the Llama F5 job: shared RTN, no calibration): skip that check")
     ap.add_argument("--configs", nargs="*", default=[], metavar="STATE=N"); ap.add_argument("--recorded", default=str(ROOT / "reports/gptq_extension/artifact_hashes.json"))
     a = ap.parse_args(argv)
     if a.task == "f5" and not (a.states and a.reference_meta):
@@ -138,7 +140,7 @@ def main(argv=None):
     recorded = json.loads(Path(a.recorded).read_text())["artifact_sha256"]
     remote = lambda cmd: subprocess.run(tv.ADA + [cmd], capture_output=True, text=True).stdout
     fetch = lambda r, l: subprocess.run(["scp", "-q", "-o", "HostKeyAlias=ada-gw1", f"karma@10.4.24.30:{r}/*", l], check=True)
-    rep = validate(a.job, a.jobname, a.name, files, meta_name, expected, a.method.replace("-", "_"), a.bits, recorded, remote, fetch, task=a.task)
+    rep = validate(a.job, a.jobname, a.name, files, meta_name, expected, a.method.replace("-", "_"), a.bits, recorded, remote, fetch, task=a.task, check_weights=not a.no_weights)
     print(json.dumps(rep, indent=1, default=str)); return 0 if rep["ok"] else 1
 
 if __name__ == "__main__":

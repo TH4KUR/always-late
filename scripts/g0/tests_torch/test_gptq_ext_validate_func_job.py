@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 G0 = HERE.parent
@@ -109,6 +110,48 @@ class MetaF5(unittest.TestCase):
         self.assertTrue(rep["ok"], rep["failed"])
         rep = vf.validate(job="1", jobname="gptq-f5", name="n", files=files, meta_name="meta_f5.json", expected=expect_f5(), method="gptq", bits=[4], recorded=RECORDED, remote_exec=remote, fetch=fetch, local_root=d.name)
         self.assertEqual(rep["failed"], ["meta"])
+
+
+class NoWeights(unittest.TestCase):
+    """The Llama F5 job (shared RTN, no calibration) writes no weights_manifest.json: the validator can be told so explicitly; the default still demands it."""
+    def test_files_check_without_a_weights_manifest_when_told_so(self):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup)
+        for n in ("f5_stage_a.pt", "meta_f5.json"):
+            Path(d.name, n).write_text("x")
+        self.assertFalse(vf.check_files(d.name, ["f5_stage_a.pt"], "meta_f5.json")["ok"])                        # default: the manifest is required
+        self.assertTrue(vf.check_files(d.name, ["f5_stage_a.pt"], "meta_f5.json", need_weights=False)["ok"])
+        self.assertFalse(vf.check_files(d.name, ["f5_stage_a.pt", "f5_state_FP.pt"], "meta_f5.json", need_weights=False)["ok"])   # other files are still required
+
+    def test_a_whole_job_without_weights_validates_only_when_the_option_is_set(self):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup); local = Path(d.name) / "n"
+        files = ["f5_stage_a.pt", "f5_state_FP.pt", "f5_state_INT6.pt", "f5_state_INT4.pt"]
+        def remote(cmd):
+            if cmd.startswith("sacct"):
+                return "1|llama-f5|COMPLETED|01:40:00|gnode046|0:0\n"
+            if cmd.startswith("head"):
+                return "GPU 0: NVIDIA GeForce RTX 2080 Ti (UUID: x)\n"
+            if "grep -c" in cmd:
+                return "0\n"
+            if "sha256sum" in cmd:
+                return subprocess.run("sha256sum *", shell=True, cwd=local, capture_output=True, text=True).stdout
+            return ""
+        def fetch(r, l):
+            for f in files:
+                Path(l, f).write_bytes(b"data")
+            Path(l, "meta_f5.json").write_text(json.dumps(GOOD_F5)); Path(l, "gpu_mem.log").write_text("x")
+        kw = dict(job="1", jobname="llama-f5", name="n", files=files, meta_name="meta_f5.json", expected=expect_f5(), method="gptq", bits=[], recorded=RECORDED, remote_exec=remote, fetch=fetch, local_root=d.name, task="f5")
+        rep = vf.validate(check_weights=False, **kw); self.assertTrue(rep["ok"], rep["failed"]); self.assertNotIn("weights", rep["checks"])
+        rep = vf.validate(**kw); self.assertEqual(sorted(rep["failed"]), ["files", "weights"])
+
+
+class CommandLine(unittest.TestCase):
+    def test_the_no_weights_flag_reaches_the_validation_and_is_off_by_default(self):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup); ref = Path(d.name) / "ref.json"; ref.write_text(json.dumps(REF_F5)); seen = []
+        fake = lambda *a, **k: seen.append(k.get("check_weights")) or {"ok": True, "failed": [], "checks": {}}
+        base = ["--job", "1", "--jobname", "j", "--name", "n", "--method", "rtn-matched", "--bits", "4", "--task", "f5", "--states", "FP", "16", "6", "4", "--reference-meta", str(ref)]
+        with mock.patch.object(vf, "validate", fake), mock.patch("builtins.print"):
+            vf.main(base + ["--no-weights"]); vf.main(base)
+        self.assertEqual(seen, [False, True])
 
 
 class DefaultFiles(unittest.TestCase):
