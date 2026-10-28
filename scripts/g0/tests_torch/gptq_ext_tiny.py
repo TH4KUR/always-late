@@ -13,11 +13,13 @@ except Exception:          # pragma: no cover - environment dependent
 DIMS = {"d_model": 32, "d_head": 8, "n_heads": 4, "n_kv": 2, "d_mlp": 64, "d_vocab": 100}
 
 
-def tiny_gemma2(n_layers=2, dtype=torch.float32, seed=0, scale=0.3):
+def tiny_gemma2(n_layers=2, dtype=torch.float32, seed=0, scale=0.3, dims=None):
+    """`dims` overrides the keys of `DIMS` (the 9B layout test uses d_head=16 so that heads x d_head differs from d_model)."""
     if not HAVE_TL:
         return None
-    cfg = HookedTransformerConfig(d_model=DIMS["d_model"], d_head=DIMS["d_head"], n_heads=DIMS["n_heads"], d_mlp=DIMS["d_mlp"], n_layers=n_layers, n_ctx=64, eps=1e-6, d_vocab=DIMS["d_vocab"],
-                                  act_fn="gelu_pytorch_tanh", normalization_type="RMS", rotary_base=10000.0, positional_embedding_type="rotary", use_attn_scale=True, n_key_value_heads=DIMS["n_kv"],
+    D = {**DIMS, **(dims or {})}
+    cfg = HookedTransformerConfig(d_model=D["d_model"], d_head=D["d_head"], n_heads=D["n_heads"], d_mlp=D["d_mlp"], n_layers=n_layers, n_ctx=64, eps=1e-6, d_vocab=D["d_vocab"],
+                                  act_fn="gelu_pytorch_tanh", normalization_type="RMS", rotary_base=10000.0, positional_embedding_type="rotary", use_attn_scale=True, n_key_value_heads=D["n_kv"],
                                   window_size=16, use_local_attn=True, attn_types=(["local", "global"] * n_layers)[:n_layers], attn_scores_soft_cap=50.0, output_logits_soft_cap=30.0, gated_mlp=True,
                                   final_rms=True, use_normalization_before_and_after=True, original_architecture="Gemma2ForCausalLM", dtype=dtype)
     with warnings.catch_warnings():
