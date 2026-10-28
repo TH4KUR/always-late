@@ -1,5 +1,7 @@
 # CLAUDE.md: read this first (Gemma-2-9B three-arm confirmation, prepared for a rented GPU machine)
 
+**A person (not a Claude session) starting this job: read [`reports/functional_validation/gemma9b/JARVIS_HANDOFF.md`](reports/functional_validation/gemma9b/JARVIS_HANDOFF.md) first.** It is the same job in plain steps (what you need, the exact commands, what to send back, when to stop and ask); this file is the technical version.
+
 You are most likely a Claude Code session on a **Jarvis Labs GPU instance**. Your job is to run the prepared Gemma-2-9B job, keep it healthy, and hand the results back. **Everything else is already built and tested on a CPU machine; nothing has been run on a real GPU with the real 9B model.** Read this file completely, then follow "The one command".
 
 ## What this is
