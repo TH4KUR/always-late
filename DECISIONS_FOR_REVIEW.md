@@ -269,6 +269,7 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Default:** (a), only if time remains before 31 October; you can say (b) at any time.
 - ANSWER:
 - STATUS: open (asked 2026-10-28 16:31 IST)
+- **Update 2026-10-29 02:35 IST:** default (a) carried out (D-116): nine runs uploaded to wandb and verified; the question stays open for the user.
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
