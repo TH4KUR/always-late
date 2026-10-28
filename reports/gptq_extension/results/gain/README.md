@@ -1,0 +1,9 @@
+# Study G (graded gain of language-selective features) under the three quantizers (D-109, exploratory)
+
+Outputs of the UNCHANGED `scripts/g0/phase1_gain_analysis.py`, one directory per new arm (`gptq/`, `rtnm/`: `alpha_star.csv`, `analysis.json`, `curves.csv`, `reliability.csv`, `report.md`). States FP, INT6, INT4. Full precision is the OLD `gain-FP` file in every arm. Jobs 44074 and 44076 (GPTQ INT4, INT6), 44075 and 44077 (matched RTN INT4, INT6). The legacy arm for these three states is the control run on the old files (outside git, `func_inputs/analysis_legacy_gain`; its `curves.csv` rows equal the committed [`../../../functional_validation/gain_study/results/curves.csv`](../../../functional_validation/gain_study/results/curves.csv) rows for FP, INT6 and INT4); the committed six-state report remains the old study's record. Raw job files (about 5.6 MB each) stay outside git in `/home/karma/Documents/ANLP/project/transfer_runs/func_inputs/jobs/`.
+
+Command per arm (each run directory needs its own `meta_lm_eval.json`; `lg_FP` is the old FP file plus meta):
+```
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_gain_analysis.py --runs <func_inputs/lg_FP> <func_inputs/jobs/ARM-gain-6> <func_inputs/jobs/ARM-gain-4> --ratios-json reports/functional_validation/gain_study/calibration/ratios.json --baseline-csv reports/functional_validation/gain_study/baseline/baseline.csv --out <func_inputs/analysis_ARM_gain>
+```
+Validation of the jobs: `scripts/g0/gptq_ext/validate_func_job.py --bits 4|6 --precisions 4|6 --preset 'gain|0.3535533905932738,0.1767766952966369,0.08838834764831845,2.82842712474619,5.65685424949238,11.31370849898476,1.1,1.2|c3|K64' --configs INT4|INT6=999`. Reading and limits: D-109 in [`../../../decisions_and_anomalies.md`](../../../decisions_and_anomalies.md); plain-language version: section 4.7 of [`../../RESULTS.md`](../../RESULTS.md).
