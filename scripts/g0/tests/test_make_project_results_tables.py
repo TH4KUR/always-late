@@ -55,6 +55,45 @@ class Tables(unittest.TestCase):
         rows = [l for l in section(self.text, "A9.").splitlines() if l.startswith("| ") and "---" not in l]
         self.assertEqual(len(rows) - 1, 6)
 
+    def gptq_rows(self, title):
+        return [l for l in section(self.text, title).splitlines() if l.startswith("| ") and "---" not in l]
+
+    def test_the_gptq_extension_sections_have_one_row_per_language_plus_the_median_row(self):
+        for title in ("A11.", "A12.", "A13.", "A14.", "A15."):
+            self.assertEqual(len(self.gptq_rows(title)) - 1, 28, title)
+
+    def test_gptq_survival_legacy_column_equals_the_phase1_table_of_a2(self):
+        a2 = [l for l in self.gptq_rows("A2.") if "median of the 27" in l][0].split("|")
+        a11 = [l for l in self.gptq_rows("A11.") if "median of the 27" in l][0].split("|")
+        self.assertEqual(a11[2].strip(), a2[4].strip())  # legacy INT6 = the A2 INT6 median (90.4)
+        self.assertEqual(a11[5].strip(), a2[6].strip())  # legacy INT4 = the A2 INT4 median
+
+    def test_gptq_survival_columns_are_ordered_legacy_matched_gptq_and_gptq_is_best_at_int4_in_every_language(self):
+        body = [l.split("|") for l in self.gptq_rows("A11.")[1:-1]]
+        for r in body:
+            self.assertGreater(float(r[7]), float(r[6]) - 1e-9, r[1])  # GPTQ INT4 >= matched RTN INT4 in each language
+
+    def test_gptq_loss_increase_median_matches_d104(self):
+        row = [l for l in self.gptq_rows("A12.") if "median of the 27" in l][0]
+        self.assertEqual(len(row.split("|")), 9)
+        c = [x.strip() for x in row.split("|")]
+        self.assertTrue(float(c[5]) > float(c[6]) > float(c[7]))  # INT4: legacy > matched > GPTQ
+
+    def test_gptq_e4_median_ratios_match_d107(self):
+        row = [l for l in self.gptq_rows("A13.") if "median of the 27" in l][0]
+        self.assertIn("| 1.54 | 1.36 | 1.22 |", row)
+
+    def test_gptq_transfer_legacy_columns_equal_the_a8_int4_columns(self):
+        a8 = {l.split("|")[1].strip(): [x.strip() for x in l.split("|")] for l in self.gptq_rows("A8.")[1:]}
+        a14 = {l.split("|")[1].strip(): [x.strip() for x in l.split("|")] for l in self.gptq_rows("A14.")[1:-1]}
+        self.assertEqual(set(a8), set(a14))
+        for k in a8:
+            self.assertEqual((a14[k][2], a14[k][3]), (a8[k][11], a8[k][12]), k)  # legacy INT4 C and W
+
+    def test_gptq_study_g_medians_match_d109(self):
+        row = [l for l in self.gptq_rows("A15.") if "median of the 27" in l][0]
+        self.assertIn("| +0.169 | +0.323 | +0.281 | +0.187 |", row)
+
     def test_the_document_is_updated_only_between_its_markers(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "doc.md"

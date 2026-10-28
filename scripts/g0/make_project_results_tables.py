@@ -162,6 +162,67 @@ def t_llama(L):
     body.append(["**median of the 27**", f(median(gemma[("FP", l[0])]["effect"] for l in L)), f(median(llama[("FP", l[0])]["E_mean"] for l in L)),
                  f(median(llama[("FP", l[0])]["E_median"] for l in L)), ""])
     return table(["language", "Gemma-2-2B effect (group − control)", "Llama-3.2-1B effect, mean of 3 control draws", "Llama effect, median of the draws", "group beats all draws?"], body)
+ 
+
+GPTQ = R / "gptq_extension/results"
+ARMS3 = ["legacy RTN", "matched RTN", "GPTQ"]
+
+
+def stage1_arms(key):
+    """{(language, bits): {arm: value}} of a column of `stage1_paired_per_language.csv`; legacy and matched come from the contrast 'matched minus legacy' (b, a), GPTQ from 'GPTQ minus matched' (a)."""
+    out = {}
+    for r in rows(GPTQ / "stage1/stage1_paired_per_language.csv"):
+        d = out.setdefault((r["language"], r["bits"]), {})
+        if r["contrast"] == "matched RTN minus legacy RTN":
+            d["legacy RTN"], d["matched RTN"] = r[key + "_b"], r[key + "_a"]
+        elif r["contrast"] == "GPTQ minus matched RTN":
+            d["GPTQ"] = r[key + "_a"]
+    return out
+
+
+def three_arm_table(L, d, bits, digits, first_head, plus=False):
+    body = [[lang_label(l)] + [f(d[(l[0], b)][a], digits, plus) for b in bits for a in ARMS3] for l in L]
+    body.append(["**median of the 27**"] + [f(median(d[(l[0], b)][a] for l in L), digits, plus) for b in bits for a in ARMS3])
+    return table([first_head] + [f"INT{b}, {a}" for b in bits for a in ARMS3], body)
+
+
+def t_gptq_survival(L):
+    return three_arm_table(L, stage1_arms("survived_pct"), ("6", "4"), 1, "language")
+
+
+def t_gptq_loss(L):
+    return three_arm_table(L, stage1_arms("nll_delta"), ("6", "4"), 3, "language")
+
+
+def t_gptq_function(L):
+    arms = {"legacy RTN": R / "functional_validation/results/eval/retention.csv", "matched RTN": GPTQ / "stage3/analysis_rtnm_eval/retention.csv", "GPTQ": GPTQ / "stage3/analysis_gptq_eval/retention.csv"}
+    d = {a: index(rows(path), "precision", "language") for a, path in arms.items()}
+    mark = {"preserved": "", "amplified": " ▲", "inconclusive": " ?", "attenuated": " ▽"}
+    cells = lambda lang, s: [f(d[a][(s, lang)]["ratio"], 2) + mark[d[a][(s, lang)]["class"]] for a in ARMS3]
+    body = [[lang_label(l)] + cells(l[0], "INT6") + cells(l[0], "INT4") for l in L]
+    body.append(["**median of the 27**"] + [f(median(d[a][(s, l[0])]["ratio"] for l in L), 2) for s in ("INT6", "INT4") for a in ARMS3])
+    return table(["language"] + [f"{s}, {a}" for s in ("INT6", "INT4") for a in ARMS3], body)
+
+
+def t_gptq_transfer(L):
+    arms = {"legacy RTN": R / "intervention_transfer/results/main/group_per_language.csv", "matched RTN": GPTQ / "stage2/analysis_rtnm/group_per_language.csv", "GPTQ": GPTQ / "stage2/analysis_gptq/group_per_language.csv"}
+    d = {a: index(rows(path), "state", "language") for a, path in arms.items()}
+    body = [[lang_label(l)] + [f(d[a][("INT4", l[0])][c], 3, True) for a in ARMS3 for c in ("C", "W")] for l in L]
+    body.append(["**median of the 27**"] + [f(median(d[a][("INT4", l[0])][c] for l in L), 3, True) for a in ARMS3 for c in ("C", "W")])
+    return table(["language"] + [f"INT4 {c}, {a}" for a in ARMS3 for c in ("C", "W")], body)
+
+
+def t_gptq_gain(L):
+    arms = {"legacy RTN": R / "functional_validation/gain_study/results/curves.csv", "matched RTN": GPTQ / "gain/rtnm/curves.csv", "GPTQ": GPTQ / "gain/gptq/curves.csv"}
+    d = {a: {(r["state"], r["language"], r["ratio"]): r for r in rows(path)} for a, path in arms.items()}
+    down, up = 0.08838834764831845, 11.31370849898476
+    def cell(a, state, lang, ratio):
+        return gain_cell(d[a], state, lang, ratio)
+    def med(a, state, ratio):
+        return f(median(row["net"] for (s, l, r), row in d[a].items() if s == state and abs(float(r) - ratio) < 1e-6), 3, plus=True)
+    body = [[lang_label(l), cell("legacy RTN", "FP", l[0], down)] + [cell(a, "INT4", l[0], down) for a in ARMS3] + [cell("legacy RTN", "FP", l[0], up)] + [cell(a, "INT4", l[0], up) for a in ARMS3] for l in L]
+    body.append(["**median of the 27**", med("legacy RTN", "FP", down)] + [med(a, "INT4", down) for a in ARMS3] + [med("legacy RTN", "FP", up)] + [med(a, "INT4", up) for a in ARMS3])
+    return table(["language", "FP, group ×0.088"] + [f"INT4 ×0.088, {a}" for a in ARMS3] + ["FP, group ×11.3"] + [f"INT4 ×11.3, {a}" for a in ARMS3], body)
 
 
 SECTIONS = [
@@ -187,6 +248,16 @@ SECTIONS = [
      "Source: `reports/intervention_transfer/results/external/group_per_language.csv`. Same columns as A8, on fresh text."),
     ("A10. Second model check (Llama-3.2-1B): the group effect in full precision, next to Gemma", t_llama,
      "Source: `reports/functional_validation/llama_robust/languages.csv` and the Gemma table above. The pre-set rule needed 24 of 27 languages above zero."),
+    ("A11. GPTQ extension: share of active features that survive, per language, legacy RTN / matched RTN / GPTQ (6 and 4 bits)", t_gptq_survival,
+     "Source: `reports/gptq_extension/results/stage1/stage1_paired_per_language.csv` (D-104; BOS masked, equal budget; percent). The median row is the median of the 27 languages, not the pooled figure of the text (INT4 12.7 / 18.7 / 30.5 %)."),
+    ("A12. GPTQ extension: loss increase on the same sentences (nats per token, quantized minus full precision), per language", t_gptq_loss,
+     "Source: the same file (D-104). Lower is better."),
+    ("A13. GPTQ extension: function of the language group (zeroing the 64 features), ratio of the effect to its full-precision value, per language", t_gptq_function,
+     "Source: `reports/functional_validation/results/eval/retention.csv` (legacy RTN) and `reports/gptq_extension/results/stage3/analysis_{rtnm,gptq}_eval/retention.csv` (D-107). ▲ = clearly amplified, ▽ = clearly attenuated, ? = inconclusive, no mark = within the band of no change."),
+    ("A14. GPTQ extension: intervention transfer, main matrix, INT4 context part (C) and weights part (W) of the group's harm, per language", t_gptq_transfer,
+     "Source: `reports/intervention_transfer/results/main/group_per_language.csv` (legacy RTN) and `reports/gptq_extension/results/stage2/analysis_{rtnm,gptq}/group_per_language.csv` (D-105). Same quantities as A8, nats per token."),
+    ("A15. GPTQ extension: Study G, net harm per language (group minus matched controls) when the group is scaled down to ×0.088 and up to ×11.3, full precision and INT4", t_gptq_gain,
+     "Source: `reports/functional_validation/gain_study/results/curves.csv` (legacy RTN and full precision; the full-precision file is the same in every arm) and `reports/gptq_extension/results/gain/{rtnm,gptq}/curves.csv` (D-109). Nats per token."),
 ]
 
 

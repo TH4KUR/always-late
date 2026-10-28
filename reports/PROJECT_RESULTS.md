@@ -326,7 +326,7 @@ All post hoc: protocol files were written before the code and each recorded what
 
 ## 6. Where all the data is
 
-Everything below is in the repository unless marked. Appendix tables A1–A10 are the same data per language.
+Everything below is in the repository unless marked. Appendix tables A1–A10 are the same data per language; A11 to A15 are the GPTQ extension (legacy RTN, matched RTN, GPTQ side by side; see [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md)).
 
 | what | where |
 |---|---|
@@ -723,5 +723,180 @@ Source: `reports/functional_validation/llama_robust/languages.csv` and the Gemma
 | khmer (khm, low) | 0.220 | 0.025 | 0.026 | True |
 | lao (lao, low) | 1.915 | 0.037 | 0.104 | False |
 | **median of the 27** | 0.262 | 0.048 | 0.062 |  |
+
+### A11. GPTQ extension: share of active features that survive, per language, legacy RTN / matched RTN / GPTQ (6 and 4 bits)
+
+Source: `reports/gptq_extension/results/stage1/stage1_paired_per_language.csv` (D-104; BOS masked, equal budget; percent). The median row is the median of the 27 languages, not the pooled figure of the text (INT4 12.7 / 18.7 / 30.5 %).
+
+| language | INT6, legacy RTN | INT6, matched RTN | INT6, GPTQ | INT4, legacy RTN | INT4, matched RTN | INT4, GPTQ |
+|---|---|---|---|---|---|---|
+| english (eng, high) | 97.2 | 98.6 | 99.6 | 31.8 | 41.8 | 52.9 |
+| german (deu, high) | 95.6 | 97.6 | 99.4 | 20.4 | 28.8 | 42.1 |
+| spanish (spa, high) | 96.3 | 97.8 | 99.5 | 24.3 | 33.3 | 47.0 |
+| french (fra, high) | 95.6 | 97.6 | 99.5 | 23.0 | 31.7 | 45.2 |
+| portuguese (por, high) | 95.7 | 97.5 | 99.4 | 22.5 | 31.4 | 45.1 |
+| russian (rus, high) | 95.5 | 97.3 | 99.4 | 20.3 | 29.0 | 42.5 |
+| mandarin (zho, high) | 95.8 | 97.6 | 99.4 | 20.6 | 29.7 | 44.1 |
+| japanese (jpn, high) | 93.5 | 96.4 | 99.1 | 15.4 | 23.3 | 37.1 |
+| korean (kor, high) | 90.4 | 94.4 | 98.7 | 10.0 | 16.1 | 28.2 |
+| hindi (hin, mid) | 90.3 | 94.2 | 98.6 | 11.5 | 18.1 | 30.1 |
+| bengali (ben, mid) | 83.1 | 89.4 | 97.4 | 5.8 | 9.8 | 21.2 |
+| tamil (tam, mid) | 82.4 | 88.8 | 97.3 | 4.6 | 7.9 | 19.3 |
+| turkish (tur, mid) | 90.3 | 94.6 | 98.6 | 12.0 | 17.7 | 29.1 |
+| vietnamese (vie, mid) | 93.5 | 96.2 | 98.9 | 14.6 | 23.0 | 35.4 |
+| indonesian (ind, mid) | 94.8 | 96.9 | 99.2 | 19.1 | 27.9 | 41.1 |
+| thai (tha, mid) | 92.2 | 95.3 | 99.0 | 9.1 | 16.2 | 29.9 |
+| polish (pol, mid) | 94.6 | 96.7 | 99.1 | 16.2 | 23.8 | 36.8 |
+| ukrainian (ukr, mid) | 93.8 | 96.1 | 99.1 | 15.1 | 22.2 | 34.8 |
+| kannada (kan, low) | 78.5 | 86.2 | 96.8 | 4.3 | 7.4 | 19.4 |
+| telugu (tel, low) | 80.8 | 87.3 | 97.0 | 4.9 | 8.3 | 18.2 |
+| yoruba (yor, low) | 67.6 | 73.7 | 92.7 | 6.8 | 9.5 | 19.5 |
+| sundanese (sun, low) | 78.0 | 85.5 | 95.8 | 8.4 | 12.3 | 20.0 |
+| amharic (amh, low) | 62.8 | 72.1 | 94.2 | 3.8 | 6.4 | 17.4 |
+| igbo (ibo, low) | 66.5 | 74.3 | 92.7 | 6.4 | 9.0 | 18.5 |
+| hausa (hau, low) | 73.1 | 79.2 | 93.1 | 6.3 | 8.9 | 16.3 |
+| khmer (khm, low) | 64.0 | 74.5 | 95.0 | 2.6 | 5.3 | 15.5 |
+| lao (lao, low) | 53.0 | 66.7 | 93.5 | 2.8 | 4.9 | 17.1 |
+| **median of the 27** | 90.4 | 94.6 | 98.7 | 11.5 | 17.7 | 29.9 |
+
+### A12. GPTQ extension: loss increase on the same sentences (nats per token, quantized minus full precision), per language
+
+Source: the same file (D-104). Lower is better.
+
+| language | INT6, legacy RTN | INT6, matched RTN | INT6, GPTQ | INT4, legacy RTN | INT4, matched RTN | INT4, GPTQ |
+|---|---|---|---|---|---|---|
+| english (eng, high) | 0.006 | 0.005 | 0.002 | 0.161 | 0.099 | 0.066 |
+| german (deu, high) | 0.021 | 0.013 | 0.004 | 0.387 | 0.281 | 0.151 |
+| spanish (spa, high) | 0.018 | 0.017 | 0.004 | 0.288 | 0.204 | 0.110 |
+| french (fra, high) | 0.014 | 0.012 | 0.005 | 0.318 | 0.226 | 0.117 |
+| portuguese (por, high) | 0.019 | 0.013 | 0.004 | 0.353 | 0.239 | 0.112 |
+| russian (rus, high) | 0.020 | 0.013 | 0.004 | 0.355 | 0.248 | 0.129 |
+| mandarin (zho, high) | 0.024 | 0.023 | 0.009 | 0.385 | 0.264 | 0.138 |
+| japanese (jpn, high) | 0.023 | 0.020 | 0.008 | 0.402 | 0.292 | 0.141 |
+| korean (kor, high) | 0.026 | 0.022 | 0.007 | 0.519 | 0.367 | 0.145 |
+| hindi (hin, mid) | 0.018 | 0.017 | 0.004 | 0.478 | 0.344 | 0.120 |
+| bengali (ben, mid) | 0.022 | 0.018 | 0.006 | 0.600 | 0.387 | 0.119 |
+| tamil (tam, mid) | 0.028 | 0.017 | 0.007 | 0.589 | 0.406 | 0.125 |
+| turkish (tur, mid) | 0.033 | 0.021 | 0.007 | 0.547 | 0.380 | 0.181 |
+| vietnamese (vie, mid) | 0.023 | 0.018 | 0.007 | 0.434 | 0.274 | 0.120 |
+| indonesian (ind, mid) | 0.029 | 0.015 | 0.005 | 0.487 | 0.339 | 0.140 |
+| thai (tha, mid) | 0.018 | 0.017 | 0.006 | 0.495 | 0.322 | 0.128 |
+| polish (pol, mid) | 0.024 | 0.016 | 0.005 | 0.517 | 0.331 | 0.163 |
+| ukrainian (ukr, mid) | 0.027 | 0.015 | 0.007 | 0.467 | 0.323 | 0.142 |
+| kannada (kan, low) | 0.021 | 0.014 | 0.005 | 0.594 | 0.411 | 0.105 |
+| telugu (tel, low) | 0.023 | 0.018 | 0.005 | 0.598 | 0.394 | 0.120 |
+| yoruba (yor, low) | 0.023 | 0.018 | 0.001 | 0.573 | 0.372 | 0.088 |
+| sundanese (sun, low) | 0.052 | 0.047 | 0.010 | 0.829 | 0.535 | 0.189 |
+| amharic (amh, low) | 0.049 | 0.040 | 0.010 | 1.495 | 0.849 | 0.120 |
+| igbo (ibo, low) | 0.026 | 0.023 | 0.004 | 0.662 | 0.451 | 0.134 |
+| hausa (hau, low) | 0.045 | 0.021 | 0.009 | 0.833 | 0.562 | 0.193 |
+| khmer (khm, low) | 0.026 | 0.024 | 0.005 | 0.829 | 0.499 | 0.109 |
+| lao (lao, low) | 0.030 | 0.034 | 0.006 | 1.747 | 0.992 | 0.095 |
+| **median of the 27** | 0.023 | 0.018 | 0.005 | 0.517 | 0.344 | 0.125 |
+
+### A13. GPTQ extension: function of the language group (zeroing the 64 features), ratio of the effect to its full-precision value, per language
+
+Source: `reports/functional_validation/results/eval/retention.csv` (legacy RTN) and `reports/gptq_extension/results/stage3/analysis_{rtnm,gptq}_eval/retention.csv` (D-107). ▲ = clearly amplified, ▽ = clearly attenuated, ? = inconclusive, no mark = within the band of no change.
+
+| language | INT6, legacy RTN | INT6, matched RTN | INT6, GPTQ | INT4, legacy RTN | INT4, matched RTN | INT4, GPTQ |
+|---|---|---|---|---|---|---|
+| english (eng, high) | 0.96 | 0.96 | 0.98 | 0.97 | 1.03 | 0.89 |
+| german (deu, high) | 1.09 | 1.07 | 0.94 | 0.72 ? | 0.91 | 1.01 |
+| spanish (spa, high) | 1.04 | 1.08 | 0.91 | 1.28 ? | 2.13 ▲ | 1.26 ? |
+| french (fra, high) | 1.16 | 1.13 | 1.01 | 1.54 ▲ | 1.10 | 1.01 |
+| portuguese (por, high) | 1.09 | 1.10 | 0.97 | 0.95 | 0.66 ▽ | 0.92 |
+| russian (rus, high) | 1.08 | 1.13 | 0.94 | 2.92 ▲ | 2.45 ▲ | 1.54 ▲ |
+| mandarin (zho, high) | 1.06 | 1.01 | 0.98 | 1.08 | 1.36 ? | 1.07 |
+| japanese (jpn, high) | 1.03 | 0.97 | 1.00 | 1.42 ▲ | 1.98 ▲ | 1.27 |
+| korean (kor, high) | 0.88 | 0.85 | 0.97 | 2.63 ▲ | 1.38 ? | 1.70 ▲ |
+| hindi (hin, mid) | 1.36 ? | 1.31 ? | 1.01 | 2.90 ▲ | 2.08 ▲ | 1.57 ▲ |
+| bengali (ben, mid) | 0.94 | 0.92 | 1.09 | 3.89 ▲ | 2.73 ▲ | 1.42 ? |
+| tamil (tam, mid) | 1.01 | 1.04 | 1.05 | 2.63 ▲ | 2.11 ▲ | 1.22 ? |
+| turkish (tur, mid) | 0.96 | 1.03 | 0.98 | 2.75 ▲ | 1.95 ▲ | 1.33 ? |
+| vietnamese (vie, mid) | 0.83 ? | 1.50 ? | 1.04 | 5.70 ▲ | 3.90 ▲ | 3.45 ▲ |
+| indonesian (ind, mid) | 0.99 | 1.03 | 0.93 | 1.05 ? | 1.58 ? | 1.28 ? |
+| thai (tha, mid) | 1.11 | 1.17 | 1.01 | 3.74 ▲ | 3.21 ▲ | 1.64 ▲ |
+| polish (pol, mid) | 0.92 | 1.07 | 0.98 | 1.58 ▲ | 0.97 | 0.94 |
+| ukrainian (ukr, mid) | 1.15 | 1.06 | 0.99 | 2.30 ▲ | 1.90 ▲ | 1.49 ▲ |
+| kannada (kan, low) | 1.00 | 0.96 | 1.01 | 1.29 ? | 1.17 | 1.04 |
+| telugu (tel, low) | 1.24 ? | 1.18 | 1.02 | 5.75 ▲ | 4.34 ▲ | 1.79 ▲ |
+| yoruba (yor, low) | 1.02 | 1.02 | 1.00 | 1.38 ▲ | 1.15 | 1.13 |
+| sundanese (sun, low) | 0.90 | 0.92 | 1.00 | 1.18 | 0.81 | 0.90 |
+| amharic (amh, low) | 1.15 | 1.07 | 1.01 | 2.31 ▲ | 1.35 ? | 1.23 |
+| igbo (ibo, low) | 0.98 | 0.98 | 1.00 | 1.25 | 1.14 | 1.02 |
+| hausa (hau, low) | 1.03 | 1.04 | 1.00 | 1.29 ? | 1.20 | 1.06 |
+| khmer (khm, low) | 1.03 | 1.02 | 0.99 | 1.89 ▲ | 1.35 ? | 1.09 |
+| lao (lao, low) | 1.00 | 1.02 | 0.98 | 1.27 | 1.19 | 1.15 |
+| **median of the 27** | 1.03 | 1.04 | 1.00 | 1.54 | 1.36 | 1.22 |
+
+### A14. GPTQ extension: intervention transfer, main matrix, INT4 context part (C) and weights part (W) of the group's harm, per language
+
+Source: `reports/intervention_transfer/results/main/group_per_language.csv` (legacy RTN) and `reports/gptq_extension/results/stage2/analysis_{rtnm,gptq}/group_per_language.csv` (D-105). Same quantities as A8, nats per token.
+
+| language | INT4 C, legacy RTN | INT4 W, legacy RTN | INT4 C, matched RTN | INT4 W, matched RTN | INT4 C, GPTQ | INT4 W, GPTQ |
+|---|---|---|---|---|---|---|
+| english (eng, high) | -0.011 | +0.012 | +0.000 | -0.000 | -0.008 | -0.008 |
+| german (deu, high) | +0.964 | -0.224 | +0.728 | +0.050 | +0.248 | +0.037 |
+| spanish (spa, high) | +0.755 | +0.125 | +0.885 | +0.302 | +0.288 | +0.110 |
+| french (fra, high) | +0.677 | +0.509 | +0.912 | +0.148 | +0.093 | +0.038 |
+| portuguese (por, high) | -0.336 | +0.706 | +0.180 | +0.029 | -0.046 | +0.134 |
+| russian (rus, high) | +0.206 | +0.096 | +0.167 | +0.063 | +0.052 | +0.014 |
+| mandarin (zho, high) | +1.431 | +0.577 | +1.408 | +1.494 | +0.543 | +0.575 |
+| japanese (jpn, high) | +0.421 | +0.104 | +0.316 | +0.182 | +0.060 | +0.044 |
+| korean (kor, high) | +0.475 | +0.459 | +0.569 | +0.034 | +0.400 | +0.094 |
+| hindi (hin, mid) | +0.310 | +0.125 | +0.175 | +0.113 | +0.075 | +0.039 |
+| bengali (ben, mid) | +0.019 | +0.022 | +0.003 | +0.013 | +0.001 | +0.003 |
+| tamil (tam, mid) | +0.029 | +0.025 | +0.013 | +0.024 | +0.003 | +0.005 |
+| turkish (tur, mid) | +0.513 | +0.330 | +0.446 | +0.263 | +0.156 | +0.058 |
+| vietnamese (vie, mid) | +0.076 | +0.042 | +0.036 | +0.041 | +0.017 | +0.022 |
+| indonesian (ind, mid) | +0.002 | -0.001 | -0.000 | +0.011 | -0.003 | +0.011 |
+| thai (tha, mid) | +0.087 | +0.091 | +0.050 | +0.110 | +0.040 | +0.012 |
+| polish (pol, mid) | +0.337 | +0.089 | +0.328 | +0.048 | +0.090 | +0.026 |
+| ukrainian (ukr, mid) | +0.636 | +0.438 | +0.414 | +0.581 | +0.244 | +0.147 |
+| kannada (kan, low) | +0.009 | +0.008 | +0.005 | +0.003 | +0.004 | -0.002 |
+| telugu (tel, low) | +0.073 | +0.081 | +0.041 | +0.084 | +0.025 | +0.012 |
+| yoruba (yor, low) | +0.676 | +0.494 | +0.419 | +0.350 | +0.138 | +0.206 |
+| sundanese (sun, low) | +0.084 | +0.225 | -0.052 | +0.111 | -0.033 | -0.031 |
+| amharic (amh, low) | +0.409 | +1.113 | +0.177 | +0.344 | +0.127 | +0.127 |
+| igbo (ibo, low) | +0.094 | +0.082 | +0.058 | +0.046 | +0.035 | +0.000 |
+| hausa (hau, low) | +0.101 | +0.034 | +0.043 | +0.034 | +0.025 | +0.005 |
+| khmer (khm, low) | +0.154 | +0.071 | +0.035 | +0.110 | +0.021 | +0.012 |
+| lao (lao, low) | +0.892 | +1.196 | +0.035 | +1.125 | +0.042 | +0.340 |
+| **median of the 27** | +0.206 | +0.096 | +0.167 | +0.084 | +0.042 | +0.026 |
+
+### A15. GPTQ extension: Study G, net harm per language (group minus matched controls) when the group is scaled down to ×0.088 and up to ×11.3, full precision and INT4
+
+Source: `reports/functional_validation/gain_study/results/curves.csv` (legacy RTN and full precision; the full-precision file is the same in every arm) and `reports/gptq_extension/results/gain/{rtnm,gptq}/curves.csv` (D-109). Nats per token.
+
+| language | FP, group ×0.088 | INT4 ×0.088, legacy RTN | INT4 ×0.088, matched RTN | INT4 ×0.088, GPTQ | FP, group ×11.3 | INT4 ×11.3, legacy RTN | INT4 ×11.3, matched RTN | INT4 ×11.3, GPTQ |
+|---|---|---|---|---|---|---|---|---|
+| english (eng, high) | +0.107 | +0.113 | +0.119 | +0.099 | -0.220 | -0.383 | -0.253 | -0.218 |
+| german (deu, high) | +0.422 | +0.438 | +0.490 | +0.481 | +1.529 | +1.312 | +1.466 | +1.565 |
+| spanish (spa, high) | +0.216 | +0.320 | +0.562 | +0.306 | +0.721 | +0.436 | +0.555 | +0.674 |
+| french (fra, high) | +0.307 | +0.586 | +0.393 | +0.333 | +0.844 | +0.599 | +0.582 | +0.866 |
+| portuguese (por, high) | +0.563 | +0.619 | +0.405 | +0.555 | +0.893 | +0.940 | +0.853 | +0.993 |
+| russian (rus, high) | +0.032 | +0.143 | +0.105 | +0.058 | +1.235 | +0.525 | +0.854 | +1.146 |
+| mandarin (zho, high) | +5.460 | +6.442 | +8.547 | +6.208 | +1.613 | +1.239 | +1.763 | +1.580 |
+| japanese (jpn, high) | +0.157 | +0.256 | +0.331 | +0.207 | +0.999 | +0.493 | +0.737 | +0.981 |
+| korean (kor, high) | +0.193 | +0.708 | +0.347 | +0.393 | +0.837 | +0.403 | +0.573 | +0.831 |
+| hindi (hin, mid) | +0.052 | +0.198 | +0.131 | +0.089 | +1.541 | +1.069 | +1.707 | +1.626 |
+| bengali (ben, mid) | +0.008 | +0.031 | +0.022 | +0.012 | +0.635 | +0.451 | +0.712 | +0.666 |
+| tamil (tam, mid) | +0.022 | +0.063 | +0.050 | +0.027 | +2.051 | +1.624 | +1.748 | +2.409 |
+| turkish (tur, mid) | +0.126 | +0.398 | +0.281 | +0.176 | +0.504 | -0.446 | -0.083 | +0.276 |
+| vietnamese (vie, mid) | +0.001 | +0.051 | +0.030 | +0.020 | +0.772 | +0.519 | +0.548 | +0.755 |
+| indonesian (ind, mid) | +0.018 | +0.022 | +0.036 | +0.027 | +0.221 | +0.332 | +0.311 | +0.271 |
+| thai (tha, mid) | +0.031 | +0.128 | +0.107 | +0.052 | +0.069 | -0.402 | -0.053 | +0.041 |
+| polish (pol, mid) | +0.179 | +0.387 | +0.225 | +0.187 | +1.390 | +1.242 | +1.194 | +1.368 |
+| ukrainian (ukr, mid) | +0.205 | +0.642 | +0.473 | +0.350 | +2.530 | +1.608 | +1.799 | +2.359 |
+| kannada (kan, low) | +0.026 | +0.037 | +0.033 | +0.028 | +1.213 | +1.927 | +1.860 | +1.505 |
+| telugu (tel, low) | +0.020 | +0.130 | +0.097 | +0.039 | +1.227 | +0.810 | +1.334 | +1.312 |
+| yoruba (yor, low) | +1.146 | +1.714 | +1.390 | +1.303 | -0.015 | -0.268 | -0.131 | +0.076 |
+| sundanese (sun, low) | +0.677 | +0.887 | +0.566 | +0.608 | +0.311 | +0.180 | +0.339 | +0.372 |
+| amharic (amh, low) | +0.768 | +1.765 | +1.021 | +0.909 | +6.179 | +4.147 | +6.148 | +5.972 |
+| igbo (ibo, low) | +0.278 | +0.374 | +0.332 | +0.286 | +1.739 | +1.231 | +1.371 | +2.098 |
+| hausa (hau, low) | +0.129 | +0.174 | +0.162 | +0.139 | +1.326 | +1.276 | +1.214 | +1.408 |
+| khmer (khm, low) | +0.169 | +0.323 | +0.238 | +0.181 | +5.430 | +2.674 | +5.313 | +5.635 |
+| lao (lao, low) | +1.169 | +1.997 | +1.841 | +1.449 | +7.159 | +4.490 | +6.022 | +7.334 |
+| **median of the 27** | +0.169 | +0.323 | +0.281 | +0.187 | +1.213 | +0.810 | +0.854 | +1.146 |
 
 <!-- END GENERATED TABLES -->

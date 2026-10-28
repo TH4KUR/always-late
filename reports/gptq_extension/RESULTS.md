@@ -5,7 +5,7 @@ Written 2026-10-28 (IST), at the user's request of 2026-10-27: "run tests again 
 ## 1. The short answer
 
 - **Yes, a lot depends on the quantizer, but mostly the size of the effect, not the direction.** With the better quantizer (GPTQ) the 4-bit model is much closer to the original: it keeps more of the model's inner features, loses less next-word accuracy, and the damage of the "transfer" test shrinks a lot.
-- **The main conclusions of the project do not flip.** The language-specific features still matter for their language (removing them hurts in all 27 languages). The damage is still not concentrated in those features (they carry only 2 to 3 % of it). Removing a language's features still does not change Belebele accuracy (a reading test) by more than half a point, and this now also holds at 4 bits where the model is clearly above chance. The headline verdict of the transfer study (the prediction criterion is met at 4 bits, not at 6 bits, so not met overall) stays the same.
+- **The main conclusions of the project do not flip.** The language-specific features still matter for their language (removing them hurts in all 27 languages). Putting those features back to their full-precision values still repairs very little of the loss (2 to 3 % of the loss gap; the whole layer-12 state repairs about 40 %), so the damage is not recoverable through them alone (a recovery share is not a share of causal responsibility). Removing a language's features still does not change Belebele accuracy (a reading test) by more than half a point, and this now also holds at 4 bits where the model is clearly above chance. The headline verdict of the transfer study (the prediction criterion is met at 4 bits, not at 6 bits, so not met overall) stays the same.
 - **One finding was fragile:** the old null result of Phase 1 (do language features survive rounding worse than ordinary features?) changes its verdict word under one of the two new quantizers (matched RTN) and disappears under the other (GPTQ). The effect is tiny in every case (at most 1.5 points out of about 95) and this is **not** a new confirmed result (section 4.2).
 - **Part of the legacy RTN's weakness was not RTN itself but how we had implemented it** (it shared one scale across attention heads and used a slightly different rounding grid). About a third of the gap between legacy RTN and GPTQ at 4 bits is already closed by simply doing RTN the standard way ("matched RTN").
 
@@ -80,7 +80,7 @@ The recipe of the error keeps its order in every arm (weights part largest, cont
 | median ratio to full precision | 1.54 | 1.36 | 1.22 |
 | word the rule gives | amplified | amplified | inconclusive |
 
-At 6 bits the harm is "preserved" (ratio about 1.0) in all arms. **Where the damage sits:** if we copy the full-precision activations back into the rounded model at layer 12, the language group recovers only **2.6 % / 2.3 % / 2.0 %** of the lost accuracy (legacy / matched / GPTQ), all SAE features 17 % / 14 % / 11 %, the whole layer-12 residual 39 % / 35 % / 41 %. So the damage is not concentrated in the language-specific features, whatever the quantizer.
+At 6 bits the harm is "preserved" (ratio about 1.0) in all arms. **Where the damage sits:** if we copy the full-precision activations back into the rounded model at layer 12, the language group recovers only **2.6 % / 2.3 % / 2.0 %** of the quantization-induced loss gap (legacy / matched / GPTQ), all SAE features 17 % / 14 % / 11 %, the whole layer-12 residual 39 % / 35 % / 41 %. So repairing the language-specific features alone repairs very little, whatever the quantizer. These recovery shares are neither additive nor shares of causal responsibility (a correction of wording on 2026-10-28 after the validity check of the steering review, D-110): they say how much of the loss gap this particular patch closes, not how much damage "sits" in the features.
 
 ### 4.5 A reading test (Belebele, 18 languages)
 
@@ -103,7 +103,7 @@ The old pre-set test "does the association-retention label (lost / retained) tel
 | Language-specific features survive no worse than ordinary ones (Phase 1 null) | **fragile** (section 4.2): verdict depends on the quantizer, effect tiny |
 | Removing the language group hurts that language | **holds** in 27 of 27 languages |
 | That harm is amplified at 4 bits | **holds, smaller** (median 1.22 instead of 1.54) |
-| The damage is not concentrated in the language features | **holds** (2 to 3 %) |
+| Patching the language features back repairs very little of the loss gap | **holds** (2 to 3 % of the gap; a recovery share, not a causal share) |
 | Transfer test: verdict "not met" | **holds**; the error itself shrinks by about 28 % at 4 bits |
 | Belebele: no effect of removing the group | **holds**, and now also at an above-chance 4-bit model |
 | F5: the retention label does not predict which features keep their function | **holds** (score 0.49 under GPTQ); features stay much closer to the original with GPTQ at 4 bits (about 12 % at the noise floor against under 1 %) |
