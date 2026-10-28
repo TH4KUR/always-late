@@ -416,6 +416,19 @@ class FinalLogitsTests(unittest.TestCase):
         m = FakeFinal(); h = torch.randn(11, 8) * 40
         np.testing.assert_allclose(r5.make_logits_fn(m)(h).double().numpy(), reference_logits(m, h).numpy(), atol=2e-5)
 
+    def test_a_model_without_a_soft_cap_gets_uncapped_logits_whatever_its_way_of_saying_so(self):
+        # TransformerLens marks "no soft cap" with -1.0 (Llama), other configurations use 0 or None; only a positive value is a cap (Gemma: 30)
+        for cap in (-1.0, 0.0, None):
+            m = FakeFinal(cap=cap); h = torch.randn(9, 8) * 5
+            n = h.double() / torch.sqrt((h.double() ** 2).mean(-1, keepdim=True) + m.cfg.eps) * m.ln_final.w.double()
+            want = (n @ m.unembed.W_U.double() + m.unembed.b_U.double()).numpy()
+            np.testing.assert_allclose(r5.make_logits_fn(m)(h).double().numpy(), want, atol=2e-5, err_msg=f"cap {cap}")
+            self.assertGreater(float(np.abs(want).max()), 5.0)                      # the fixture really has logits that a tanh would squash
+
+    def test_a_positive_soft_cap_still_bounds_the_logits(self):
+        m = FakeFinal(cap=30.0); h = torch.randn(9, 8) * 5
+        self.assertLessEqual(float(r5.make_logits_fn(m)(h).abs().max()), 30.0 + 1e-4)
+
     def test_the_norm_epsilon_matters_for_a_hidden_state_of_tiny_scale_and_is_the_models(self):
         m = FakeFinal(); h = torch.randn(7, 8) * 1e-3
         np.testing.assert_allclose(r5.make_logits_fn(m)(h).double().numpy(), reference_logits(m, h).numpy(), atol=2e-5)

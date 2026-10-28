@@ -213,7 +213,7 @@ def make_logits_fn(model, vocab_chunk=65536):
     def logits_fn(h):
         h = h.float(); n = h / torch.sqrt(h.pow(2).mean(-1, keepdim=True) + model.cfg.eps) * model.ln_final.w.float(); W = model.unembed.W_U
         z = torch.cat([n @ W[:, i:i + vocab_chunk].float() for i in range(0, W.shape[1], vocab_chunk)], 1) + model.unembed.b_U.float(); cap = model.cfg.output_logits_soft_cap
-        return cap * torch.tanh(z / cap) if cap else z
+        return cap * torch.tanh(z / cap) if cap is not None and cap > 0 else z                     # TransformerLens says 'no soft cap' with -1.0 (Llama); Gemma-2 has 30
     return logits_fn
 
 
