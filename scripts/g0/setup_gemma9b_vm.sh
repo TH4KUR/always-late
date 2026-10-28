@@ -65,11 +65,8 @@ python -c "import transformers; print(f'  transformers {transformers.__version__
 # ── 3. Download models and SAEs from Hugging Face ──────────────────────────────
 echo "[3/5] Downloading Gemma-2-9B model and Gemma Scope SAE..."
 
-echo "Make sure you are logged in to Hugging Face: run 'huggingface-cli login' or 'hf login' first."
+echo "Make sure you are logged in to Hugging Face: run 'hf auth login' first (inside the venv)."
 echo "You must have accepted the Gemma-2 terms at https://huggingface.co/google/gemma-2-9b"
-
-export HF_HOME="$BASE/hf_cache"
-mkdir -p "$HF_HOME"
 
 # Gemma-2-9B model (~18 GB)
 echo "  Downloading google/gemma-2-9b..."
@@ -116,7 +113,7 @@ echo "[5/5] Setup complete."
 echo ""
 echo "Workspace:    $BASE"
 echo "Python env:   $BASE/env  (activate with: source $BASE/env/bin/activate)"
-echo "HF cache:     $BASE/hf_cache"
+echo "HF cache:     ~/.cache/huggingface (default)"
 echo "FLORES data:  $BASE/data/flores200_dataset"
 echo ""
 echo "Next steps:"
@@ -125,7 +122,5 @@ echo "  2. Run the tests:      source $BASE/env/bin/activate && python3 -B -m un
 echo "  3. Run torch tests:    OMP_NUM_THREADS=4 python -B -m unittest discover -s scripts/g0/tests_torch"
 echo "  4. Build the adapter, write the freeze, then run the experiments per the plan in docs/superpowers/plans/2026-10-26-gemma9b-confirmation.md"
 echo ""
-echo "Key paths for the scripts (set these in your sbatch or export them):"
-echo "  export HF_HOME=$BASE/hf_cache"
-echo "  export HF_TOKEN=\$(cat <your-token-file>)   # or export HF_TOKEN=hf_..."
+echo "Key paths for the scripts:"
 echo "  FLORES_ROOT=$BASE/data"
