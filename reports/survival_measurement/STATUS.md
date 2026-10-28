@@ -8,7 +8,7 @@ Plan: [`../../docs/superpowers/plans/2026-10-29-survival-measurement-validity-st
 |---|---|---|
 | 1 | Plan, D-117, Q33 | done (4e91c96) |
 | 2 | Stage 1 freeze, code, tests, run, results (D-118) | done (99f15d6, 2cabb88, cf1f86e) |
-| 3 | Stage 2 design note (D-entry): sidecar inputs and outputs, states, streams, gates, disk and runtime estimate, how weights are rebuilt per job | **done 2026-10-29 05:29 IST** (D-119, [\`stage2_design.md\`](stage2_design.md)) |
+| 3 | Stage 2 design note (D-entry): sidecar inputs and outputs, states, streams, gates, disk and runtime estimate, how weights are rebuilt per job | **done 2026-10-29 05:29 IST** (D-119, [`stage2_design.md`](stage2_design.md)) |
 | 4 | Stage 2 sidecar code + tests (test first, mutation-checked) + local CPU/tiny check | open |
 | 5 | Read-only review of the sidecar by session project-fe (send it the commit id by SendMessage; it replies by message) | open |
 | 6 | Deploy snapshot, gate job (INT0 == FP; corr from sums == committed survival.pt), smoke, timing/memory | open |
