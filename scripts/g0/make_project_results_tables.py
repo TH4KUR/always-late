@@ -252,7 +252,7 @@ SECTIONS = [
     ("A10. Second model check (Llama-3.2-1B): the group effect in full precision, next to Gemma", t_llama,
      "Source: `reports/functional_validation/llama_robust/languages.csv` and the Gemma table above. The pre-set rule needed 24 of 27 languages above zero."),
     ("A11. GPTQ extension: share of active features that survive, per language, legacy RTN / matched RTN / GPTQ (6 and 4 bits)", t_gptq_survival,
-     "Source: `reports/gptq_extension/results/stage1/stage1_paired_per_language.csv` (D-104; BOS masked, equal budget; percent). The median row is the median of the 27 languages, not the pooled figure of the text (INT4 12.7 / 18.7 / 30.5 %)."),
+     "Source: `reports/gptq_extension/results/stage1/stage1_paired_per_language.csv` (D-104; BOS masked, equal budget; percent). The median row is the median of the 27 languages, not the pooled figure of the text (INT4 12.7 / 18.6 / 30.5 %)."),
     ("A12. GPTQ extension: loss increase on the same sentences (nats per token, quantized minus full precision), per language", t_gptq_loss,
      "Source: the same file (D-104). Lower is better."),
     ("A13. GPTQ extension: function of the language group (zeroing the 64 features), ratio of the effect to its full-precision value, per language", t_gptq_function,

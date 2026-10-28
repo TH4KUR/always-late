@@ -43,7 +43,7 @@ We compare **three ways of rounding the model's weights to few bits** and run th
 | INT7 | no practical difference (GPTQ over legacy +1.2 points) | GPTQ minus legacy -0.0026 |
 | INT6 | 85.0 % / 89.7 % / **97.5 %** | 0.0254 / 0.0197 / **0.0058** |
 | INT5 | GPTQ +26.9 points over legacy | GPTQ -0.064 |
-| INT4 | 12.7 % / 18.7 % / **30.5 %** | 0.590 / 0.385 / **0.130** |
+| INT4 | 12.7 % / 18.6 % / **30.5 %** | 0.590 / 0.385 / **0.130** |
 
 GPTQ is better than legacy RTN in **27 of 27 languages** at INT4 and INT6, on both measures. The lowest language at INT6 keeps 53 % under legacy RTN and 92.7 % under GPTQ. By resource tier at INT6 the gain is biggest for the low-resource languages (+25 points) and small for high-resource ones (+4): **most of the "low-resource languages suffer more" pattern at 6 bits belongs to the legacy quantizer**. At INT4 the order flips (+22 / +19 / +13 for high / mid / low) and 4-bit survival is low for everyone (GPTQ: 30 %).
 
@@ -85,7 +85,7 @@ At 6 bits the harm is "preserved" (ratio about 1.0) in all arms. **Where the dam
 
 ### 4.5 A reading test (Belebele, 18 languages)
 
-(D-107.) Accuracy of the model **without any edit** (chance is 0.25): full precision 0.426 in all arms; 6 bits 0.423 / 0.424 / 0.423; **4 bits 0.236 / 0.291 / 0.319** (legacy / matched / GPTQ). The old 4-bit model was at chance, so "removing the group changes nothing" could not be read at 4 bits. With GPTQ the 4-bit model answers well above chance and **removing a language's feature group still changes accuracy by less than half a point** (effect within ±0.5 points in every arm and state). The old null is not an artifact of a broken 4-bit model.
+(D-107.) Accuracy of the model **without any edit** (chance is 0.25): full precision 0.426 in all arms; 6 bits 0.423 / 0.424 / 0.423; **4 bits 0.236 / 0.291 / 0.318** (legacy / matched / GPTQ). The old 4-bit model was at chance, so "removing the group changes nothing" could not be read at 4 bits. With GPTQ the 4-bit model answers well above chance and **removing a language's feature group still changes accuracy by less than half a point** (effect within ±0.5 points in every arm and state). The old null is not an artifact of a broken 4-bit model.
 
 ### 4.6 Does a single feature do the same thing after rounding? (F5, 1,487 features)
 

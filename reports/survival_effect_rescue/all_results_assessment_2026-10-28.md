@@ -45,14 +45,14 @@ Fairness of the three-arm comparison (D-101 to D-103): same sentences, features,
 
 | quantity (median or mean over the stated units; interval as in the source) | legacy RTN | matched RTN | GPTQ | source |
 |---|---|---|---|---|
-| INT4 survival, mean over 27 languages | 12.7 % | 18.7 % | 30.5 % | D-104 |
+| INT4 survival, mean over 27 languages | 12.7 % | 18.6 % | 30.5 % | D-104 (corrected, see D-104 update of 2026-10-29) |
 | INT6 survival | 85.0 % | 89.7 % | 97.5 % | D-104 |
 | INT4 loss increase (nats/token) | 0.590 | 0.385 | 0.130 | D-104 |
 | Loss task E4, INT4 retention (median language ratio; FP-relative) | 1.54 [1.43, 1.62] | 1.36 [1.33, 1.39] | 1.22 [1.14, 1.24] | D-107 |
 | E4 INT6 retention (mean of ratios) | 1.04 | 1.06 | 0.99 (all 'preserved' in 27 languages) | D-107 |
 | Group patch recovers (INT4 loss gap) | 2.6 % [2.4, 2.8] | 2.3 % [2.1, 2.4] | 2.0 % [1.6, 2.3] | D-107 |
 | Whole layer-12 residual patch recovers | 39.3 % | 35.2 % | 41.4 % | D-107 |
-| Belebele INT4 accuracy, no edit (FP 0.426) | 0.236 | 0.291 | 0.319 | D-107 |
+| Belebele INT4 accuracy, no edit (FP 0.426) | 0.236 | 0.291 | 0.318 | D-107 (corrected, see D-107 update of 2026-10-29) |
 | Study G INT4 net harm at ×0.088, as a multiple of the FP value | 1.92 | 1.67 | 1.11 | D-109 |
 | Transfer main, INT4 error over the numerical floor (median, 2,203 items) | 7.69 | 6.71 | 5.54 | D-105 |
 | Transfer main, INT6 error over the floor | 1.88 | 1.75 | 1.52 | D-105 |

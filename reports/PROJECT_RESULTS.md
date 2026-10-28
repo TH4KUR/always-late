@@ -728,7 +728,7 @@ Source: `reports/functional_validation/llama_robust/languages.csv` and the Gemma
 
 ### A11. GPTQ extension: share of active features that survive, per language, legacy RTN / matched RTN / GPTQ (6 and 4 bits)
 
-Source: `reports/gptq_extension/results/stage1/stage1_paired_per_language.csv` (D-104; BOS masked, equal budget; percent). The median row is the median of the 27 languages, not the pooled figure of the text (INT4 12.7 / 18.7 / 30.5 %).
+Source: `reports/gptq_extension/results/stage1/stage1_paired_per_language.csv` (D-104; BOS masked, equal budget; percent). The median row is the median of the 27 languages, not the pooled figure of the text (INT4 12.7 / 18.6 / 30.5 %).
 
 | language | INT6, legacy RTN | INT6, matched RTN | INT6, GPTQ | INT4, legacy RTN | INT4, matched RTN | INT4, GPTQ |
 |---|---|---|---|---|---|---|
