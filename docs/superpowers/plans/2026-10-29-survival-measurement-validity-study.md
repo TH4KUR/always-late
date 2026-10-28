@@ -102,3 +102,7 @@ Stage 1 → (Q33) Stage 2 gates → full Stage 2 → freeze → Stage 3 → Stag
 | [JumpReLU, arXiv 2407.14435](https://arxiv.org/pdf/2407.14435) | threshold as the on/off scale | basis of metric 2; no flip-rate or margin robustness study found |
 
 Not found in the sources checked: a decomposition of SAE survival correlation into gain, noise and flips; an attenuation (noise-to-signal) account of why peak activation predicts survival; a threshold-unit perturbation measure. "Not found" is not "first"; repeat the search before submission.
+
+## Update 2026-10-29 (Stage 1 done, D-118; Q33 answered (a))
+
+Stage 1 results: [`reports/survival_measurement/stage1/README.md`](../../../reports/survival_measurement/stage1/README.md). H1 met; H2 met for matched RTN, not for GPTQ (a global shift removes most but not all of GPTQ's survival gain); the lambda half of H3 met; the tier slope in lambda is the same at INT16 as at INT6. Next: Stage 2 (GPU sidecar on Ada), then the Stage 3 freeze, which must now fix the H4 equivalence bound in the light of the INT16 tier slope (compare each width's tier slope with INT16's, not with zero).

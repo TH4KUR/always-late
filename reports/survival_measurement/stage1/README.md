@@ -1,0 +1,15 @@
+# Stage 1 results in plain words (D-118)
+
+Written 2026-10-29 by Claude from [`stage1_eq.md`](stage1_eq.md) (primary) and [`stage1_all.md`](stage1_all.md) (sensitivity); every number below is in those generated files. Rules: [`../stage1_freeze.json`](../stage1_freeze.json), committed before the run. **Post hoc and exploratory.** Plan: [`../../../docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md`](../../../docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md).
+
+**Control.** 486 committed per-language survival values (legacy, matched RTN, GPTQ) recomputed from the run files: largest difference 0.
+
+**1. The same features are fragile under every quantizer (H1 met).** A feature's noise-to-signal λ under matched RTN or GPTQ ranks almost like under legacy RTN (median Spearman 0.91-0.96 at INT6/INT4) with a slope near 1 (GPTQ INT4 0.82: GPTQ helps the worst features somewhat more).
+
+**2. Most of the quantizer effect on survival rates is one global shift, magnified by the 0.9 cut-off (H2 met for matched RTN, not for GPTQ).** One number per quantizer and width (the median λ shift) reproduces matched RTN's per-language survival rates within 0.6 points at INT6 and 1.4 at INT4 (without the shift: 4.7 and 6.0). For GPTQ the shift removes most of the gap (INT6 12.5 → 1.9 points, INT4 17.8 → 4.7) but not all, so the pre-set 2-point rule fails at INT4 (and at INT6 in the `all` stream, 2.1). The magnification: a λ shift of −0.17 moves matched RTN's INT6 survival by about 5 points; −0.52 moves GPTQ's by about 12.
+
+**3. Survival mostly measures feature size (λ half of H3 met).** Within a language, λ correlates with log maximum activation at Spearman −0.72 to −0.75 at INT6/INT4 in all arms; log max, log mean activation and log firing rate explain a median 71-83 % of λ's variance.
+
+**4. The tier pattern is the same at every bit width, even at INT16.** The tier slope of the language's −median λ is 0.42 at INT16 (a near-zero weight change) and 0.43-0.49 at INT7-INT5 under legacy RTN (0.36-0.40 under GPTQ), all p ≤ 0.0001. With N9's scale covariate it falls to about a quarter (0.09-0.18) but stays positive (p 0.0005-0.017), and again the INT16 value (0.087) is as large as at INT6 (0.092 legacy). Reading: in λ, low-resource languages' features are more perturbation-sensitive by about the same amount whatever the perturbation size; the thresholded survival rate shows a tier gap only at the widths where the 0.9 cut-off falls inside the λ distribution. This is **not** a quantization-specific language effect. The residual after the scale covariate contradicts N9's "scale carries the whole tier effect" for the threshold-free measure, but N9's covariate is a per-language proxy; Stage 2's per-feature σ_a and metric 2 are needed to settle it.
+
+**Limits.** λ mixes gain, noise and flips (Stage 2 separates them). The scale variables are proxies (max and mean activation, firing rate), not the standard deviation in λ's denominator. INT16 is a genuine small weight change, not pure arithmetic noise. One model, layer and SAE.
