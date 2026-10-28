@@ -1,6 +1,6 @@
 # Decisions for your review (the questions I would have asked you)
 
-**Open questions at a glance (2026-10-27; the rest of this file is the full record):** Q32 wandb for the GPTQ extension (new, 2026-10-28, low), Q31 scope change in the cron prompt file (answered by the user 2026-10-28, applied, D-110), Q30 GPTQ extension: disk and scope (new), Q29 start Task 2 of the recovery plan (new), Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
+**Open questions at a glance (2026-10-27; the rest of this file is the full record):** Q33 survival measurement-validity study: GPU pass and thresholds (new, 2026-10-29, high), Q32 wandb for the GPTQ extension (new, 2026-10-28, low), Q31 scope change in the cron prompt file (answered by the user 2026-10-28, applied, D-110), Q30 GPTQ extension: disk and scope (new), Q29 start Task 2 of the recovery plan (new), Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
 
 **New, 2026-10-21 (D-040): Q17 and Q18** (Q18: the scoop risk from Duan's announced causal follow-up; also not blocking)
 
@@ -270,6 +270,13 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - ANSWER:
 - STATUS: open (asked 2026-10-28 16:31 IST)
 - **Update 2026-10-29 02:35 IST:** default (a) carried out (D-116): nine runs uploaded to wandb and verified; the question stays open for the user.
+
+## Q33. Survival measurement-validity study (D-117): run Stage 2 (one GPU pass for the sufficient statistics), and are the proposed decision thresholds right?  [HIGH for the paper direction; Stage 1 is CPU only and does not wait for this]
+- **Context.** [Plan](docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md), section 4. Stage 2 streams, per (language, feature, state), the sums behind the survival correlation, flip counts and encoder pre-activation errors, for FP, INT16, INT6 and INT4 in the three arms, through the existing wrapper (no frozen code edited). Stage 3 thresholds proposed in section 4: H3 met if |Spearman(ν, log scale)| < 0.2 while |Spearman(λ, log scale)| > 0.5; H4 tier answer only by an equivalence bound fixed in the freeze; H5 the D-113 rule unchanged.
+- **Options.** (a) run Stage 2 after Stage 1, smoke and timing tests first, with the thresholds as proposed; (b) run it with thresholds you give now; (c) Stage 1 only, Stage 2 as future work.
+- **Default:** (c) until you answer (no GPU job without your go-ahead under the 27 October hold).
+- ANSWER:
+- STATUS: open (asked 2026-10-29 04:09 IST)
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
