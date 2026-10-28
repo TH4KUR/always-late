@@ -275,8 +275,8 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Context.** [Plan](docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md), section 4. Stage 2 streams, per (language, feature, state), the sums behind the survival correlation, flip counts and encoder pre-activation errors, for FP, INT16, INT6 and INT4 in the three arms, through the existing wrapper (no frozen code edited). Stage 3 thresholds proposed in section 4: H3 met if |Spearman(ν, log scale)| < 0.2 while |Spearman(λ, log scale)| > 0.5; H4 tier answer only by an equivalence bound fixed in the freeze; H5 the D-113 rule unchanged.
 - **Options.** (a) run Stage 2 after Stage 1, smoke and timing tests first, with the thresholds as proposed; (b) run it with thresholds you give now; (c) Stage 1 only, Stage 2 as future work.
 - **Default:** (c) until you answer (no GPU job without your go-ahead under the 27 October hold).
-- ANSWER:
-- STATUS: open (asked 2026-10-29 04:09 IST)
+- ANSWER: the user, 2026-10-29 (main chat): "you are free to use ada. you can start stage 1 on ada itself if needed." Read as option (a): Stage 2 on Ada with the thresholds as proposed (they may still be changed before the Stage 3 freeze is committed). Stage 1 runs locally (CPU, small files).
+- STATUS: answered (a), 2026-10-29
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
