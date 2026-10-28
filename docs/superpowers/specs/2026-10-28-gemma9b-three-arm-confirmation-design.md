@@ -49,7 +49,9 @@ P1 to P3b (legacy arm) are the frozen ones, unchanged (`freeze.json`, prediction
 
 **Tier 2 verdict:** *consistent* = S1 and S2 and S3; *partly consistent* = S1 and S2 and not S3; *different* = not S1 or not S2. S4 is reported with its outcome and never changes the verdict.
 
-**Both tiers together** are reported as two verdicts, never merged into one word. (The Q0 to Q3 list, the S1 to S4 list and the two verdict paragraphs are the amendment's `text`; its sha256 is stored in the amendment.)
+**Both tiers together** are reported as two verdicts, never merged into one word.
+
+(The Q0 to Q3 list, the S1 to S4 list and the two verdict paragraphs are the amendment's `text`; its sha256 is stored in the amendment.)
 
 ## 6. Analysis tool (tests first)
 
