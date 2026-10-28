@@ -64,6 +64,12 @@ def validate(job, jobname, name, files, meta_name, expected, method, bits, recor
     return {"ok": not failed, "failed": failed, "checks": checks}
 
 
+def expected_from_args(a):
+    """The expectations of a job from the command line; a negative --n-sentences or an empty --manifest-sha256 means 'do not check' (the Belebele meta file has neither field)."""
+    return {"precisions": a.precisions, "preset": a.preset, "split": a.split, "n_sentences": a.n_sentences if a.n_sentences >= 0 else None, "manifest_source_sha256": a.manifest_sha256 or None,
+            "configs": {k: int(v) for k, v in (x.split("=") for x in a.configs)}}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--job", required=True); ap.add_argument("--jobname", required=True); ap.add_argument("--name", required=True)
@@ -74,7 +80,7 @@ def main(argv=None):
     ap.add_argument("--configs", nargs="*", default=[], metavar="STATE=N"); ap.add_argument("--recorded", default=str(ROOT / "reports/gptq_extension/artifact_hashes.json"))
     a = ap.parse_args(argv)
     files = a.files or [f"func_lm_eval_INT{b}.pt" for b in a.bits]
-    expected = {"precisions": a.precisions, "preset": a.preset, "split": a.split, "n_sentences": a.n_sentences, "manifest_source_sha256": a.manifest_sha256, "configs": {k: int(v) for k, v in (x.split("=") for x in a.configs)}}
+    expected = expected_from_args(a)
     recorded = json.loads(Path(a.recorded).read_text())["artifact_sha256"]
     remote = lambda cmd: subprocess.run(tv.ADA + [cmd], capture_output=True, text=True).stdout
     fetch = lambda r, l: subprocess.run(["scp", "-q", "-o", "HostKeyAlias=ada-gw1", f"karma@10.4.24.30:{r}/*", l], check=True)

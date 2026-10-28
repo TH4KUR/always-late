@@ -39,6 +39,22 @@ class Meta(unittest.TestCase):
         self.assertTrue(vf.check_meta({**GOOD_META, "manifest_source_sha256": "z"}, expect(manifest_source_sha256=None))["ok"])
 
 
+class Args(unittest.TestCase):
+    def ns(self, **kw):
+        import argparse
+        d = dict(precisions=["4"], preset="eval", split="eval", n_sentences=300, manifest_sha256="m" * 64, configs=["INT4=351"]); d.update(kw)
+        return argparse.Namespace(**d)
+
+    def test_defaults_become_expectations(self):
+        e = vf.expected_from_args(self.ns())
+        self.assertEqual((e["n_sentences"], e["manifest_source_sha256"], e["configs"]), (300, "m" * 64, {"INT4": 351}))
+
+    def test_negative_sentences_and_empty_manifest_mean_not_checked_and_state_keys_may_contain_slashes(self):
+        e = vf.expected_from_args(self.ns(n_sentences=-1, manifest_sha256="", configs=["letter/INT4=108"]))
+        self.assertEqual((e["n_sentences"], e["manifest_source_sha256"], e["configs"]), (None, None, {"letter/INT4": 108}))
+        self.assertTrue(vf.check_meta({"complete": True, "gates": {"a": True}, "skipped_for_time": [], "precisions": ["4"], "preset": "eval", "split": "eval", "summary": {"letter/INT4": {"configs": 108}}}, e)["ok"])
+
+
 class Files(unittest.TestCase):
     def test_expected_files_must_all_be_present(self):
         d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup)
