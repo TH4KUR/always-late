@@ -6,7 +6,7 @@
 # That is the whole job. It detaches itself (survives a closed browser tab or ssh), logs to <BASE>/run_all.log, and is RESUMABLE: run the same command again and finished steps are skipped.
 #   1 env     python venv with the pinned versions (torch 2.14.1 cu126, transformer-lens 3.9.0, transformers 5.19.0, sae-lens 6.54.5), CUDA check
 #   2 data    FLORES-200 (bundled; downloaded and hash-checked otherwise)
-#   3 access  the token must reach the gated google/gemma-2-9b; then download of model + Gemma Scope SAE (about 19 GB)
+#   3 access  the token must reach the gated google/gemma-2-9b; then download of model + Gemma Scope SAE (the model is 37 GB: eight fp32 shards)
 #   4 checks  unit tests of the adapter (CPU) and the freeze file's code hashes
 #   5 smoke   3 languages, FP and INT4: the instrument gate (gates must pass, no CUDA warning); a failed gate STOPS the run
 #   6 full    tagging + manifest on all 27 languages, then the six states FP INT8 INT7 INT6 INT5 INT4 (300 sentences, 3 control draws), one process per GPU when several GPUs and enough RAM
@@ -154,7 +154,7 @@ from huggingface_hub import hf_hub_download
 hf_hub_download("google/gemma-2-9b", "config.json", token=os.environ["HF_TOKEN"])
 print("token reaches google/gemma-2-9b")
 PYEOF
-    "$PY" "$REPO/scripts/g0/prefetch_gemma9b.py" || die "prefetch failed (disk space? about 19 GB are needed under $HF_HOME)"
+    "$PY" "$REPO/scripts/g0/prefetch_gemma9b.py" || die "prefetch failed (disk space? the model alone is 37 GB under $HF_HOME)"
 }
 
 verify_frozen() {                                                # EVERY invocation, before anything is installed or downloaded: the code must be the frozen code (a resume after an edit must not pass)
