@@ -170,5 +170,68 @@ class ThreeArms(unittest.TestCase):
         self.assertEqual(us, [("p1", "gptq", "all"), ("p1", "legacy", "all"), ("p1", "rtn-matched", "all")])
 
 
+def gate_bit_sets(stdout):
+    """[[bits of one gate command]] from the dry-run lines `+ gate9b: phase1_gemma9b_ext.py gate ... --bits <b> ... --record-weights-hashes`."""
+    return [[int(x) for x in m.split()] for m in re.findall(r"\+ gate9b: phase1_gemma9b_ext\.py gate .*? --bits ([0-9 ]+?) --record-weights-hashes", stdout)]
+
+
+def artifact_bits(stage, cmd):
+    """The artifact bit widths (4 to 8) a weight-set unit builds, from its command line."""
+    if stage == "g":
+        return {int(re.search(r"--precisions (\d+)", cmd).group(1))}
+    return {int(x) for x in re.search(r"--bits ([0-9 ]+?) --out", cmd).group(1).split()} & {4, 5, 6, 7, 8}
+
+
+@unittest.skipUnless(BASH, "bash is not available")
+class ReviewFixes(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(); self.base = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def plan(self, **extra):
+        r = run({**BLACKWELL, **extra}, self.base)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        return r.stdout
+
+    def test_the_gate_records_every_artifact_bit_width_the_units_need(self):
+        for extra, expect in (({}, {4, 6, 7}), ({"STAGES": "g"}, {4, 6}), ({"P1_BITS_NEW": "8 7 6 5 4 16 12 0"}, {4, 5, 6, 7, 8})):
+            out = self.plan(**extra); sets = gate_bit_sets(out)
+            self.assertEqual({b for s in sets for b in s}, expect, extra)
+            self.assertTrue(all(1 <= len(s) <= 2 for s in sets), sets)                         # at most two bit widths per gate job (host RAM)
+            for stage, arm, token, cmd in units(out):
+                if arm != "legacy":
+                    self.assertLessEqual(artifact_bits(stage, cmd), expect, (extra, stage, arm, token))
+
+    def test_every_gate_job_has_its_own_ram_guard_and_the_hashes_come_from_all_gate_directories(self):
+        out = self.plan(); sets = gate_bit_sets(out)
+        self.assertEqual(len(re.findall(r"\+ gate9b: python -m gptq_ext\.ram_guard", out)), len(sets))
+        record = re.search(r"\+ gate9b: python -m gptq_ext\.record_hashes (.*)", out).group(1)
+        self.assertEqual(record.count("--gate-dir"), len(sets))
+
+    def test_p1_extra_goes_to_tier_two_units_and_the_tier_two_smoke_only(self):
+        out = self.plan(P1_EXTRA="--batch-size 16")
+        for stage, arm, token, cmd in units(out):
+            self.assertEqual("--batch-size 16" in cmd, stage == "p1", (stage, arm, token))
+        self.assertIn("--bits 4 --batch-size 16", out)
+
+    def test_the_frozen_files_are_verified_first_on_every_invocation(self):
+        out = self.plan()
+        first = re.search(r"== verify_frozen$", out, re.M); env = re.search(r"== env$", out, re.M)
+        self.assertIsNotNone(first); self.assertLess(first.start(), env.start())
+        self.assertIn("make_gemma9b_freeze.py --verify", out); self.assertIn("make_gemma9b_amendment.py --verify", out)
+        legacy = self.plan(ARMS="legacy", STAGES="g")
+        self.assertIn("make_gemma9b_freeze.py --verify", legacy); self.assertNotIn("make_gemma9b_amendment.py --verify", legacy)
+
+    def test_a_failing_nvidia_smi_does_not_abort_silently_and_a_missing_gpu_names_the_driver(self):
+        bindir = self.base / "bin"; bindir.mkdir(); (bindir / "nvidia-smi").write_text("#!/bin/sh\nexit 2\n"); (bindir / "nvidia-smi").chmod(0o755)
+        env = {"PATH": f"{bindir}:{os.environ['PATH']}"}
+        r = run({"FAKE_GPUS": "98304", "FAKE_RAM_GB": "160", **env}, self.base)
+        self.assertEqual(r.returncode, 0, r.stderr); self.assertIn("whl/cu126", r.stdout)                  # compute capability unknown: the default index, not a silent exit
+        r = run(env, self.base)
+        self.assertNotEqual(r.returncode, 0); self.assertIn("nvidia-smi", r.stderr); self.assertIn("580", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -18,7 +18,11 @@ STUB = r'''#!/bin/bash
 echo "$*" >> "$STUB_LOG"
 arg_after() { local k=$1; shift; while [ $# -gt 0 ]; do if [ "$1" = "$k" ]; then echo "$2"; return; fi; shift; done; }
 has() { local k=$1; shift; for a in "$@"; do [ "$a" = "$k" ] && return 0; done; return 1; }
+if [ "${1:-}" = "-m" ] && [ "$2" = "gptq_ext.record_hashes" ] && ! has --check "$@" && [ -n "${STUB_FAIL_RECORD:-}" ]; then echo "record_hashes failed on purpose"; exit 1; fi
 if [ "${1:-}" = "-m" ] && { [ "$2" = "gptq_ext.ram_guard" ] || [ "$2" = "gptq_ext.record_hashes" ]; }; then exec python3 -B "$@"; fi
+if [ "${1:-}" = "-m" ] && [ "$2" = "pip" ] && [ "${3:-}" = "install" ] && [ -n "${STUB_FAIL_PIP:-}" ]; then echo "pip failed on purpose"; exit 1; fi
+if [[ "$*" == *make_gemma9b_freeze.py* ]] && [ -n "${STUB_FAIL_VERIFY:-}" ]; then echo "frozen code differs"; exit 1; fi
+if [ "${1:-}" = "-B" ] && [ "${2:-}" = "-m" ] && [ "${3:-}" = "unittest" ] && [ -n "${STUB_FAIL_UNITTEST:-}" ]; then echo "tests failed on purpose"; exit 1; fi
 if [ "${1:-}" = "-m" ] && [ "$2" = "gptq_ext.tokenizer_check" ]; then echo '{}' > "$(arg_after --out "$@")"; exit 0; fi
 if [ "${1:-}" = "-m" ] && [ "$2" = "pip" ]; then [ "${3:-}" = "freeze" ] && echo "stub==0"; exit 0; fi
 if [ "${1:-}" = "-" ]; then cat > /dev/null; exit 0; fi
@@ -30,14 +34,48 @@ case "$*" in
     *phase1_gemma9b_ext.py\ gate*)
         [ -z "${STUB_FAIL_GATE:-}" ] || { echo "gate failed on purpose"; exit 1; }
         out=$(arg_after --out "$@"); mkdir -p "$out/gptq" "$out/rtn_matched"
+        bits=$(python3 - "$@" <<'PY'
+import sys
+a = sys.argv[1:]; i = a.index("--bits") + 1; out = []
+while i < len(a) and not a[i].startswith("--"):
+    out.append(a[i]); i += 1
+print(" ".join(out))
+PY
+)
         for m in gptq rtn_matched; do
-            printf '{"method": "%s", "bits": [4, 6], "artifact_sha256": {"4": "%s4", "6": "%s6"}, "pool_sha256": "pool", "calibration_freeze_sha256": "freeze", "calibration_report": {}}\n' "$m" "$m" "$m" > "$out/$m/weights_manifest.json"
+            python3 - "$m" "$out/$m/weights_manifest.json" $bits <<'PY'
+import json, sys
+m, path, bits = sys.argv[1], sys.argv[2], sys.argv[3:]
+json.dump({"method": m, "bits": sorted(int(b) for b in bits), "artifact_sha256": {b: f"{m}{b}" for b in bits}, "pool_sha256": "pool", "calibration_freeze_sha256": "freeze", "calibration_report": {}}, open(path, "w"))
+PY
         done
         echo '{"all_gates_ok": true}' > "$out/gate_report.json"; echo "gates ok"; exit 0 ;;
     *phase1_gemma9b_ext.py\ p1*|*run_with_weights.py*p1*|*phase1_gemma9b_run.py\ lm*|*run_with_weights.py*\ lm\ *)
         out=$(arg_after --out "$@")
         if has --gptq-freeze "$@" && [ ! -f "$(arg_after --gptq-freeze "$@")" ]; then echo "frozen hash file missing"; exit 2; fi
         prec=$(arg_after --precisions "$@")
+        if has --gptq-freeze "$@"; then      # the real wrapper refuses an artifact bit width without a frozen hash (states.build_artifacts)
+            need=$(python3 - "$(arg_after --gptq-freeze "$@")" "$(arg_after --weights "$@")" "$prec" "$(python3 - "$@" <<'PY2'
+import sys
+a = sys.argv[1:]; out = []
+if "--bits" in a:
+    i = a.index("--bits") + 1
+    while i < len(a) and not a[i].startswith("--"):
+        out.append(a[i]); i += 1
+print(" ".join(out))
+PY2
+)" <<'PY'
+import json, sys
+fr, weights, prec, bits = json.load(open(sys.argv[1])), sys.argv[2].replace("-", "_"), sys.argv[3], sys.argv[4]
+want = {int(b) for b in (prec.split() + bits.split()) if b.isdigit() and 4 <= int(b) <= 8}
+have = {int(b) for b in fr["artifact_sha256"].get(weights, {})}
+missing = sorted(want - have)
+if missing:
+    print(f"no frozen sha256 for {weights} at {missing[0]} bits")
+PY
+)
+            if [ -n "$need" ]; then echo "$need"; exit 2; fi
+        fi
         if [ -n "${STUB_FAIL_UNIT:-}" ] && [[ "$*" == *"$STUB_FAIL_UNIT"* ]]; then echo "unit failed on purpose"; exit 1; fi
         mkdir -p "$out"
         if has p1 "$@"; then mkdir -p "$out/eq" "$out/all"; : > "$out/eq/survival.pt"; : > "$out/all/survival.pt"
@@ -89,7 +127,7 @@ class Rehearsal(unittest.TestCase):
             self.assertIn(name, done, name)
         self.assertFalse([n for n in self.state() if n.endswith(".failed")])
         h = json.loads((self.repo / "reports/functional_validation/gemma9b/artifact_hashes.json").read_text())
-        self.assertEqual(h["artifact_sha256"], {"gptq": {"4": "gptq4", "6": "gptq6"}, "rtn_matched": {"4": "rtn_matched4", "6": "rtn_matched6"}})
+        self.assertEqual(h["artifact_sha256"], {"gptq": {"4": "gptq4", "6": "gptq6", "7": "gptq7"}, "rtn_matched": {"4": "rtn_matched4", "6": "rtn_matched6", "7": "rtn_matched7"}})      # bit 7: tier 2 needs it
         self.assertTrue((self.base / "gemma9b_results.tar.gz").exists()); self.assertTrue((self.base / "out/frozen/artifact_hashes.json").exists())
         calls = self.calls()
         idx = lambda needle: next(i for i, c in enumerate(calls) if needle in c)
@@ -143,6 +181,41 @@ class Rehearsal(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0, r.stdout[-1500:]); self.assertIn("REFUSED: not enough host RAM", r.stdout)
         self.assertIn("unit_p1_gptq.failed", self.state()); self.assertIn("gate9b.done", self.state())
         self.assertFalse([c for c in self.unit_calls() if "p1" in c.split()])
+
+    def test_the_smoke_tags_all_languages_and_only_the_lm_run_is_restricted(self):
+        self.assertEqual(self.run_driver(ARMS="legacy", STAGES="g").returncode, 0)
+        tag = [c for c in self.calls() if "phase1_gemma9b_run.py tag" in c and "g9-smoke-tag" in c]
+        self.assertEqual(len(tag), 1); self.assertNotIn("--languages", tag[0]); self.assertIn("--max-sentences 100", tag[0])
+        lm = [c for c in self.calls() if "phase1_gemma9b_run.py lm" in c and "g9-smoke-lm" in c]
+        self.assertEqual(len(lm), 1); self.assertIn("--languages eng_Latn hin_Deva khm_Khmr", lm[0])
+
+    def test_tier_two_units_find_the_hash_of_every_bit_width_they_build(self):
+        r = self.run_driver(ARMS="gptq rtn-matched", STAGES="p1", SKIP_SMOKE="1")
+        self.assertEqual(r.returncode, 0, r.stdout[-2500:])
+        h = json.loads((self.repo / "reports/functional_validation/gemma9b/artifact_hashes.json").read_text())["artifact_sha256"]
+        self.assertEqual(sorted(h["gptq"]), ["4", "6", "7"]); self.assertEqual(sorted(h["rtn_matched"]), ["4", "6", "7"])
+        self.assertTrue({"unit_p1_gptq.done", "unit_p1_rtn-matched.done"} <= self.state())
+
+    def test_a_failing_frozen_hash_check_stops_the_run_at_once_and_on_every_resume(self):
+        r = self.run_driver(STUB_FAIL_VERIFY="1")
+        self.assertNotEqual(r.returncode, 0); self.assertNotIn("env.done", self.state()); self.assertFalse(self.unit_calls())
+        self.assertEqual(self.run_driver().returncode, 0)                                         # the same tree is fine when the check passes
+        r = self.run_driver(STUB_FAIL_VERIFY="1")                                                  # a resume re-verifies even though every step is done
+        self.assertNotEqual(r.returncode, 0); self.assertIn("frozen", r.stdout + r.stderr)
+
+    def test_a_failing_test_run_or_pip_install_or_hash_recording_is_not_swallowed(self):
+        for switch, marker in (("STUB_FAIL_UNITTEST", "checks.done"), ("STUB_FAIL_PIP", "env.done"), ("STUB_FAIL_RECORD", "gate9b.done")):
+            with self.subTest(switch):
+                self.tearDown(); self.setUp()
+                r = self.run_driver(**{switch: "1"})
+                self.assertNotEqual(r.returncode, 0, r.stdout[-1500:]); self.assertNotIn(marker, self.state()); self.assertNotIn("ALL DONE", r.stdout)
+                self.assertFalse([c for c in self.unit_calls() if "smoke" not in c])               # no real unit started (the smoke runs come before the gate)
+
+    def test_stop_after_pauses_before_the_long_units_and_a_resume_continues(self):
+        r = self.run_driver(STOP_AFTER="smoke_gptq")
+        self.assertEqual(r.returncode, 0, r.stdout[-1500:]); self.assertIn("STOP_AFTER=smoke_gptq", r.stdout)
+        self.assertIn("smoke_gptq.done", self.state()); self.assertNotIn("full.done", self.state()); self.assertFalse([c for c in self.unit_calls() if "g9-lm-" in c and "smoke" not in c])
+        self.assertEqual(self.run_driver().returncode, 0); self.assertIn("full.done", self.state()); self.assertIn("unit_p1_gptq.done", self.state())
 
 
 if __name__ == "__main__":

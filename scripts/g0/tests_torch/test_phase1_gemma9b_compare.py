@@ -137,6 +137,15 @@ class TierOne(unittest.TestCase):
             evaluate(arms)
         self.assertIn("rtn-matched", str(ctx.exception))
 
+    def test_a_legacy_arm_without_amplification_is_labelled_not_evaluable_with_its_numbers_in_the_report(self):
+        r = evaluate(three(legacy=1.0, matched=1.0, gptq=1.0))
+        res = {"tier1": r, "tier2": None, "verdict_tier1": r["verdict_tier1"], "verdict_tier2": "not run", "s4": gc.s4({}), "reference_2b": gc.reference_2b(ROOT)}
+        text = gc.report_text(res)
+        self.assertIn("**not evaluable**", text); self.assertNotIn("**not met** (not evaluable)", text)
+        self.assertIn("legacy arm meets P3b", text); self.assertIn("1.000", text)
+        ok = evaluate(three()); res["tier1"] = ok; res["verdict_tier1"] = ok["verdict_tier1"]
+        self.assertNotIn("not evaluable", gc.report_text(res))
+
 
 # ------------------------------------------------------------------------------------------------------------------------------ tier 2 (Task 7)
 L27 = [f"l{i}" for i in range(27)]
@@ -213,6 +222,17 @@ class TierTwo(unittest.TestCase):
         self.assertEqual(s4["words"], {"legacy": "null", "rtn-matched": "below 0.05: T1_int7, T2_int6", "gptq": "null"}); self.assertFalse(s4["agree"])
         self.assertTrue(gc.s4({"legacy": an["legacy"], "gptq": an["gptq"]})["agree"])
         self.assertEqual(gc.s4({"legacy": None, "rtn-matched": None, "gptq": None})["words"]["legacy"], "not provided")
+
+    def test_the_arms_must_cover_the_whole_roster(self):
+        small = {l: ROSTER27[l] for l in L27[:20]}
+        a = {n: s1_arm(lambda l, b: 50.0, lambda l, b: 0.1, langs=L27[:20]) for n in gc.ARMS}
+        with self.assertRaises(ValueError) as ctx:
+            gc.evaluate_stage1(a, ROSTER27)
+        self.assertIn("20", str(ctx.exception)); self.assertIn("27", str(ctx.exception)); self.assertIn("roster", str(ctx.exception))
+        roster_with_extra = {**ROSTER27, "extra": {"tier": "high"}}
+        with self.assertRaises(ValueError):
+            gc.evaluate_stage1(pattern_2b(), roster_with_extra)
+        gc.evaluate_stage1({n: s1_arm(flat({8: 1.0, 6: 90.0 + k, 4: 20.0 + k}), flat({8: 0.0, 6: 0.01 - 0.001 * k, 4: 0.1 - 0.01 * k}), langs=L27[:20]) for k, n in enumerate(("legacy", "rtn-matched", "gptq"))}, small)   # the roster is what counts: a roster of 20 is covered
 
 
 class Reference(unittest.TestCase):

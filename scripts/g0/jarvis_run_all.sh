@@ -15,6 +15,7 @@
 # the frozen run, matched RTN, GPTQ) and two stages (g = tier 1, Study G; p1 = tier 2, Phase 1 survival and loss). Extra steps for the two new arms: tokenizer (the 2B calibration pool may be reused only if the 9B tokenizer is the
 # same), pool (the calibration token files, verified against reports/gptq_extension/calibration_freeze.json), smoke_p1, gate9b (builds and gates the INT6/INT4 weight sets of both methods and records their hashes in
 # reports/functional_validation/gemma9b/artifact_hashes.json; every later unit refuses a different hash), smoke_gptq. Units run in the order of spec section 9; a unit is (stage, arm, state) for g and (p1, arm) for tier 2.
+#   STOP_AFTER=<step> stops cleanly after that step (use STOP_AFTER=smoke_gptq for a first run, read the timings, then continue); LM_EXTRA / P1_EXTRA: extra arguments of the tier-1 / tier-2 runs (amendment first).
 #   ARMS ("legacy rtn-matched gptq"), STAGES ("g p1"), STATES (legacy tier-1 states), STATES_NEW ("6 4"), P1_BITS_LEGACY ("8 7 6 5 4 16 12 0"), P1_BITS_NEW ("7 6 4 16 12 0"), PROCS_PER_GPU (1; 2 only if two units fit the RAM),
 #   POOL_DIR (default <BASE>/gptq/calibration), FAKE_CC / FAKE_DRIVER (tests). torch 2.14.1 comes from the cu130 index on a Blackwell GPU (compute capability >= 12, driver >= 580), from cu126 otherwise; TORCH_INDEX overrides.
 # Needs: HF_TOKEN of an account that has accepted the Gemma licence at https://huggingface.co/google/gemma-2-9b ; about 80 GB of free disk; >= 64 GB RAM per concurrent process.
@@ -45,8 +46,8 @@ say() { echo "[$(date +%H:%M:%S)] $*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 gpu_mib_list() { if [ -n "${FAKE_GPUS:-}" ]; then tr ' ' '\n' <<<"$FAKE_GPUS"; else nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits; fi; }
-gpu_cc() { if [ -n "${FAKE_CC:-}" ]; then echo "$FAKE_CC"; elif command -v nvidia-smi > /dev/null 2>&1; then nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2> /dev/null | head -n 1 | tr -d ' '; fi; }
-driver_ver() { if [ -n "${FAKE_DRIVER:-}" ]; then echo "$FAKE_DRIVER"; elif command -v nvidia-smi > /dev/null 2>&1; then nvidia-smi --query-gpu=driver_version --format=csv,noheader 2> /dev/null | head -n 1 | tr -d ' '; fi; }
+gpu_cc() { if [ -n "${FAKE_CC:-}" ]; then echo "$FAKE_CC"; elif command -v nvidia-smi > /dev/null 2>&1; then { nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2> /dev/null | head -n 1 | tr -d ' '; } || true; fi; }
+driver_ver() { if [ -n "${FAKE_DRIVER:-}" ]; then echo "$FAKE_DRIVER"; elif command -v nvidia-smi > /dev/null 2>&1; then { nvidia-smi --query-gpu=driver_version --format=csv,noheader 2> /dev/null | head -n 1 | tr -d ' '; } || true; fi; }
 has_word() { case " $1 " in *" $2 "*) return 0 ;; esac; return 1; }
 need_weights() { has_word "$ARMS" rtn-matched || has_word "$ARMS" gptq; }
 need_gb() { awk -v m="$MODEL_GB" -v t="$TARGET_GB" -v n="$1" 'BEGIN { e = (n > 0) ? t * (1 + n) : 0; printf "%.1f", (m + e) * 1.1 }'; }     # same formula as gptq_ext/ram_guard.estimate_gb
@@ -74,7 +75,7 @@ preflight() {                                                    # fast checks b
         if [ "$m" -ge "$MIN_GPU_MIB" ]; then GPUS+=("$i"); else say "GPU $i has only $m MiB (< $MIN_GPU_MIB): not used"; fi
         i=$((i + 1))
     done < <(gpu_mib_list)
-    [ "${#GPUS[@]}" -ge 1 ] || die "no GPU with >= $MIN_GPU_MIB MiB: Gemma-2-9B in bf16 needs a card of at least 40 GB (A100, A6000, L40S, H100)"
+    [ "${#GPUS[@]}" -ge 1 ] || die "no GPU with >= $MIN_GPU_MIB MiB: Gemma-2-9B in bf16 needs a card of at least 40 GB (A100, A6000, L40S, H100, RTX PRO 6000). If the card exists, nvidia-smi must list it: check that the NVIDIA driver is loaded (a Blackwell card needs driver 580 or newer)"
     local ram; ram=$(ram_gb)
     NPROC=$(( ram / RAM_PER_JOB_GB )); [ "$NPROC" -ge 1 ] || NPROC=1
     local slots=$(( ${#GPUS[@]} * PROCS_PER_GPU )); [ "$NPROC" -le "$slots" ] || NPROC=$slots
@@ -99,10 +100,17 @@ COMMIT=$(cat "$REPO/COMMIT" 2>/dev/null || git -C "$REPO" rev-parse HEAD 2>/dev/
 say "repo $REPO | base $BASE | commit $COMMIT"
 
 run() { echo "+ $*"; [ "$DRY_RUN" = 1 ] || "$@"; }
-step() { local name=$1; shift
-    if [ -f "$STATE_DIR/$name.done" ]; then say "[skip] $name (already done)"; return 0; fi
-    say "== $name"; "$@" || return $?
-    [ "$DRY_RUN" = 1 ] || touch "$STATE_DIR/$name.done"; }
+CUR_STEP=start
+trap 'rc=$?; if [ "$rc" -ne 0 ]; then echo "[$(date +%H:%M:%S)] FAILED (exit $rc) during: $CUR_STEP" >&2; fi' EXIT
+stop_after() { if [ "${STOP_AFTER:-}" = "$1" ]; then say "STOP_AFTER=$1 reached: stopping here (run the same command without STOP_AFTER to continue)"; exit 0; fi; }
+step() { local name=$1; shift; CUR_STEP=$name                 # the function is called plainly (not on the left of ||): bash ignores errexit inside a function called that way, which let failed commands pass
+    if [ -f "$STATE_DIR/$name.done" ]; then say "[skip] $name (already done)"
+    else
+        say "== $name"; "$@"
+        if [ "$DRY_RUN" != 1 ]; then touch "$STATE_DIR/$name.done"; fi
+    fi
+    stop_after "$name"
+}
 g9() { ( cd "$REPO/scripts/g0" && "$PY" phase1_gemma9b_run.py "$@" ); }
 
 do_env() {
@@ -149,16 +157,22 @@ PYEOF
     "$PY" "$REPO/scripts/g0/prefetch_gemma9b.py" || die "prefetch failed (disk space? about 19 GB are needed under $HF_HOME)"
 }
 
+verify_frozen() {                                                # EVERY invocation, before anything is installed or downloaded: the code must be the frozen code (a resume after an edit must not pass)
+    local py=$PY; [ -x "$py" ] || py=python3                     # both tools are stdlib only
+    run "$py" -B "$REPO/scripts/g0/make_gemma9b_freeze.py" --verify
+    if need_weights || has_word "$STAGES" p1; then
+        [ "$DRY_RUN" = 1 ] || [ -f "$AMEND" ] || die "amendment A1 ($AMEND) is missing: the predictions of the new arms are not frozen"
+        run "$py" -B "$REPO/scripts/g0/make_gemma9b_amendment.py" --verify
+    fi
+}
+
 do_checks() {
     ( cd "$REPO/scripts/g0" && run "$PY" -B -m unittest tests_torch.test_phase1_gemma9b_run tests_torch.test_phase1_llama_run tests.test_make_gemma9b_freeze ) || die "unit tests failed: the code is not the tested code"
-    run "$PY" -B "$REPO/scripts/g0/make_gemma9b_freeze.py" --verify
     if need_weights || has_word "$STAGES" p1; then
         ( cd "$REPO/scripts/g0" && run "$PY" -B -m unittest tests.test_gptq_ext_tokenizer_check tests.test_gptq_ext_ram_guard tests.test_gptq_ext_record_hashes tests.test_make_gemma9b_amendment tests_torch.test_phase1_gemma9b_ext tests_torch.test_phase1_gemma9b_compare ) || die "unit tests of the three-arm extension failed: the code is not the tested code"
     fi
     if need_weights; then
         ( cd "$REPO/scripts/g0" && run "$PY" -B -m unittest discover -s tests_torch -p "test_gptq_ext_*.py" ) || die "the GPTQ extension tests failed on this machine"
-        [ "$DRY_RUN" = 1 ] || [ -f "$AMEND" ] || die "amendment A1 ($AMEND) is missing: the predictions of the new arms are not frozen"
-        run "$PY" -B "$REPO/scripts/g0/make_gemma9b_amendment.py" --verify
     fi
 }
 
@@ -209,8 +223,8 @@ tag_and_manifest() {                                             # <name> <extra
 }
 
 do_smoke() {
-    [ "$DRY_RUN" = 1 ] && { echo "+ smoke: tag (eng_Latn hin_Deva khm_Khmr, 40 sentences) -> manifest -> lm FP 4 (pilot split), then check gates/CUDA/result files"; return 0; }
-    tag_and_manifest g9-smoke-tag --languages eng_Latn hin_Deva khm_Khmr --max-sentences 40
+    [ "$DRY_RUN" = 1 ] && { echo "+ smoke: tag (all 27 languages, 100 sentences each) -> manifest -> lm FP 4 on eng_Latn hin_Deva khm_Khmr (pilot split), then check gates/CUDA/result files"; return 0; }
+    tag_and_manifest g9-smoke-tag --max-sentences 100            # the frozen lm runner asserts that the manifest and the selectivity cover the whole roster: only the lm run below is restricted to 3 languages
     local out=$OUTROOT/g9-smoke-lm log=$LOGS/g9-smoke-lm.log
     mkdir -p "$out"
     CUDA_VISIBLE_DEVICES=${GPUS[0]} g9 lm --out "$out" --flores-root "$BASE/data" --selectivity "$OUTROOT/g9-smoke-tag/eq/selectivity.pt" --manifest "$OUTROOT/g9-smoke-tag/groups_manifest.json" \
@@ -220,31 +234,57 @@ do_smoke() {
 }
 
 do_smoke_p1() {                                                  # the tier-2 path on 3 languages, legacy rounding, 4 bits: proves the p1 task before hours are spent
-    [ "$DRY_RUN" = 1 ] && { echo "+ smoke_p1: phase1_gemma9b_ext.py p1 --corpus flores --regime mask --languages eng_Latn hin_Deva khm_Khmr --max-sentences 40 --bits 4"; return 0; }
+    [ "$DRY_RUN" = 1 ] && { echo "+ smoke_p1: phase1_gemma9b_ext.py p1 --corpus flores --regime mask --languages eng_Latn hin_Deva khm_Khmr --max-sentences 40 --bits 4 ${P1_EXTRA:-}"; return 0; }
     local out=$OUTROOT/g9-smoke-p1 log=$LOGS/g9-smoke-p1.log; mkdir -p "$out"
-    CUDA_VISIBLE_DEVICES=${GPUS[0]} in_g0 "$PY" phase1_gemma9b_ext.py p1 --corpus flores --regime mask --languages eng_Latn hin_Deva khm_Khmr --max-sentences 40 --bits 4 --out "$out" --flores-root "$BASE/data" --commit "$COMMIT" > "$log" 2>&1 || { tail -n 40 "$log"; die "tier-2 smoke job failed, see $log"; }
+    CUDA_VISIBLE_DEVICES=${GPUS[0]} in_g0 "$PY" phase1_gemma9b_ext.py p1 --corpus flores --regime mask --languages eng_Latn hin_Deva khm_Khmr --max-sentences 40 --bits 4 ${P1_EXTRA:-} --out "$out" --flores-root "$BASE/data" --commit "$COMMIT" > "$log" 2>&1 || { tail -n 40 "$log"; die "tier-2 smoke job failed, see $log"; }
     ! grep -q "CUDA initialization" "$log" || die "CUDA initialization warning in $log (ran on CPU?)"
     find "$out" -name survival.pt | grep -q . || { tail -n 40 "$log"; die "tier-2 smoke produced no survival.pt, see $log"; }
     say "tier-2 smoke passed"
 }
 
-do_gate9b() {                                                    # build INT6 and INT4 of both methods on the real model, run the gates, record the hashes every later unit must reproduce
-    local out=$OUTROOT/g9-gate log=$LOGS/g9-gate.log
-    [ "$DRY_RUN" = 1 ] && { echo "+ gate9b: python -m gptq_ext.ram_guard --model-gb $MODEL_GB --target-gb $TARGET_GB --n-artifacts 4"; echo "+ gate9b: phase1_gemma9b_ext.py gate --out $out --methods gptq rtn-matched --bits 6 4 --record-weights-hashes --calibration-freeze $CAL_FREEZE --calibration-text $POOL_DIR"; echo "+ gate9b: python -m gptq_ext.record_hashes --gate-dir $out --out $HASHES"; return 0; }
-    mkdir -p "$out"
-    in_g0 "$PY" -m gptq_ext.ram_guard --model-gb "$MODEL_GB" --target-gb "$TARGET_GB" --n-artifacts 4 --ram-gb "$(ram_gb)" || die "not enough host RAM for the gate job (it keeps two full-precision copies and up to four weight sets)"
-    if [ ! -f "$out/gate_report.json" ]; then
-        CUDA_VISIBLE_DEVICES=${GPUS[0]} in_g0 "$PY" phase1_gemma9b_ext.py gate --out "$out" --flores-root "$BASE/data" --roster "$REPO/reports/g0/phase1_languages.json" --methods gptq rtn-matched --bits 6 4 \
-            --commit "$COMMIT" --calibration-freeze "$CAL_FREEZE" --calibration-text "$POOL_DIR" --record-weights-hashes > "$log" 2>&1 || { tail -n 40 "$log"; die "gate job failed, see $log"; }
-    fi
-    ! grep -q "CUDA initialization" "$log" || die "CUDA initialization warning in $log (ran on CPU?)"
-    grep -q '"all_gates_ok": true' "$out/gate_report.json" || die "a gate FAILED (see $out/gate_report.json): stop and send it to the author"
+gate_bits_wanted() {                                             # artifact bit widths (4 to 8) the weight-set units build, in order of first use: STATES_NEW (tier 1), then P1_BITS_NEW (tier 2)
+    local b out=""
+    if has_word "$STAGES" g; then for b in $STATES_NEW; do case $b in 4|5|6|7|8) has_word "$out" "$b" || out="$out $b" ;; esac; done; fi
+    if has_word "$STAGES" p1; then for b in $P1_BITS_NEW; do case $b in 4|5|6|7|8) has_word "$out" "$b" || out="$out $b" ;; esac; done; fi
+    echo $out
+}
+
+gate_chunks() {                                                  # one line per gate job: at most two bit widths (a weight set is about 17.6 GB of host RAM and a gate job keeps two copies of the model besides)
+    local -a w; local i
+    read -r -a w <<< "$(gate_bits_wanted)"
+    for ((i = 0; i < ${#w[@]}; i += 2)); do echo "${w[*]:i:2}"; done
+}
+
+do_gate9b() {                                                    # build the weight sets of both methods on the real model, run the gates, record the hashes every later unit must reproduce
+    local -a chunks=(); local -a dirs=(); local chunk out log i=0 n
+    mapfile -t chunks < <(gate_chunks)
+    [ "${#chunks[@]}" -gt 0 ] || die "no artifact bit width among STATES_NEW ($STATES_NEW) and P1_BITS_NEW ($P1_BITS_NEW): nothing to gate"
+    for chunk in "${chunks[@]}"; do
+        i=$((i + 1)); out=$OUTROOT/g9-gate; log=$LOGS/g9-gate.log
+        if [ "$i" -gt 1 ]; then out=$OUTROOT/g9-gate$i; log=$LOGS/g9-gate$i.log; fi
+        dirs+=(--gate-dir "$out")
+        n=$(( $(wc -w <<< "$chunk") + 2 ))                       # the weight sets of the chunk, one rebuilt for the determinism check, one transient
+        if [ "$DRY_RUN" = 1 ]; then
+            echo "+ gate9b: python -m gptq_ext.ram_guard --model-gb $MODEL_GB --target-gb $TARGET_GB --n-artifacts $n"
+            echo "+ gate9b: phase1_gemma9b_ext.py gate --out $out --methods gptq rtn-matched --bits $chunk --record-weights-hashes --calibration-freeze $CAL_FREEZE --calibration-text $POOL_DIR"
+            continue
+        fi
+        mkdir -p "$out"
+        in_g0 "$PY" -m gptq_ext.ram_guard --model-gb "$MODEL_GB" --target-gb "$TARGET_GB" --n-artifacts "$n" --ram-gb "$(ram_gb)" || die "not enough host RAM for the gate job (it keeps two full-precision copies and the weight sets of bits $chunk)"
+        if [ ! -f "$out/gate_report.json" ]; then
+            CUDA_VISIBLE_DEVICES=${GPUS[0]} in_g0 "$PY" phase1_gemma9b_ext.py gate --out "$out" --flores-root "$BASE/data" --roster "$REPO/reports/g0/phase1_languages.json" --methods gptq rtn-matched --bits $chunk \
+                --commit "$COMMIT" --calibration-freeze "$CAL_FREEZE" --calibration-text "$POOL_DIR" --record-weights-hashes > "$log" 2>&1 || { tail -n 40 "$log"; die "gate job (bits $chunk) failed, see $log"; }
+        fi
+        ! grep -q "CUDA initialization" "$log" || die "CUDA initialization warning in $log (ran on CPU?)"
+        grep -q '"all_gates_ok": true' "$out/gate_report.json" || die "a gate FAILED (see $out/gate_report.json): stop and send it to the author"
+    done
+    if [ "$DRY_RUN" = 1 ]; then echo "+ gate9b: python -m gptq_ext.record_hashes ${dirs[*]} --out $HASHES"; return 0; fi
     if [ -f "$HASHES" ]; then
-        in_g0 "$PY" -m gptq_ext.record_hashes --gate-dir "$out" --out "$HASHES" --check || die "$HASHES exists and differs from this gate job's hashes (a second build gave other weights?): stop and tell the author"
+        in_g0 "$PY" -m gptq_ext.record_hashes "${dirs[@]}" --out "$HASHES" --check || die "$HASHES exists and differs from these gate jobs' hashes (a second build gave other weights?): stop and tell the author"
     else
-        in_g0 "$PY" -m gptq_ext.record_hashes --gate-dir "$out" --out "$HASHES"
+        in_g0 "$PY" -m gptq_ext.record_hashes "${dirs[@]}" --out "$HASHES" || die "recording the artifact hashes failed"
     fi
-    say "gate job passed; artifact hashes recorded in $HASHES"
+    say "gate jobs passed; artifact hashes recorded in $HASHES"
 }
 
 do_smoke_gptq() {                                                # the whole GPTQ path (wrapper, prebuild, frozen hash check, lm run) on the 3 smoke languages, INT4
@@ -306,7 +346,7 @@ unit_command() {                                                 # <stage> <arm>
     else
         bits=$P1_BITS_NEW; if [ "$arm" = legacy ]; then bits=$P1_BITS_LEGACY; fi
         if [ "$arm" = legacy ]; then CMD=("$PY" phase1_gemma9b_ext.py p1); else CMD=("${wrap[@]}" p1); fi
-        CMD+=(--corpus flores --regime mask --bits $bits --out "$out" --flores-root "$BASE/data" --commit "$COMMIT")
+        CMD+=(--corpus flores --regime mask --bits $bits --out "$out" --flores-root "$BASE/data" --commit "$COMMIT" ${P1_EXTRA:-})
     fi
 }
 
@@ -398,6 +438,7 @@ do_package() {
     say "results: $BASE/gemma9b_results.tar.gz ($(du -h "$BASE/gemma9b_results.tar.gz" | cut -f1))"
 }
 
+CUR_STEP=verify_frozen; say "== verify_frozen"; verify_frozen
 step env do_env
 step flores do_flores
 step access_and_download do_access
@@ -411,8 +452,14 @@ if need_weights; then
     step gate9b do_gate9b
     if [ "$SKIP_SMOKE" != 1 ]; then step smoke_gptq do_smoke_gptq; fi
 fi
-rc=0
-step full do_full || rc=$?
-if [ "$rc" -ne 0 ]; then rm -f "$STATE_DIR/full.done"; fi
+rc=0; CUR_STEP=full
+if [ -f "$STATE_DIR/full.done" ]; then
+    say "[skip] full (already done)"
+else
+    say "== full"
+    do_full || rc=$?                                             # failed units come back as a status (do_full reports its own errors); the packaging below must still run
+    if [ "$rc" -eq 0 ] && [ "$DRY_RUN" != 1 ]; then touch "$STATE_DIR/full.done"; fi
+fi
+stop_after full
 if [ "$DRY_RUN" != 1 ]; then do_package; fi
 if [ "$rc" -eq 0 ]; then say "ALL DONE. Send $BASE/gemma9b_results.tar.gz back."; else say "PARTIAL: some states failed (see above). Send $BASE/gemma9b_results.tar.gz and $BASE/run_all.log back."; exit "$rc"; fi

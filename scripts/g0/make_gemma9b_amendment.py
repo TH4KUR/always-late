@@ -18,7 +18,7 @@ SPEC = ROOT / "docs/superpowers/specs/2026-10-28-gemma9b-three-arm-confirmation-
 FREEZE = ROOT / "reports/functional_validation/gemma9b/freeze.json"
 OUT = ROOT / "reports/functional_validation/gemma9b/amendment_A1_three_arm.json"
 CODE = ("scripts/g0/gptq_ext/tokenizer_check.py", "scripts/g0/gptq_ext/ram_guard.py", "scripts/g0/gptq_ext/record_hashes.py", "scripts/g0/phase1_gemma9b_ext.py", "scripts/g0/phase1_gemma9b_compare.py")
-START, END = "- **Q0", "(The Q0 to Q3 list"
+START, END = "P1 to P3b (legacy arm)", "(The Q0 to Q3 list"
 ARMS = {"tier1": {"legacy": ["FP", "INT8", "INT7", "INT6", "INT5", "INT4"], "rtn-matched": ["INT6", "INT4"], "gptq": ["INT6", "INT4"], "note": "the FP file of the two new arms is the legacy arm's"},
         "tier2": {"legacy": [8, 7, 6, 5, 4, 16, 12, 0], "rtn-matched": [7, 6, 4, 16, 12, 0], "gptq": [7, 6, 4, 16, 12, 0], "note": "bits; 16, 12 and 0 are the legacy rounding floors and the restore control in every arm"}}
 RULES = ["no frozen file edited; the freeze of 2026-10-26 is unchanged (its sha256 is recorded here)", "the 2B ratios are not recalibrated", "predictions and thresholds are fixed before any 9B number exists (this file is the proof of order)",
@@ -28,7 +28,7 @@ sha = mf.sha
 
 
 def extract_text(spec_path):
-    """The block of the spec from the line that starts `- **Q0` to the line that starts `(The Q0 to Q3 list`, verbatim (with a final newline)."""
+    """The block of the spec from the line that starts `P1 to P3b (legacy arm)` (the definitions: tested languages, req(x), the code the numbers come from) to the line that starts `(The Q0 to Q3 list`, verbatim (with a final newline)."""
     lines = Path(spec_path).read_text(encoding="utf-8").splitlines()
     starts = [i for i, l in enumerate(lines) if l.startswith(START)]
     ends = [i for i, l in enumerate(lines) if l.startswith(END)]

@@ -17,7 +17,7 @@ text before
 
 ## 5. Predictions
 
-intro line
+P1 to P3b (legacy arm) are the frozen ones; tested languages are the groups of at least 16 members, req(x) = ceil(x * n / 27).
 
 - **Q0 (existence):** P1 holds. (2B: met.)
 - **Q1 (ordering):** r(GPTQ) <= r(legacy) - 0.3.
@@ -61,14 +61,15 @@ class Fixture(unittest.TestCase):
 class Text(Fixture):
     def test_text_is_the_verbatim_spec_block(self):
         t = ma.extract_text(self.spec)
-        self.assertTrue(t.startswith("- **Q0 (existence)"))
+        self.assertTrue(t.startswith("P1 to P3b (legacy arm)"))                     # the definitions paragraph is part of the frozen text, not only the list of predictions
+        self.assertIn("req(x) = ceil(x * n / 27)", t); self.assertIn("- **Q0 (existence)", t)
         self.assertTrue(t.rstrip().endswith("stored in the amendment.)"))
         self.assertIn("**Tier 2 verdict:**", t)
-        self.assertNotIn("## 6.", t); self.assertNotIn("intro line", t)
+        self.assertNotIn("## 6.", t); self.assertNotIn("## 5.", t)
         self.assertIn(t.rstrip(), SPEC)
 
     def test_a_missing_start_or_end_marker_is_an_error(self):
-        self.spec.write_text(SPEC.replace("- **Q0", "- **Z0"))
+        self.spec.write_text(SPEC.replace("P1 to P3b (legacy arm)", "P1 to P3b"))
         with self.assertRaises(ValueError):
             ma.extract_text(self.spec)
         self.spec.write_text(SPEC.replace("(The Q0 to Q3 list", "(The list"))

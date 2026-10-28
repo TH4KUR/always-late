@@ -135,9 +135,8 @@ def _check_stage1(arms, roster, bits):
             raise ValueError(f"arm {name}: bit width(s) {absent} are missing (it has {sorted(a['bits'])})")
         if set(a["languages"]) != set(ref["languages"]):
             raise ValueError(f"arm {name}: its languages differ from those of arm {ARMS[0]}")
-    unknown = [l for l in ref["languages"] if l not in roster]
-    if unknown:
-        raise ValueError(f"the roster has no tier for {unknown}")
+    if set(ref["languages"]) != set(roster):
+        raise ValueError(f"the arms cover {len(set(ref['languages']))} languages but the roster has {len(roster)}: Phase 1 must cover the whole roster (a smoke-sized or partial run cannot be judged against the predictions)")
 
 
 def evaluate_stage1(arms, roster, bits=S_BITS):
@@ -246,13 +245,15 @@ def report_text(res):
         out += ["Tier 1: not run.", ""]
     else:
         q0, q1_, q2, q3, r = t1["Q0"], t1["Q1"], t1["Q2"], t1["Q3"], ref["tier1"]
+        p3b = t1["arms"]["legacy"]["P3b"]
+        legacy_p3b = f"legacy arm meets P3b: {'yes' if q1_['evaluable'] else 'no'} (median ratio {_f(p3b['median_ratio'])}, larger at INT4 in {p3b['count_larger']} of {t1['n_tested']}, needs {p3b['required']} and a ratio above 1.3)"
         out += [f"{t1['n_tested']} languages tested (group of at least 16 members), {t1['arms']['legacy']['n_sentences']} held-out sentences per language, three matched-control draws.", "",
                 "| prediction | rule (fixed beforehand) | Gemma-2-9B | Gemma-2-2B | result |", "|---|---|---|---|---|",
                 f"| Q0 existence and grading under the better quantizers | P1 at FP and H-G1 at INT4 in the matched-RTN and GPTQ arms | "
                 + "; ".join(f"{a}: P1 {_yn(v['P1'])}, H-G1 INT4 {_yn(v['P3a_INT4'])}" for a, v in q0["per_arm"].items()) + " | met in both arms | **" + _yn(q0["met"]) + "** |",
                 f"| Q1 the INT4 amplification is smaller with GPTQ | r(GPTQ) <= r(matched), r(GPTQ) <= r(legacy) - {q1_['required_drop']}, GPTQ below legacy in at least {q1_['required']} languages; evaluable only if the legacy arm meets P3b | "
-                f"r legacy {_f(q1_['r']['legacy'])}, matched {_f(q1_['r']['rtn-matched'])}, GPTQ {_f(q1_['r']['gptq'])}; GPTQ below legacy in {q1_['count_lower']} languages; evaluable: {q1_['evaluable']} | "
-                f"r {_f(r['r']['legacy'])} / {_f(r['r']['rtn-matched'])} / {_f(r['r']['gptq'])}; {r['count_gptq_below_legacy']} of {r['n']} | **{_yn(q1_['met'])}**" + ("" if q1_["evaluable"] else " (not evaluable)") + " |",
+                f"r legacy {_f(q1_['r']['legacy'])}, matched {_f(q1_['r']['rtn-matched'])}, GPTQ {_f(q1_['r']['gptq'])}; GPTQ below legacy in {q1_['count_lower']} languages; {legacy_p3b} | "
+                f"r {_f(r['r']['legacy'])} / {_f(r['r']['rtn-matched'])} / {_f(r['r']['gptq'])}; {r['count_gptq_below_legacy']} of {r['n']} | " + (f"**{_yn(q1_['met'])}**" if q1_["evaluable"] else "**not evaluable**") + " |",
                 f"| Q2 6 bits are the same in every arm | macro retention at INT6 within [{q2['band'][0]}, {q2['band'][1]}] in all three arms | " + ", ".join(f"{a} {_f(v)}" for a, v in q2["retention_int6"].items()) + " | flat in all arms | **" + _yn(q2["met"]) + "** |",
                 "| Q3 repair hint (reported) | H-G5b per arm; languages whose best factor at INT4 is above 1 | " + "; ".join(f"{a}: H-G5b {_yn(v['H-G5b']['met'])} ({v['H-G5b']['count']} of {v['H-G5b']['n']}), best factor above 1 in {v['best_factor_above_one']}" for a, v in q3.items())
                 + " | H-G5b not met under matched RTN and GPTQ; best factor above 1 in 21, 13, 7 of 27 languages (legacy, matched, GPTQ) | reported |", "",
