@@ -1,0 +1,144 @@
+{
+ "sources": [
+  {
+   "local": "gptq-p1-mask",
+   "repo": "runs/gptq-extension/stage1/gptq-p1-mask",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "gptq-transfer-feature-int4",
+   "repo": "runs/gptq-extension/stage2/gptq-transfer-feature-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "gptq-transfer-feature-int6",
+   "repo": "runs/gptq-extension/stage2/gptq-transfer-feature-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "gptq-transfer-group-int4",
+   "repo": "runs/gptq-extension/stage2/gptq-transfer-group-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "gptq-transfer-group-int6",
+   "repo": "runs/gptq-extension/stage2/gptq-transfer-group-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "gptq-transfer-ext-group-int4",
+   "repo": "runs/gptq-extension/external/gptq-transfer-ext-group-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "gptq-transfer-ext-group-int6",
+   "repo": "runs/gptq-extension/external/gptq-transfer-ext-group-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "analysis_gptq",
+   "repo": "runs/gptq-extension/analysis/transfer-main-gptq",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-p1-mask",
+   "repo": "runs/gptq-extension/stage1/rtnm-p1-mask",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-feature-int4",
+   "repo": "runs/gptq-extension/stage2/rtnm-transfer-feature-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-feature-int6",
+   "repo": "runs/gptq-extension/stage2/rtnm-transfer-feature-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-group-int4",
+   "repo": "runs/gptq-extension/stage2/rtnm-transfer-group-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-group-int6",
+   "repo": "runs/gptq-extension/stage2/rtnm-transfer-group-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-ext-group-int4",
+   "repo": "runs/gptq-extension/external/rtnm-transfer-ext-group-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-ext-group-int6",
+   "repo": "runs/gptq-extension/external/rtnm-transfer-ext-group-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "analysis_rtnm",
+   "repo": "runs/gptq-extension/analysis/transfer-main-rtnm",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "func_inputs/jobs",
+   "repo": "runs/gptq-extension/stage3_f5_gain",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "/home/karma/Documents/ANLP/project/always-late/reports/gptq_extension/hf_readme.md",
+   "repo": "runs/gptq-extension/README.md"
+  }
+ ]
+}

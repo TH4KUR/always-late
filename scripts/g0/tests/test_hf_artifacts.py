@@ -89,5 +89,34 @@ class Verify(unittest.TestCase):
         self.assertTrue(ha.verify_remote(FakeApi(remote=[FakeEntry("p/a", 3)]), "u/ds", files)["ok"])
 
 
+class BuildExtra(unittest.TestCase):
+    """The small text files of an upload commit: by default the root manifest and the dataset card, as before; a later upload of NEW files must be able to write its own manifest without replacing the root one."""
+    def files(self):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup)
+        p = Path(d.name) / "a.csv"; p.write_text("abc")
+        return [(str(p), "runs/x/a.csv", 3)], d
+
+    def test_default_writes_the_root_manifest_and_the_card_as_before(self):
+        files, d = self.files(); card = Path(d.name) / "card.md"; card.write_text("CARD")
+        e = ha.build_extra(files, card=str(card))
+        self.assertEqual(sorted(e), ["MANIFEST.sha256", "README.md"]); self.assertEqual(e["README.md"], "CARD")
+        self.assertEqual(e["MANIFEST.sha256"], ha.manifest_text(files))
+
+    def test_a_custom_manifest_name_leaves_the_root_manifest_alone(self):
+        files, d = self.files()
+        e = ha.build_extra(files, manifest_name="runs/gptq-extension/MANIFEST.sha256")
+        self.assertEqual(list(e), ["runs/gptq-extension/MANIFEST.sha256"])
+
+    def test_no_card_skips_the_card_even_when_one_is_named(self):
+        files, d = self.files(); card = Path(d.name) / "card.md"; card.write_text("CARD")
+        e = ha.build_extra(files, card=str(card), no_card=True)
+        self.assertNotIn("README.md", e); self.assertIn("MANIFEST.sha256", e)
+
+    def test_the_root_card_is_never_written_to_a_custom_path_by_accident(self):
+        files, d = self.files(); card = Path(d.name) / "card.md"; card.write_text("CARD")
+        e = ha.build_extra(files, card=str(card), manifest_name="m/M.sha256")
+        self.assertEqual(sorted(e), ["README.md", "m/M.sha256"])
+
+
 if __name__ == "__main__":
     unittest.main()

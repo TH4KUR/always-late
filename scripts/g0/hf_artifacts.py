@@ -44,6 +44,15 @@ def manifest_text(files):
     return "".join(f"{sha256_file(p)}  {repo}\n" for p, repo, _ in files)
 
 
+def build_extra(files, card=None, manifest_name="MANIFEST.sha256", no_card=False):
+    """The small text files of an upload commit {path_in_repo: text}: the sha256 manifest of THIS upload under `manifest_name` (the default is the root manifest of the first uploads, which a later upload of new
+    files must not replace: give it its own name) and the dataset card as README.md unless `no_card`."""
+    extra = {manifest_name: manifest_text(files)}
+    if card and not no_card:
+        extra["README.md"] = Path(card).read_text()
+    return extra
+
+
 def upload(api, repo_id, files, message, extra_text=None, op_cls=None):
     """One commit containing every file plus the small text files ({path_in_repo: text})."""
     if not files:
@@ -72,6 +81,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["upload", "verify", "list"]); ap.add_argument("--repo", required=True); ap.add_argument("--spec", required=True)
     ap.add_argument("--base", default="."); ap.add_argument("--message", default="Upload run artifacts"); ap.add_argument("--card")
+    ap.add_argument("--manifest-name", default="MANIFEST.sha256", help="path of this upload's sha256 manifest in the repo (a later upload of new files must not replace the root manifest)")
+    ap.add_argument("--no-card", action="store_true", help="do not (re)write README.md even if the spec names a card")
     a = ap.parse_args(argv)
     spec, files = _load(a.spec, a.base)
     total = sum(s for _, _, s in files)
@@ -83,10 +94,7 @@ def main(argv=None):
     from huggingface_hub import HfApi
     api = HfApi()
     if a.cmd == "upload":
-        extra = {"MANIFEST.sha256": manifest_text(files)}
-        card = a.card or spec.get("card")
-        if card:
-            extra["README.md"] = Path(card).read_text()
+        extra = build_extra(files, card=a.card or spec.get("card"), manifest_name=a.manifest_name, no_card=a.no_card)
         upload(api, a.repo, files, a.message, extra_text=extra)
         print("uploaded in one commit")
     v = verify_remote(api, a.repo, files)
