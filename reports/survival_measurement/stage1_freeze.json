@@ -6,12 +6,25 @@
     "matched_rtn": "/home/karma/Documents/ANLP/project/transfer_runs/rtnm-p1-mask/{stream}/survival.pt",
     "gptq": "/home/karma/Documents/ANLP/project/transfer_runs/gptq-p1-mask/{stream}/survival.pt"
   },
-  "streams": {"primary": "eq", "sensitivity": "all"},
+  "streams": {
+    "primary": "eq",
+    "sensitivity": "all"
+  },
   "population": "per language, features with FP firing_rate > 0.001 (Duan's rule, phase1_run.survival_summary)",
   "reproduction_control": "per-language survived_>0.9_pct and median_corr recomputed from survival.pt must equal reports/phase1/mask/eq/per_language.csv (legacy) and the a/b columns of reports/gptq_extension/results/stage1/stage1_paired_per_language.csv (b = legacy, a = arm) within 1e-6; otherwise stop and report",
   "lambda": "lambda = log(1/r^2 - 1) with r clipped to [0.001, 1 - 1e-6]; counts of clipped values reported per cell; r <= 0.001 includes negative and zero correlations",
   "lambda_cutoff": "r > 0.9 <=> lambda < log(1/0.81 - 1) = -1.44985",
-  "widths": {"primary": [6, 4], "reported": [7, 5], "floor": 16},
+  "widths": {
+    "primary": [
+      6,
+      4
+    ],
+    "reported": [
+      7,
+      5
+    ],
+    "floor": 16
+  },
   "H1": {
     "statistic": "per language: Spearman(lambda_arm, lambda_legacy) over the language's active features, and the geometric-mean slope sd(lambda_arm)/sd(lambda_legacy) over features with neither value clipped",
     "rule": "met for an (arm, width) if the median over 27 languages of Spearman >= 0.8 AND the median slope lies in [0.8, 1.25]; H1 overall met if met in all four (matched RTN, GPTQ) x (INT6, INT4) cells"
@@ -28,5 +41,6 @@
     "statistic": "per language outcome = MINUS the median lambda over active features (log signal-to-noise, higher = better, the same direction as survival, so the one-sided test of phase1_analysis.freedman_lane_tier_test keeps its meaning: higher tier, better); script-family dummies, 10,000 permutations, seed 0; without and with the N9 covariate (log10 median max_activation, phase1_language_level.language_activation_scale)",
     "rule": "descriptive only; slope and p per (arm, width) without and with the scale covariate; no equivalence claim from a large p"
   },
-  "environment": "OMP_NUM_THREADS=4, ~/.venvs/anlp-torch"
+  "environment": "OMP_NUM_THREADS=4, ~/.venvs/anlp-torch",
+  "correction_2026-10-29": "The numeric value in 'lambda_cutoff' was mistyped when this file was written: log(1/0.81 - 1) = -1.4500102, not -1.44985. The rule is the formula (r > 0.9 <=> lambda < log(1/0.81 - 1)); the code uses the formula; no rule changes. Found by the unit test before any data was read."
 }

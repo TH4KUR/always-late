@@ -1,0 +1,13 @@
+[["np.log(1 / rc ** 2 - 1)", "np.log(1 / rc - 1)", "lambda without square"],
+ ["LAMBDA_CUT = math.log(1 / 0.81 - 1)", "LAMBDA_CUT = math.log(1 / 0.9 - 1)", "cutoff from r not r^2"],
+ ["(r < R_LO) | (r > R_HI)", "(r < R_LO)", "no high clipping flag"],
+ ["fr > fr.dtype.type(threshold)", "fr >= fr.dtype.type(threshold)", "active >= instead of >"],
+ ["s[(len(s) - 1) // 2]", "s[len(s) // 2]", "upper-middle median"],
+ ["keep = ~(clip_leg | clip_arm)", "keep = ~clip_leg", "slope keeps arm-clipped"],
+ ["np.median(rhos) >= 0.8 and", "np.median(rhos) > 0.8 and", "H1 strict rho"],
+ ["0.8 <= np.median(slopes) <= 1.25", "0.8 <= np.median(slopes) < 1.25", "H1 slope upper open"],
+ ["((a + delta) < LAMBDA_CUT)", "((a - delta) < LAMBDA_CUT)", "shift sign"],
+ ["np.concatenate([b - a for", "np.concatenate([a - b for", "delta reversed"],
+ ["return bool(mae <= 2.0)", "return bool(mae < 2.0)", "H2 strict"],
+ ["return bool(abs(median_rho) > 0.5)", "return bool(median_rho > 0.5)", "H3 sign"],
+ ["none = [float((a < LAMBDA_CUT)", "none = [float((a <= LAMBDA_CUT - 1)", "no-shift reference"]]
