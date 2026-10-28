@@ -143,6 +143,28 @@ class Compare(unittest.TestCase):
         for f in ("transfer_claims.csv", "transfer_feature_level.csv", "transfer_group_paired.csv", "transfer_group_summary.csv"):
             self.assertTrue((out / f).is_file(), f)
 
+    def test_the_number_of_languages_in_the_text_is_the_number_in_the_data_and_the_label_goes_into_the_heading(self):
+        d = Path(self.tmp.name)
+        def six(src, name):
+            dst = perturbed_copy(d / name)
+            with open(dst / "group_per_language.csv", newline="") as f:
+                rows = list(csv.DictReader(f))
+            keep = sorted({r["language"] for r in rows})[:6]
+            rows = [r for r in rows if r["language"] in keep]
+            with open(dst / "group_per_language.csv", "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
+            return ct.load_arm(dst)
+        arms6 = {"legacy RTN": six(self.legacy, "a6"), "matched RTN": six(self.worse, "b6"), "GPTQ": six(self.better, "c6")}
+        out = d / "out6"
+        ct.write_report(out, arms6, self.roster, n_boot=50, seed=0, label="external panel, six languages")
+        text = (out / "transfer_comparison.md").read_text()
+        self.assertIn("over the 6 languages", text); self.assertNotIn("27 languages", text)
+        self.assertIn("arm against arm: external panel, six languages", text.splitlines()[0])
+        out27 = d / "out27"
+        ct.write_report(out27, {"legacy RTN": self.legacy, "matched RTN": self.worse, "GPTQ": self.better}, self.roster, n_boot=50, seed=0)
+        text27 = (out27 / "transfer_comparison.md").read_text()
+        self.assertIn("over the 27 languages", text27); self.assertEqual(text27.splitlines()[0], "# Stage 2 comparison: the intervention-transfer study (E6), arm against arm")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 """Stage-2 comparison of the GPTQ extension (freeze endpoint E6, plan Task 10). The unchanged `phase1_transfer_report.py` (claim rules of amendment A14, crossed bootstrap) is run ONCE per arm on that arm's INT6 and INT4
 runs (the INT16 floor runs are the legacy rounding, identical in all arms, and are reused); this tool puts the three outputs side by side and writes nothing into them: (1) the claim verdicts (UTILITY, H1, H3, A3, H4, per
 state), (2) the feature-level medians with their own crossed-bootstrap intervals, the difference of the points and whether two arms' intervals overlap, (3) the group-level quantities per language (net group effect in FP,
-C, W, I, total, native total, native minus fixed), paired by language, arm A minus arm B, with a bootstrap over the 27 languages. All contrasts are exploratory (D-101); the verdicts are the pre-set rules' own.
+C, W, I, total, native total, native minus fixed), paired by language, arm A minus arm B, with a bootstrap over the languages of the data (27 in the main study, 6 in the external panel; `--label` names the panel in the heading). All contrasts are exploratory (D-101); the verdicts are the pre-set rules' own.
 
   python3 scripts/g0/gptq_ext/compare_transfer.py --legacy <analysis dir> --matched <analysis dir> --gptq <analysis dir> --roster reports/g0/phase1_languages.json --out <dir>"""
 import argparse
@@ -102,13 +102,14 @@ def _write_csv(path, rows):
         w = csv.DictWriter(f, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
 
 
-def write_report(out, arms, roster, n_boot=2000, seed=0):
+def write_report(out, arms, roster, n_boot=2000, seed=0, label=""):
     out = Path(out); out.mkdir(parents=True, exist_ok=True)
     claims, feat = claims_side_by_side(arms), feature_side_by_side(arms)
     _write_csv(out / "transfer_claims.csv", claims); _write_csv(out / "transfer_feature_level.csv", feat)
     paired_all, summary_all = [], []
-    md = ["# Stage 2 comparison: the intervention-transfer study (E6), arm against arm", "",
-          "Exploratory (D-101). The verdicts below are the pre-set rules' own (amendment A14), computed by the unchanged report on each arm; the contrasts are descriptive. Feature level: medians over the same eligible real items with the report's own crossed-bootstrap intervals (not paired contrasts). Group level: per-language quantities, arm A minus arm B, paired by language, 95 % percentile bootstrap of the mean over the 27 languages.", "",
+    n_lang = len({lang for (_, lang) in next(iter(arms.values()))["group"]})
+    md = ["# Stage 2 comparison: the intervention-transfer study (E6), arm against arm" + (f": {label}" if label else ""), "",
+          "Exploratory (D-101). The verdicts below are the pre-set rules' own (amendment A14), computed by the unchanged report on each arm; the contrasts are descriptive. Feature level: medians over the same eligible real items with the report's own crossed-bootstrap intervals (not paired contrasts). Group level: per-language quantities, arm A minus arm B, paired by language, 95 % percentile bootstrap of the mean over the " + str(n_lang) + " languages.", "",
           "## Claim verdicts", "", "| claim | scope | " + " | ".join(a for a in ARMS if a in arms) + " |", "|---|---|" + "---|" * len([a for a in ARMS if a in arms])]
     for r in claims:
         md.append(f"| {r['claim']} | {r['scope']} | " + " | ".join(str(r.get(a, "")) for a in ARMS if a in arms) + " |")
@@ -129,8 +130,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Stage-2 comparison of the GPTQ extension.")
     ap.add_argument("--legacy", required=True); ap.add_argument("--matched", required=True); ap.add_argument("--gptq", required=True); ap.add_argument("--roster", required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--n-boot", type=int, default=2000); ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--label", default="", help="added to the heading, e.g. 'external panel, six languages'")
     a = ap.parse_args(argv)
-    write_report(a.out, {"legacy RTN": load_arm(a.legacy), "matched RTN": load_arm(a.matched), "GPTQ": load_arm(a.gptq)}, load_roster(a.roster), a.n_boot, a.seed)
+    write_report(a.out, {"legacy RTN": load_arm(a.legacy), "matched RTN": load_arm(a.matched), "GPTQ": load_arm(a.gptq)}, load_roster(a.roster), a.n_boot, a.seed, a.label)
     print("wrote", a.out)
 
 

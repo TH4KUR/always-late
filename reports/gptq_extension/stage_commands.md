@@ -67,3 +67,9 @@ OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_transfer_r
   --group-dir INT16=<transfer-ext-group-int16> --group-dir INT6=<transfer_runs/ARM-transfer-ext-group-int6> --group-dir INT4=<transfer_runs/ARM-transfer-ext-group-int4>
 ```
 with `ARM` = `gptq` and `rtnm`. **Control done 2026-10-28 13:5x:** the same command with the OLD directories for all six inputs (`--out analysis_external_control`) writes 12 files byte-identical to the committed `reports/intervention_transfer/results/external/` (55 s, no per-arm change of code). Validation of the feature jobs: `validate_job.py --task feature --states INT4|INT6 --core reports/intervention_transfer/core_external.json --gate-max-abs 3.0` (jobnames `gptq-ef4`, `rtnm-ef4`, `gptq-ef6`, `rtnm-ef6`); FP bridge: `bridge_transfer.py --old <transfer-ext-feature-int4|6> --new <job copy> --prefix transfer_INT4|6` (group level: `--prefix group_INT4|6`, done for 44209 to 44212: exact).
+
+**Comparison of the three arms on the external panel (tool ready 2026-10-28):** after the per-arm reports above,
+```
+~/.venvs/anlp-torch/bin/python -B scripts/g0/gptq_ext/compare_transfer.py --legacy reports/intervention_transfer/results/external --matched <transfer_runs/analysis_external_rtnm> --gptq <transfer_runs/analysis_external_gptq> --roster reports/g0/phase1_languages.json --label "external panel, six languages" --out reports/gptq_extension/results/external
+```
+(`--label` goes into the heading and the text states the number of languages of the data; the six languages are paired by language, so the bootstrap of the group-level contrasts is over six languages: read those intervals as very coarse.) The tool was dry-run on the control outputs (all three arms = the old external analysis: loads, writes the five files, zero differences); the main-study comparison it wrote before is reproduced byte for byte after this change.
