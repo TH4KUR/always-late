@@ -17,6 +17,8 @@ The full record of how the project moved (every decision, every wrong turn) is u
 
 
 > **Update 2026-10-28 10:32 IST (GPTQ extension):** the same experiments were rerun with two other ways of rounding the weights (matched RTN, GPTQ) and compared with the results below: [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md). The text below is unchanged and describes the original (legacy RTN) runs.
+>
+> **Update 2026-10-28 22:57 IST (survival versus effect):** a post hoc analysis asked whether the continuous activation correlation of a feature predicts how well the effect of switching it off survives rounding, beyond simple baselines: on Gemma-2-2B (three ways of rounding) and on Llama-3.2-1B the answer is "only weakly, below the pre-set 10 % target": [`survival_effect_rescue/README.md`](survival_effect_rescue/README.md) (D-110 to D-114).
 
 ## 1. The short answers
 
