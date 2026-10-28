@@ -34,3 +34,12 @@ python3 scripts/g0/gptq_ext/compare_transfer.py --legacy reports/intervention_tr
 ```
 OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/gptq_ext/compare_stage1.py --legacy ~/.cache/anlp-always-late/phase1_runs/p1-mask/eq --matched <rtnm-p1-mask/eq> --gptq <gptq-p1-mask/eq> --roster reports/g0/phase1_languages.json --out reports/gptq_extension/results/stage1
 ```
+
+## Stage 3 analysis (E4 loss task, E5 rescue; written 2026-10-28 06:35)
+
+Inputs live in `/home/karma/Documents/ANLP/project/transfer_runs/func_inputs/` (raw files stay outside git). **Reference files of the legacy arm, fetched once from Ada with sha256 equal to Ada's (8 files):** `legacy_eval/` = `func-eval-a` FP and INT6, `func-eval-b` INT4, `func-eval-d` INT16, INT12, INT0 (the floors are the legacy rounding and identical in every arm), `legacy_rescue/` = `func-rescue-a` INT4 and INT6 plus the FP file. For an arm `ARM` (`gptq`, `rtnm`) build `ARM_eval/` = the legacy FP and floor files + the arm's `func_lm_eval_INT6.pt` and `func_lm_eval_INT4.pt` (jobs `ARM-func-eval-int6|4`) and `ARM_rescue/` = the legacy FP file + the arm's two rescue files (jobs `ARM-func-rescue-int6|4`); validate each job first (sacct, `GPU 0:`, `meta_lm_eval.json` complete with the four gates true, sha256 after the copy, `weights_manifest.json`). Then, per arm, the unchanged analysis exactly as `REPRODUCE.md` lists it:
+```
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_func_analysis.py --runs <func_inputs/ARM_eval>   --split eval --out <func_inputs/analysis_ARM_eval>   --K K64 --n-boot 2000
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_func_analysis.py --runs <func_inputs/ARM_rescue> --split eval --out <func_inputs/analysis_ARM_rescue> --K K64 --n-boot 2000
+```
+**Control done 2026-10-28 06:33:** the same command on `legacy_eval` (FP, INT16, INT12, INT0, INT6, INT4) reproduces EVERY INT6 and INT4 row of the committed `reports/functional_validation/results/eval/effects_by_language.csv` (162 rows) and `retention.csv` (145 rows) exactly (0 differ). The legacy arm of the comparison is the committed `results/eval` and `results/rescue`.
