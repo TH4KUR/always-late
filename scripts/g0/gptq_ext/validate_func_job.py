@@ -38,13 +38,42 @@ def check_meta(meta, expected):
     return {"ok": not why, "why": why, "peak_gpu_gb": meta.get("peak_gpu_gb"), "seconds": meta.get("seconds")}
 
 
+F5_SAME = ("task", "model", "hook", "n_features", "per_cell", "subset_seed", "M", "min_ctx", "topk", "extra_pad", "dev_sentences_per_language", "n_dev", "n_eval_per_language", "work_dtype", "languages",
+           "sample_sha256", "freeze_sha256")
+
+
+def check_meta_f5(meta, expected):
+    """The F5 runner's `meta_f5.json`: complete, every gate (a dict with `ok`) and the in-run sham gate true, the planned states each timed, the variant flags off (the entry point has two optional variants since
+    2026-10-23, the old main jobs ran before them), and every design field equal to the OLD job's meta (`expected["reference"]`)."""
+    why = []
+    if not meta.get("complete"):
+        why.append("the meta file is not complete")
+    gates = meta.get("gates", {})
+    if not gates or not all((g.get("ok") if isinstance(g, dict) else g) is True for g in gates.values()):
+        why.append(f"gate not all true: {gates}")
+    sham = meta.get("sham_gate")
+    if not sham or not all(x.get("exact") is True for x in sham):
+        why.append(f"sham gate missing or not exact: {sham}")
+    if meta.get("states") != expected["states"]:
+        why.append(f"states {meta.get('states')!r} instead of {expected['states']!r}")
+    if sorted(meta.get("state_seconds", {})) != sorted(expected["states"]):
+        why.append(f"state_seconds {sorted(meta.get('state_seconds', {}))} do not cover the planned states")
+    for key, word in (("direction_control", "direction control"), ("fixed_amplitude", "fixed amplitude")):
+        if meta.get(key) is not False:
+            why.append(f"{word} variant flag is {meta.get(key)!r}, not False")
+    for key in F5_SAME:
+        if key not in meta or meta[key] != expected["reference"].get(key):
+            why.append(f"{key} {meta.get(key)!r} differs from the old job's {expected['reference'].get(key)!r}")
+    return {"ok": not why, "why": why, "peak_gpu_gb": meta.get("peak_gpu_gb"), "seconds": meta.get("seconds")}
+
+
 def check_files(local, files, meta_name):
     present = {p.name for p in Path(local).iterdir()}
     missing = sorted((set(files) | {meta_name, "weights_manifest.json"}) - present)
     return {"ok": not missing, "missing": missing, "files": sorted(present)}
 
 
-def validate(job, jobname, name, files, meta_name, expected, method, bits, recorded, remote_exec, fetch, local_root=LOCAL):
+def validate(job, jobname, name, files, meta_name, expected, method, bits, recorded, remote_exec, fetch, local_root=LOCAL, task="lm"):
     new = f"{jobname}-{job}.out"
     remote = remote_exec
     checks = {}
@@ -57,7 +86,8 @@ def validate(job, jobname, name, files, meta_name, expected, method, bits, recor
     checks["checksums"] = tv.compare_checksums(remote(f"cd {tv.REMOTE_OUT}/{name} && sha256sum *"), local_sums)
     mp = local / meta_name
     checks["files"] = check_files(local, files, meta_name)
-    checks["meta"] = check_meta(json.loads(mp.read_text()), expected) if mp.exists() else {"ok": False, "why": [f"no {meta_name}"]}
+    meta_check = check_meta_f5 if task == "f5" else check_meta
+    checks["meta"] = meta_check(json.loads(mp.read_text()), expected) if mp.exists() else {"ok": False, "why": [f"no {meta_name}"]}
     wp = local / "weights_manifest.json"
     checks["weights"] = vj.check_weights_manifest(json.loads(wp.read_text()), method, bits, recorded) if wp.exists() else {"ok": False, "why": ["no weights_manifest.json"]}
     failed = [k for k, v in checks.items() if not v.get("ok")]
@@ -70,23 +100,46 @@ def expected_from_args(a):
             "configs": {k: int(v) for k, v in (x.split("=") for x in a.configs)}}
 
 
+def expected_f5_from_args(a, reference):
+    """The expectations of an F5 job: the state list of the command line and the old job's meta as the reference of every design field."""
+    return {"states": [state_name(st) for st in a.states], "reference": reference}
+
+
+def state_name(st):
+    """`--states 6` is the runner's `INT6`; `FP` stays."""
+    return f"INT{st}" if st.isdigit() else st
+
+
+def default_files(task, bits, states):
+    """The files a job must have written: one `func_lm_eval_INT<b>.pt` per bit width, or for F5 the stage-A file and one `f5_state_<S>.pt` per state."""
+    if task == "f5":
+        return ["f5_stage_a.pt"] + [f"f5_state_{state_name(st)}.pt" for st in states]
+    return [f"func_lm_eval_INT{b}.pt" for b in bits]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--job", required=True); ap.add_argument("--jobname", required=True); ap.add_argument("--name", required=True)
     ap.add_argument("--method", choices=["gptq", "rtn-matched"], required=True); ap.add_argument("--bits", nargs="+", type=int, required=True)
-    ap.add_argument("--meta", default="meta_lm_eval.json"); ap.add_argument("--files", nargs="+", help="default: func_lm_eval_INT<bits>.pt")
-    ap.add_argument("--precisions", nargs="+", required=True); ap.add_argument("--preset"); ap.add_argument("--split", default="eval"); ap.add_argument("--n-sentences", type=int, default=300)
+    ap.add_argument("--task", choices=["lm", "f5"], default="lm", help="f5: the F5 runner's meta_f5.json and files; needs --states and --reference-meta")
+    ap.add_argument("--meta", help="default: meta_lm_eval.json, or meta_f5.json for --task f5"); ap.add_argument("--files", nargs="+", help="default: func_lm_eval_INT<bits>.pt, or the F5 files")
+    ap.add_argument("--precisions", nargs="+"); ap.add_argument("--preset"); ap.add_argument("--split", default="eval"); ap.add_argument("--n-sentences", type=int, default=300)
+    ap.add_argument("--states", nargs="+", help="F5: the planned states, e.g. FP 6 4"); ap.add_argument("--reference-meta", help="F5: the old job's meta_f5.json (every design field must equal it)")
     ap.add_argument("--manifest-sha256", default="2f0422c2c4c4fdeae9024b8afa9c0b68a2baca926f0df5a16aac838e5a0db3f6", help="sha256 of groups_manifest.json as recorded by the old jobs")
     ap.add_argument("--configs", nargs="*", default=[], metavar="STATE=N"); ap.add_argument("--recorded", default=str(ROOT / "reports/gptq_extension/artifact_hashes.json"))
     a = ap.parse_args(argv)
-    files = a.files or [f"func_lm_eval_INT{b}.pt" for b in a.bits]
-    expected = expected_from_args(a)
+    if a.task == "f5" and not (a.states and a.reference_meta):
+        ap.error("--task f5 needs --states and --reference-meta")
+    if a.task == "lm" and not a.precisions:
+        ap.error("--task lm needs --precisions")
+    files = a.files or default_files(a.task, a.bits, a.states)
+    meta_name = a.meta or ("meta_f5.json" if a.task == "f5" else "meta_lm_eval.json")
+    expected = expected_f5_from_args(a, json.loads(Path(a.reference_meta).read_text())) if a.task == "f5" else expected_from_args(a)
     recorded = json.loads(Path(a.recorded).read_text())["artifact_sha256"]
     remote = lambda cmd: subprocess.run(tv.ADA + [cmd], capture_output=True, text=True).stdout
     fetch = lambda r, l: subprocess.run(["scp", "-q", "-o", "HostKeyAlias=ada-gw1", f"karma@10.4.24.30:{r}/*", l], check=True)
-    rep = validate(a.job, a.jobname, a.name, files, a.meta, expected, a.method.replace("-", "_"), a.bits, recorded, remote, fetch)
+    rep = validate(a.job, a.jobname, a.name, files, meta_name, expected, a.method.replace("-", "_"), a.bits, recorded, remote, fetch, task=a.task)
     print(json.dumps(rep, indent=1, default=str)); return 0 if rep["ok"] else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

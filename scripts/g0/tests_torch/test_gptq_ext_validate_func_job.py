@@ -39,6 +39,84 @@ class Meta(unittest.TestCase):
         self.assertTrue(vf.check_meta({**GOOD_META, "manifest_source_sha256": "z"}, expect(manifest_source_sha256=None))["ok"])
 
 
+REF_F5 = {"task": "f5", "model": "gemma-2-2b", "hook": "blocks.12.hook_resid_post", "n_features": 1487, "per_cell": 12, "subset_seed": 0, "M": 16, "min_ctx": 4, "topk": 50, "extra_pad": 3,
+          "dev_sentences_per_language": 997, "n_dev": 26919, "n_eval_per_language": 300, "work_dtype": "float32", "languages": ["eng_Latn", "hin_Deva"], "sample_sha256": "s" * 64, "freeze_sha256": "f" * 64}
+GOOD_F5 = {**REF_F5, "states": ["FP", "INT6", "INT4"], "gates": {"logits_native_residual": {"top1": 0.95, "max_abs": 0.28, "ok": True}, "logits_float32_residual": {"top1": 0.95, "max_abs": 0.68, "ok": True}},
+           "sham_gate": [{"feature": 15, "exact": True}, {"feature": 54, "exact": True}], "direction_control": False, "fixed_amplitude": False, "state_seconds": {"FP": 1.0, "INT6": 1.0, "INT4": 1.0},
+           "complete": True, "peak_gpu_gb": 8.9}
+
+
+def expect_f5(**kw):
+    e = {"states": ["FP", "INT6", "INT4"], "reference": REF_F5}; e.update(kw); return e
+
+
+class MetaF5(unittest.TestCase):
+    """The F5 runner (`phase1_func_f5_run:main`) writes `meta_f5.json`: states instead of precisions, gates as dicts with `ok`, an in-run sham gate, no groups manifest."""
+
+    def test_a_good_f5_meta_passes(self):
+        r = vf.check_meta_f5(GOOD_F5, expect_f5()); self.assertTrue(r["ok"], r["why"]); self.assertEqual(r["peak_gpu_gb"], 8.9)
+
+    def test_each_problem_is_reported(self):
+        cases = [({**GOOD_F5, "complete": False}, "not complete"),
+                 ({**GOOD_F5, "gates": {**GOOD_F5["gates"], "logits_native_residual": {"ok": False}}}, "gate"), ({**GOOD_F5, "gates": {}}, "gate"),
+                 ({**GOOD_F5, "sham_gate": [{"feature": 15, "exact": False}]}, "sham"), ({**GOOD_F5, "sham_gate": []}, "sham"), ({k: v for k, v in GOOD_F5.items() if k != "sham_gate"}, "sham"),
+                 ({**GOOD_F5, "states": ["FP", "INT6"]}, "states"), ({**GOOD_F5, "direction_control": True}, "direction"), ({**GOOD_F5, "fixed_amplitude": True}, "amplitude"),
+                 ({**GOOD_F5, "per_cell": 6}, "per_cell"), ({**GOOD_F5, "sample_sha256": "z" * 64}, "sample_sha256"), ({**GOOD_F5, "freeze_sha256": "z" * 64}, "freeze_sha256"),
+                 ({**GOOD_F5, "languages": ["eng_Latn"]}, "languages"), ({**GOOD_F5, "n_features": 1000}, "n_features"), ({**GOOD_F5, "work_dtype": "bfloat16"}, "work_dtype"),
+                 ({**GOOD_F5, "state_seconds": {"FP": 1.0, "INT6": 1.0}}, "state_seconds"), ({k: v for k, v in GOOD_F5.items() if k != "topk"}, "topk")]
+        for meta, word in cases:
+            r = vf.check_meta_f5(meta, expect_f5())
+            self.assertFalse(r["ok"], word); self.assertTrue(any(word in w for w in r["why"]), (word, r["why"]))
+
+    def test_a_design_field_missing_from_both_metas_is_still_a_failure(self):
+        ref = {k: v for k, v in REF_F5.items() if k != "topk"}
+        r = vf.check_meta_f5({k: v for k, v in GOOD_F5.items() if k != "topk"}, expect_f5(reference=ref))
+        self.assertFalse(r["ok"]); self.assertTrue(any("topk" in w for w in r["why"]))
+
+    def test_the_old_meta_without_the_variant_flags_is_not_accepted_as_a_new_job(self):
+        r = vf.check_meta_f5({k: v for k, v in GOOD_F5.items() if k not in ("direction_control", "fixed_amplitude")}, expect_f5())
+        self.assertFalse(r["ok"])
+
+    def test_the_f5_expectations_come_from_the_reference_meta_and_the_state_list(self):
+        import argparse
+        e = vf.expected_f5_from_args(argparse.Namespace(states=["FP", "INT6", "INT4"], reference_meta=None), reference=REF_F5)
+        self.assertEqual(e, {"states": ["FP", "INT6", "INT4"], "reference": REF_F5})
+
+    def test_the_command_line_may_name_a_state_by_its_bit_width_as_the_runner_does(self):
+        import argparse
+        e = vf.expected_f5_from_args(argparse.Namespace(states=["FP", "6", "4"], reference_meta=None), reference=REF_F5)
+        self.assertEqual(e["states"], ["FP", "INT6", "INT4"])
+
+    def test_a_whole_f5_job_validates_with_the_f5_meta_and_files(self):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup); local = Path(d.name) / "n"
+        man = {"method": "gptq", "bits": [4], "artifact_sha256": {"4": "a" * 64}, "pool_sha256": "p" * 64}
+        files = ["f5_stage_a.pt", "f5_state_FP.pt", "f5_state_INT6.pt", "f5_state_INT4.pt"]
+        def remote(cmd):
+            if cmd.startswith("sacct"):
+                return "1|gptq-f5|COMPLETED|03:08:01|gnode046|0:0\n"
+            if cmd.startswith("head"):
+                return "GPU 0: NVIDIA GeForce RTX 2080 Ti (UUID: x)\n"
+            if "grep -c" in cmd:
+                return "0\n"
+            if "sha256sum" in cmd:
+                return subprocess.run("sha256sum *", shell=True, cwd=local, capture_output=True, text=True).stdout
+            return ""
+        def fetch(r, l):
+            for f in files:
+                Path(l, f).write_bytes(b"data")
+            Path(l, "meta_f5.json").write_text(json.dumps(GOOD_F5)); Path(l, "weights_manifest.json").write_text(json.dumps(man)); Path(l, "gpu_mem.log").write_text("x")
+        rep = vf.validate(job="1", jobname="gptq-f5", name="n", files=files, meta_name="meta_f5.json", expected=expect_f5(), method="gptq", bits=[4], recorded=RECORDED, remote_exec=remote, fetch=fetch, local_root=d.name, task="f5")
+        self.assertTrue(rep["ok"], rep["failed"])
+        rep = vf.validate(job="1", jobname="gptq-f5", name="n", files=files, meta_name="meta_f5.json", expected=expect_f5(), method="gptq", bits=[4], recorded=RECORDED, remote_exec=remote, fetch=fetch, local_root=d.name)
+        self.assertEqual(rep["failed"], ["meta"])
+
+
+class DefaultFiles(unittest.TestCase):
+    def test_lm_files_are_one_per_bit_width_and_f5_files_one_per_state_plus_stage_a(self):
+        self.assertEqual(vf.default_files("lm", [4, 6], None), ["func_lm_eval_INT4.pt", "func_lm_eval_INT6.pt"])
+        self.assertEqual(vf.default_files("f5", [4], ["FP", "6", "4"]), ["f5_stage_a.pt", "f5_state_FP.pt", "f5_state_INT6.pt", "f5_state_INT4.pt"])
+
+
 class Args(unittest.TestCase):
     def ns(self, **kw):
         import argparse

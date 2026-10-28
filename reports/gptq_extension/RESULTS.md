@@ -1,6 +1,6 @@
 # What changes when we quantize with GPTQ instead of RTN? (plain-language results)
 
-Written 2026-10-28 (IST), at the user's request of 2026-10-27: "run tests again with GPTQ quantization and try to keep other things same as before so that we can draw a fair comparison." Written for readers who did not follow the work. Short words on purpose. The full record is in [`STATUS.md`](STATUS.md) (ledger and log), the decisions D-101 to D-107 in [`../decisions_and_anomalies.md`](../decisions_and_anomalies.md), and the plan in [`../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md`](../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md). **Status: stages 1 to 3 are done and checked; Study G, F5 and the external panel are still running (section 7).** Everything here is **exploratory**: it asks "does the old finding survive another quantizer?", it does not test a new claim.
+Written 2026-10-28 (IST), at the user's request of 2026-10-27: "run tests again with GPTQ quantization and try to keep other things same as before so that we can draw a fair comparison." Written for readers who did not follow the work. Short words on purpose. The full record is in [`STATUS.md`](STATUS.md) (ledger and log), the decisions D-101 to D-108 in [`../decisions_and_anomalies.md`](../decisions_and_anomalies.md), and the plan in [`../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md`](../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md). **Status: stages 1 to 3 are done and checked; Study G, F5 and the external panel are still running (section 7).** Everything here is **exploratory**: it asks "does the old finding survive another quantizer?", it does not test a new claim.
 
 ## 1. The short answer
 
@@ -86,6 +86,11 @@ At 6 bits the harm is "preserved" (ratio about 1.0) in all arms. **Where the dam
 
 (D-107.) Accuracy of the model **without any edit** (chance is 0.25): full precision 0.426 in all arms; 6 bits 0.423 / 0.424 / 0.423; **4 bits 0.236 / 0.291 / 0.319** (legacy / matched / GPTQ). The old 4-bit model was at chance, so "removing the group changes nothing" could not be read at 4 bits. With GPTQ the 4-bit model answers well above chance and **removing a language's feature group still changes accuracy by less than half a point** (effect within ±0.5 points in every arm and state). The old null is not an artifact of a broken 4-bit model.
 
+### 4.6 Does a single feature do the same thing after rounding? (F5, 1,487 features)
+
+(D-108.) For each feature we compare what it does to the model's next-word probabilities before and after rounding (an "effect fingerprint"; 1 = same effect). Median over features, legacy RTN / matched RTN / GPTQ: **6 bits 0.988 / 0.989 / 0.992, 4 bits 0.839 / 0.875 / 0.923.** The share of features whose effect is as close to the original as the numerical noise floor allows: 6 bits 90 / 91 / 92 %; **4 bits 0.3 / 0.7 / 11.7 %** (language-group features 1 / 2 / 20 %). So a better quantizer keeps far more features functionally intact at 4 bits, but most features still move beyond the noise floor even with GPTQ. In every arm the effects stay much closer to the original than those of matched control features.
+The old pre-set test "does the association-retention label (lost / retained) tell which features keep their function?" is still **not supported**: with GPTQ (the only arm with enough events to judge) the score is 0.49, no better than chance (needs more than 0.5 with a lower bound above 0.5); with the other two arms there are too few events to say. The labels are the old ones (the association study was not repeated for the new quantizers), so this checks how well the old labels carry over.
+
 ## 5. What this tells us, finding by finding
 
 | old finding | under GPTQ |
@@ -97,6 +102,7 @@ At 6 bits the harm is "preserved" (ratio about 1.0) in all arms. **Where the dam
 | The damage is not concentrated in the language features | **holds** (2 to 3 %) |
 | Transfer test: verdict "not met" | **holds**; the error itself shrinks by about 28 % at 4 bits |
 | Belebele: no effect of removing the group | **holds**, and now also at an above-chance 4-bit model |
+| F5: the retention label does not predict which features keep their function | **holds** (score 0.49 under GPTQ); features stay much closer to the original with GPTQ at 4 bits (about 12 % at the noise floor against under 1 %) |
 
 ## 6. What we cannot say
 
@@ -107,7 +113,7 @@ At 6 bits the harm is "preserved" (ratio about 1.0) in all arms. **Where the dam
 
 ## 7. Still running or not yet read (updated when they finish)
 
-- **F5** (does a single feature do the same thing after rounding?): jobs 44072, 44073.
+- ~~**F5** (does a single feature do the same thing after rounding?): jobs 44072, 44073.~~ **Done 2026-10-28 (section 4.6, D-108).**
 - **Study G** (graded gain, the user's major study; INT4 and INT6): jobs 44074 to 44077.
 - **External panel** (Wikipedia text in six languages, transfer study at group and feature level): jobs 44209 to 44216. **Caution:** the GPTQ calibration text is Wikipedia too (different articles), so under GPTQ the external panel is in the calibration domain; an advantage there may partly be domain match.
 
