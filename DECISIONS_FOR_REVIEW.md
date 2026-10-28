@@ -1,6 +1,6 @@
 # Decisions for your review (the questions I would have asked you)
 
-**Open questions at a glance (2026-10-27; the rest of this file is the full record):** Q31 scope change in the cron prompt file (answered by the user 2026-10-28, applied, D-110), Q30 GPTQ extension: disk and scope (new), Q29 start Task 2 of the recovery plan (new), Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
+**Open questions at a glance (2026-10-27; the rest of this file is the full record):** Q32 wandb for the GPTQ extension (new, 2026-10-28, low), Q31 scope change in the cron prompt file (answered by the user 2026-10-28, applied, D-110), Q30 GPTQ extension: disk and scope (new), Q29 start Task 2 of the recovery plan (new), Q28 intervention-transfer states (new), Q27 Study G group definition (carried out as default, evidence added), Q23 rule for the survival metric, Q24 whole F5 sample, Q21 archive item-level files to the private dataset, Q20 Belebele (default carried out), Q12 threshold reporting, Q8 extensions, Q7 provisional choices. Closed on 2026-10-26 by D-089: Q22, Q25, Q26. Every open question has a default that the work follows until you answer.
 
 **New, 2026-10-21 (D-040): Q17 and Q18** (Q18: the scoop risk from Duan's announced causal follow-up; also not blocking)
 
@@ -262,6 +262,13 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Default:** (a).
 - ANSWER: trust what codex added, the plan is fine. you can run a validity check if thats correct or not, and include that in your plans. i also allow you to commit and push codex's work after a validity check (the user, main chat, 2026-10-28 during the 15:11 firing)
 - STATUS: APPLIED 2026-10-28 15:16 (D-110: option (b); validity check run, Codex's files committed after it)
+
+## Q32. wandb for the GPTQ extension: build run families for the new results (about 3 to 4 working steps) or skip?  [LOW, record-keeping; not blocking]
+- **Context.** Plan Task 13 lists "small result files and logs to the private HF dataset and wandb in the fixed schema". The Hugging Face part is done (part 1: commit `3cce3514c0`, 899 files; part 2 follows the external feature jobs). The wandb uploader of the project (`scripts/g0/wandb_upload_v2.py`, schema v2, D-091) builds one run per OLD result family from a hand-written declarative list (metric paths into committed json files, tables, figures, files, limits); it has no run for the extension, and each new family needs its own metric mapping and tests (the uploader's test file is 600 lines). The extension has about eight result families (stage 1, Phase 1 tests, transfer main and external, loss task and rescue, Belebele, F5, Study G).
+- **Options.** (a) default: after the external panel and the plan's results review are done, add a compact set of families (one run per study with the three arms as tables and the headline numbers per arm; same schema keys), upload from Ada as before; (b) skip wandb for the extension (the data and the plain-language results are in git and on Hugging Face); (c) do it now, before the external panel.
+- **Default:** (a), only if time remains before 31 October; you can say (b) at any time.
+- ANSWER:
+- STATUS: open (asked 2026-10-28 16:31 IST)
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
