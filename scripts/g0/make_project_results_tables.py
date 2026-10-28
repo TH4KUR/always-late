@@ -204,11 +204,14 @@ def t_gptq_function(L):
     return table(["language"] + [f"{s}, {a}" for s in ("INT6", "INT4") for a in ARMS3], body)
 
 
-def t_gptq_transfer(L):
-    arms = {"legacy RTN": R / "intervention_transfer/results/main/group_per_language.csv", "matched RTN": GPTQ / "stage2/analysis_rtnm/group_per_language.csv", "GPTQ": GPTQ / "stage2/analysis_gptq/group_per_language.csv"}
+def t_gptq_transfer(L, external=False):
+    legacy = R / ("intervention_transfer/results/external/group_per_language.csv" if external else "intervention_transfer/results/main/group_per_language.csv")
+    sub = "external" if external else "stage2"
+    arms = {"legacy RTN": legacy, "matched RTN": GPTQ / (f"{sub}/analysis_rtnm/group_per_language.csv"), "GPTQ": GPTQ / (f"{sub}/analysis_gptq/group_per_language.csv")}
     d = {a: index(rows(path), "state", "language") for a, path in arms.items()}
-    body = [[lang_label(l)] + [f(d[a][("INT4", l[0])][c], 3, True) for a in ARMS3 for c in ("C", "W")] for l in L]
-    body.append(["**median of the 27**"] + [f(median(d[a][("INT4", l[0])][c] for l in L), 3, True) for a in ARMS3 for c in ("C", "W")])
+    sel = [l for l in L if ("INT4", l[0]) in d["legacy RTN"]]
+    body = [[lang_label(l)] + [f(d[a][("INT4", l[0])][c], 3, True) for a in ARMS3 for c in ("C", "W")] for l in sel]
+    body.append([f"**median of the {len(sel)}**"] + [f(median(d[a][("INT4", l[0])][c] for l in sel), 3, True) for a in ARMS3 for c in ("C", "W")])
     return table(["language"] + [f"INT4 {c}, {a}" for a in ARMS3 for c in ("C", "W")], body)
 
 
@@ -258,6 +261,8 @@ SECTIONS = [
      "Source: `reports/intervention_transfer/results/main/group_per_language.csv` (legacy RTN) and `reports/gptq_extension/results/stage2/analysis_{rtnm,gptq}/group_per_language.csv` (D-105). Same quantities as A8, nats per token."),
     ("A15. GPTQ extension: Study G, net harm per language (group minus matched controls) when the group is scaled down to ×0.088 and up to ×11.3, full precision and INT4", t_gptq_gain,
      "Source: `reports/functional_validation/gain_study/results/curves.csv` (legacy RTN and full precision; the full-precision file is the same in every arm) and `reports/gptq_extension/results/gain/{rtnm,gptq}/curves.csv` (D-109). Nats per token."),
+    ("A16. GPTQ extension: intervention transfer, external panel (six languages, Wikipedia text), INT4 context part (C) and weights part (W) of the group's harm, per language", lambda L: t_gptq_transfer(L, external=True),
+     "Source: `reports/intervention_transfer/results/external/group_per_language.csv` (legacy RTN) and `reports/gptq_extension/results/external/analysis_{rtnm,gptq}/group_per_language.csv` (D-111). Same quantities as A9 and A14, nats per token. GPTQ's calibration text is Wikipedia too (different articles), so part of its edge here may be domain match."),
 ]
 
 

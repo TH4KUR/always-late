@@ -90,6 +90,22 @@ class Tables(unittest.TestCase):
         for k in a8:
             self.assertEqual((a14[k][2], a14[k][3]), (a8[k][11], a8[k][12]), k)  # legacy INT4 C and W
 
+    def test_gptq_external_panel_has_six_languages_plus_the_median_row(self):
+        self.assertEqual(len(self.gptq_rows("A16.")) - 1, 6 + 1)
+
+    def test_gptq_external_legacy_columns_equal_the_a9_int4_columns(self):
+        a9 = {l.split("|")[1].strip(): [x.strip() for x in l.split("|")] for l in self.gptq_rows("A9.")[1:]}
+        a16 = {l.split("|")[1].strip(): [x.strip() for x in l.split("|")] for l in self.gptq_rows("A16.")[1:-1]}
+        self.assertEqual(set(a9), set(a16))
+        for k in a9:
+            self.assertEqual((a16[k][2], a16[k][3]), (a9[k][11], a9[k][12]), k)
+
+    def test_gptq_external_paired_differences_match_d111(self):
+        rows = [[x.strip() for x in l.split("|")] for l in self.gptq_rows("A16.")[1:-1]]
+        mean = lambda i, j: sum(float(r[i]) - float(r[j]) for r in rows) / len(rows)
+        self.assertAlmostEqual(mean(6, 4), -0.1610, delta=0.003)  # GPTQ C minus matched RTN C (D-111)
+        self.assertAlmostEqual(mean(7, 5), -0.2996, delta=0.003)  # GPTQ W minus matched RTN W
+
     def test_gptq_study_g_medians_match_d109(self):
         row = [l for l in self.gptq_rows("A15.") if "median of the 27" in l][0]
         self.assertIn("| +0.169 | +0.323 | +0.281 | +0.187 |", row)

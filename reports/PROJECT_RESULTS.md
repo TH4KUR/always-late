@@ -326,7 +326,7 @@ All post hoc: protocol files were written before the code and each recorded what
 
 ## 6. Where all the data is
 
-Everything below is in the repository unless marked. Appendix tables A1–A10 are the same data per language; A11 to A15 are the GPTQ extension (legacy RTN, matched RTN, GPTQ side by side; see [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md)).
+Everything below is in the repository unless marked. Appendix tables A1–A10 are the same data per language; A11 to A16 are the GPTQ extension (legacy RTN, matched RTN, GPTQ side by side; see [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md)).
 
 | what | where |
 |---|---|
@@ -898,5 +898,19 @@ Source: `reports/functional_validation/gain_study/results/curves.csv` (legacy RT
 | khmer (khm, low) | +0.169 | +0.323 | +0.238 | +0.181 | +5.430 | +2.674 | +5.313 | +5.635 |
 | lao (lao, low) | +1.169 | +1.997 | +1.841 | +1.449 | +7.159 | +4.490 | +6.022 | +7.334 |
 | **median of the 27** | +0.169 | +0.323 | +0.281 | +0.187 | +1.213 | +0.810 | +0.854 | +1.146 |
+
+### A16. GPTQ extension: intervention transfer, external panel (six languages, Wikipedia text), INT4 context part (C) and weights part (W) of the group's harm, per language
+
+Source: `reports/intervention_transfer/results/external/group_per_language.csv` (legacy RTN) and `reports/gptq_extension/results/external/analysis_{rtnm,gptq}/group_per_language.csv` (D-111). Same quantities as A9 and A14, nats per token. GPTQ's calibration text is Wikipedia too (different articles), so part of its edge here may be domain match.
+
+| language | INT4 C, legacy RTN | INT4 W, legacy RTN | INT4 C, matched RTN | INT4 W, matched RTN | INT4 C, GPTQ | INT4 W, GPTQ |
+|---|---|---|---|---|---|---|
+| english (eng, high) | +0.001 | +0.005 | +0.002 | -0.004 | -0.002 | -0.002 |
+| spanish (spa, high) | +0.534 | +0.118 | +0.498 | +0.202 | +0.069 | +0.018 |
+| russian (rus, high) | +0.133 | +0.064 | +0.097 | +0.064 | +0.028 | +0.007 |
+| mandarin (zho, high) | +0.633 | +1.030 | +0.466 | +1.577 | +0.069 | +0.254 |
+| hindi (hin, mid) | +0.126 | +0.073 | +0.056 | +0.062 | +0.023 | +0.022 |
+| yoruba (yor, low) | +0.579 | +0.479 | +0.174 | +0.317 | +0.140 | +0.121 |
+| **median of the 6** | +0.333 | +0.096 | +0.135 | +0.133 | +0.048 | +0.020 |
 
 <!-- END GENERATED TABLES -->

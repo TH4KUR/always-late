@@ -1,0 +1,52 @@
+{
+ "sources": [
+  {
+   "local": "gptq-transfer-ext-feature-int4",
+   "repo": "runs/gptq-extension/external/gptq-transfer-ext-feature-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "gptq-transfer-ext-feature-int6",
+   "repo": "runs/gptq-extension/external/gptq-transfer-ext-feature-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "analysis_external_gptq",
+   "repo": "runs/gptq-extension/analysis/transfer-external-gptq",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-ext-feature-int4",
+   "repo": "runs/gptq-extension/external/rtnm-transfer-ext-feature-int4",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "rtnm-transfer-ext-feature-int6",
+   "repo": "runs/gptq-extension/external/rtnm-transfer-ext-feature-int6",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "analysis_external_rtnm",
+   "repo": "runs/gptq-extension/analysis/transfer-external-rtnm",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  }
+ ]
+}
