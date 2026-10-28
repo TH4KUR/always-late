@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import torch
 
@@ -32,6 +33,23 @@ def forward_acts(tokens):                                 # the "residual" is th
 
 
 encode = lambda resid: resid
+
+
+class F5Task(unittest.TestCase):
+    def test_the_f5_task_runs_the_frozen_f5_runner_inside_the_llama_setting_with_the_remaining_arguments(self):
+        seen = {}
+        def fake(argv):
+            seen["argv"] = list(argv); seen["consts"] = (pr.MODEL_CANDIDATES, pr.SAE_ID, pr.LAYER, fr.LAYER)
+        before = (pr.MODEL_CANDIDATES, pr.SAE_ID, pr.LAYER, fr.LAYER)
+        with mock.patch.object(lr.f5r, "main", fake):
+            lr.main(["f5", "--sae", "faithful42", "--out", "x", "--states", "FP", "16"])
+        self.assertEqual(seen["argv"], ["--out", "x", "--states", "FP", "16"])               # --sae belongs to the wrapper, everything else goes to the frozen runner
+        self.assertEqual(seen["consts"][0], ["meta-llama/Llama-3.2-1B"]); self.assertTrue(seen["consts"][1].endswith("faithful-llama3.2-1b_512")); self.assertEqual(seen["consts"][2:], (11, 11))
+        self.assertEqual((pr.MODEL_CANDIDATES, pr.SAE_ID, pr.LAYER, fr.LAYER), before)       # restored after the run
+
+    def test_the_other_tasks_do_not_call_the_f5_runner(self):
+        with mock.patch.object(lr.f5r, "main", side_effect=AssertionError("f5 runner called")), mock.patch.object(lr.gr, "main", lambda argv: None):
+            lr.main(["lm", "--out", "x"])
 
 
 class Setting(unittest.TestCase):

@@ -7,6 +7,7 @@ LAYER is 11 and the loaded SAE reports the alias as its hook (its original hook 
 
     python phase1_llama_run.py tag --out <dir> --flores-root <dir> [--sae fineweb42|faithful42]     dev tagging pass -> <dir>/eq/selectivity.pt (equal-budget stream) and meta.json
     python phase1_llama_run.py manifest --selectivity <dir>/eq/selectivity.pt --manifest <file>    the groups and controls (the frozen builder, K16 and K64 families, model free)
+    python phase1_llama_run.py f5 --out <dir> --flores-root <dir> --sample <llama_f5_sample.json> --states FP 16 6 4 --per-cell 12 --subset-seed 0    the frozen F5 runner (single-feature sameness of function)
     python phase1_llama_run.py lm --out <dir> --flores-root <dir> --selectivity ... --manifest ... --precisions FP 8 6 5 4 --split eval --n-eval 300 --panel ...
                                                                                                     the frozen T-LM runner with the Study G main preset (zero-ablation, three control draws, the eight
                                                                                                     ratios of the group and of the controls, the sham)"""
@@ -15,6 +16,7 @@ from pathlib import Path
 
 import torch
 
+import phase1_func_f5_run as f5r
 import phase1_func_run as fr
 import phase1_gain_run as gr
 import phase1_lib as p1
@@ -136,7 +138,7 @@ def tag_main(argv, sae_key):
 def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser(description="Llama-3.2-1B consistency check (D-087): the frozen runners with the Llama setting (the remaining arguments go to the frozen code).", allow_abbrev=False)
-    ap.add_argument("task", choices=["tag", "lm", "manifest"]); ap.add_argument("--sae", choices=sorted(SAE_IDS), default="fineweb42")
+    ap.add_argument("task", choices=["tag", "lm", "manifest", "f5"]); ap.add_argument("--sae", choices=sorted(SAE_IDS), default="fineweb42")
     a, rest = ap.parse_known_args(argv)
     if a.task == "manifest":
         mp = argparse.ArgumentParser(); mp.add_argument("--selectivity", required=True); mp.add_argument("--manifest", required=True); mp.add_argument("--seed", type=int, default=0)
@@ -148,6 +150,9 @@ def main(argv=None):
             ap.error("--ratios and --preset are fixed by this wrapper (the Study G down ratios, three control draws)")
         with llama_setting(a.sae):
             gr.main(["--ratios", *[str(r) for r in STUDY_RATIOS], "--n-controls", "3", "--label", "K64"] + rest)
+    elif a.task == "f5":
+        with llama_setting(a.sae):                                                # the frozen F5 runner (D-053, D-054) with the Llama setting; the sample is the Llama sample (phase1_llama_f5_sample.py)
+            f5r.main(rest)
     else:
         with llama_setting(a.sae):
             tag_main(rest, a.sae)
