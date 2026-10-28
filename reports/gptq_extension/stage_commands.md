@@ -43,3 +43,14 @@ OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_func_analy
 OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_func_analysis.py --runs <func_inputs/ARM_rescue> --split eval --out <func_inputs/analysis_ARM_rescue> --K K64 --n-boot 2000
 ```
 **Control done 2026-10-28 06:33:** the same command on `legacy_eval` (FP, INT16, INT12, INT0, INT6, INT4) reproduces EVERY INT6 and INT4 row of the committed `reports/functional_validation/results/eval/effects_by_language.csv` (162 rows) and `retention.csv` (145 rows) exactly (0 differ). The legacy arm of the comparison is the committed `results/eval` and `results/rescue`.
+
+## F5 and Study G analysis (written 2026-10-28 11:20)
+
+Inputs in `/home/karma/Documents/ANLP/project/transfer_runs/func_inputs/` (raw files stay outside git). **Reference files of the legacy arm, fetched once from Ada with sha256 equal to Ada's (8 files):** `legacy_f5_a/` = `f5-a` (`f5_stage_a.pt`, `f5_state_FP.pt`, `f5_state_INT16.pt`, `meta_f5.json`), `legacy_f5_b/` = `f5-b` (`f5_stage_a.pt`, `f5_state_FP.pt`, `f5_state_INT6.pt`, `f5_state_INT4.pt`, `meta_f5.json`), `legacy_gain/` = `gain-FP`, `gain-6`, `gain-4` (`func_lm_eval_<state>.pt`). `phase1_gain_analysis.py` reads a `meta_lm_eval.json` in EVERY run directory, so the control directories `lg_FP`, `lg_6`, `lg_4` each hold one (copied from Ada `out/phase1/gain-FP|6|4/meta_lm_eval.json`) next to the symlinked state file.
+```
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_func_f5_analysis.py --run <func_inputs/ARM_f5_a> --run <func_inputs/ARM_f5_b> --out <func_inputs/analysis_ARM_f5>
+OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B scripts/g0/phase1_gain_analysis.py --runs <FP dir> <INT6 dir> <INT4 dir> --ratios-json reports/functional_validation/gain_study/calibration/ratios.json --baseline-csv reports/functional_validation/gain_study/baseline/baseline.csv --out <func_inputs/analysis_ARM_gain>
+```
+**Controls done 2026-10-28 11:15 (unchanged code on the legacy files, outputs outside git in `func_inputs/analysis_legacy_f5` and `analysis_legacy_gain`):**
+- F5: states INT16, INT6, INT4, floor 0.9489; all 10 rows of the control's `f5_tables.csv` equal a row of the committed `reports/functional_validation/results/f5/f5_tables.csv` (16 rows; the committed file also covers the states and groups the subset does not).
+- Study G: states FP, INT6, INT4; all 810 rows of the control's `curves.csv` equal the committed `gain_study/results/curves.csv` rows for the same (state, language, ratio) (maximum absolute difference 0; the committed file has 1620 rows for six states). The control's own hypothesis table (H-G1 to H-G6) is on three states only and is not a replacement for the committed one.
