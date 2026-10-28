@@ -106,3 +106,7 @@ Not found in the sources checked: a decomposition of SAE survival correlation in
 ## Update 2026-10-29 (Stage 1 done, D-118; Q33 answered (a))
 
 Stage 1 results: [`reports/survival_measurement/stage1/README.md`](../../../reports/survival_measurement/stage1/README.md). H1 met; H2 met for matched RTN, not for GPTQ (a global shift removes most but not all of GPTQ's survival gain); the lambda half of H3 met; the tier slope in lambda is the same at INT16 as at INT6. Next: Stage 2 (GPU sidecar on Ada), then the Stage 3 freeze, which must now fix the H4 equivalence bound in the light of the INT16 tier slope (compare each width's tier slope with INT16's, not with zero).
+
+## Update 2026-10-29 05:24 IST (executor)
+
+The user directed that the 40-minute cron job of the GPTQ session (project-6d) carries out Stages 2 to 4 ("the cronjob on the other session should work on this"). Its instructions: the 2026-10-29 block of [`reports/gptq_extension/cron_prompt.md`](../../../reports/gptq_extension/cron_prompt.md); ledger [`reports/survival_measurement/STATUS.md`](../../../reports/survival_measurement/STATUS.md). Session project-fe reviews the sidecar and the Stage 3 freeze on request and does no other D-117 work.

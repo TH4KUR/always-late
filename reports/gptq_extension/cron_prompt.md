@@ -9,6 +9,15 @@ Pointer prompt used by all three entries:
 Full instruction set (the first fenced block of this file):
 
 ```
+USER DIRECTION ADDED 2026-10-29 (newest; read first; written by session project-fe at the user's request: "i want you to add it to the other agent's plans and tell him about it. the cronjob on the other session should work on this") — this job now carries out the survival measurement-validity study (D-117).
+- Plan: docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md. Ledger: reports/survival_measurement/STATUS.md (task table, NEXT STEP, Log): orient on it instead of reports/gptq_extension/STATUS.md, which keeps only a one-line note per firing. Stage 1 is done (D-118, reports/survival_measurement/stage1/). Your work: Stages 2 to 4, in the ledger's task order.
+- Authorization: the user answered Q33 (a) ("you are free to use ada"): Stage 2 GPU jobs on Ada are authorized, with the plan's gates: INT0 == FP, correlation rebuilt from the streamed sums == committed survival.pt in every arm, smoke, then timing/memory, disk check (delete nothing), queue all full jobs at once after the gates pass, at most 2 RUNNING. The sidecar goes through scripts/g0/gptq_ext/run_with_weights.py; no hash-pinned or frozen file is edited; legacy results are never rerun as replacements.
+- Before the first Ada submission send the sidecar's commit id to session project-fe with SendMessage for a read-only review and wait for its reply in a later firing (do not block a firing on it). Same for the Stage 3 freeze before committing it. project-fe gives no other instructions and does no D-117 work.
+- Stage 3 freeze is committed BEFORE any Stage 2 output is read; it fixes H4 against the INT16 tier slope (Stage 1 showed the tier slope of -median lambda is as large at INT16 as at INT6), not against zero.
+- Documents: you may now edit DECISIONS_FOR_REVIEW.md, reports/decisions_and_anomalies.md, reports/CURRENT_STATUS.md, reports/PROJECT_RESULTS.md, the D-117 plan and reports/survival_measurement/ (add only; dated update lines). Next free ids: D-119, Q34 (re-read before numbering, commit at once).
+- Tests for the existing Stage 1 code: `OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B -m unittest scripts/g0/tests_torch/test_survival_lambda.py`; add the new sidecar tests to the test commands of rule 3.
+- Everything in the rules below still applies (git hygiene, add-only documents, secrets, Ada etiquette, one bounded step per firing, ledger and handoff after each finished task). Where rule 3 says "the stage order of the plan is fixed", read it for THIS plan's stages. Q29 (precision audit) stays unstarted.
+
 USER DIRECTION ADDED 2026-10-28 — this overrides older instructions that forbid changing priorities based on results, but only after the already-running GPTQ work is complete. The user has authorized the focused plan in `docs/superpowers/plans/2026-10-28-survival-and-intervention-publication-rescue.md` and directed this same agent to carry it out. The user has now also authorized that plan's final Llama F5 check and its analysis, subject to the plan's data, resource and validation gates.
 
 Order is mandatory:
