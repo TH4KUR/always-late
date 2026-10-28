@@ -1,55 +1,70 @@
-# CLAUDE.md: read this first (Gemma-2-9B confirmation run, prepared for a rented GPU machine)
+# CLAUDE.md: read this first (Gemma-2-9B three-arm confirmation, prepared for a rented GPU machine)
 
-You are most likely a Claude Code session on a **Jarvis Labs (or similar) GPU instance** started by a friend of the study's author. Your only job is to run the prepared Gemma-2-9B job, keep it healthy, and hand the results back. **Everything else is already built and tested.** Read this file completely, then follow "The one command".
+You are most likely a Claude Code session on a **Jarvis Labs GPU instance**. Your job is to run the prepared Gemma-2-9B job, keep it healthy, and hand the results back. **Everything else is already built and tested on a CPU machine; nothing has been run on a real GPU with the real 9B model.** Read this file completely, then follow "The one command".
 
 ## What this is
 
-The repository is the "Always Late" ANLP project (does compression, i.e. quantization, damage language-specific SAE features?). The main study is on Gemma-2-2B. **This run is the second-model confirmation on Gemma-2-9B** with the same SAE family (Gemma Scope `layer_20/width_16k/canonical`, same relative depth), decision **D-089**; the design is in [`reports/handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md`](reports/handoffs/040-2026-10-26-gemma9b-confirmation-external-cluster.md) and [`docs/superpowers/plans/2026-10-26-gemma9b-confirmation.md`](docs/superpowers/plans/2026-10-26-gemma9b-confirmation.md). The experiment: zero-ablate each language's selective SAE feature group and measure the harm to that language's next-token loss, at full precision and at INT8/7/6/5/4 (RTN weight quantization), 27 languages, 300 FLORES-200 sentences, 3 matched-control draws.
+The repository is the "Always Late" ANLP project (does compression, i.e. quantization, damage language-specific SAE features?). The main study is on Gemma-2-2B. **This run is the second-model confirmation on Gemma-2-9B** with the same SAE family (Gemma Scope `layer_20/width_16k/canonical`, same relative depth), decision **D-089**, extended on 2026-10-28 so that it confirms the project **as it now stands**, not only the legacy-RTN Study G of 2026-10-26:
 
-Predictions P1 to P3b and the verdict function are **frozen** in [`reports/functional_validation/gemma9b/freeze.json`](reports/functional_validation/gemma9b/freeze.json) (copied verbatim from the Llama plan, sha256 inside). They were written before any 9B number exists. A "not consistent" result is a valid result.
+- **Three weight-state arms:** `legacy` (the project's original RTN, exactly as frozen), `rtn-matched` (RTN done the standard way), `gptq` (GPTQ, calibrated on Wikipedia text in the 27 languages). Design: [`docs/superpowers/specs/2026-10-28-gemma9b-three-arm-confirmation-design.md`](docs/superpowers/specs/2026-10-28-gemma9b-three-arm-confirmation-design.md); plan: [`docs/superpowers/plans/2026-10-28-gemma9b-three-arm-confirmation.md`](docs/superpowers/plans/2026-10-28-gemma9b-three-arm-confirmation.md); earlier design [`docs/superpowers/plans/2026-10-26-gemma9b-confirmation.md`](docs/superpowers/plans/2026-10-26-gemma9b-confirmation.md).
+- **Two stages ("tiers"):** `g` = tier 1, Study G (zero-ablate and scale each language's selective SAE feature group, harm to that language's next-token loss, 27 languages, 300 FLORES-200 sentences, 3 matched-control draws; legacy arm at FP, INT8, INT7, INT6, INT5, INT4, the two new arms at INT6 and INT4); `p1` = tier 2, Phase 1 survival and loss (`phase1_run`, mask regime; legacy bits 8 7 6 5 4 16 12 0, new arms 7 6 4 16 12 0).
+- **Predictions are frozen:** P1 to P3b in `reports/functional_validation/gemma9b/freeze.json` (legacy arm, 2026-10-26) and Q0 to Q3 (tier 1) and S1 to S4 (tier 2) in `reports/functional_validation/gemma9b/amendment_A1_three_arm.json` (text, thresholds, verdict functions, code hashes). They were written before any 9B number exists. A "not consistent" or "different" result is a valid result.
+
+## The machine (given 2026-10-28)
+
+1x RTX PRO 6000 (Blackwell, compute capability 12.0), 96 GB VRAM, 28 vCPU, 160 GB RAM, 250 GB SSD, about 210 INR per hour, user `ubuntu`. One GPU: units run one after another (`PROCS_PER_GPU=2` only if the RAM allows two units: a GPTQ unit needs about 59 GB of host RAM, a tier-2 weight-set unit about 98 GB and runs alone). torch 2.14.1 (the pinned version) exists only for CUDA 12.6 and 13.0; Blackwell needs the **13.0 build and an NVIDIA driver of 580 or newer**: the driver script chooses the wheel index from the GPU and refuses with a message when the driver is too old (check `nvidia-smi` first).
 
 ## The one command
 
-Prerequisites (the person who runs this must have them; if one is missing, say so and stop):
-- A GPU machine with **at least one NVIDIA GPU of 40 GB or more** (A100 40/80 GB, A6000, L40S, H100), about **80 GB free disk** and **64 GB RAM per concurrent process** (the quantizer keeps a full-precision CPU copy of the model).
-- A Hugging Face token (`hf_...`) of an account that has **accepted the Gemma licence** at https://huggingface.co/google/gemma-2-9b . Never print, log, commit or paste the token anywhere.
+Files arrive in the home directory as a bundle (made on the author's machine with `scripts/g0/make_jarvis_bundle.sh`: the committed repository, the calibration pool token files, `SHA256SUMS`):
 
 ```bash
-cd <this repository> && HF_TOKEN=hf_xxx bash scripts/g0/jarvis_run_all.sh
+sha256sum -c SHA256SUMS && tar xzf always-late-gemma9b.tar.gz && tar xzf gptq_calibration_pool.tar.gz
+cd always-late && DRY_RUN=1 bash scripts/g0/jarvis_run_all.sh            # prints the plan, runs nothing: read it
+HF_TOKEN=hf_xxx bash scripts/g0/jarvis_run_all.sh                        # the real run
 ```
 
-That is all. The script detaches itself (it survives a closed tab or ssh), writes `../run_all.log` (one level above the repo), and is **resumable**: if anything stops, run the same command again and finished steps are skipped. Follow it with `tail -f ../run_all.log`. Do not start a second copy while one is running (`ps aux | grep jarvis_run_all`).
+Prerequisites (if one is missing, say so and stop): an HF token (`hf_...`) of an account that has **accepted the Gemma licences** of `google/gemma-2-9b` AND `google/gemma-2-2b` (the 2B tokenizer is compared with the 9B one); about 80 GB free disk; the files above. Never print, log, commit or paste the token.
 
-What it does, in order: python venv with the pinned versions (torch 2.14.1 cu126, transformer-lens 3.9.0, transformers 5.19.0, sae-lens 6.54.5) -> FLORES-200 (bundled, hash-checked) -> token check and download of the model and SAE (about 19 GB) -> unit tests and a check that the code is exactly the frozen code -> **smoke test** (3 languages, FP and INT4; if its gates fail the run STOPS) -> full run (tagging and manifest on 27 languages, then the six states FP, INT8, INT7, INT6, INT5, INT4; one process per GPU when there are several GPUs and enough RAM) -> `../gemma9b_results.tar.gz` plus `../artifact_checksums.md`.
+The script detaches itself, writes `../run_all.log`, and is **resumable** (run the same command again; finished steps and units are skipped). Follow it with `tail -f ../run_all.log`. Do not start a second copy (`ps aux | grep jarvis_run_all`).
 
-Expected cost: the 2B runs took about 3 GPU-hours per state on a 2080 Ti; for 9B on an A100 expect roughly 3 to 6 hours per state, about 20 to 35 GPU-hours in total (not measured; the smoke job prints a first number). With several GPUs the states run in parallel.
+Steps in order: `env` (venv, pinned packages, torch from the right index, a bf16 matmul on the GPU) -> `flores` (hash-checked) -> `access_and_download` (about 19 GB) -> `checks` (unit tests, frozen-code hashes of the freeze AND the amendment) -> `tokenizer` (9B equals 2B tokenizer, else STOP) -> `pool` (calibration files equal the frozen pool, else STOP) -> `smoke` (legacy path, 3 languages) -> `smoke_p1` (tier-2 path, 3 languages) -> `gate9b` (builds INT6 and INT4 weight sets of both methods, runs the gates, **records their sha256 in `reports/functional_validation/gemma9b/artifact_hashes.json`**; every later unit refuses a different hash) -> `smoke_gptq` (whole GPTQ path on 3 languages) -> `full` (tagging and manifest on 27 languages, then the units in the order tier 1: legacy FP, GPTQ INT4/INT6, matched RTN INT4/INT6, legacy INT4/INT6/INT8/INT7/INT5; tier 2: GPTQ, legacy, matched RTN) -> `../gemma9b_results.tar.gz` plus `../artifact_checksums.md`.
+
+**After `gate9b` and `smoke_gptq` have finished, tell the author the seconds per artifact build, the peak GPU memory (`peak GPU GB`) and the host RAM seen** (they are unmeasured estimates until then) so that the remaining time and cost can be judged before the long units run.
 
 ## What was verified, and what was NOT
 
-Verified (on a CPU machine, before this hand-over):
-- The adapter `scripts/g0/phase1_gemma9b_run.py` (model `google/gemma-2-9b`, SAE `gemma-scope-9b-pt-res-canonical` / `layer_20/width_16k/canonical`, layer 20) with 18 unit tests, the freeze tooling with 6, the driver script with 5 (dry-run plan, GPU/RAM scheduling, refusals), and a stub rehearsal of the whole orchestration (smoke gate pass and fail, parallel states on 2 fake GPUs, resume, packaging).
-- The frozen Gemma runners it wraps ran the 2B study; the Llama check used the same wrapper pattern.
+Verified on a CPU machine: the adapter (18 tests), the calibrator and the canonical weight adapter on a toy model with the 9B attention layout (heads x d_head differs from d_model), the tokenizer check, the RAM guard, the hash recorder, the wrapper `phase1_gemma9b_ext.py`, the analysis `phase1_gemma9b_compare.py` (with a control: the committed 2B outputs through the same code satisfy every frozen threshold), the amendment tool, the bundle script, the dry-run plan and a **stub rehearsal of the real orchestration** (units, markers, resume, a failed unit, a failed gate, RAM refusal).
 
-**NOT verified: nothing has been run on a real GPU with the real 9B model.** The first real execution is the smoke job. Treat its result as the instrument gate (not a look at results). Likely failure points, in order: (1) the token cannot read the gated model (accept the licence); (2) CUDA/driver mismatch for the cu126 torch wheel (`TORCH_INDEX` can point to another wheel index); (3) out of GPU memory on a 40 GB card (use an 80 GB card, or add `LM_EXTRA="--batch-size 16"`, see below); (4) the frozen builder refusing the `all` group family because the control pool is too small (the driver then builds K16 and K64 only and writes `MANIFEST_FALLBACK.txt`; this is reported, not hidden); (5) the SAE id or release not found in the installed sae-lens registry.
+**NOT verified: any real execution.** Never run on the real 9B model or on a Blackwell GPU: the cu130 torch wheel with TransformerLens/sae-lens, the GPTQ build time and memory on 9B, the real memory of the units, `phase1_run` with the 9B setting, the gate on the real model. The first real executions are the smoke steps and the gate: treat them as instrument gates (not a look at results). Likely failure points: (1) a token that cannot read a gated repo; (2) the NVIDIA driver is older than 580 (the script says so); (3) a missing kernel for sm_120 in the torch build (the env step says so); (4) host RAM (the guard refuses with the numbers); (5) the frozen builder refusing the `all` group family (K16/K64 fallback, reported in `MANIFEST_FALLBACK.txt`); (6) the SAE id missing in the installed sae-lens.
 
-## Rules (they keep the results valid and the merge clean)
+## Rules (they keep the results valid)
 
-- **Never edit** `third_party/`, the frozen runners (`scripts/g0/phase1_run.py`, `phase1_func_run.py`, `phase1_gain_run.py`, `their_code.py`, ...), the files hashed in `freeze.json` (`scripts/g0/phase1_gemma9b_run.py`, `run_gemma9b.sbatch`, `tests_torch/test_phase1_gemma9b_run.py`, `reports/g0/phase1_languages.json`), or the freeze itself. The step "checks" verifies the hashes: if it fails, the code on this machine is not the frozen code; stop and tell the author.
-- If something must change to get the run through (for example a smaller batch size on a 40 GB card), it is a **dated amendment**: write what, why and when into `reports/functional_validation/gemma9b/amendments.md` (create it) **before** re-running, and pass the change through `LM_EXTRA` (e.g. `LM_EXTRA="--batch-size 16" HF_TOKEN=... bash scripts/g0/jarvis_run_all.sh`). Never silently change ratios, languages, sentence counts, states, seeds or thresholds. No post hoc language selection.
-- Do not skip the smoke test (`SKIP_SMOKE=1` exists for a resume after it already passed, nothing else).
-- Do not push to `main`, do not merge, do not change anything on Hugging Face or wandb. No weights or tokens in git. If you commit, commit only new files under `reports/functional_validation/gemma9b/` and say so.
-- Report everything honestly: failed or missing states, warnings, the peak-memory numbers the logs print (`peak GPU GB`), wall times. A failed state is reported as failed.
+- **Never edit** `third_party/`, the frozen runners (`scripts/g0/phase1_run.py`, `phase1_func_run.py`, `phase1_gain_run.py`, `phase1_lib.py`, `their_code.py`, ...), the files hashed in `freeze.json` (`phase1_gemma9b_run.py`, `run_gemma9b.sbatch`, its test, `reports/g0/phase1_languages.json`) or in the amendment (`gptq_ext/tokenizer_check.py`, `ram_guard.py`, `record_hashes.py`, `phase1_gemma9b_ext.py`, `phase1_gemma9b_compare.py`), `reports/gptq_extension/*`, the freeze or the amendment. The step `checks` verifies the hashes: if it fails the code on this machine is not the frozen code; stop and tell the author.
+- If something must change to get the run through (for example a smaller batch size), it is a **dated amendment**: write what, why and when into `reports/functional_validation/gemma9b/amendments.md` (create it) **before** re-running, and pass the change through `LM_EXTRA`. Never silently change ratios, languages, sentence counts, states, bit widths, seeds, thresholds or the calibration pool. No post hoc language selection.
+- **Stop and report, do not work around:** a tokenizer mismatch, a calibration pool mismatch, a failed gate, an artifact hash mismatch (`gate9b` or a unit), a compute-capability or driver error. These mean the instrument is not what was tested.
+- Do not skip the smoke steps (`SKIP_SMOKE=1` exists for a resume after they passed, nothing else). Do not push to `main`, do not merge, do not change anything on Hugging Face or wandb. No weights, tokens or pool files in git. If you commit, commit only new files under `reports/functional_validation/gemma9b/` and say so.
+- Report everything honestly: failed or missing units, warnings, peak memory, wall times. A failed unit is reported as failed.
 
 ## Monitoring and troubleshooting
 
-- Progress: `tail -f ../run_all.log`; per-job logs in `../logs/` (`g9-smoke-tag.log`, `g9-smoke-lm.log`, `g9-tag.log`, `g9-lm-<state>.log`); step markers in `../state/*.done`; failed states leave `../state/state_<S>.failed`. GPU use: `nvidia-smi`.
-- A state is validated only if its log has `gates passed`, has no `CUDA initialization` warning, and the output dir has a `func_lm_eval_*.pt`. Exit code 0 alone is not trusted.
-- To re-run one failed state: run the same command again; it retries only unfinished states. To run only some states: `STATES="6 5 4" HF_TOKEN=... bash scripts/g0/jarvis_run_all.sh`.
-- Disk full: the model cache is `../hf_cache` (about 19 GB); outputs are in `../out/phase1/`.
-- Dry run (prints the plan, runs nothing): `DRY_RUN=1 bash scripts/g0/jarvis_run_all.sh`.
+- Progress: `tail -f ../run_all.log`; per-unit logs in `../logs/` (`g9-lm-<S>.log` legacy tier 1, `g9-lm-<arm>-<S>.log` new arms, `g9-p1-<arm>.log` tier 2, `g9-gate.log`, `g9-smoke-*.log`, `g9-tag.log`); step markers `../state/<step>.done`; unit markers `../state/state_<S>.done` (legacy tier 1) and `../state/unit_<stage>_<arm>[_<state>].done`; a failed unit leaves `.failed`. GPU use: `nvidia-smi`.
+- A unit is validated only if its log has `gates passed` (tier 1) or its output has `eq/survival.pt` and `all/survival.pt` (tier 2), there is no `CUDA initialization` warning, and (new arms) `weights_manifest.json` exists. Exit code 0 alone is not trusted.
+- Subsets and order: `ARMS="legacy gptq"`, `STAGES="g"`, `STATES="6 4"`, `STATES_NEW="4"`, `P1_BITS_NEW=...`; `ARMS=legacy STAGES=g` is exactly the old plan. If time or money runs out the drop order is: legacy INT7/INT5/INT8, then the tier-2 matched-RTN arm; never GPTQ, legacy FP/INT6/INT4, the tagging or the tier-2 legacy and GPTQ arms.
+- To re-run a failed unit: run the same command again. Dry run: `DRY_RUN=1 bash scripts/g0/jarvis_run_all.sh`.
 
-## Hand-back
+## Hand-back and analysis
 
-When it ends (the log says `ALL DONE`, or `PARTIAL` with the failed states), the deliverable is **`../gemma9b_results.tar.gz`** (outputs, logs, checksums, pip freeze, the freeze file) and **`../run_all.log`**. The person running this sends those two files to the study's author, who runs the analysis (comparison with the 2B results, robustness checks R1 to R5, the 2B-vs-9B comparison). That analysis step is **not part of this job** and its scripts (`phase1_llama_compare.py`, `phase1_llama_robust.py`) still need to be generalised to a model-neutral form first (handoff 040, S5).
+The deliverable is **`../gemma9b_results.tar.gz`** (outputs, logs, checksums, the frozen files used, the recorded hashes) and **`../run_all.log`**. The author analyses on a CPU machine with the frozen code:
 
-Summarise for the human: which states finished and validated, the smoke gate result, peak GPU memory, total wall time, any amendment or fallback, and the exact path of the results tarball.
+```bash
+python scripts/g0/phase1_analysis.py --run <p1 arm dir>/eq --out <dir>      # per arm, the original three tests (S4)
+python scripts/g0/phase1_gemma9b_compare.py \
+  --legacy-g out/phase1/g9-lm-FP out/phase1/g9-lm-4 out/phase1/g9-lm-6 out/phase1/g9-lm-8 out/phase1/g9-lm-7 out/phase1/g9-lm-5 \
+  --rtnm-g out/phase1/g9-lm-rtn-matched-6 out/phase1/g9-lm-rtn-matched-4 --gptq-g out/phase1/g9-lm-gptq-6 out/phase1/g9-lm-gptq-4 \
+  --manifest out/phase1/g9-tag/groups_manifest.json --ratios-json reports/functional_validation/gain_study/calibration/ratios.json \
+  --legacy-p1 out/phase1/g9-p1-legacy/eq --rtnm-p1 out/phase1/g9-p1-rtn-matched/eq --gptq-p1 out/phase1/g9-p1-gptq/eq --roster reports/g0/phase1_languages.json \
+  --analysis-legacy <..>/analysis.json --analysis-rtnm <..>/analysis.json --analysis-gptq <..>/analysis.json --out <results dir>
+```
+
+Summarise for the human: which units finished and validated, the smoke and gate results, the recorded artifact hashes' path, peak GPU memory and RAM, seconds per GPTQ build, total wall time, any amendment or fallback, and the exact path of the results tarball.
