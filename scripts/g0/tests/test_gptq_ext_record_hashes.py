@@ -85,6 +85,15 @@ class Write(unittest.TestCase):
             self.assertEqual(rh.main(["--gate-dir", str(g), "--out", str(out)]), 0)
             self.assertTrue(out.exists())
 
+    def test_check_passes_for_an_equal_existing_file_and_fails_for_a_different_one(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t); g = write_gate(t / "g", {"gptq": {"4": "a" * 64}}); out = t / "h.json"
+            self.assertEqual(rh.main(["--gate-dir", str(g), "--out", str(out)]), 0)
+            self.assertEqual(rh.main(["--gate-dir", str(g), "--out", str(out), "--check"]), 0)
+            other = write_gate(t / "g2", {"gptq": {"4": "f" * 64}})
+            self.assertEqual(rh.main(["--gate-dir", str(other), "--out", str(out), "--check"]), 5)
+            self.assertEqual(rh.main(["--gate-dir", str(g), "--out", str(t / "missing.json"), "--check"]), 5)
+
 
 if __name__ == "__main__":
     unittest.main()

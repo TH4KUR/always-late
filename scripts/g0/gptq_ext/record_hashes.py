@@ -56,7 +56,13 @@ def write(gate_dirs, out_path):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Record the artifact hashes of gate jobs as the frozen hash file.")
     ap.add_argument("--gate-dir", action="append", required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--check", action="store_true", help="do not write: exit 0 if --out exists and equals what the gate directories give, exit 5 otherwise (a resumed run)")
     a = ap.parse_args(argv)
+    if a.check:
+        out = Path(a.out)
+        same = out.exists() and json.loads(out.read_text()) == collect(a.gate_dir)
+        print("hash file", "equals" if same else "DIFFERS from (or is missing next to)", "the gate directories")
+        return 0 if same else 5
     data = write(a.gate_dir, a.out)
     print("wrote", a.out, {m: sorted(v) for m, v in data["artifact_sha256"].items()})
     return 0
