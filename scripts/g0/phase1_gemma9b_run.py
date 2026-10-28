@@ -89,10 +89,12 @@ def tag_main(argv, _sae_key=None):
     log("their functions verified against the frozen manifest")
     model, model_name = env["load_gemma_tl_model"](pr.MODEL_CANDIDATES)
     sae = env["load_sae_compat"](pr.SAE_RELEASE, pr.SAE_ID, DEVICE)
-    hook = sae.cfg.hook_name
-    assert hook == f"blocks.{LAYER}.hook_resid_post" and sae.cfg.d_in == model.cfg.d_model, f"SAE hook or width does not fit the model (hook={hook}, d_in={sae.cfg.d_in}, d_model={model.cfg.d_model})"
+    hook = getattr(sae.cfg, "hook_name", None) or f"blocks.{LAYER}.hook_resid_post"
+    d_in = getattr(sae.cfg, "d_in", None) or sae.W_dec.shape[1]
+    assert hook == f"blocks.{LAYER}.hook_resid_post" and d_in == model.cfg.d_model, f"SAE hook or width does not fit the model (hook={hook}, d_in={d_in}, d_model={model.cfg.d_model})"
     tok = model.tokenizer; bos = tok.bos_token_id; pad = tok.pad_token_id if tok.pad_token_id is not None else 0
-    log("model", model_name, "layers", model.cfg.n_layers, "SAE", pr.SAE_ID, "hook", sae.cfg.hook_name_original, "read as", hook, "d_sae", sae.cfg.d_sae, "k", sae.k, "bos", bos, "pad", pad)
+    hook_orig = getattr(sae.cfg, "hook_name_original", hook); d_sae = getattr(sae.cfg, "d_sae", None) or sae.W_dec.shape[0]; k = getattr(sae, "k", None)
+    log("model", model_name, "layers", model.cfg.n_layers, "SAE", pr.SAE_ID, "hook", hook_orig, "read as", hook, "d_sae", d_sae, "k", k, "bos", bos, "pad", pad)
 
     def full_acts(tokens):
         _, cache = model.run_with_cache(tokens, names_filter=[hook]); return cache[hook], None
@@ -108,12 +110,12 @@ def tag_main(argv, _sae_key=None):
     names = [r["code"] for r in roster]
     probe = p1.make_batches({0: dev[0][:8]}, bos, "mask", pad, 256, 8)[0]["tokens"].to(DEVICE)
     pr.check_forward_paths(full_acts, forward_acts, probe); log("stop-at-layer tagging forward equals the full forward pass on a probe batch")
-    report, info = tag_pipeline(forward_acts, encode, dev, bos, pad, int(sae.cfg.d_sae), a.seed, a.n_boot, a.n_perm, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens)
+    report, info = tag_pipeline(forward_acts, encode, dev, bos, pad, int(d_sae), a.seed, a.n_boot, a.n_perm, device=DEVICE, batch_size=a.batch_size, max_tokens=a.max_tokens)
     log("[equal budget] supported", int(report["supported"].sum()), "selective", int(report["selective"].sum()), "controls", len(report["controls"]), "null cutoff", report["null_cutoff"])
     out = Path(a.out) / "eq"
     path = save_selectivity(out, report, names)
     own = {n: int(((report["peak"] == i) & report["selective"]).sum()) for i, n in enumerate(names)}
-    (out / "meta.json").write_text(json.dumps({**info, "model": model_name, "sae_repo": pr.SAE_RELEASE, "sae_id": pr.SAE_ID, "hook": sae.cfg.hook_name_original, "layer_alias": hook, "bos_id": bos, "pad_id": pad,
+    (out / "meta.json").write_text(json.dumps({**info, "model": model_name, "sae_repo": pr.SAE_RELEASE, "sae_id": pr.SAE_ID, "hook": hook_orig, "layer_alias": hook, "bos_id": bos, "pad_id": pad,
                                               "languages": names, "selective_per_language": own, "commit": a.commit, "corpus_report": {"dev": rep_dev}, "device": DEVICE,
                                               "versions": pr.package_versions(["torch", "transformer-lens", "transformers", "safetensors", "huggingface_hub"]), "seconds": time.time() - t0, "argv": list(argv)}, indent=1, default=str) + "\n")
     log("saved", path, "selective features per language:", own)
