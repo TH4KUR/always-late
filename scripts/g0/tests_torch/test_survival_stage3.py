@@ -249,6 +249,73 @@ class H5(unittest.TestCase):
         self.assertEqual(s3.h5_overall([False] * 6), "no clear predictive value beyond baselines"); self.assertEqual(s3.h5_overall([True] * 6), "adds predictive value"); self.assertEqual(s3.h5_overall([True, False]), "mixed")
 
 
+class Descriptive(unittest.TestCase):
+    """The descriptive tables of the freeze, recomputed with plain numpy from the derived quantities of two toy arms (same full-precision tokens, different quantization noise)."""
+    TIER = np.array([0, 1, 2, 1])
+
+    def setUp(self):
+        self.sa, _, _ = make_case(seed=3, noise=0.15, n=400); self.sb, _, _ = make_case(seed=3, noise=0.6, n=400, silence=(2, 1))
+        self.da, self.db = s3.derived(self.sa, THETA), s3.derived(self.sb, THETA)
+        self.act = s3.fp_active(self.sa["stats"]["n_a"].numpy(), self.sa["n"].numpy())
+
+    def test_the_lambda_decomposition_between_arms_obeys_the_exact_identity(self):
+        r = s3.lambda_decomposition(self.da, self.db, self.act)
+        m = s3.populations(self.da, self.act)["decomposition"] & s3.populations(self.db, self.act)["decomposition"] & ~self.da["clipped"] & ~self.db["clipped"]
+        dl = (self.db["lam"] - self.da["lam"])[m]; ds = np.log(self.db["sigma_e2"][m]) - np.log(self.da["sigma_e2"][m]); dg = -2 * (np.log(np.abs(self.db["g"][m])) - np.log(np.abs(self.da["g"][m])))
+        self.assertEqual(r["cells"], int(m.sum())); self.assertGreater(r["cells"], 20)
+        self.assertAlmostEqual(r["median_delta_lambda"], float(np.median(dl)), places=12); self.assertAlmostEqual(r["median_delta_log_sigma_e2"], float(np.median(ds)), places=12)
+        self.assertAlmostEqual(r["median_minus2_delta_log_abs_g"], float(np.median(dg)), places=12); self.assertLess(r["identity_max_abs_error"], 1e-8)
+        self.assertGreater(r["median_delta_lambda"], 0)                                                                    # more noise, higher noise-to-signal
+
+    def test_cells_without_a_decomposition_in_either_arm_or_with_a_clipped_lambda_in_either_arm_are_left_out(self):
+        base = s3.lambda_decomposition(self.da, self.db, self.act)["cells"]; pop = s3.populations(self.da, self.act)["decomposition"] & s3.populations(self.db, self.act)["decomposition"] & ~self.da["clipped"] & ~self.db["clipped"]
+        l, j = map(int, np.argwhere(pop)[0]); l2, j2 = map(int, np.argwhere(pop)[1]); l3, j3 = map(int, np.argwhere(pop)[2])
+        import copy
+        a2 = {k: v.copy() if hasattr(v, "copy") else v for k, v in self.da.items()}; b2 = {k: v.copy() if hasattr(v, "copy") else v for k, v in self.db.items()}
+        a2["sigma_e2"][l, j] = -1.0                                                                                       # no decomposition in arm a only
+        self.assertEqual(s3.lambda_decomposition(a2, self.db, self.act)["cells"], base - 1)
+        b2["sigma_e2"][l2, j2] = -1.0                                                                                     # ... in arm b only
+        self.assertEqual(s3.lambda_decomposition(self.da, b2, self.act)["cells"], base - 1)
+        a3 = {k: v.copy() if hasattr(v, "copy") else v for k, v in self.da.items()}; a3["clipped"][l3, j3] = True                                       # a clipped lambda in arm a only
+        self.assertEqual(s3.lambda_decomposition(a3, self.db, self.act)["cells"], base - 1)
+        b3 = {k: v.copy() if hasattr(v, "copy") else v for k, v in self.db.items()}; b3["clipped"][l3, j3] = True
+        self.assertEqual(s3.lambda_decomposition(self.da, b3, self.act)["cells"], base - 1)
+
+    def test_the_arm_summary_equals_plain_numpy_per_tier_and_overall(self):
+        r = s3.arm_summary(self.db, self.act, self.TIER); d = self.db; a = self.act; dec = s3.populations(d, a)["decomposition"]
+        self.assertAlmostEqual(r["median_g"], float(np.median(d["g"][dec])), places=12); self.assertAlmostEqual(r["median_log_sigma_e2"], float(np.median(np.log(d["sigma_e2"][dec]))), places=12)
+        self.assertAlmostEqual(r["median_lambda"], float(np.median(d["lam"][a])), places=12)
+        for key, name in (("on_off", "on_off"), ("off_on", "off_on")):
+            v = d[name][a]; v = v[np.isfinite(v)]
+            self.assertEqual([r["flip"][key][k] for k in ("p10", "p50", "p90")], [float(x) for x in np.percentile(v, [10, 50, 90])])
+        nu = d["nu"][a]; self.assertEqual([r["nu"]["overall"][k] for k in ("p25", "p50", "p75")], [float(x) for x in np.percentile(nu, [25, 50, 75])])
+        for t in (0, 1, 2):
+            rows = np.isin(np.arange(L), np.nonzero(self.TIER == t)[0]); m = a & rows[:, None]
+            self.assertEqual(r["nu"]["by_tier"][t]["p50"], float(np.median(d["nu"][m]))); self.assertEqual(r["silent"]["by_tier"][t]["cells"], int(m.sum()))
+            self.assertEqual(r["silent"]["by_tier"][t]["silent"], int((d["silent"] & m).sum())); self.assertEqual(r["clipped"]["by_tier"][t]["low"], int((d["clipped_low"] & m).sum()))
+            self.assertAlmostEqual(r["silent"]["by_tier"][t]["share"], float((d["silent"] & m).sum() / m.sum()), places=12)
+        self.assertEqual(r["silent"]["overall"]["silent"], int((d["silent"] & a).sum())); self.assertGreaterEqual(r["silent"]["overall"]["silent"], 1)               # the silenced feature of the toy stays in the table
+        self.assertEqual(r["clipped"]["overall"]["high"], int((d["clipped"] & ~d["clipped_low"] & a).sum()))
+
+    def test_predicted_versus_exact_flips(self):
+        from scipy.stats import spearmanr
+        r = s3.flip_prediction(self.db, self.act); m = self.act & np.isfinite(self.db["pred_flip"]) & np.isfinite(self.db["exact_flip"])
+        self.assertAlmostEqual(r["spearman"], float(spearmanr(self.db["pred_flip"][m], self.db["exact_flip"][m])[0]), places=12)
+        self.assertAlmostEqual(r["median_pred_minus_exact"], float(np.median((self.db["pred_flip"] - self.db["exact_flip"])[m])), places=12); self.assertEqual(r["cells"], int(m.sum()))
+        act2 = self.act.copy(); act2[0, :4] = False; m2 = act2 & np.isfinite(self.db["pred_flip"]) & np.isfinite(self.db["exact_flip"])
+        self.assertEqual(s3.flip_prediction(self.db, act2)["cells"], int(m2.sum())); self.assertLess(int(m2.sum()), int(m.sum()))                      # only FP-active cells count
+
+    def test_log_nu_between_arms(self):
+        import survival_lambda as sl
+        from scipy.stats import spearmanr
+        r = s3.nu_between_arms(self.da, self.db, self.act); m = self.act
+        x, y = self.da["log_nu"][m], self.db["log_nu"][m]
+        self.assertAlmostEqual(r["spearman"], float(spearmanr(x, y)[0]), places=12); self.assertAlmostEqual(r["sd_ratio_slope"], float(np.std(y) / np.std(x)), places=12)
+        self.assertAlmostEqual(r["ols_slope"], float(np.polyfit(x, y, 1)[0]), places=9); self.assertGreater(r["sd_ratio_slope"], 0); self.assertEqual(r["cells"], int(m.sum()))
+        self.assertGreater(float(np.median(y - x)), 0)                                                                    # the noisier arm perturbs the encoder more
+        self.assertAlmostEqual(r["median_difference"], float(np.median(y - x)), places=12)
+
+
 class Freeze(unittest.TestCase):
     def test_the_constants_of_the_module_equal_the_committed_freeze(self):
         F = json.loads((ROOT / "reports/survival_measurement/analysis_freeze.json").read_text())

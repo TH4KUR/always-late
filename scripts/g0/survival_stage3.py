@@ -195,3 +195,47 @@ def h5_cell(base, r1, gain, log_nu, w1, lang, mask, n_a, n_boot=se.N_BOOT, seed=
 def h5_overall(cells):
     """The D-113 overall statement over the cells of (arm, INT6, INT4)."""
     return se.overall_statement(cells)
+
+
+# ------------------------------------------------------------------ descriptive tables of the freeze
+def _pct(v, qs, names):
+    v = np.asarray(v, dtype=float); v = v[np.isfinite(v)]
+    return {n: (float(np.percentile(v, q)) if len(v) else float("nan")) for q, n in zip(qs, names)}
+
+
+def lambda_decomposition(d_a, d_b, active):
+    """Cross-arm decomposition of lambda (b minus a) on the cells with a decomposition in both arms and an unclipped lambda in both: lambda = log sigma_e^2 - 2 log|g| - 2 log sigma_a and sigma_a is the same
+    in every arm, so delta lambda = delta log sigma_e^2 - 2 delta log|g| exactly (the identity error is reported); medians of the three differences."""
+    m = populations(d_a, active)["decomposition"] & populations(d_b, active)["decomposition"] & ~d_a["clipped"] & ~d_b["clipped"]
+    dl = (d_b["lam"] - d_a["lam"])[m]; ds = np.log(d_b["sigma_e2"][m]) - np.log(d_a["sigma_e2"][m]); dg = -2 * (np.log(np.abs(d_b["g"][m])) - np.log(np.abs(d_a["g"][m])))
+    med = lambda v: float(np.median(v)) if len(v) else float("nan")
+    return {"cells": int(m.sum()), "median_delta_lambda": med(dl), "median_delta_log_sigma_e2": med(ds), "median_minus2_delta_log_abs_g": med(dg),
+            "identity_max_abs_error": float(np.abs(dl - (ds + dg)).max()) if len(dl) else float("nan")}
+
+
+def arm_summary(d, active, tier):
+    """One (arm, width): decomposition medians, flip-rate percentiles, nu quartiles overall and per tier, and the silent / clipped counts overall and per tier (tier = tier score of each language, 0 low, 1 mid, 2 high)."""
+    pop = populations(d, active); dec = pop["decomposition"]; tier = np.asarray(tier)
+    by_tier = {int(t): active & (tier == t)[:, None] for t in np.unique(tier)}
+    count = lambda m: {"cells": int(m.sum()), "silent": int((d["silent"] & m).sum()), "share": float((d["silent"] & m).sum() / m.sum()) if m.sum() else float("nan")}
+    clip = lambda m: {"low": int((d["clipped_low"] & m).sum()), "high": int((d["clipped"] & ~d["clipped_low"] & m).sum())}
+    med = lambda v: float(np.median(v)) if len(v) else float("nan")
+    return {"median_g": med(d["g"][dec]), "median_log_sigma_e2": med(np.log(d["sigma_e2"][dec])), "median_lambda": med(d["lam"][active]), "cells": int(active.sum()),
+            "flip": {k: _pct(d[k][active], (10, 50, 90), ("p10", "p50", "p90")) for k in ("on_off", "off_on")},
+            "nu": {"overall": _pct(d["nu"][active], (25, 50, 75), ("p25", "p50", "p75")), "by_tier": {t: _pct(d["nu"][m], (25, 50, 75), ("p25", "p50", "p75")) for t, m in by_tier.items()}},
+            "silent": {"overall": count(active), "by_tier": {t: count(m) for t, m in by_tier.items()}}, "clipped": {"overall": clip(active), "by_tier": {t: clip(m) for t, m in by_tier.items()}}}
+
+
+def flip_prediction(d, active):
+    """Predicted flip share (|delta pre| > margin, both signs) against the exact one (n_exceed1 / n_a): Spearman over cells and the median difference."""
+    m = active & np.isfinite(d["pred_flip"]) & np.isfinite(d["exact_flip"])
+    with np.errstate(all="ignore"):
+        rho = float(spearmanr(d["pred_flip"][m], d["exact_flip"][m])[0]) if m.sum() > 2 else float("nan")
+    return {"cells": int(m.sum()), "spearman": rho, "median_pred_minus_exact": float(np.median((d["pred_flip"] - d["exact_flip"])[m])) if m.any() else float("nan")}
+
+
+def nu_between_arms(d_a, d_b, active):
+    """The metric-2 analogue of Stage 1's H1: log nu of arm b against arm a over the FP-active cells (no condition on the quantized side): Spearman, the SD-ratio slope, the OLS slope, the median difference."""
+    m = active & np.isfinite(d_a["log_nu"]) & np.isfinite(d_b["log_nu"]); x, y = d_a["log_nu"][m], d_b["log_nu"][m]
+    rho, sd_slope = sl.h1_stats(x, y, np.zeros(len(x), dtype=bool), np.zeros(len(y), dtype=bool))
+    return {"cells": int(m.sum()), "spearman": rho, "sd_ratio_slope": sd_slope, "ols_slope": float(np.polyfit(x, y, 1)[0]), "median_difference": float(np.median(y - x))}

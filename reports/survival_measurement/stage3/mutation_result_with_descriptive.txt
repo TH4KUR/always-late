@@ -1,0 +1,63 @@
+# survival_stage3.py incl. H5 and the descriptive tables, 2026-10-29 09:59 IST (62 mutants; the one survivor 'NaN interval not inconclusive' is equivalent: comparisons with NaN are False)
+KILLED          freeze hash not compared
+KILLED          token floor
+KILLED          token floor ignored
+KILLED          rate non-strict
+KILLED          sigma swapped
+KILLED          gain denominator
+KILLED          residual variance formula
+KILLED          nu over all tokens
+KILLED          off_on denominator
+KILLED          silent definition
+KILLED          margin in threshold units
+KILLED          decomposition empty
+KILLED          nu population conditioned on b
+KILLED          residual variance not excluded
+KILLED          clamped r not excluded
+KILLED          identity gate never fails
+KILLED          identity ignores the sign of g
+KILLED          nu half uses lambda
+KILLED          mean instead of median
+KILLED          H3 needs only one half
+KILLED          H3 nu not absolute
+KILLED          H3 missing cell passes
+KILLED          degenerate slope not NaN
+KILLED          z not standardized
+KILLED          present without the size condition
+KILLED          absent from the 95 % interval
+KILLED          absent with touching bound
+SURVIVED        NaN interval not inconclusive
+KILLED          sensitivity = primary
+KILLED          sensitivity denominator
+KILLED          primary without the INT16 reference
+KILLED          too many dropped replicates tolerated
+KILLED          degenerate replicates kept
+KILLED          95 % interval is the 90 % one
+KILLED          no resampling
+KILLED          H5 token floor ignored
+KILLED          H5 undefined g/nu kept
+KILLED          H5 reliability mask ignored
+KILLED          H5 floor strict
+KILLED          B+ without nu
+KILLED          B+ without g
+KILLED          nu-only variant uses g
+KILLED          g-only variant uses nu
+KILLED          B without R1
+KILLED          rule on B+ over A
+KILLED          improvement sign
+KILLED          drop counts wrong
+KILLED          decomposition without the factor -2
+KILLED          decomposition sign of sigma_e
+KILLED          clipped cells kept in the decomposition
+KILLED          decomposition population of one arm only
+KILLED          median lambda over the decomposition cells
+KILLED          off_on missing
+KILLED          quartile names swapped
+KILLED          tiers not separated
+KILLED          silent share denominator
+KILLED          clipped high counts all clipped
+KILLED          flip prediction outside the FP-active set
+KILLED          flip difference sign
+KILLED          nu arms swapped in the slope
+KILLED          ols slope direction
+KILLED          nu comparison conditioned on b
