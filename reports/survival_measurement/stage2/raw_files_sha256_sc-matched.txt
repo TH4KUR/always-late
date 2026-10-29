@@ -1,0 +1,6 @@
+# sc-matched, fetched 2026-10-29 11:42-11:44 IST; sha256 equal to Ada's (validator check 'checksums')
+3c31a3cd2ea07823ae906792e3c8a970a8fb60b03e89f6f2078cdf5c1c96311a  sums_INT6.pt
+f0f1410fb853246a9b5b8f3a4ed10726b81bf650d59f84102cf9f825411f3931  sums_INT4.pt
+94be2cd04427336be4a575c4d380ddb43c8de39f7b84493182ee5aeb88b1e8af  meta.json
+a3e4e7e31e5dc81ddff244e0a346c49d1b982c45cb4f84c5594124a686da8660  gpu_mem.log
+51e4250d5daba0619b9b5fb180964c1c96386e2316fe822475111f4926a4707d  weights_manifest.json
