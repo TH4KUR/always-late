@@ -69,3 +69,11 @@ their files byte for byte. The recorded protocol and checks are in the
 
 Existing paths in old plans, Slurm commands and source hashes refer to the historical
 code state. Keep those records; use the new module path for future maintenance.
+
+## Added 2026-10-29: the GPTQ extension and the survival measurement study
+
+| area | files | what |
+|---|---|---|
+| GPTQ extension (D-101 to D-111) | `scripts/g0/gptq_ext/` (calibration, GPTQ upstream copy, artifact build and hash checks, gates, wrapper `run_with_weights.py`, comparison and validation tools), tests `scripts/g0/tests_torch/test_gptq_ext_*.py`, launcher `scripts/g0/run_gptq.sbatch` | quantize the same model with GPTQ or a matched RTN instead of the legacy RTN and run the old experiments unchanged through the wrapper |
+| survival versus effect (D-110 to D-114) | `scripts/g0/survival_effect.py`, `survival_effect_llama.py`, report generators | does the activation correlation predict a feature's effect similarity |
+| survival measurement study (D-117 to D-124) | `scripts/g0/survival_lambda.py` (stage 1), `survival_sidecar.py` (streams 21 statistics per condition on the GPU), `survival_validate.py`, `survival_stage3.py` (the frozen analysis); freeze `reports/survival_measurement/analysis_freeze.json` | what the survival correlation measures |

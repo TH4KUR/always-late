@@ -15,3 +15,7 @@ Imported 2026-10-29 at the user's request (D-125). **These are completed origina
 The source reports positive full-precision language-group ablation effects in 27/27 languages; relative ablation harm 1.003 at INT8, 1.006 at INT6 and 2.479 at INT4; ordered down-scaling harm in 27/27 languages; no reliable repair from boosting the group (8/27 languages meet the group-specific repair criterion, against a threshold of 14). These ratios describe the harm caused by removing features, not feature survival rates or model accuracy.
 
 Amplified ablation harm does not establish that the original quantization damage is concentrated in language features. A clean replication of all current main-branch findings is not established by this original-RTN-only report. Missing uncertainty and incomplete metadata must be checked before promoting claims.
+
+## Review notes 2026-10-29
+
+The Study G analysis was reproduced byte-identically from the raw per-state files (task 2 of the review, [`REVIEW_STATUS.md`](REVIEW_STATUS.md)). Open problems of meaning, not arithmetic: [anomaly A-043](../../decisions_and_anomalies.md) (the frozen P3a ordering as written holds in 0 of 27 languages while the reversed ordering holds in 27 of 27; P3b was relabelled; the INT4 retention 2.479 is a mean, the median is 1.586). The adapter `phase1_gemma9b_run.py` named in the freeze exists only on branch `gemma9b-confirmation`, not on main. A GPTQ-only recovery run is prepared on that branch (code and tests, amendment A2, plan `RECOVERY_PLAN.md`) and has NOT been run.

@@ -10,7 +10,7 @@ Shortened 2026-10-27 (documentation cleanup requested by the user). The previous
 
 ## 2. The work loop (stopped)
 
-**No recurring job exists.** The user stopped the 40-minute cron jobs on 2026-10-27 and put the project in finalisation mode (HOLD of 09:50 IST: no deploy, no Ada jobs, no new experiments until the user says so). The old loop and its recipe are history: [`reports/functional_validation/cron_prompt.md`](reports/functional_validation/cron_prompt.md). If work resumes, each step is: orient (current status, newest handoff, git, queue), tests first then code, validate each job before analysing it, write the result with its limits, update current status and the dated log, commit explicit paths and push, write a handoff after a finished task ([`TEMPLATE.md`](reports/handoffs/TEMPLATE.md)).
+**No recurring job exists.** The user stopped the 40-minute cron jobs on 2026-10-27 and put the project in finalisation mode (HOLD of 09:50 IST: no deploy, no Ada jobs, no new experiments until the user says so). The old loop and its recipe are history: [`reports/functional_validation/cron_prompt.md`](reports/functional_validation/cron_prompt.md). If work resumes, each step is: orient (current status, newest handoff, git, queue), tests first then code, validate each job before analysing it, write the result with its limits, update current status and the dated log, commit explicit paths and push, write a handoff after a finished task ([`TEMPLATE.md`](reports/handoffs/TEMPLATE.md)). **[Correction 2026-10-29: stale. A recurring 40-minute job has existed since 2026-10-27 17:34 IST (the GPTQ extension, D-101; later carrying the survival measurement study D-117 to D-124 and the 9B review D-125); its instructions are in [`reports/gptq_extension/cron_prompt.md`](reports/gptq_extension/cron_prompt.md). The HOLD of 2026-10-27 09:50 was lifted by the user the same day (D-101) and again on 2026-10-29 (D-121, D-122, D-126).]**
 
 ## 3. Rules that matter (the user's, durable)
 
@@ -18,7 +18,7 @@ Shortened 2026-10-27 (documentation cleanup requested by the user). The previous
 - **Sample-size floor for Study G and its replications** (2026-10-24, D-075): 27 languages x 6 states x 300 sentences x 3 control draws. Follow-ups only add.
 - **Queue every planned Ada job at once** (2026-10-25, D-077) so the GPUs never idle; at most 2 run at once. Never poll. The old 32 GPU-hour ceiling is soft (A8).
 - Methodological correctness is non-negotiable. Plans before code; predictions frozen before the numbers; a deviation is a D-entry with its reason.
-- Regime `mask` only (D-028); no numerical comparison with Duan's `none` regime. Gemma-2-9B is another team's (D-089, D-092).
+- Regime `mask` only (D-028); no numerical comparison with Duan's `none` regime. Gemma-2-9B is another team's (D-089, D-092). **[Correction 2026-10-29: since D-125 the review and integration of the EXISTING 9B original-RTN results on main is part of this project (`reports/functional_validation/gemma9b/`); the 9B implementation branch is `gemma9b-confirmation` (do not push to it without the user's word); no 9B GPTQ or matched-RTN result exists.]**
 - Hugging Face dataset stays private; delete nothing on Hugging Face or wandb.
 - Codex (another AI agent) also works in this repo. Never edit, stage or commit her uncommitted files; stage only your own explicit paths.
 

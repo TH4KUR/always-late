@@ -1,5 +1,7 @@
 # Functional validation across precision: results summary for the paper team
 
+> **Correction note 2026-10-29 (D-110, D-125, A-043; the text below is kept as written):** (1) the F3 row and claim 4 ("at most about 3 % of the damage") are superseded: a repair share is what one patch recovers, not an upper bound and not a location of the damage (see [`PROJECT_RESULTS.md`](../PROJECT_RESULTS.md) section 4.5 and [`gptq_extension/RESULTS.md`](../gptq_extension/RESULTS.md) section 4.4); (2) the lines that say the Llama check "has not been run" or "waits for Q22" and that the external panel is "still running" are history: both finished (D-090, D-095); (3) "Gemma-2-9B": original-RTN results were imported on 2026-10-29 and are not yet independently reproduced (anomaly A-043); the GPTQ and matched-RTN arms on 9B were never run.
+
 > **27 October routing update:** the completed [external panel](../intervention_transfer/results/external/README.md) and [post hoc recovery analyses](../intervention_transfer/results/recovery/README.md) now extend this historical claim map. Main utility remains not met; external utility is met under its original rules. Locked INT4 prediction transfers to Wikipedia, but quantization specificity and a cheaper audit are unestablished. Read [current status](../CURRENT_STATUS.md) for the latest action. Earlier rows and their qualifications below are retained.
 
 

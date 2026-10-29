@@ -28,7 +28,7 @@ The full record of how the project moved (every decision, every wrong turn) is u
 
 Six reasons. Each one is explained with numbers later.
 
-1. **The tests we fixed in advance mostly said "no difference".** Two sets of tests were confirmatory: the three Phase 1 tests and the downstream reading test (Belebele). Both came out "no difference found". The later studies (Study G, Llama, transfer) also had their rules written down before the data, but they ran on test sentences that earlier work had already looked at, so we call them exploratory: the statistical interpretation must allow for that earlier data use. This does not prevent the specified interventions from having measurable causal effects.
+1. **The tests we fixed in advance mostly said "no difference".** **[Note 2026-10-29: "fixed in advance" means fixed in the proposal and the design before the run. Whether the OSF pre-registration was frozen is UNVERIFIED (V-10, D-029); no verified pre-registration is claimed. The course report counts one confirmatory family (Belebele).]** Two sets of tests were confirmatory: the three Phase 1 tests and the downstream reading test (Belebele). Both came out "no difference found". The later studies (Study G, Llama, transfer) also had their rules written down before the data, but they ran on test sentences that earlier work had already looked at, so we call them exploratory: the statistical interpretation must allow for that earlier data use. This does not prevent the specified interventions from having measurable causal effects.
 2. **A "no difference" is not the same as "no effect".** It means: if there is an effect, it is too small for this test to see. We can say how small, and that is useful (section 1, next question), but it cannot say "zero".
 3. **Our tools are tangled.** Quantization changes every weight at once. We can only look through one window (layer 12, one dictionary) and poke at features one group at a time. When we remove a group of features the model changes in many other ways too. The effects overlap and cannot be cleanly pulled apart.
 4. **The arithmetic limits the interpretation of small changes.** The model body runs in bfloat16. INT16 RTN is a small actual weight perturbation, not an exact no-change or pure-noise control. INT6 transfer errors are about two reference floors. We measure intervention effects under this arithmetic; the unrun paired-precision audit would test which conclusions depend on that arithmetic.
@@ -98,7 +98,7 @@ computation, and generalization to other systems are separate achievements.
 
 What this check can and cannot say: the model family, the dictionary type, the dictionary training, the depth and the tokenizer all differ, and this dictionary calls 91 % of its features language-specific (Gemma Scope: about 75 %) with a smaller control pool (898 against 2,860). So "not consistent" does **not** mean "the Gemma findings are wrong", and it is not a replication. It means we cannot claim the Gemma picture holds on another model.
 
-**Gemma-2-9B** (the bigger sibling, with Gemma Scope) was planned as the proper confirmation. It was handed to another team (D-089). The branch `origin/gemma9b-confirmation` has **no results in this repository**. So nothing from a third model exists here.
+**Gemma-2-9B** (the bigger sibling, with Gemma Scope) was planned as the proper confirmation. It was handed to another team (D-089). The branch `origin/gemma9b-confirmation` has **no results in this repository**. So nothing from a third model exists here. **[Correction 2026-10-29, D-125/D-126: stale. Original-RTN Gemma-2-9B results from another person were imported to main on 2026-10-29 (section 4.14); they are not yet independently reproduced and have open problems (anomaly A-043). The GPTQ arm, the matched-RTN arm and tier 2 on 9B have never been run; a GPTQ-only recovery run is prepared (code and tests) but NOT run.]**
 
 ### What about the downstream task?
 
@@ -267,7 +267,7 @@ What the curves say:
 
 ### 4.9 The second model (Llama-3.2-1B) and the bigger Gemma
 
-Covered in section 1. Per-language numbers: appendix A10. Gemma-2-9B: no results here.
+Covered in section 1. Per-language numbers: appendix A10. Gemma-2-9B: no results here. **[Correction 2026-10-29, D-125/D-126: stale. Original-RTN Gemma-2-9B results from another person were imported to main on 2026-10-29 (section 4.14); they are not yet independently reproduced and have open problems (anomaly A-043). The GPTQ arm, the matched-RTN arm and tier 2 on 9B have never been run; a GPTQ-only recovery run is prepared (code and tests) but NOT run.]**
 
 ### 4.10 Intervention transfer: context or weights? (main matrix + outside text)
 
@@ -275,7 +275,7 @@ Covered in section 1. Per-language numbers: appendix A10. Gemma-2-9B: no results
 
 **Group level (net harm in nats per token, median over languages)** (main):
 - Full precision 0.263. INT6: nothing clear: |C| 0.0091 and |W| 0.0092 (rounding alone 0.0005).
-- **INT4:** the same edit now harms 0.848; with the model's own scaled activation 0.433. |C| 0.310 [0.258, 0.334], |W| 0.104 [0.094, 0.122], |I| 0.071; C bigger in 19 of 27 languages. The pre-set expectation "context dominates" (A3): supported at INT4, inconclusive at INT6, **overall mixed**.
+- **INT4:** the same edit now harms 0.848; with the model's own scaled activation 0.433. |C| 0.310 [0.258, 0.334], |W| 0.104 [0.094, 0.122], |I| 0.071; C bigger in 19 of 27 languages. **[Note 2026-10-29: the same 19 of 27 occurs at INT16 (independent audit), so the count is not evidence for context dominance; only the interval of the median difference is (D-094).]** The pre-set expectation "context dominates" (A3): supported at INT4, inconclusive at INT6, **overall mixed**.
 - Outside text (six languages): INT4 C 0.133, W 0.073 (supported), **INT6 reversed** (W bigger).
 
 **Effect-vector level (2,203 eligible items of 235 features):**
@@ -284,7 +284,7 @@ Covered in section 1. Per-language numbers: appendix A10. Gemma-2-9B: no results
 - Specificity is weak: the real direction's error is about the same as for swapped or random directions (+0.019 [+0.009, +0.032] at INT4). The error is largely **a generic reaction of the model**.
 - The averaged fingerprint of a feature over its contexts overstates how well a single context transfers (in all 404 features at INT4).
 
-**Can we predict the error for features we held out?** The "generic sensitivity" (how much the error of the *other* directions at the same place moves) reduces the held-out error by **21.5 % [12.7, 29.4] at INT4** (rule met) and **10.9 % [−1.2, 21.4] at INT6** (not met), so the pre-set overall verdict on the main set is **not met**. On the outside text both states are met (19.4 % and 23.4 %): overall **met**. But the same predictor also predicts the rounding-only error (23.4 % in the main set, 28.9 % outside), so it measures **how noise-prone a context is**, not something specific to quantization. Survival numbers and gradient attribution add nothing at INT4.
+**Can we predict the error for features we held out?** **[Note 2026-10-29: "held out" means held out by feature. About 88 % of the held-out documents are also in the calibration data; on 136 items from 65 unseen documents the INT4 gain is 6.73 % (no interval) (`novelty_assessment_2026-10-26.md`).]** The "generic sensitivity" (how much the error of the *other* directions at the same place moves) reduces the held-out error by **21.5 % [12.7, 29.4] at INT4** (rule met) and **10.9 % [−1.2, 21.4] at INT6** (not met), so the pre-set overall verdict on the main set is **not met**. On the outside text both states are met (19.4 % and 23.4 %): overall **met**. But the same predictor also predicts the rounding-only error (23.4 % in the main set, 28.9 % outside), so it measures **how noise-prone a context is**, not something specific to quantization. Survival numbers and gradient attribution add nothing at INT4.
 
 **Means:** at INT6 an intervention's effect is almost kept (about two noise units off); at INT4 it is rotated; most of that is generic. **Does not mean:** a cheap audit; one language-specific mechanism; a result for deployed integer kernels. Per-language: appendices A8 and A9.
 
@@ -299,8 +299,8 @@ All post hoc: protocol files were written before the code and each recorded what
 ### 4.12 Planned but not run
 
 - **Precision audit (D-100, R5):** a paired check of whether the INT16/INT4 difference in these edits is real arithmetic effect or batching noise. Fully built and tested locally (476 transfer tests). **Never deployed**: the 27 October hold came first.
-- **Gemma-2-9B:** handed to another team; nothing in this repository.
-- Other things never run: another quantizer (not round-to-nearest), integer kernels, activation quantization, other layers, steering tests, a quantization-specific alternative to the generic-sensitivity predictor.
+- **Gemma-2-9B:** handed to another team; nothing in this repository. **[Correction 2026-10-29, D-125/D-126: stale. Original-RTN Gemma-2-9B results from another person were imported to main on 2026-10-29 (section 4.14); they are not yet independently reproduced and have open problems (anomaly A-043). The GPTQ arm, the matched-RTN arm and tier 2 on 9B have never been run; a GPTQ-only recovery run is prepared (code and tests) but NOT run.]**
+- Other things never run: another quantizer (not round-to-nearest), integer kernels, activation quantization, other layers, steering tests, a quantization-specific alternative to the generic-sensitivity predictor. **[Correction 2026-10-29: matched RTN and GPTQ WERE run (D-101 to D-111; appendix A11 to A16). Read "another quantizer" as a quantizer beyond these three, for example AWQ or activation-aware methods, or real integer kernels.]**
 
 ---
 
@@ -310,7 +310,7 @@ All post hoc: protocol files were written before the code and each recorded what
 
 ### 4.14 Gemma-2-9B original-RTN results imported (29 October; D-125)
 
-The [pushed verdict](functional_validation/gemma9b/verdict.md), its [execution freeze](functional_validation/gemma9b/legacy_rtn_run_freeze_2026-10-29.json), and the [detailed Study G report](functional_validation/gemma9b/results/analysis/report.md) are now on main. The source reports positive full-precision language-group removal effects in 27/27 languages, relative ablation harm 1.003 at INT8, 1.006 at INT6 and 2.479 at INT4, ordered down-scaling harm in 27/27, and no reliable group-specific boosting repair (8/27, criterion 14). These are imported observations awaiting independent reproduction, not newly validated claims. The [review queue](functional_validation/gemma9b/REVIEW_STATUS.md) checks missing intervals, per-state metadata, aggregation and dose-order wording before a cross-model claim. Only original RTN was run; the current three-arm GPTQ comparison and survival-measurement study have not been repeated on 9B. No causal allocation of quantization damage follows from amplified ablation harm.
+The [pushed verdict](functional_validation/gemma9b/verdict.md), its [execution freeze](functional_validation/gemma9b/legacy_rtn_run_freeze_2026-10-29.json), and the [detailed Study G report](functional_validation/gemma9b/results/analysis/report.md) are now on main. The source reports positive full-precision language-group removal effects in 27/27 languages, relative ablation harm 1.003 at INT8, 1.006 at INT6 and 2.479 at INT4, ordered down-scaling harm in 27/27, and no reliable group-specific boosting repair (8/27, criterion 14). These are imported observations awaiting independent reproduction, not newly validated claims. The [review queue](functional_validation/gemma9b/REVIEW_STATUS.md) checks missing intervals, per-state metadata, aggregation and dose-order wording before a cross-model claim. Only original RTN was run; the current three-arm GPTQ comparison and survival-measurement study have not been repeated on 9B. No causal allocation of quantization damage follows from amplified ablation harm. **[Note 2026-10-29, anomaly A-043: re-computed from the imported curves, the freeze's P3a ordering E(0.354) > E(0.177) > E(0.088) holds in 0 of 27 languages as written (harm grows as the multiplier falls in 27 of 27); P3b was relabelled (the INT4-over-FP ratio meaning holds: larger in 26 of 27, median 1.69); the INT4 retention 2.479 is a mean, the median per-language ratio is 1.586 (Kannada 9.9 with an FP effect of 0.010, Korean 7.6). **Update 2026-10-29 (review task 2): the analysis WAS reproduced from the raw per-state files, tables byte-identical (`gemma9b/REVIEW_STATUS.md`); the open problems above are about meaning, not arithmetic. With language-bootstrap intervals: INT4 over FP mean 2.479 [1.781, 3.368], median 1.586 [1.238, 2.264]; the results do not show that quantization damage concentrates in language features.]**
 
 ## 5. What we can say, and what we cannot
 
@@ -329,7 +329,7 @@ The [pushed verdict](functional_validation/gemma9b/verdict.md), its [execution f
 
 **We cannot say:**
 - That quantization hurts low-resource languages *because* their language features break.
-- That the results automatically generalize to other models, layers, dictionaries or quantizers. This scope limit does not invalidate the causal effects measured here (the Llama check differed in parts; no Gemma-2-9B results are present).
+- That the results automatically generalize to other models, layers, dictionaries or quantizers. This scope limit does not invalidate the causal effects measured here (the Llama check differed in parts; no Gemma-2-9B results are present). **[Correction 2026-10-29, D-125/D-126: stale. Original-RTN Gemma-2-9B results from another person were imported to main on 2026-10-29 (section 4.14); they are not yet independently reproduced and have open problems (anomaly A-043). The GPTQ arm, the matched-RTN arm and tier 2 on 9B have never been run; a GPTQ-only recovery run is prepared (code and tests) but NOT run.]**
 - That the INT4 changes are about language: they look generic.
 - That the tiny INT4 repair (0.001 nats) is useful or has a known mechanism.
 - Anything about deployed integer kernels or activation quantization.
@@ -522,7 +522,7 @@ These rows show what 'no change' looks like: INT0 is exactly 1.00; INT16 and INT
 
 ### A5. Patching experiment (F3): how much of the INT4 loss gap is repaired when the group's full-precision activations are put back
 
-Source: `reports/functional_validation/results/rescue/rescue.csv`, part 'group'. Small numbers mean the language groups hold little of the damage.
+Source: `reports/functional_validation/results/rescue/rescue.csv`, part 'group'. A small number is what this particular patch recovers; it is not an upper bound and not a location of the damage (D-110).
 
 | language | loss gap INT4 minus full precision (nats/token) | recovered by putting the group's full-precision activations back | share of the gap [95 % interval] |
 |---|---|---|---|

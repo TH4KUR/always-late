@@ -42,3 +42,5 @@ Question: do the SAE features selected as language-selective before quantization
 Superseded banners of the front-page documents are kept verbatim in [`reports/archive/superseded_banners_2026-10-22.md`](../archive/superseded_banners_2026-10-22.md); the link checker is `scripts/g0/check_md_links.py`.
 
 Related: [`reports/association_retention/`](../association_retention/README.md) (D-035 study and the selected direction in `next_steps.md`), [`reports/research_sources.md`](../research_sources.md), decisions D-039 to D-046 in [`reports/decisions_and_anomalies.md`](../decisions_and_anomalies.md), review items Q16 to Q19 in [`DECISIONS_FOR_REVIEW.md`](../../DECISIONS_FOR_REVIEW.md).
+
+> **Note 2026-10-29:** line 7's "live status" and line 11's cron description are history; `STATUS.md` is a historical runbook and the live status is [`../CURRENT_STATUS.md`](../CURRENT_STATUS.md); the current recurring job is described in [`../gptq_extension/cron_prompt.md`](../gptq_extension/cron_prompt.md).

@@ -11,3 +11,5 @@ These files were produced by our own earlier pipeline (`src/` and the Phase-1 / 
 | `quantization_survival_demo_result.json` | the 2,048-token WikiText demo (INT7 98.28%, INT6 94.31%) |
 | `behavioral_loss_link_results.json`, `language_behavioral_dataset.csv`, `fertility_vs_english_flores_dev.json` | the exploratory behavioural link |
 | `w0_sanity_check_result.json`, `multilang_sanity_check_result.json`, `mid_submission_results.json` | early checks and the mid-submission summary |
+
+> **Note 2026-10-29:** the byte-identical copy `phase1_survival_results_27lang.json` was removed (it equalled `phase1_survival_results_27lang_gpu.json`, sha256 `cfca6f928de65147...`, checked with `cmp` before the removal; `issues.md` line 260 records the copy). The `_gpu.json` file is the one kept.

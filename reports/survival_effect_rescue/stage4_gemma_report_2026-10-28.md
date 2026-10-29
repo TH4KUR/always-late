@@ -92,3 +92,5 @@ MAE is the mean absolute error of the predicted W1 on held-out languages. At INT
 ## 7. How this was produced
 
 `scripts/g0/survival_effect.py` (analysis; `--control-only` runs the reproduction control) and `scripts/g0/survival_effect_report.py` (this text); tests `scripts/g0/tests/test_survival_effect.py` and `test_survival_effect_report.py`; inputs: the F5 job directories (private dataset `runs/gptq-extension/stage3_f5_gain`) and the Phase 1 equal-budget survival file; decision entry D-113.
+
+> **Note 2026-10-29:** the Llama-3.2-1B check mentioned as not yet run was run and analysed later (D-114; see `README.md` of this folder).

@@ -312,3 +312,5 @@ Everything the pipeline downloads or depends on, and what I found. "Verified" me
 | *Planned, not used:* Llama-3.2-1B + `seonglae` TopK SAE, EleutherAI SAEs | Extension. | Never run. `TopKSAE` is untested (D6). |
 
 General reproducibility gap: none of the three downloaded artifacts (model, SAE, FLORES) is pinned by revision or hash, so a later re-run could silently use different files.
+
+- 2026-10-29 (Claude): the copy named at line 260, `reports/legacy_pipeline/phase1_survival_results_27lang.json`, was removed after `cmp` showed it byte-identical to the `_gpu.json` file (note in `reports/legacy_pipeline/README.md`).

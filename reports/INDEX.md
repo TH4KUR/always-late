@@ -22,9 +22,15 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 | [`functional_validation/RESULTS_SUMMARY.md`](functional_validation/RESULTS_SUMMARY.md), [`FIGURE_INDEX.md`](functional_validation/FIGURE_INDEX.md), [`REPRODUCE.md`](functional_validation/REPRODUCE.md) | the functional study's claim map (evidence and limit per claim), every finished figure, one command that reruns the analyses |
 | [`functional_validation/gain_study/README.md`](functional_validation/gain_study/README.md) | Study G (the user's major study, 2026-10-24), full record |
 | [`intervention_transfer/results/`](intervention_transfer/results/main/README.md) | main, external and recovery results of the transfer study (D-094 to D-099) |
-| [`handoffs/`](handoffs/) | numbered handoffs; newest at cleanup: 045 (scientific), 046 (modular cleanup), 047 (this documentation cleanup); 040 = the Gemma-2-9B hand-over to another team |
+| [`handoffs/`](handoffs/) | numbered handoffs; newest at cleanup: 045 (scientific), 046 (modular cleanup), 047 (this documentation cleanup); 040 = the Gemma-2-9B hand-over to another team **[2026-10-29: handoffs 048 to 057 exist (GPTQ extension, survival measurement study, 9B review and recovery preparation); newest is the highest number]** |
 | [`novelty_assessment_2026-10-26.md`](novelty_assessment_2026-10-26.md), [`publication_reassessment_2026-10-26/README.md`](publication_reassessment_2026-10-26/README.md) | dated novelty verdict; Codex's post-D-094 reassessment (historical) |
 | [`wandb_schema_v2.md`](wandb_schema_v2.md) | wandb schema v2 and the post-hoc upload of the finished results (D-091) |
+| [`wandb_schema_v2_gptq_extension.md`](wandb_schema_v2_gptq_extension.md) | wandb schema of the GPTQ extension runs (D-115, D-116) |
+| [`survival_measurement/stage3/README.md`](survival_measurement/stage3/README.md), [`survival_measurement/STATUS.md`](survival_measurement/STATUS.md) | the survival measurement-validity study (D-117 to D-124): plain-words results and the full ledger |
+| [`analysis/OPUS_DETAILED_ANALYSIS.md`](analysis/OPUS_DETAILED_ANALYSIS.md) | independent audit of all results (evidence labels, honesty audit, 56 headline numbers checked), written 2026-10-29 by an Opus 5.5 high-effort agent; model output, key findings checked by Claude (D-126) |
+| [`FULL_PROJECT_REPORT_DRAFT.md`](FULL_PROJECT_REPORT_DRAFT.md) | the full plain-language progress report of the project (draft for the team's final report), written 2026-10-29 by an Opus 5.5 high-effort agent (D-126) |
+| [`steering_feasibility_review_2026-10-28.md`](steering_feasibility_review_2026-10-28.md) | review of whether steering experiments are feasible (not run) |
+| [`functional_validation/gemma9b/README.md`](functional_validation/gemma9b/README.md), [`REVIEW_STATUS.md`](functional_validation/gemma9b/REVIEW_STATUS.md) | the imported Gemma-2-9B original-RTN results (D-125) and their review ledger; the GPTQ-only recovery run is prepared on branch `gemma9b-confirmation` and not run |
 | [`../DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md) | the questions for the user (Q1 to Q29) with options, defaults and answers |
 | [`../paper/course-report/README.md`](../paper/course-report/README.md) | course report (31 October) |
 

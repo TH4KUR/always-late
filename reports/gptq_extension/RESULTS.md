@@ -118,7 +118,7 @@ The old pre-set test "does the association-retention label (lost / retained) tel
 ## 6. What we cannot say
 
 - **We cannot say GPTQ is better "because of error compensation".** GPTQ saw example text from the same 27 languages and RTN saw none. Matched RTN is there to separate the grid and granularity change; the remaining gap mixes compensation and calibration. A GPTQ run with no calibration text is not possible; a different or smaller calibration text would be a new experiment.
-- **One model, one layer, one feature dictionary, weights-only rounding.** Nothing here covers other models (the Gemma-2-9B check belongs to another team), other layers, or activation quantization.
+- **One model, one layer, one feature dictionary, weights-only rounding.** Nothing here covers other models (the Gemma-2-9B check belongs to another team [Note 2026-10-29: original-RTN 9B results were imported on 2026-10-29 (D-125) and are unreproduced; no 9B GPTQ or matched-RTN result exists]), other layers, or activation quantization.
 - **All contrasts are exploratory.** No multiplicity rule covers three arms. The three-arm intervals in sections 4.3 and 4.4 are each arm's own, not paired contrasts (the stage 1 and group-level transfer contrasts are paired by language).
 - **Not repeated:** F4 (its feature sets come from the legacy quantizer's own association losses) and the association retention study E3 (a 2.76 GB file per arm does not fit the cluster disk, 2.4 GB free). The Belebele pre-set statements S1 to S5 need all six bit widths and were not rerun (only 6 and 4 bits were).
 

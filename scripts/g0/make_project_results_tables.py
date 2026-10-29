@@ -239,7 +239,7 @@ SECTIONS = [
     ("A4b. The same ratio for the control rows (rounding only, and no quantization)", t_function_rounding,
      "These rows show what 'no change' looks like: INT0 is exactly 1.00; INT16 and INT12 are rounding only."),
     ("A5. Patching experiment (F3): how much of the INT4 loss gap is repaired when the group's full-precision activations are put back",
-     t_patching, "Source: `reports/functional_validation/results/rescue/rescue.csv`, part 'group'. Small numbers mean the language groups hold little of the damage."),
+     t_patching, "Source: `reports/functional_validation/results/rescue/rescue.csv`, part 'group'. A small number is what this particular patch recovers; it is not an upper bound and not a location of the damage (D-110)."),
     ("A6. Downstream task (Belebele reading comprehension), accuracy per language", t_belebele,
      "Source: `reports/functional_validation/results/mc_eval/accuracy.csv`. Chance is 0.25. Nine languages are not covered because the model cannot read them well enough for the task to measure anything."),
     ("A7. Study G (scaling the group up and down): net harm per language in nats per token (group minus matched controls)", t_gain,
