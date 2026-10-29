@@ -230,8 +230,11 @@ def validate_dir(out_dir, conditions, n_lang, n_feat):
         f = out / f"sums_{label}.pt"
         if not f.exists():
             raise SidecarError(f"missing file {f.name}")
-        d = load_sums(f)
-        if set(d) != {"label", "stat_names", "stats", "n"} or d["label"] != label or list(d["stat_names"]) != list(STAT_NAMES):
+        try:
+            d = load_sums(f)
+        except Exception as e:                                                                  # a truncated or corrupt file is a failed validation, not a crash
+            raise SidecarError(f"{f.name}: cannot be loaded ({type(e).__name__})") from None
+        if not isinstance(d, dict) or set(d) != {"label", "stat_names", "stats", "n"} or d["label"] != label or list(d["stat_names"]) != list(STAT_NAMES):
             raise SidecarError(f"{f.name}: unexpected structure")
         if set(d["stats"]) != set(STAT_NAMES):
             raise SidecarError(f"{f.name}: statistics {sorted(set(STAT_NAMES) ^ set(d['stats']))} missing or extra")
@@ -320,11 +323,22 @@ def load_committed(run_dir):
         return torch.load(path, map_location="cpu", weights_only=False)
 
 
+def _norm(weights):
+    return None if weights is None else str(weights).replace("-", "_")
+
+
+def committed_weights(run_dir):
+    """The weight method of an arm's committed stage-1 run: the `method` of the `weights_manifest.json` next to its `eq/` directory, `rtn` (legacy rounding) when there is none."""
+    m = Path(run_dir).parent / "weights_manifest.json"
+    return json.loads(m.read_text()).get("method", "unknown") if m.exists() else "rtn"
+
+
 def check_committed(job_dir, committed_run):
     """G2(ii) and the committed half of G4 on a FINISHED job's saved sums (run locally after the files are fetched, so the committed survival.pt need not be on the cluster):
     -> {"languages_match", "G2_committed": {"passed", "per_condition"}, "G4_committed": {condition: bool}}. Never raises on a numeric disagreement; the caller reports it."""
     job = Path(job_dir); meta = json.loads((job / "meta.json").read_text()); committed = load_committed(committed_run)
-    out = {"languages_match": list(committed["languages"]) == list(meta["languages"]), "G2_committed": {"per_condition": {}}, "G4_committed": {}}
+    out = {"languages_match": list(committed["languages"]) == list(meta["languages"]), "weights_match": _norm(meta.get("weights")) == _norm(committed_weights(committed_run)),
+           "weights": [meta.get("weights"), committed_weights(committed_run)], "G2_committed": {"per_condition": {}}, "G4_committed": {}}
     for label in meta["saved_conditions"]:
         sums, bits = load_sums(job / f"sums_{label}.pt"), int(label[3:])
         if bits not in committed["corr"]:
@@ -334,7 +348,7 @@ def check_committed(job_dir, committed_run):
             gate_g4(sums, committed_firing_rate=committed["firing_rate"]); out["G4_committed"][label] = True
         except SidecarError:
             out["G4_committed"][label] = False
-    out["G2_committed"]["passed"] = bool(out["languages_match"]) and all(v["passed"] for v in out["G2_committed"]["per_condition"].values())
+    out["G2_committed"]["passed"] = bool(out["languages_match"]) and bool(out["weights_match"]) and all(v["passed"] for v in out["G2_committed"]["per_condition"].values())
     return out
 
 
@@ -451,7 +465,10 @@ def main(argv=None):
         raise SidecarError("the loaded SAE has no `threshold` parameter (not a JumpReLU SAE)")
     theta = sae.threshold.detach().float().cpu()
     cap = PreCapture(sae); encode = cap.wrap(lambda acts: env["encode_sae"](sae, acts))
-    meta_base = {"model": model_name, "sae_release": SAE_RELEASE, "sae_id": SAE_ID, "hook": hook, "device": DEVICE,
+    quantizer = env["quantize_rtn_per_output_channel_tl"]                                      # a LazyQuantizer (with .args.weights) when run_with_weights patched the loader, their plain function otherwise
+    weights = getattr(getattr(quantizer, "args", None), "weights", None) or "rtn"
+    log("weights of this job:", weights)
+    meta_base = {"model": model_name, "sae_release": SAE_RELEASE, "sae_id": SAE_ID, "hook": hook, "device": DEVICE, "weights": weights,
                  "versions": run.package_versions(["torch", "transformer-lens", "sae-lens", "transformers", "datasets"])}
     run_job(a, names, devtest, bos, pad, n_feat, forward, encode, quantize, restore, theta, cap, meta_base, log, t0, argv)
 

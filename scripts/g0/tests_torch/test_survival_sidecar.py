@@ -430,6 +430,11 @@ class Files(unittest.TestCase):
             self.assertTrue(torch.equal(back["stats"][k], self.sink.sums["INT4"]["stats"][k]))
         self.assertTrue(torch.equal(back["n"], self.sink.sums["INT4"]["n"]))
 
+    def test_the_validator_rejects_a_corrupt_file_as_a_failed_validation(self):
+        self.write(); (self.tmp / "sums_INT4.pt").write_bytes(b"not a torch file")
+        with self.assertRaises(sc.SidecarError):
+            sc.validate_dir(self.tmp, ["INT8", "INT4", "INT0"][:2], n_lang=3, n_feat=F)
+
     def test_the_validator_rejects_a_missing_file_a_missing_statistic_a_wrong_dtype_a_wrong_shape_and_disagreeing_counts(self):
         self.write(("INT8", "INT4"))
         with self.assertRaises(sc.SidecarError):
@@ -529,7 +534,7 @@ class Job(unittest.TestCase):
         a = sc.parse_args(["--out", str(self.tmp / "out"), "--bits", *map(str, bits), "--flores-root", "unused", "--batch-size", "4", *extra]); a.thresholds_csv = None
         if committed_dir is not None:
             a.committed_run = str(committed_dir)
-        return sc.run_job(a, self.names, self.data, BOS, PAD, F, fk.forward, fk.encode, fk.quantize, fk.restore, fk.thr, StubCap(fk), {"device": "cpu", "model": "toy"}, lambda *m: None, 0.0)
+        return sc.run_job(a, self.names, self.data, BOS, PAD, F, fk.forward, fk.encode, fk.quantize, fk.restore, fk.thr, StubCap(fk), {"device": "cpu", "model": "toy", "weights": "rtn"}, lambda *m: None, 0.0)
 
     def committed(self, shift=0.0, rate_shift=0.0):
         keep = toy_keep(self.data); res = call(Fake(), self.data, "mask", bits=(8, 4, 0), keep=keep, batch_size=4); eq = {k: v["eq"] for k, v in res.items()}
@@ -576,6 +581,14 @@ class Job(unittest.TestCase):
         self.assertEqual(bad["G4_committed"], {"INT8": False, "INT4": False})
         meta = json.loads((self.tmp / "out" / "meta.json").read_text()); meta["languages"] = meta["languages"][::-1]; (self.tmp / "out" / "meta.json").write_text(json.dumps(meta))
         shutil.rmtree(self.tmp / "committed"); self.assertFalse(sc.check_committed(self.tmp / "out", self.committed())["G2_committed"]["passed"])      # another language order is never compared
+
+    def test_check_committed_refuses_a_committed_run_of_another_weight_method(self):
+        self.run_job(); d = self.committed()
+        self.assertTrue(sc.check_committed(self.tmp / "out", d)["weights_match"])                      # no weights_manifest.json next to the committed run: legacy rounding = the job's "rtn"
+        (self.tmp / "weights_manifest.json").write_text(json.dumps({"method": "gptq"}))
+        r = sc.check_committed(self.tmp / "out", d); self.assertFalse(r["weights_match"]); self.assertFalse(r["G2_committed"]["passed"]); self.assertEqual(r["weights"], ["rtn", "gptq"])
+        (self.tmp / "weights_manifest.json").write_text(json.dumps({"method": "rtn_matched"})); meta = json.loads((self.tmp / "out" / "meta.json").read_text()); meta["weights"] = "rtn-matched"
+        (self.tmp / "out" / "meta.json").write_text(json.dumps(meta)); self.assertTrue(sc.check_committed(self.tmp / "out", d)["weights_match"])      # rtn-matched and rtn_matched are the same method
 
     def test_check_committed_skips_a_rung_the_committed_file_does_not_have(self):
         self.run_job(); d = self.committed(); c = torch.load(d / "survival.pt", weights_only=True); del c["corr"][4]; torch.save(c, d / "survival.pt")

@@ -1,3 +1,4 @@
+# survival_sidecar.py, 2026-10-29 (final battery, after the review of project-fe)
 KILLED          Sab uses a*a
 KILLED          Sb uses a
 KILLED          Sbb uses a
@@ -54,6 +55,25 @@ KILLED          G6 expected hash not compared
 KILLED          G1 never run
 KILLED          subset still compares committed
 KILLED          check_committed ignores language order
-KILLED          check_committed passed ignores languages
 KILLED          check_committed G4 failure hidden
 KILLED          check_committed missing rung not skipped
+KILLED          committed weights not compared
+KILLED          weights_match not part of passed
+KILLED          committed legacy default wrong
+KILLED          corrupt file crashes instead of failing validation
+KILLED          check_committed passed ignores languages
+
+# survival_validate.py
+KILLED          gate failures ignored
+KILLED          missing gate ignored
+KILLED          failed gate ignored
+KILLED          theta comparison not required
+KILLED          conditions not checked
+KILLED          regime/stream not checked
+KILLED          pre-activation source/dtype not checked
+KILLED          full-run check off
+KILLED          weights manifest never checked
+KILLED          smoke run compared with committed
+KILLED          arm weights not checked
+KILLED          built bits include INT0
+KILLED          sums failure hidden
