@@ -1,0 +1,59 @@
+KILLED          Sab uses a*a
+KILLED          Sb uses a
+KILLED          Sbb uses a
+KILLED          on_off swapped
+KILLED          off_on swapped
+KILLED          exceed1 strict less (ties on)
+KILLED          exceed2 non-strict
+KILLED          dpre sign
+KILLED          margin plus theta
+KILLED          FP-active mask from b
+KILLED          n_a from b
+KILLED          Sa_both all tokens
+KILLED          Sb_both all tokens
+KILLED          Saa_both all tokens
+SURVIVED        Sab_both all tokens
+KILLED          S_d2 not squared
+KILLED          S_dpre2 abs
+KILLED          n counts batches
+KILLED          eq mask ignored
+KILLED          G6 content check removed
+KILLED          G6 count check removed
+KILLED          hash ignores language
+KILLED          hash ignores tokens
+KILLED          hash ignores eq mask
+KILLED          G3 never run in the sink
+KILLED          G4 exactness removed
+KILLED          G4 firing count removed
+KILLED          G2(ii) counts ignored
+KILLED          G2(ii) max tolerance loosened
+KILLED          G2(ii) percentile loosened
+KILLED          G2(i) never raises
+KILLED          corr not clamped
+KILLED          G1 sums comparison removed
+KILLED          G1 flips ignored
+KILLED          validator dtype/shape removed
+KILLED          validator count agreement removed
+KILLED          validator names removed
+KILLED          stale pre allowed
+KILLED          pre shape check removed
+KILLED          chunk skips a row
+KILLED          FP-first check removed
+KILLED          G3 never raises
+KILLED          thresholds not compared
+KILLED          thresholds index/length not checked
+KILLED          thresholds header not checked
+KILLED          INT0 saved
+KILLED          keep masks use dev offset
+KILLED          failures do not stop the job
+KILLED          G2(ii) fatal
+KILLED          G4 against committed firing rate skipped
+KILLED          G2(i) compares the wrong rung
+KILLED          G6 condition hashes not compared
+KILLED          G6 expected hash not compared
+KILLED          G1 never run
+KILLED          subset still compares committed
+KILLED          check_committed ignores language order
+KILLED          check_committed passed ignores languages
+KILLED          check_committed G4 failure hidden
+KILLED          check_committed missing rung not skipped
