@@ -194,3 +194,4 @@ Deadline: course deliverables 31 October 2026 (the report and deck are the team'
 - 2026-10-29 07:11 IST (project-6d cron): D-117 smoke jobs 45775 and 45776 running (heads fine); idle firing, no new work. Ledger `reports/survival_measurement/STATUS.md`.
 - 2026-10-29 07:54 IST (project-6d cron): D-117 smoke 45775 passed all gates; smoke 45776 failed in the weight wrapper (INT6 hash not recorded under FROZEN=1; command corrected to FROZEN=1,RECORD=1), resubmitted as 45796; full jobs will get -t 07:00:00. Ledger `reports/survival_measurement/STATUS.md`.
 - 2026-10-29 07:54 IST (project-6d cron): D-117 full legacy job queued as 45799 (-t 07:00:00); smoke 45796 (matched) running; sc-matched / sc-gptq wait for it. Cron entries: 3 present.
+- 2026-10-29 08:32 IST (project-6d cron): D-117 smoke 45796 passed; task 6 done; all three full sidecar jobs queued (45799 running, 45836 and 45837 pending, -t 07:00:00). Ledger `reports/survival_measurement/STATUS.md`.
