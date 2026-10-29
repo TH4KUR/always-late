@@ -6,6 +6,8 @@ Started 2026-10-27 17:34 IST at the user's request ("run tests again with GPTQ q
 
 ## NEXT STEP
 
+**Update 2026-10-29 16:32 IST (D-125): existing Gemma-2-9B RTN results are now on main; Claude's next bounded task is their CPU review and integration. Read [the 9B review queue](../functional_validation/gemma9b/REVIEW_STATUS.md). This supersedes the older "nothing pending" notices for this task only. No new GPU run is authorized here.**
+
 (Rewritten by every firing; the first line says which task of the plan comes next and what "done" looks like.)
 
 **Current (rewritten 2026-10-29 02:35 IST): EVERYTHING AUTHORIZED IS DONE (D-101 to D-116): the GPTQ extension, the survival-and-intervention plan, the Hugging Face and wandb records; handoff 054.** Open for the user only: Q29 (paired precision audit, never started), whether any of this enters the course report (deliverables due 31 October 2026), Q32 stays open (default carried out). Idle firings only append a ledger line. No further job, model or analysis is authorized.
@@ -211,3 +213,5 @@ Deadline: course deliverables 31 October 2026 (the report and deck are the team'
 - 2026-10-29 15:51 IST (project-6d cron): idle firing: Ada queue empty, tree clean and equal to origin/main (0938eb3), no new commits or user message; nothing to do.
 - 2026-10-29 16:31 IST (project-6d cron): idle firing: Ada queue empty, tree clean and equal to origin/main (8a1d834), no new commits or user message; nothing to do.
 
+
+- 2026-10-29 16:32 IST (Codex, user request D-125): copied existing 9B report/freeze plus eight detailed artifact files to main, with pinned hashes; added the CPU review queue to the existing cron prompt. GPTQ and matched-RTN 9B outcomes remain missing; no GPU job or paid session started.

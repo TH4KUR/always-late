@@ -1,0 +1,66 @@
+{
+  "imported_at": "2026-10-29 16:32 IST",
+  "source_branch": "gemma9b-confirmation",
+  "source_commit": "34c6d115313a2fecc90ca7705abe0b1d4587240e",
+  "original_verdict_commit": "0c3d3c705f6eab6cff225be22c123083ed5f566a",
+  "git_files": [
+    {
+      "path": "verdict.md",
+      "sha256": "2b57d7bcdffcb8c2c2ce886f01694da0ff984a08ef6f7c513dd95fe1ee57a502",
+      "git_blob": "b55e55d87c2a658efeefe45eb55f1a6bed9fb420"
+    },
+    {
+      "path": "legacy_rtn_run_freeze_2026-10-29.json",
+      "sha256": "56f30e581b166c4253746ae7bdb7a46539e56bad441d6adc6e52dd0dd55b452e",
+      "git_blob": "09b8c71b53fdc09d56fed39d64e034c06c4392a5"
+    }
+  ],
+  "artifact_files": {
+    "repo": "karma-skz/always-late-artifacts",
+    "revision": "7291ebf99b4973d3f79e56c8c4800e514f0f6900",
+    "prefix": "gemma9b/runs/full/",
+    "files": [
+      {
+        "path": "analysis/alpha_star.csv",
+        "bytes": 3679,
+        "sha256": "6123a4ae08d4794af91ef1d7d264cd7a33e9182057ea3bdf99172b712897f65b"
+      },
+      {
+        "path": "analysis/analysis.json",
+        "bytes": 34918,
+        "sha256": "4d221cc4928e0d5a79c6c40a526453bc8b8a865c52b0339d9f2e0231db28e0ac"
+      },
+      {
+        "path": "analysis/curves.csv",
+        "bytes": 288354,
+        "sha256": "7454ebc4200594520794f5be39ae3fdb34b89b21526bb836bac7056e628e24e1"
+      },
+      {
+        "path": "analysis/reliability.csv",
+        "bytes": 5028,
+        "sha256": "97f2192e9a2fa5686f31021a3b95a27c53418b224011a48a7cf61c71a7f56d5c"
+      },
+      {
+        "path": "analysis/report.md",
+        "bytes": 15653,
+        "sha256": "5056eb3d5c3c4386cbd92d62ce60333bff2f9dba3481d4b05c5588e44019fcb9"
+      },
+      {
+        "path": "meta_lm_eval.json",
+        "bytes": 1969,
+        "sha256": "7ff88b06977e0c21bb610155a5264e558a2aabe67f2f0728317b7da8ed6219b4"
+      },
+      {
+        "path": "manifest.json",
+        "bytes": 237508,
+        "sha256": "2cabd7f4469fc80cd624acf17d499f709228f2c64247b3304ad0bc2a9b21aeed"
+      },
+      {
+        "path": "eq/meta.json",
+        "bytes": 5270,
+        "sha256": "7ea58051b9a7885cbf90b984fe065331d569859999445600b76403f4910e2db7"
+      }
+    ]
+  },
+  "verification": "source bytes checked; scientific reproduction pending"
+}

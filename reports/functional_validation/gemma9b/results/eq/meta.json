@@ -1,0 +1,284 @@
+{
+ "stream": "eq",
+ "budget_tokens_per_language": 25820,
+ "n_languages": 27,
+ "seed": 0,
+ "n_boot": 100,
+ "n_perm": 50,
+ "model": "google/gemma-2-9b",
+ "sae_repo": "gemma-scope-9b-pt-res-canonical",
+ "sae_id": "layer_20/width_16k/canonical",
+ "hook": "blocks.20.hook_resid_post",
+ "layer_alias": "blocks.20.hook_resid_post",
+ "bos_id": 2,
+ "pad_id": 0,
+ "languages": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tam_Taml",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda",
+  "tel_Telu",
+  "yor_Latn",
+  "sun_Latn",
+  "amh_Ethi",
+  "ibo_Latn",
+  "hau_Latn",
+  "khm_Khmr",
+  "lao_Laoo"
+ ],
+ "selective_per_language": {
+  "eng_Latn": 1266,
+  "deu_Latn": 113,
+  "spa_Latn": 138,
+  "fra_Latn": 119,
+  "por_Latn": 60,
+  "rus_Cyrl": 72,
+  "zho_Hans": 340,
+  "jpn_Jpan": 398,
+  "kor_Hang": 107,
+  "hin_Deva": 81,
+  "ben_Beng": 60,
+  "tam_Taml": 87,
+  "tur_Latn": 140,
+  "vie_Latn": 191,
+  "ind_Latn": 105,
+  "tha_Thai": 208,
+  "pol_Latn": 79,
+  "ukr_Cyrl": 57,
+  "kan_Knda": 75,
+  "tel_Telu": 65,
+  "yor_Latn": 369,
+  "sun_Latn": 181,
+  "amh_Ethi": 154,
+  "ibo_Latn": 149,
+  "hau_Latn": 142,
+  "khm_Khmr": 236,
+  "lao_Laoo": 226
+ },
+ "commit": "521f3f3",
+ "corpus_report": {
+  "dev": [
+   {
+    "code": "eng_Latn",
+    "sentences": 997,
+    "tokens": 25820,
+    "mean_len": 25.897693079237712,
+    "max_len": 80
+   },
+   {
+    "code": "deu_Latn",
+    "sentences": 997,
+    "tokens": 32251,
+    "mean_len": 32.34804413239719,
+    "max_len": 86
+   },
+   {
+    "code": "spa_Latn",
+    "sentences": 997,
+    "tokens": 32638,
+    "mean_len": 32.73620862587763,
+    "max_len": 75
+   },
+   {
+    "code": "fra_Latn",
+    "sentences": 997,
+    "tokens": 34662,
+    "mean_len": 34.76629889669007,
+    "max_len": 91
+   },
+   {
+    "code": "por_Latn",
+    "sentences": 997,
+    "tokens": 31667,
+    "mean_len": 31.762286860581746,
+    "max_len": 81
+   },
+   {
+    "code": "rus_Cyrl",
+    "sentences": 997,
+    "tokens": 36038,
+    "mean_len": 36.14643931795386,
+    "max_len": 97
+   },
+   {
+    "code": "zho_Hans",
+    "sentences": 997,
+    "tokens": 28244,
+    "mean_len": 28.32898696088265,
+    "max_len": 87
+   },
+   {
+    "code": "jpn_Jpan",
+    "sentences": 997,
+    "tokens": 30279,
+    "mean_len": 30.37011033099298,
+    "max_len": 79
+   },
+   {
+    "code": "kor_Hang",
+    "sentences": 997,
+    "tokens": 42209,
+    "mean_len": 42.336008024072214,
+    "max_len": 117
+   },
+   {
+    "code": "hin_Deva",
+    "sentences": 997,
+    "tokens": 47984,
+    "mean_len": 48.1283851554664,
+    "max_len": 142
+   },
+   {
+    "code": "ben_Beng",
+    "sentences": 997,
+    "tokens": 69452,
+    "mean_len": 69.66098294884654,
+    "max_len": 174
+   },
+   {
+    "code": "tam_Taml",
+    "sentences": 997,
+    "tokens": 66577,
+    "mean_len": 66.77733199598796,
+    "max_len": 169
+   },
+   {
+    "code": "tur_Latn",
+    "sentences": 997,
+    "tokens": 35867,
+    "mean_len": 35.97492477432297,
+    "max_len": 96
+   },
+   {
+    "code": "vie_Latn",
+    "sentences": 997,
+    "tokens": 35168,
+    "mean_len": 35.27382146439318,
+    "max_len": 105
+   },
+   {
+    "code": "ind_Latn",
+    "sentences": 997,
+    "tokens": 28512,
+    "mean_len": 28.59779338014042,
+    "max_len": 88
+   },
+   {
+    "code": "tha_Thai",
+    "sentences": 997,
+    "tokens": 47288,
+    "mean_len": 47.43029087261785,
+    "max_len": 121
+   },
+   {
+    "code": "pol_Latn",
+    "sentences": 997,
+    "tokens": 37675,
+    "mean_len": 37.788365095285855,
+    "max_len": 121
+   },
+   {
+    "code": "ukr_Cyrl",
+    "sentences": 997,
+    "tokens": 43069,
+    "mean_len": 43.19859578736209,
+    "max_len": 104
+   },
+   {
+    "code": "kan_Knda",
+    "sentences": 997,
+    "tokens": 86233,
+    "mean_len": 86.4924774322969,
+    "max_len": 219
+   },
+   {
+    "code": "tel_Telu",
+    "sentences": 997,
+    "tokens": 74624,
+    "mean_len": 74.84854563691073,
+    "max_len": 180
+   },
+   {
+    "code": "yor_Latn",
+    "sentences": 997,
+    "tokens": 62927,
+    "mean_len": 63.116349047141426,
+    "max_len": 232
+   },
+   {
+    "code": "sun_Latn",
+    "sentences": 997,
+    "tokens": 39102,
+    "mean_len": 39.219658976930795,
+    "max_len": 98
+   },
+   {
+    "code": "amh_Ethi",
+    "sentences": 997,
+    "tokens": 82247,
+    "mean_len": 82.49448345035105,
+    "max_len": 212
+   },
+   {
+    "code": "ibo_Latn",
+    "sentences": 997,
+    "tokens": 56033,
+    "mean_len": 56.20160481444333,
+    "max_len": 164
+   },
+   {
+    "code": "hau_Latn",
+    "sentences": 997,
+    "tokens": 44707,
+    "mean_len": 44.841524573721166,
+    "max_len": 126
+   },
+   {
+    "code": "khm_Khmr",
+    "sentences": 997,
+    "tokens": 141697,
+    "mean_len": 142.123370110331,
+    "max_len": 370
+   },
+   {
+    "code": "lao_Laoo",
+    "sentences": 997,
+    "tokens": 118471,
+    "mean_len": 118.82748244734202,
+    "max_len": 280
+   }
+  ]
+ },
+ "device": "cuda",
+ "versions": {
+  "torch": "2.14.1",
+  "transformer-lens": "3.9.0",
+  "transformers": "5.19.0",
+  "safetensors": "0.8.0",
+  "huggingface_hub": "2.2.0"
+ },
+ "seconds": 176.8498022556305,
+ "argv": [
+  "--out",
+  "/home/ubuntu/gemma9b-workspace/runs/full",
+  "--flores-root",
+  "/home/ubuntu/gemma9b-workspace/data",
+  "--commit",
+  "521f3f3"
+ ]
+}

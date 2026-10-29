@@ -1,0 +1,93 @@
+{
+ "task": "lm",
+ "split": "eval",
+ "preset": "gain|0.3535533905932738,0.1767766952966369,0.08838834764831845,2.82842712474619,5.65685424949238,11.31370849898476,1.1,1.2|c3|K64",
+ "precisions": [
+  "4"
+ ],
+ "languages": [
+  "eng_Latn",
+  "deu_Latn",
+  "spa_Latn",
+  "fra_Latn",
+  "por_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "jpn_Jpan",
+  "kor_Hang",
+  "hin_Deva",
+  "ben_Beng",
+  "tam_Taml",
+  "tur_Latn",
+  "vie_Latn",
+  "ind_Latn",
+  "tha_Thai",
+  "pol_Latn",
+  "ukr_Cyrl",
+  "kan_Knda",
+  "tel_Telu",
+  "yor_Latn",
+  "sun_Latn",
+  "amh_Ethi",
+  "ibo_Latn",
+  "hau_Latn",
+  "khm_Khmr",
+  "lao_Laoo"
+ ],
+ "n_sentences": 300,
+ "lm_seed": 0,
+ "commit": "d27a6a0",
+ "model": "google/gemma-2-9b",
+ "hook": "blocks.20.hook_resid_post",
+ "gates": {
+  "split_equals_full": true,
+  "scale_one_identity": true,
+  "donor_self_identity": true,
+  "sham_identity": true
+ },
+ "manifest_source_sha256": "622af41f0cf4d87375c520fc25467154b7e6102f8e46c5f89d0ffb95346b053d",
+ "argv": [
+  "--out",
+  "/home/ubuntu/gemma9b-workspace/runs/full",
+  "--flores-root",
+  "/home/ubuntu/gemma9b-workspace/data",
+  "--selectivity",
+  "/home/ubuntu/gemma9b-workspace/runs/full/eq/selectivity.pt",
+  "--manifest",
+  "/home/ubuntu/gemma9b-workspace/runs/full/manifest.json",
+  "--precisions",
+  "4",
+  "--split",
+  "eval",
+  "--n-eval",
+  "300",
+  "--panel",
+  "eng_Latn",
+  "rus_Cyrl",
+  "zho_Hans",
+  "hin_Deva",
+  "--commit",
+  "d27a6a0",
+  "--preset",
+  "gain|0.3535533905932738,0.1767766952966369,0.08838834764831845,2.82842712474619,5.65685424949238,11.31370849898476,1.1,1.2|c3|K64"
+ ],
+ "versions": {
+  "torch": "2.14.1",
+  "transformer-lens": "3.9.0",
+  "sae-lens": "6.54.5",
+  "transformers": "5.19.0",
+  "datasets": "5.1.0"
+ },
+ "summary": {
+  "INT4": {
+   "seconds": 1739.741705417633,
+   "token_passes": 17937580,
+   "tokens_per_second": 10310.484564542874,
+   "configs": 999
+  }
+ },
+ "skipped_for_time": [],
+ "complete": true,
+ "seconds": 1768.1606554985046,
+ "peak_gpu_gb": 23.6251008
+}

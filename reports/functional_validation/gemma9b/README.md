@@ -1,0 +1,17 @@
+# Gemma-2-9B results on main
+
+Imported 2026-10-29 at the user's request (D-125). **These are completed original-RTN results. GPTQ and matched-RTN 9B results are still missing.** Runtime implementation remains on the single `gemma9b-confirmation` branch.
+
+## Files and status
+
+- [Pushed verdict](verdict.md): source commit `0c3d3c7`, preserved from consolidation commit `34c6d11`. It reports that all five earlier confirmation predictions passed; independent reproduction is pending.
+- [Execution freeze](legacy_rtn_run_freeze_2026-10-29.json): the completed run's original freeze, byte for byte. It does not freeze the pending GPTQ runs.
+- [Detailed analysis](results/analysis/report.md), [analysis JSON](results/analysis/analysis.json), [curves](results/analysis/curves.csv), [reliability](results/analysis/reliability.csv), [best gain factors](results/analysis/alpha_star.csv), [run metadata](results/meta_lm_eval.json), [feature groups](results/manifest.json), [tagging metadata](results/eq/meta.json). These eight small outputs were copied from the private artifact store at a pinned revision.
+- [Import provenance](import_provenance.json): source commit, artifact revision and SHA-256 for every copied file. No weights or raw tensor files were added to Git.
+- [Review queue](REVIEW_STATUS.md): the existing Claude cron's next task.
+
+## Reported observations, awaiting the raw-output review
+
+The source reports positive full-precision language-group ablation effects in 27/27 languages; relative ablation harm 1.003 at INT8, 1.006 at INT6 and 2.479 at INT4; ordered down-scaling harm in 27/27 languages; no reliable repair from boosting the group (8/27 languages meet the group-specific repair criterion, against a threshold of 14). These ratios describe the harm caused by removing features, not feature survival rates or model accuracy.
+
+Amplified ablation harm does not establish that the original quantization damage is concentrated in language features. A clean replication of all current main-branch findings is not established by this original-RTN-only report. Missing uncertainty and incomplete metadata must be checked before promoting claims.

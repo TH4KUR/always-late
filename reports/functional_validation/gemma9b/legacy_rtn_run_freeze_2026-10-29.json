@@ -1,0 +1,103 @@
+{
+ "schema": 1,
+ "kind": "functional-validation-freeze",
+ "part": "T-LM",
+ "model": "google/gemma-2-9b",
+ "sae_release": "gemma-scope-9b-pt-res-canonical",
+ "sae_id": "layer_20/width_16k/canonical",
+ "layer": 20,
+ "hook": "blocks.20.hook_resid_post",
+ "d_model": 3584,
+ "d_sae": 16384,
+ "study": "D-089 (Gemma-2-9B confirmation of the Gemma-2-2B functional-validation results)",
+ "created": "2026-10-29",
+ "commit": "521f3f3eada6fe8cc1d2e4a833e710b11164db65",
+ "files": {
+  "their_functions": {
+   "path": "reports/g0/their_functions.json",
+   "sha256": "62a1765b9ea1230d216f382543c4a165d84e7cb7f27ae43af3b882a7b5c24330"
+  },
+  "code_run": {
+   "path": "scripts/g0/phase1_func_run.py",
+   "sha256": "a712550561503faaef5634dc0ceffc13f8ee105ddf9168a94abde4ad25b416cf"
+  },
+  "code_intervene": {
+   "path": "scripts/g0/phase1_func_intervene.py",
+   "sha256": "64c0f12031490e2aa9b8fbca217b3ed653cd62fc9fdd401c8bdd964fdbf25265"
+  },
+  "code_groups": {
+   "path": "scripts/g0/phase1_func_groups.py",
+   "sha256": "0f8a27bdd963eecde9d68bc809cf6e17c69717b32f675ca870a9623edf3af735"
+  },
+  "code_tasks": {
+   "path": "scripts/g0/phase1_func_tasks.py",
+   "sha256": "40117845e7059d372f2d4826d8601794dc670ce6864dd689f97fad4208fb22da"
+  },
+  "code_lib": {
+   "path": "scripts/g0/phase1_lib.py",
+   "sha256": "8207fab0ed3574907a6fcc6bfbbf47ff44bbba3e99d402204139cd90a8f870ec"
+  },
+  "code_adapter": {
+   "path": "scripts/g0/phase1_gemma9b_run.py",
+   "sha256": "8cc542170a5f5758311c7ff7325a39ccb52218f34a2540f52864c8811591bd31"
+  },
+  "code_gain": {
+   "path": "scripts/g0/phase1_gain_run.py",
+   "sha256": "0af31ea8f27798865eebf9824576562d176af9cee696dd9c855c0b12ed073de3"
+  }
+ },
+ "presets": {
+  "study_g_main": {
+   "zero": ["K16", "K64", "all"],
+   "controls": ["K16", "K64", "all"],
+   "n_controls": {"K16": 3, "K64": 3, "all": 2},
+   "sham": ["K64"],
+   "resample": ["K64"],
+   "ratios": [0.3535533905932738, 0.1767766952966369, 0.08838834764831845, 2.82842712474619, 5.65685424949238, 11.31370849898476, 1.1, 1.2],
+   "ratios_source": "D-071 (same as 2B, not recalibrated for 9B)"
+  }
+ },
+ "precisions": {
+  "FP": "study_g_main",
+  "INT8": "study_g_main",
+  "INT7": "study_g_main",
+  "INT6": "study_g_main",
+  "INT5": "study_g_main",
+  "INT4": "study_g_main"
+ },
+ "ids": {
+  "n_total": 1012,
+  "n_pilot": 150,
+  "n_eval": 300,
+  "seed": 0,
+  "eval_ids": [4, 7, 9, 10, 17, 21, 23, 33, 37, 45, 50, 52, 54, 57, 61, 63, 67, 72, 77, 78, 89, 91, 97, 103, 107, 110, 111, 112, 117, 118, 119, 126, 128, 134, 135, 136, 141, 145, 150, 151, 152, 153, 154, 157, 169, 170, 173, 176, 178, 180, 181, 183, 187, 191, 193, 194, 195, 197, 198, 199, 203, 208, 211, 213, 214, 220, 221, 222, 223, 224, 228, 229, 235, 240, 242, 245, 247, 248, 250, 252, 256, 263, 267, 273, 274, 278, 280, 285, 288, 289, 290, 291, 294, 295, 299, 303, 311, 317, 326, 330, 331, 335, 337, 339, 341, 343, 344, 347, 349, 350, 351, 354, 355, 361, 369, 371, 386, 389, 397, 399, 402, 403, 406, 407, 409, 410, 412, 416, 418, 424, 431, 435, 436, 439, 440, 444, 447, 449, 451, 454, 459, 461, 464, 467, 472, 480, 484, 486, 487, 489, 490, 491, 492, 496, 497, 499, 501, 504, 511, 518, 521, 529, 535, 537, 541, 543, 544, 547, 557, 558, 563, 564, 565, 578, 580, 584, 585, 590, 601, 602, 603, 613, 617, 623, 628, 629, 630, 633, 634, 636, 637, 638, 641, 645, 650, 653, 654, 655, 664, 670, 671, 672, 673, 676, 683, 685, 690, 691, 696, 701, 707, 708, 711, 713, 715, 718, 723, 726, 727, 733, 737, 738, 739, 741, 744, 749, 755, 759, 766, 767, 768, 772, 776, 779, 781, 784, 785, 788, 791, 792, 793, 796, 798, 801, 804, 811, 826, 829, 831, 833, 837, 842, 845, 848, 849, 851, 858, 859, 860, 862, 863, 865, 869, 880, 888, 894, 897, 899, 902, 903, 908, 910, 912, 917, 921, 925, 930, 933, 934, 938, 940, 952, 953, 954, 958, 963, 965, 966, 967, 968, 971, 980, 984, 989, 993, 995, 996, 997, 1005, 1011],
+  "eval_sha256": "cbafa3ac8e673cbce57effdaac2068c8f9713b1c963d1b63ac173be1df1ceae6",
+  "pilot_sha256": "3972624b5ffeb21a9e351db6348b746eae3db54a57a912f6ed1fba9f080d2212"
+ },
+ "analysis": {
+  "bands": [0.75, 1.33],
+  "primary_K": "K64",
+  "sensitivity_K": ["K16", "all"],
+  "covered": "all 27 languages",
+  "panel": ["eng_Latn", "rus_Cyrl", "zho_Hans", "hin_Deva"],
+  "off_target_label": "K64",
+  "max_tokens": 1024,
+  "batch_size": 32,
+  "pool_sentences": 120,
+  "pool_rows": 300
+ },
+ "predictions": {
+  "P1": "At least 24 of 27 languages show a positive zero-ablation effect E(K64) at FP, and the 95% bootstrap CI of the mean E(K64) across languages is entirely above zero.",
+  "P2a": "Macro retention (mean of per-language E(state)/E(FP)) at INT8 and INT6 is within [0.85, 1.15].",
+  "P2b": "Macro retention at INT4 is at least 0.30 above INT6, and INT4 has the largest retention of all states on the ladder.",
+  "P3a": "The dose-response ordering holds: E(ratio=0.354) > E(ratio=0.177) > E(ratio=0.088) at FP, for at least 20 of 27 languages.",
+  "P3b": "At least 20 of 27 languages have a median selectivity ratio above 1.3."
+ },
+ "verdict": {
+  "all_met": "consistent",
+  "P1_and_at_least_two_others": "partly consistent",
+  "P1_only": "limited",
+  "none": "not consistent"
+ },
+ "deviations": {}
+}

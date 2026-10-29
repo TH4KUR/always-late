@@ -12,6 +12,7 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 |---|---|
 | [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md) | **All results from the start in plain words:** why they are not conclusive, what the null results tell us, the second-model and downstream-task checks, per-language tables, guide to every data file |
 | [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | **Current state page:** evidence state, the HOLD, open choice Q29, deliverables |
+| [`functional_validation/gemma9b/README.md`](functional_validation/gemma9b/README.md) | **9B original-RTN results imported on main (D-125):** detailed source tables, execution freeze, provenance and the existing cron's CPU-review queue; GPTQ results still missing |
 | [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md) | **GPTQ extension, results in plain words:** three ways of rounding the weights (legacy RTN, matched RTN, GPTQ) compared on every study of the project; what changes and what does not; limits |
 | [`survival_effect_rescue/README.md`](survival_effect_rescue/README.md) | **Does activation survival predict whether an intervention keeps its effect? (D-110 to D-114):** plain-language summary, the all-results review, the frozen analysis, the Gemma and Llama results; post hoc |
 | [`gptq_extension/STATUS.md`](gptq_extension/STATUS.md) | **GPTQ extension ledger (D-101, 2026-10-27):** plan, task table, Ada jobs, log; [cron prompt](gptq_extension/cron_prompt.md); [plan](../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md) |
