@@ -1,0 +1,107 @@
+{
+ "what": "Stage 3 analysis freeze of the survival measurement-validity study (plan docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md, D-117; design reports/survival_measurement/stage2_design.md, D-119). Populations, transforms, definitions, clustering and decision rules, fixed BEFORE any Stage 2 output exists. Thresholds are the plan's proposed ones, accepted by the user's Q33 answer (a) of 2026-10-29; everything the plan left open is fixed here and recorded in D-120.",
+ "written": "2026-10-29 06:10 IST (first draft; revised 06:15 IST after the read-only review of session project-fe), before Stage 2 ran: no Ada job exists and no sidecar sums exist",
+ "status": "DRAFT until the read-only review of session project-fe; committed (with analysis_freeze.sha256) before any Stage 2 output is read. After the commit it is never edited: a deviation is written into the report as a deviation.",
+ "inputs": {
+  "sums": "the saved sidecar files sums_INT16/INT6/INT4.pt of job sc-legacy, sums_INT6/INT4.pt of sc-matched and of sc-gptq (reports/survival_measurement/stage2/README.md): 21 float64/int64 statistics per (language, feature) on the equal-budget stream (D-015), mask regime, 27 languages x 16,384 features; n per language in the same files",
+  "meta": "each job's meta.json (theta, gate results) and scripts/g0/survival_validate.py must report ok for the job; a job that failed a gate is not analysed",
+  "committed": "survival.pt of the arm's stage-1 run mask/eq (check_committed): used for G2(ii) only",
+  "h5": "the F5 inputs and the 1,487-feature sample of scripts/g0/survival_effect.py (load_arm, feature_table, reliable_mask; D-113), unchanged",
+  "selectivity": "selectivity.pt of the legacy mask/eq run (FP tagging; identical for every arm), key `selective`"
+ },
+ "population": {
+  "stream": "eq",
+  "regime": "mask",
+  "active": "FP-ACTIVE cell = (language, feature) with FP firing rate n_a / n > 0.001 (Duan's rule, as Stage 1) AND n_a >= 20 (redundant on the full run: the equal budget is 27,036 tokens per language, so a rate above 0.001 already means n_a >= 28; kept for subset runs). The FP-active set depends on the full-precision model only: it is the SAME set in every condition and arm. The population is defined PER QUANTITY and never conditions on the quantized side except where the quantity needs it: nu, the flip rates, the margin, H3's nu half and ALL of H4 use every FP-active cell with NO condition on b (a feature that goes completely silent after quantization stays in, with its large perturbation). lambda, r (H3's lambda half) use every FP-active cell with Stage 1's clip convention (survival_lambda.lam: r <= 0.001 or undefined counts as clipped low, r above 1 - 1e-6 as clipped high; counted, never dropped). Only the decomposition statistics g and sigma_e (log|g|, log sigma_e^2) need g != 0 and sigma_e^2 > 0; cells without them are excluded from those descriptive tables only and counted.",
+  "conditions": {
+   "sc-legacy": [
+    "INT16",
+    "INT6",
+    "INT4"
+   ],
+   "sc-matched": [
+    "INT6",
+    "INT4"
+   ],
+   "sc-gptq": [
+    "INT6",
+    "INT4"
+   ]
+  },
+  "primary_widths": [
+   "INT6",
+   "INT4"
+  ],
+  "reference_width": "INT16 (legacy arm; identical in every arm by construction)",
+  "silent_cells_reported": "for every (arm, width): the number and share of FP-active cells that are silent after quantization (n_b == 0), overall and per tier and per language, and the number of clipped lambda cells (low, high)"
+ },
+ "definitions": {
+  "moments": "from the saved sums with n = tokens of the language: mean_a = Sa/n, var_a = Saa/n - mean_a^2, likewise b; cov = Sab/n - mean_a mean_b (population moments; the same sums as the committed Pearson formula)",
+  "sigma_a": "sqrt(var_a): the full-precision spread of the feature in that language (the quantity in lambda's denominator); log FP scale = log sigma_a",
+  "r": "the LangPearson formula (denominator clamp 1e-12, result clamp [-1, 1]); lambda = survival_lambda.lam(r) (clip convention of Stage 1, clipped cells counted)",
+  "gain": "g = cov / var_a; offset c = mean_b - g mean_a; sigma_e^2 = var_b - g^2 var_a (residual variance); co-active versions from the *_both sums",
+  "lambda_identity": "lambda = log sigma_e^2 - 2 log|g| - 2 log sigma_a (g != 0, sigma_e^2 > 0); sigma_a is the same in every arm, so a cross-arm difference of lambda is exactly (difference of log sigma_e^2) - 2 (difference of log|g|)",
+  "nu": "nu_j = sqrt(S_dpre2 / n_a) / theta_j (RMS over FP-active tokens of the encoder pre-activation change, in threshold units); log nu with nu floored at 1e-12",
+  "flips": "on_off = n_on_off / n_a; off_on = n_off_on / (n - n_a); exact flip share = n_exceed1 / n_a (equals on_off, gate G4); predicted flip share = n_exceed2 / n_a",
+  "margin": "mean margin = S_d / n_a / theta_j (in threshold units)"
+ },
+ "gates": {
+  "identity": "r recomputed from g, sigma_a, sigma_e (r = g sigma_a / sqrt(g^2 sigma_a^2 + sigma_e^2), sign of g) equals r from the sums within 1e-4 for every FP-active cell with sigma_e^2 > 0 whose r from the sums is not clamped (|r| < 1 and denominator above the 1e-12 clamp). Cells with sigma_e^2 <= 0 (cancellation when r is near 1), a clamped r, or sigma_b = 0 are EXCLUDED from the check and counted per condition (treated as clipped high / clipped low for lambda, as in Stage 1). A correctness gate, not a finding; failure of the 1e-4 rule on the remaining cells stops the analysis.",
+  "validated_jobs": "scripts/g0/survival_validate.py ok for the three jobs (sacct, log, checksums, meta gates G1-G4 and G6, sums, weights manifest against the recorded hashes)",
+  "G2_committed": "reported by check_committed. If it passed in all arms, the report may say the sidecar sees the same weights and tokens as stage 1. If it failed anywhere, every Stage 3 number is labelled 'sidecar-internal' and the 'same as stage 1' statement is not made; the identity gate and H3-H5 are still evaluated on the sidecar's own sums"
+ },
+ "bootstrap": {
+  "cluster": "language",
+  "replicates": 2000,
+  "seed": 20261029,
+  "interval": "percentile 95 % unless a rule below says 90 %",
+  "note": "H5 uses scripts/g0/survival_effect.py's own N_BOOT and SEED unchanged"
+ },
+ "H3": {
+  "statistic": "per language, over its FP-active cells: Spearman(lambda, log sigma_a) (clip convention of Stage 1, clipped cells included at their clipped lambda) and Spearman(nu, log sigma_a) (no condition on b); the median over the 27 languages per (arm, width)",
+  "rule": "met for a cell (arm, width in INT6, INT4) if |median Spearman(nu, log sigma_a)| < 0.2 AND |median Spearman(lambda, log sigma_a)| > 0.5 (the plan's proposed thresholds). H3 as a whole is 'met' only if it is met in all six cells (3 arms x INT6, INT4); otherwise the report lists which cells fail. INT16 (legacy) is reported, not part of the rule.",
+  "sensitivity": "the same with log max activation as the scale (the Stage 1 proxy); reported, not part of the rule"
+ },
+ "H4": {
+  "outcome": "per language y_l = MINUS the mean of log nu over ALL its FP-active cells (no condition on b; higher = less perturbation, the direction of Stage 1's tier test); tier score and script-family dummies as in Stage 1 (phase1_analysis.TIER_SCORE low 0, mid 1, high 2; partial_slope)",
+  "estimands": "per width w (INT16 legacy, INT6 and INT4 of each arm): slope_w = partial_slope(y_w, tier, script); the standardized slope z_w = slope_w * SD_l(tier score) / SD_l(y_w), SD over the 27 languages, each width with ITS OWN SD(y_w) (a partial-correlation-like scale comparable across widths; the INT16 spread of log nu may be dominated by arithmetic noise and is not used as a common denominator). PRIMARY (INT16-referenced, the quantization-specific part): s_w = z_w - z_INT16. SECONDARY, same wording and bound: z_w itself against 0 (plan H4 as written: does the perturbation differ by tier after scale is removed). SENSITIVITY: s_w' = (slope_w - slope_INT16) * SD(tier) / SD(y_INT16) (the common INT16 denominator). Also reported with the sigma_a covariate (log10 of the language's median sigma_a over its FP-active cells) in the reduced model.",
+  "intervals": "cluster bootstrap over languages (2,000 replicates); z_w, z_INT16 and s_w recomputed on the same resample (including SD(y) and SD(tier) of the resample); 95 % interval for 'differs / present', 90 % interval (two one-sided tests at 5 %) for 'equivalent / absent'. Replicates in which the script-residualised tier has zero variance or SD(y) is zero are dropped and their number reported; if more than 5 % of the replicates are dropped for a cell, its interval is 'not estimable' and its outcome 'inconclusive'.",
+  "equivalence_bound": "0.20 in s_w (a small standardized effect of the quantization-specific tier difference), fixed here before any value",
+  "rule": "per (arm, width in INT6, INT4), for the PRIMARY s_w and, with the same wording, for the SECONDARY z_w: 'present' (a quantization-specific tier difference, resp. a tier pattern in the perturbation) if the 95 % interval excludes 0 AND |estimate| >= 0.20; 'absent' ONLY if the 90 % interval lies inside (-0.20, +0.20); otherwise 'inconclusive'. A non-significant p-value is never read as 'no effect'. 'Inconclusive' is an acceptable and reportable result: with four single-language script families absorbed by the dummies (Han, Japanese, Hangul, Ethiopic) the tier slope rests on about 23 effective languages, so a 90 % interval inside +-0.20 is demanding; the bound is NOT widened after seeing data. The tier slope and z at INT16 are reported as the reference (a tier pattern that exists with a near-zero weight change is a property of the measurement).",
+  "selectivity_secondary": "descriptive only, no rule: per language the difference of mean log nu between selective and non-selective FP-active cells (selective = the committed `selective` mask), languages with at least 20 selective FP-active cells; mean over languages with a 95 % cluster interval, per (arm, width)"
+ },
+ "H5": {
+  "statement": "g and nu added to model B (D-113) do not reach the 10 % target for W1: expected null, reported to bound the claim",
+  "design": "scripts/g0/survival_effect.py unchanged: models A and B as in D-113 per (arm, state in INT6, INT4); model B+ = base columns + R1 + gain g + log nu, where g and nu are the sidecar values of the feature's own (language, feature) cell at that state (per-(feature, state) covariates from different tokens than R1 and W1); the same quantile transform, ridge grid, leave-language-out folds, reliability mask and cluster bootstrap",
+  "population": "F5 features with n_a >= 20 in the sidecar; A, B and B+ are all evaluated on this population (the D-113 full-population value is reported next to it)",
+  "rule": "the D-113 rule unchanged: improvement of B+ over B in mean absolute error >= 10 % relative AND the cluster-bootstrap interval of the improvement above zero (survival_effect.improvement, cell_met). Also reported: B+ over A, and g-only and nu-only variants. Overall statement as survival_effect.overall_statement"
+ },
+ "descriptive": [
+  "lambda decomposition by arm and width: median g, median log sigma_e^2, median lambda, cross-arm differences of the two components (exact identity above)",
+  "flip rates (on_off, off_on) by arm and width, median and 10th/90th percentile over cells",
+  "nu distribution by arm and width (median, quartiles) and by tier",
+  "Spearman between predicted and exact flip share over cells",
+  "counts of dropped cells per condition and reason",
+  "Deming/OLS slope of log nu between arms (the metric-2 analogue of Stage 1's H1)"
+ ],
+ "outputs": {
+  "generator": "scripts/g0/survival_stage3.py (written test first after this freeze is committed; imports survival_lambda, survival_effect, phase1_analysis, survival_sidecar; refuses to run if analysis_freeze.json does not match analysis_freeze.sha256 or if a job is not validated)",
+  "files": [
+   "reports/survival_measurement/stage3/stage3_results.json",
+   "reports/survival_measurement/stage3/stage3_results.md",
+   "reports/survival_measurement/stage3/README.md (plain words)"
+  ],
+  "tests": "tests_torch/test_survival_stage3.py with a toy sums set whose answers are known, and a mutation battery"
+ },
+ "limits": [
+  "one model, one layer, one SAE, simulated weight-only quantizers, 27 languages (clusters)",
+  "lambda as 'noise' assumes the residual is unrelated to a; flips and nu are measured directly for that reason",
+  "post hoc relative to Stage 1 (same tokens and features were seen as correlations); Stage 3 rules are fixed before the new statistics exist",
+  "H4 is about 27 languages and one tier coding; equivalence is claimed only inside the stated bound",
+  "four script families hold a single language (Han, Japanese, Hangul, Ethiopic): the script dummies absorb those four languages, so the H4 tier slope effectively rests on about 23 languages; an 'inconclusive' H4 outcome is expected to be common and is a result, not a failure",
+  "the FP-active set is fixed by the full-precision model, so a feature silenced by quantization stays in the analysis (it is the damaged end of the distribution, not a missing value)"
+ ],
+ "revision": [
+  "Review of session project-fe, 2026-10-29: (1) populations per quantity, no condition on b for nu, flips, margin, H3's nu half and H4 (selection bias: silent features); (2) identity gate excludes degenerate cells (sigma_e^2 <= 0 or a clamped r) and counts them; (3) H4 standardizes each width by its own SD of y (the INT16-SD version is a sensitivity); (4) slope_w against 0 is also reported under the same wording; (5) single-language script families and degenerate bootstrap replicates stated and handled; (6) 'inconclusive' is stated to be an acceptable result; minor: n_a >= 20 is redundant on the full run and kept for subset runs."
+ ]
+}
