@@ -43,3 +43,16 @@ Review result: no blocking issue; pre-activation capture, `main` against `phase1
 4. Found while writing the validator: `validate_dir` crashed with an unpickling error on a corrupt file; it now raises `SidecarError` (a failed validation).
 
 New file `scripts/g0/survival_validate.py` (the local and remote validation of a finished job: sacct COMPLETED 0:0, `GPU 0:` and no CUDA warning in the log head, sha256 of every fetched file against Ada's, the meta gates, the saved sums, the weights manifest against the recorded hashes, and, for a full run, the committed comparison REPORTED but never a failure) with `tests_torch/test_survival_validate.py`. Test counts now: `test_survival_sidecar.py` 49, `test_survival_validate.py` 10. Mutation batteries (`mutants_survival_sidecar.json`, `mutants_survival_validate.json`, result file refreshed): sidecar 63 mutants, 62 killed + the one equivalent survivor; validator 13 mutants, 13 killed.
+
+## Update 2026-10-29 06:10 IST (corrected command lines, after the nit of session project-fe; add-only)
+
+The command block near the top still shows the `sc-matched` line without `FROZEN=1`; do NOT copy that line. The corrected full-job commands (`REPO` = the deployed snapshot; `...` = `--exclude=gnode068,gnode069,gnode076`):
+
+```
+sbatch -t 05:00:00 ... --export=ALL,REPO=$REPO         scripts/g0/run_gptq.sbatch sc-legacy  wrap --entry survival_sidecar:main --weights rtn         -- --out {OUT} --bits 16 6 4 0 --flores-root /home2/karma/duan-verify/phase1/data --commit {COMMIT}
+sbatch -t 05:00:00 ... --export=ALL,REPO=$REPO,FROZEN=1 scripts/g0/run_gptq.sbatch sc-matched wrap --entry survival_sidecar:main --weights rtn-matched -- --out {OUT} --bits 6 4 0     --flores-root /home2/karma/duan-verify/phase1/data --commit {COMMIT}
+sbatch -t 05:00:00 ... --export=ALL,REPO=$REPO,FROZEN=1 scripts/g0/run_gptq.sbatch sc-gptq    wrap --entry survival_sidecar:main --weights gptq        -- --out {OUT} --bits 6 4 0     --flores-root /home2/karma/duan-verify/phase1/data --commit {COMMIT}
+```
+
+The second smoke is `sc-smoke-m`: `--export=ALL,REPO=$REPO,FROZEN=1 ... sc-smoke-m wrap --entry survival_sidecar:main --weights rtn-matched -- --out {OUT} --bits 6 0 --flores-root ... --commit {COMMIT} --languages eng_Latn hin_Deva khm_Khmr --max-sentences 40`.
+
