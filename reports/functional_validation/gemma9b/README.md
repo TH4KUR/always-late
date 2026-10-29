@@ -19,3 +19,5 @@ Amplified ablation harm does not establish that the original quantization damage
 ## Review notes 2026-10-29
 
 The Study G analysis was reproduced byte-identically from the raw per-state files (task 2 of the review, [`REVIEW_STATUS.md`](REVIEW_STATUS.md)). Open problems of meaning, not arithmetic: [anomaly A-043](../../decisions_and_anomalies.md) (the frozen P3a ordering as written holds in 0 of 27 languages while the reversed ordering holds in 27 of 27; P3b was relabelled; the INT4 retention 2.479 is a mean, the median is 1.586). The adapter `phase1_gemma9b_run.py` named in the freeze exists only on branch `gemma9b-confirmation`, not on main. A GPTQ-only recovery run is prepared on that branch (code and tests, amendment A2, plan `RECOVERY_PLAN.md`) and has NOT been run.
+
+**2026-10-29 18:33 IST:** the review is complete: the reviewed statement with intervals and the 2B comparison is [`REVIEWED_SUMMARY.md`](REVIEWED_SUMMARY.md) (decision D-127); the scripts and outputs are in [`review/`](review/). The files above stay unchanged.
