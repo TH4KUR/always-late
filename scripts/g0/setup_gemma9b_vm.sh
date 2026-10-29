@@ -65,13 +65,10 @@ python -c "import transformers; print(f'  transformers {transformers.__version__
 # ── 3. Download models and SAEs from Hugging Face ──────────────────────────────
 echo "[3/5] Downloading Gemma-2-9B model and Gemma Scope SAE..."
 
-echo "Make sure you are logged in to Hugging Face: run 'huggingface-cli login' or 'hf login' first."
+echo "Make sure you are logged in to Hugging Face: run 'hf auth login' first (inside the venv)."
 echo "You must have accepted the Gemma-2 terms at https://huggingface.co/google/gemma-2-9b"
 
-export HF_HOME="$BASE/hf_cache"
-mkdir -p "$HF_HOME"
-
-# Gemma-2-9B model (~18 GB)
+# Gemma-2-9B download (~37 GB; bf16 model memory ~18.5 GB)
 echo "  Downloading google/gemma-2-9b..."
 hf download google/gemma-2-9b
 
@@ -110,22 +107,36 @@ else
 fi
 cd "$BASE"
 
-# ── 5. Summary ─────────────────────────────────────────────────────────────────
+# ── 5. Extract GPTQ calibration pool ─────────────────────────────────────────
+echo "[5/6] Extracting GPTQ calibration pool..."
+REPO_ROOT=$(find "$HOME" -maxdepth 3 -name "gptq_calibration_pool.tar.gz" -print -quit 2>/dev/null)
+if [ -d "$BASE/data/gptq" ]; then
+    echo "  gptq/ already exists, skipping."
+elif [ -n "$REPO_ROOT" ]; then
+    echo "  Found archive at $REPO_ROOT"
+    tar xzf "$REPO_ROOT" -C "$BASE/data"
+    echo "  Extracted $(ls "$BASE/data/gptq/calibration/"*.jsonl 2>/dev/null | wc -l) calibration files."
+else
+    echo "  WARNING: gptq_calibration_pool.tar.gz not found."
+    echo "  Copy it to the VM and extract manually:"
+    echo "    tar xzf gptq_calibration_pool.tar.gz -C $BASE/data"
+fi
+
+# ── 6. Summary ─────────────────────────────────────────────────────────────────
 echo ""
-echo "[5/5] Setup complete."
+echo "[6/6] Setup complete."
 echo ""
 echo "Workspace:    $BASE"
 echo "Python env:   $BASE/env  (activate with: source $BASE/env/bin/activate)"
-echo "HF cache:     $BASE/hf_cache"
+echo "HF cache:     ~/.cache/huggingface (default)"
 echo "FLORES data:  $BASE/data/flores200_dataset"
 echo ""
 echo "Next steps:"
 echo "  1. Clone the repo:     git clone https://github.com/TH4KUR/always-late.git && cd always-late && git checkout gemma9b-confirmation"
 echo "  2. Run the tests:      source $BASE/env/bin/activate && python3 -B -m unittest discover -s scripts/g0/tests"
 echo "  3. Run torch tests:    OMP_NUM_THREADS=4 python -B -m unittest discover -s scripts/g0/tests_torch"
-echo "  4. Build the adapter, write the freeze, then run the experiments per the plan in docs/superpowers/plans/2026-10-26-gemma9b-confirmation.md"
+echo "  4. Read reports/functional_validation/gemma9b/JARVIS_HANDOFF.md: the RTN results already exist; GPTQ results are still missing. Respect the recorded GPU budget."
 echo ""
-echo "Key paths for the scripts (set these in your sbatch or export them):"
-echo "  export HF_HOME=$BASE/hf_cache"
-echo "  export HF_TOKEN=\$(cat <your-token-file>)   # or export HF_TOKEN=hf_..."
+echo "Key paths for the scripts:"
 echo "  FLORES_ROOT=$BASE/data"
+echo "  GPTQ_CALIBRATION=$BASE/data/gptq/calibration"

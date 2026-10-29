@@ -1,5 +1,7 @@
 # Gemma-2-9B confirmation: start here (for the person running it)
 
+> **Current branch and run status (2026-10-29):** `gemma9b-confirmation` is the only maintained 9B branch. It contains both the completed legacy-RTN report (`reports/functional_validation/gemma9b/verdict.md`, original run freeze preserved separately) and the GPTQ/matched-RTN implementation. The original `freeze.json` and `amendment_A1_three_arm.json` remain unchanged. GPTQ and matched-RTN 9B results are still missing. The user has only **3 Jarvis GPU-hours remaining**, plus Ada: the default full driver below is not a budget-approved recovery command. Reuse compatible completed outputs; prepare and time the missing GPTQ-only work before a paid run. The archived legacy run used a separate adapter revision; the active adapter remains the hash-pinned version, so do not assume the old run validates this checkout on a GPU.
+
 Written 2026-10-28 by the author of this branch (`karma-skz`). Read this page from top to bottom before you type anything. It is the whole job in plain steps. The technical version, written for a Claude Code session on the machine, is [`CLAUDE.md`](../../../CLAUDE.md) in the repository root; the design is in [`docs/superpowers/specs/2026-10-28-gemma9b-three-arm-confirmation-design.md`](../../../docs/superpowers/specs/2026-10-28-gemma9b-three-arm-confirmation-design.md).
 
 ## What you are doing
@@ -32,9 +34,9 @@ free -g           # RAM
 df -h ~           # free disk
 ```
 
-**2. Get the code** (the branch is `gemma9b-confirmation-v2`; the folder must be called `always-late`).
+**2. Get the code** (the branch is `gemma9b-confirmation`; the folder must be called `always-late`).
 ```bash
-git clone --branch gemma9b-confirmation-v2 https://github.com/TH4KUR/always-late.git always-late
+git clone --branch gemma9b-confirmation https://github.com/TH4KUR/always-late.git always-late
 ```
 If the repository asks for a login, it is private: ask the author for access instead of using someone else's credentials.
 
