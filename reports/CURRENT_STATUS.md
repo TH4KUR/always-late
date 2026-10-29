@@ -35,6 +35,8 @@ Updated 2026-10-27 14:34 IST (documentation cleanup requested by the user). **[C
 
 **Update 2026-10-29 18:33 IST (9B review complete, tasks 3 and 4; D-127):** the imported 9B original-RTN study has a reviewed statement with intervals, the matching 2B comparison and the open problems: [`functional_validation/gemma9b/REVIEWED_SUMMARY.md`](functional_validation/gemma9b/REVIEWED_SUMMARY.md) (INT4 retention about 1.5 to 2.5 times depending on the aggregation, same ladder shape as 2B, paired differences include zero, P3a met only in the reversed sense, P3b cannot fail; GPTQ and matched-RTN arms still missing). Handoff [058](handoffs/058-2026-10-29-9b-review-complete.md).
 
+**Update 2026-10-29 23:47 IST (the user, direct): "kill all cronjobs".** The three recurring 40-minute entries were deleted; none exists now and none is to be recreated unless the user asks ([ledger](gptq_extension/STATUS.md)).
+
 Open questions for the user: Q33 (survival measurement-validity study: GPU pass and thresholds), Q29 (run the precision audit or stop and keep the time for the course deliverables) and the older ones listed at the top of [`DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md). If the audit is approved: deploy a committed snapshot, validate the bounded instrument job first (real GPU, all gates, dtype checks, runtime and memory), only then the frozen 128-feature / 512-pair run, analysed by revision R5 ([handoff 045](handoffs/045-2026-10-27-external-panel-analysed-report-deck-final-recovery-plan-next.md)).
 
 ## Deliverables (due **31 October 2026**)
