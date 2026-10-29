@@ -21,6 +21,8 @@ Updated 2026-10-27 14:34 IST (documentation cleanup requested by the user). This
 
 **Update 2026-10-29 04:09 IST: paper direction planned (D-117): a measurement-validity study of feature survival (Codex's direction, checked against the results) with two new survival metrics; [plan](../docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md). Stage 1 done 2026-10-29 (D-118, [results](survival_measurement/stage1/README.md)); Q33 answered (a): Stage 2 (GPU sidecar on Ada) is next.**
 
+**Update 2026-10-29 09:16 IST (the user, direct: D-122): all jobs must run to completion TODAY; the project is to be done (except analysis and reports) by today's end of day; then the user starts viva preparation, a review of the work done, the final submission paper and the slides. Running now on Ada: the three D-117 sidecar jobs 45799 (`sc-legacy`), 45836 (`sc-matched`), 45837 (`sc-gptq`); ledger [`survival_measurement/STATUS.md`](survival_measurement/STATUS.md). No new Ada experiment after them; Q29 (precision audit) stays unstarted unless the user asks.**
+
 Open questions for the user: Q33 (survival measurement-validity study: GPU pass and thresholds), Q29 (run the precision audit or stop and keep the time for the course deliverables) and the older ones listed at the top of [`DECISIONS_FOR_REVIEW.md`](../DECISIONS_FOR_REVIEW.md). If the audit is approved: deploy a committed snapshot, validate the bounded instrument job first (real GPU, all gates, dtype checks, runtime and memory), only then the frozen 128-feature / 512-pair run, analysed by revision R5 ([handoff 045](handoffs/045-2026-10-27-external-panel-analysed-report-deck-final-recovery-plan-next.md)).
 
 ## Deliverables (due **31 October 2026**)
