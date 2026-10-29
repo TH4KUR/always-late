@@ -313,7 +313,9 @@ def analyse(sums_by_arm, theta, tier, script, f5=None, selective=None, committed
     bad = [k for k, g in gates.items() if not g["passed"]]
     if bad:
         raise AnalysisStopped(f"identity gate failed in {bad}: the analysis stops (freeze)")
-    pops = {f"{a}|{w}": populations(d, active) for (a, w), d in D.items()}
+    pops = {}
+    for (a, w), d in D.items():                                                                  # counts only: the boolean masks (27 x 16,384 per condition) stay out of the saved results
+        pop = populations(d, active); pops[f"{a}|{w}"] = {k: (int(v.sum()) if isinstance(v, np.ndarray) else v) for k, v in pop.items()}
     primary = [(a, w) for a in ARMS3 for w in ("INT6", "INT4") if (a, w) in D]
     h3c = {}
     for a, w in primary:

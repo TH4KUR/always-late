@@ -361,6 +361,10 @@ class Analyse(unittest.TestCase):
         d = r["descriptive"]; self.assertIn("legacy|INT16", d["arm_summary"]); self.assertEqual(set(d["lambda_decomposition"]), {"matched_vs_legacy|INT6", "matched_vs_legacy|INT4", "gptq_vs_legacy|INT6", "gptq_vs_legacy|INT4"})
         self.assertEqual(set(d["nu_between_arms"]), set(d["lambda_decomposition"])); self.assertEqual(r["labels"]["sidecar_internal"], False)
         json.dumps(r, default=s3.jsonable)
+        for k, p in r["populations"].items():                                                                              # counts, never the boolean masks (the first real run saved 60 MB of them)
+            self.assertTrue(all(isinstance(v, int) for v in p.values()), k); self.assertEqual(set(p), {"nu", "lambda", "decomposition", "silent_count", "clipped_low", "clipped_high", "active"})
+            self.assertEqual(p["nu"], p["active"]); self.assertEqual(p["lambda"], p["active"]); self.assertLessEqual(p["decomposition"], p["active"])
+        self.assertLess(len(json.dumps(r, default=s3.jsonable)), 400000)
 
     def test_a_failing_identity_gate_stops_the_analysis(self):
         from unittest import mock
