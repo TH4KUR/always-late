@@ -202,3 +202,4 @@ Deadline: course deliverables 31 October 2026 (the report and deck are the team'
 - 2026-10-29 11:21 IST (project-6d cron): D-117 Stage 3 generator complete (49 tests, mutation 21/21 for the new part); matched and GPTQ validations still fetching; review by project-fe next. Ledger `reports/survival_measurement/STATUS.md`.
 - 2026-10-29 11:31 IST (project-6d cron): D-117 Stage 3 generator: review handled (D-123), 53 tests, mutation 13/13; matched and GPTQ validations still fetching. Ledger `reports/survival_measurement/STATUS.md`.
 - 2026-10-29 11:51 IST (project-6d cron): D-117 all three sidecar jobs validated (G2(ii) passed in every arm at float32 resolution); next HF upload of the raw sums and the real Stage 3 run. Ledger `reports/survival_measurement/STATUS.md`.
+- 2026-10-29 11:53 IST (project-6d cron): D-117 task 7 done: raw sums uploaded to the private HF dataset (7291ebf99b); next the real Stage 3 run. Ledger `reports/survival_measurement/STATUS.md`.

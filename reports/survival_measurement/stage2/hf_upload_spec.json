@@ -1,0 +1,44 @@
+{
+ "sources": [
+  {
+   "local": "sc-legacy",
+   "repo": "runs/survival-measurement/stage2/sc-legacy",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "sc-matched",
+   "repo": "runs/survival-measurement/stage2/sc-matched",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "sc-gptq",
+   "repo": "runs/survival-measurement/stage2/sc-gptq",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "sc-smoke",
+   "repo": "runs/survival-measurement/stage2/smoke/sc-smoke",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  },
+  {
+   "local": "sc-smoke-m2",
+   "repo": "runs/survival-measurement/stage2/smoke/sc-smoke-m2",
+   "exclude": [
+    "wandb/*",
+    "*/wandb/*"
+   ]
+  }
+ ]
+}
