@@ -1,0 +1,15 @@
+# survival_stage3.py after the review of project-fe (D-123), 2026-10-29 11:31 IST: 13 mutants; first run 12 killed + 1 survived ('drift cell count'); the drift test was strengthened (two cells, differences 1 and 3) and the mutant re-run: KILLED
+KILLED          token counts not checked
+KILLED          drift never stops
+SURVIVED        drift cell count
+KILLED          drift max
+KILLED          active status drift lost
+KILLED          NaN median fails instead of not estimable
+KILLED          not estimable ignored
+KILLED          non-selective group contaminated
+KILLED          other-language count includes own
+KILLED          full-population B without R1
+KILLED          H5 bootstrap follows the quick run
+KILLED          max activation coupled to --no-committed
+KILLED          survival language order unchecked
+--- re-run: KILLED          drift cell count

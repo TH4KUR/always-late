@@ -138,7 +138,7 @@ class H3(unittest.TestCase):
 
     def test_the_rule_needs_both_halves_and_the_planned_thresholds(self):
         self.assertTrue(s3.h3_rule(0.19, -0.51)); self.assertTrue(s3.h3_rule(-0.19, 0.6)); self.assertFalse(s3.h3_rule(-0.5, 0.6)); self.assertFalse(s3.h3_rule(0.1, -0.4))
-        self.assertFalse(s3.h3_rule(0.2, 0.6)); self.assertFalse(s3.h3_rule(0.1, 0.5)); self.assertFalse(s3.h3_rule(0.1, float("nan")))
+        self.assertFalse(s3.h3_rule(0.2, 0.6)); self.assertFalse(s3.h3_rule(0.1, 0.5)); self.assertIsNone(s3.h3_rule(0.1, float("nan"))); self.assertIsNone(s3.h3_rule(float("nan"), 0.6))                              # not estimable, neither met nor failing
 
     def test_h3_as_a_whole_needs_all_six_cells(self):
         cells = {(a, w): True for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")}
@@ -147,6 +147,8 @@ class H3(unittest.TestCase):
         r = s3.h3_overall(cells); self.assertFalse(r["met"]); self.assertEqual(r["failing"], [("gptq", "INT4")])
         full = {(a, w): True for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")}; del full[("legacy", "INT6")]
         r = s3.h3_overall(full); self.assertFalse(r["met"]); self.assertEqual(r["missing"], [("legacy", "INT6")]); self.assertEqual(r["failing"], [])                  # a missing cell is not a pass
+        ne = {(a, w): True for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")}; ne[("matched", "INT4")] = None
+        r = s3.h3_overall(ne); self.assertFalse(r["met"]); self.assertEqual(r["not_estimable"], [("matched", "INT4")]); self.assertEqual(r["failing"], [])      # not estimable is neither a pass nor a failure
 
 
 class H4(unittest.TestCase):
@@ -351,7 +353,7 @@ class Analyse(unittest.TestCase):
 
     def test_the_results_have_every_section_of_the_freeze_and_the_gates_pass(self):
         r = self.run_analysis()
-        self.assertEqual(set(r), {"gates", "populations", "H3", "H4", "descriptive", "H5", "labels", "n_languages"})
+        self.assertEqual(set(r), {"gates", "populations", "H3", "H4", "descriptive", "H5", "labels", "n_languages", "fp_side_drift"})
         self.assertTrue(all(g["passed"] for g in r["gates"]["identity"].values())); self.assertEqual(len(r["gates"]["identity"]), 7)           # legacy INT16, INT6, INT4 and the four patched cells
         self.assertEqual(set(r["H3"]["cells"]), {f"{a}|{w}" for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")}); self.assertIn("legacy|INT16", r["H3"]["reported"])
         self.assertEqual(set(r["H4"]["cells"]), {f"{a}|{w}" for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")})
@@ -370,10 +372,33 @@ class Analyse(unittest.TestCase):
             s3.analyse(self.sums(), THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
         self.assertIn("identity gate failed", str(cm.exception))
 
-    def test_arms_that_disagree_on_the_fp_active_counts_are_refused(self):
+    def test_arms_that_disagree_on_the_fp_active_counts_everywhere_are_refused(self):
         sums = self.sums(); sums["matched"]["INT6"]["stats"]["n_a"] = sums["matched"]["INT6"]["stats"]["n_a"] + 1
-        with self.assertRaises(s3.AnalysisStopped):
+        with self.assertRaises(s3.AnalysisStopped) as cm:
             s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
+        self.assertIn("FP side", str(cm.exception))
+
+    def test_a_different_token_count_is_always_refused(self):
+        sums = self.sums(); sums["gptq"]["INT4"]["n"] = sums["gptq"]["INT4"]["n"] + 1
+        with self.assertRaises(s3.AnalysisStopped) as cm:
+            s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
+        self.assertIn("token counts", str(cm.exception))
+
+    def test_a_small_drift_of_the_fp_side_between_jobs_is_reported_and_the_reference_active_set_is_used_while_a_larger_one_stops(self):
+        from unittest import mock
+        sums = self.sums(); sums["gptq"]["INT4"]["stats"]["n_a"][0, 0] += 1; sums["gptq"]["INT4"]["stats"]["n_a"][0, 1] += 3; sums["gptq"]["INT4"]["stats"]["Sa"][0, 0] += 1e-6
+        with self.assertRaises(s3.AnalysisStopped):                                                                       # two cells in 72 are far above the pre-set 1e-4
+            s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
+        with mock.patch.object(s3, "FP_DRIFT_MAX_SHARE", 0.05):
+            r = s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
+        d = r["fp_side_drift"]["gptq|INT4"]; self.assertEqual(d["cells_with_different_n_a"], 2); self.assertEqual(d["max_abs_delta_n_a"], 3); self.assertGreater(d["max_rel_delta_Sa"], 0)       # two cells, differences 1 and 3
+        self.assertEqual(r["fp_side_drift"]["legacy|INT6"]["cells_with_different_n_a"], 0); self.assertEqual(d["cells_with_different_active_status"], 0)
+        sums2 = self.sums(); sums2["matched"]["INT4"]["stats"]["n_a"][1, 2] = 5                                                  # a cell that is FP-active in the reference and below the floor in this job
+        with mock.patch.object(s3, "FP_DRIFT_MAX_SHARE", 0.05):
+            r2 = s3.analyse(sums2, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
+        self.assertEqual(r2["fp_side_drift"]["matched|INT4"]["cells_with_different_active_status"], 1); self.assertGreaterEqual(r2["fp_side_drift"]["matched|INT4"]["max_abs_delta_n_a"], 5)
+        ref = s3.fp_active(self.sums()["legacy"]["INT6"]["stats"]["n_a"].numpy(), self.sums()["legacy"]["INT6"]["n"].numpy())
+        self.assertEqual(r["populations"]["gptq|INT4"]["active"], int(ref.sum()))                                          # the active set is the reference's, whatever the arm's own counts say
 
     def test_a_failed_committed_comparison_labels_every_number_sidecar_internal(self):
         r = s3.analyse(self.sums(), THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1, committed={"legacy": {"G2_committed": {"passed": True}}, "gptq": {"G2_committed": {"passed": False}}})
@@ -410,18 +435,44 @@ class Analyse(unittest.TestCase):
         cell = r["H5"]["cells"]["legacy|INT6"]; self.assertEqual(set(cell), {"result", "wording"}); self.assertEqual(cell["wording"], s3.improvement_wording(cell["result"]["improvement"]["Bplus_over_B"]["improvement"], cell["result"]["improvement"]["Bplus_over_B"]["lo"], cell["result"]["improvement"]["Bplus_over_B"]["hi"]))
         self.assertGreater(cell["result"]["improvement"]["Bplus_over_B"]["improvement"], 0.1)                                                  # found only if g / nu are looked up at (language, feature)
         self.assertGreater(r["H5"]["cells"]["legacy|INT4"]["result"]["improvement"]["Bg_over_B"]["improvement"], 0.1)                          # found only if the gain is looked up at (language, feature)
+        fp = cell["result"]["full_population"]; self.assertEqual(fp["n"], int(keep.sum())); self.assertGreaterEqual(fp["n"], cell["result"]["n"])
+        import survival_effect as se
+        y = T["INT6"]["w1"][keep]; lg = lang[keep]; A = np.abs(y - se.loo_language(T["base"][keep], y, lg)[0]); B = np.abs(y - se.loo_language(np.column_stack([T["base"][keep], T["r1"][keep] if "r1" in T else T["INT6"]["r1"][keep]]), y, lg)[0])
+        self.assertAlmostEqual(fp["B_over_A"]["improvement"], se.improvement(A, B, lg, 100, se.SEED)["improvement"], places=12)                  # the D-113 population value, A and B on the mask only
+        self.assertEqual(fp["B_over_A"]["wording"], s3.improvement_wording(fp["B_over_A"]["improvement"], fp["B_over_A"]["lo"], fp["B_over_A"]["hi"]))
         self.assertEqual(len(r["H5"]["cells"]), 6); self.assertIn("statement", r["H5"]); self.assertIn("wording", r["H5"]["cells"]["legacy|INT4"])
 
-    def test_the_selectivity_secondary_is_descriptive_and_uses_languages_with_enough_selective_cells(self):
+    def test_h5_uses_the_d113_bootstrap_size_unless_it_is_told_otherwise_and_not_the_quick_run_size(self):
+        from unittest import mock
+        sums = self.sums(); g = np.random.default_rng(0); n = 120; lang = np.repeat(np.arange(self.NL), n // self.NL); ids = g.integers(0, D, n)
+        T = {"lang": lang, "ids": ids, "base": g.normal(size=(n, 5)), "INT6": {"r1": g.normal(size=n), "w1": g.normal(size=n)}, "INT4": {"r1": g.normal(size=n), "w1": g.normal(size=n)}}
+        f5 = {arm: {"T": T, "mask": np.ones(n, bool)} for arm in ("legacy", "matched", "gptq")}; seen = []
+        real = s3.se.improvement
+        def spy(a, b, lg, n_boot=0, seed=0):
+            seen.append(n_boot); return real(a, b, lg, 8, seed)
+        with mock.patch.object(s3.se, "improvement", spy), mock.patch.object(s3.se, "N_BOOT", 77):
+            s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1, f5=f5)
+        self.assertTrue(seen and set(seen) == {77})                                                                          # the D-113 size, not the quick-run size 20
+        seen.clear()
+        with mock.patch.object(s3.se, "improvement", spy):
+            s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1, f5=f5, h5_n_boot=33)
+        self.assertEqual(set(seen), {33})
+
+    def test_the_selectivity_secondary_compares_selective_cells_with_cells_of_globally_non_selective_features(self):
         sums = self.sums(); d = s3.derived(sums["legacy"]["INT6"], THETA); act = s3.fp_active(sums["legacy"]["INT6"]["stats"]["n_a"].numpy(), sums["legacy"]["INT6"]["n"].numpy())
-        sel = np.zeros_like(act); sel[:, :3] = True
-        r = s3.selectivity_difference(d, act, sel, min_cells=2, n_boot=50, seed=0)
-        per = [d["log_nu"][l][act[l] & sel[l]].mean() - d["log_nu"][l][act[l] & ~sel[l]].mean() for l in range(self.NL)]
-        self.assertEqual(r["languages_used"], self.NL); self.assertAlmostEqual(r["mean_difference"], float(np.mean(per)), places=12); self.assertEqual(len(r["ci95"]), 2)
+        sel = np.zeros_like(act); sel[0::2, 0] = True; sel[1::2, 1] = True; sel[:, 2] = np.arange(self.NL) % 3 == 0                    # features 0, 1, 2 are selective, each for a few languages; 3, 4, 5 are not selective at all
+        r = s3.selectivity_difference(d, act, sel, min_cells=1, n_boot=50, seed=0); feat_sel = sel.any(axis=0)
+        per = []
+        for l in range(self.NL):
+            a_ = act[l] & sel[l]; b_ = act[l] & ~feat_sel
+            per.append(d["log_nu"][l][a_].mean() - d["log_nu"][l][b_].mean() if a_.sum() >= 1 and b_.sum() > 0 else np.nan)
+        per = np.array(per); ok = np.isfinite(per)
+        self.assertEqual(r["languages_used"], int(ok.sum())); self.assertAlmostEqual(r["mean_difference"], float(per[ok].mean()), places=12); self.assertEqual(len(r["ci95"]), 2); self.assertIn("globally", r["reading"])
+        self.assertEqual(r["other_language_selective_cells"], [int((act[l] & feat_sel & ~sel[l]).sum()) for l in range(self.NL)])          # reported only, in neither group
         self.assertEqual(s3.selectivity_difference(d, act, sel, min_cells=10 ** 6, n_boot=10, seed=0)["languages_used"], 0)
-        exact = int(min((act[l] & sel[l]).sum() for l in range(self.NL)))                                                                   # a language with exactly min_cells selective cells is used
-        self.assertEqual(s3.selectivity_difference(d, act, sel, min_cells=exact, n_boot=10, seed=0)["languages_used"], self.NL)
-        self.assertLess(s3.selectivity_difference(d, act, sel, min_cells=exact + 1, n_boot=10, seed=0)["languages_used"], self.NL)
+        exact = int(min((act[l] & sel[l]).sum() for l in range(self.NL) if (act[l] & sel[l]).sum() > 0))                                    # a language with exactly min_cells selective cells is used
+        self.assertGreaterEqual(s3.selectivity_difference(d, act, sel, min_cells=exact, n_boot=10, seed=0)["languages_used"], 1)
+        self.assertLess(s3.selectivity_difference(d, act, sel, min_cells=exact + 5, n_boot=10, seed=0)["languages_used"], s3.selectivity_difference(d, act, sel, min_cells=exact, n_boot=10, seed=0)["languages_used"])
 
 
 class SelectiveCells(unittest.TestCase):
@@ -447,6 +498,7 @@ class Main(unittest.TestCase):
         a = Analyse(); a.NL = 12; sums = a.sums(); self.langs = [f"l{i}" for i in range(12)]
         roster = [{"code": c, "tier": ["low", "mid", "high"][i % 3], "script_family": "abcdef"[i // 2]} for i, c in enumerate(self.langs)]
         (self.tmp / "roster.json").write_text(json.dumps({"languages": roster}))
+        torch.save({"languages": self.langs, "max_activation": torch.rand(12, D) + 0.5}, self.tmp / "survival.pt")                       # the committed legacy survival.pt (max activation, language order)
         for arm, (name, widths, bits) in s3.JOBS.items():
             d = self.tmp / name; d.mkdir()
             for w in widths:
@@ -457,7 +509,7 @@ class Main(unittest.TestCase):
                 "theta": THETA.tolist(), "theta_sha256": "t" * 64, "max_sentences": None, "seconds": 1.0, "peak_gpu_gb": 1.0}))
 
     def run_main(self, *extra):
-        return s3.main(["--runs", str(self.tmp), "--out", str(self.tmp / "out"), "--roster", str(self.tmp / "roster.json"), "--no-committed", "--no-f5", "--n-boot", "30", *(extra or ("--no-selectivity",))])
+        return s3.main(["--runs", str(self.tmp), "--out", str(self.tmp / "out"), "--roster", str(self.tmp / "roster.json"), "--no-committed", "--no-f5", "--n-boot", "30", "--phase1", str(self.tmp / "survival.pt"), *(extra or ("--no-selectivity",))])
 
     def test_main_writes_the_json_and_the_markdown_and_checks_the_freeze_first(self):
         import contextlib, io
@@ -465,7 +517,12 @@ class Main(unittest.TestCase):
             self.assertEqual(self.run_main(), 0)
         res = json.loads((self.tmp / "out" / "stage3_results.json").read_text()); md = (self.tmp / "out" / "stage3_results.md").read_text()
         self.assertEqual(res["n_languages"], 12); self.assertEqual(res["freeze_sha256"], s3.check_freeze()["sha256"]); self.assertIn("## H4", md); self.assertIn("convention", md)
-        self.assertEqual(res["labels"]["committed_comparison"], "not run")
+        self.assertEqual(res["labels"]["committed_comparison"], "not run"); self.assertIn("sensitivity_log_max_activation", res["H3"])                          # with --no-committed the H3 sensitivity is still there
+
+    def test_a_survival_file_with_another_language_order_is_refused(self):
+        torch.save({"languages": self.langs[::-1], "max_activation": torch.rand(12, D) + 0.5}, self.tmp / "survival.pt")
+        with self.assertRaises(s3.AnalysisStopped):
+            self.run_main()
 
     def test_main_reads_the_selectivity_file_per_feature_and_peak_language(self):
         import contextlib, io

@@ -22,6 +22,7 @@ H3_NU_MAX, H3_LAMBDA_MIN = 0.2, 0.5                 # H3 (the plan's proposed th
 H4_BOUND = 0.20                                     # equivalence bound in standardized slope units (D-120)
 N_BOOT, SEED = 2000, 20261029                       # language cluster bootstrap
 MAX_DROPPED_SHARE = 0.05                            # more degenerate replicates than this: the interval is not estimable
+FP_DRIFT_MAX_SHARE = 1e-4                           # D-123: the FP-side counts n_a may differ between jobs in at most this share of the FP-active cells (different nodes, float noise); n must be identical
 
 
 class FreezeError(RuntimeError):
@@ -107,15 +108,17 @@ def h3_cell(d, active, min_cells=3, scale=None):
 
 
 def h3_rule(median_nu, median_lambda):
-    """The plan's thresholds: |median Spearman(nu, log sigma_a)| < 0.2 AND |median Spearman(lambda, log sigma_a)| > 0.5 (NaN fails)."""
-    return bool(np.isfinite(median_nu) and np.isfinite(median_lambda) and abs(median_nu) < H3_NU_MAX and abs(median_lambda) > H3_LAMBDA_MIN)
+    """The plan's thresholds: |median Spearman(nu, log sigma_a)| < 0.2 AND |median Spearman(lambda, log sigma_a)| > 0.5; None (not estimable) if either median is NaN."""
+    if not (np.isfinite(median_nu) and np.isfinite(median_lambda)):
+        return None
+    return bool(abs(median_nu) < H3_NU_MAX and abs(median_lambda) > H3_LAMBDA_MIN)
 
 
 def h3_overall(cells, arms=("legacy", "matched", "gptq"), widths=("INT6", "INT4")):
-    """H3 is met only if it is met in all six (arm, width) cells; a missing cell is not a pass."""
+    """H3 is met only if it is met in all six (arm, width) cells; a missing or not estimable cell is not a pass (and not a failure)."""
     expected = [(a, w) for a in arms for w in widths]
-    missing = [k for k in expected if k not in cells]; failing = [k for k in expected if k in cells and not cells[k]]
-    return {"met": not missing and not failing, "failing": failing, "missing": missing}
+    missing = [k for k in expected if k not in cells]; not_est = [k for k in expected if k in cells and cells[k] is None]; failing = [k for k in expected if k in cells and cells[k] is False]
+    return {"met": not missing and not failing and not not_est, "failing": failing, "missing": missing, "not_estimable": not_est}
 
 
 # ------------------------------------------------------------------ H4
@@ -262,16 +265,20 @@ def improvement_wording(improvement, lo, hi):
 
 
 def selectivity_difference(d, active, selective, min_cells=20, n_boot=N_BOOT, seed=SEED):
-    """Secondary, descriptive: per language the difference of mean log nu between selective and non-selective FP-active cells (languages with at least min_cells selective cells), the mean over languages and a 95 % language-cluster interval."""
-    rows = []
+    """Secondary, descriptive. `selective` [n_lang, d] marks the cells selective for THEIR language (selective_cells). Per language: mean log nu of its selective FP-active cells minus mean log nu of the FP-active cells of features
+    that are selective for NO language (globally non-selective); cells of features selective for another language are in neither group (their count is reported). Languages with at least min_cells selective cells; the mean over
+    languages with a 95 % language-cluster interval."""
+    feat_sel = selective.any(axis=0); rows, other = [], []
     for l in range(active.shape[0]):
-        a, b = active[l] & selective[l], active[l] & ~selective[l]
+        a, b = active[l] & selective[l], active[l] & ~feat_sel
+        other.append(int((active[l] & feat_sel & ~selective[l]).sum()))
         rows.append(float(d["log_nu"][l][a].mean() - d["log_nu"][l][b].mean()) if a.sum() >= min_cells and b.sum() > 0 else float("nan"))
+    reading = "selective cells (feature selective, peak language = this language) minus FP-active cells of globally non-selective features; cells selective for another language are reported only"
     v = np.array(rows); ok = np.isfinite(v)
     if not ok.any():
-        return {"languages_used": 0, "mean_difference": float("nan"), "ci95": (float("nan"), float("nan")), "per_language": rows}
+        return {"languages_used": 0, "mean_difference": float("nan"), "ci95": (float("nan"), float("nan")), "per_language": rows, "other_language_selective_cells": other, "reading": reading}
     rng = np.random.default_rng(seed); u = v[ok]; reps = [float(u[rng.integers(0, len(u), len(u))].mean()) for _ in range(n_boot)]
-    return {"languages_used": int(ok.sum()), "mean_difference": float(u.mean()), "ci95": tuple(float(x) for x in np.percentile(reps, [2.5, 97.5])), "per_language": rows}
+    return {"languages_used": int(ok.sum()), "mean_difference": float(u.mean()), "ci95": tuple(float(x) for x in np.percentile(reps, [2.5, 97.5])), "per_language": rows, "other_language_selective_cells": other, "reading": reading}
 
 
 def jsonable(o):
@@ -292,9 +299,15 @@ def analyse(sums_by_arm, theta, tier, script, f5=None, selective=None, committed
     ref = sums_by_arm["legacy"]["INT6"]; n_lang = int(ref["n"].numel()); tier = np.asarray(tier); script = np.asarray(script)
     for arm, widths in sums_by_arm.items():
         for w, sm in widths.items():
-            if not (torch_equal(sm["stats"]["n_a"], ref["stats"]["n_a"]) and torch_equal(sm["n"], ref["n"])):
-                raise AnalysisStopped(f"{arm} {w}: the FP-active counts (n_a, n) differ from the reference: the FP side must be identical in every condition")
+            if not torch_equal(sm["n"], ref["n"]):
+                raise AnalysisStopped(f"{arm} {w}: the token counts n differ from the reference: every job must see the same equal-budget tokens")
     active = fp_active(ref["stats"]["n_a"].numpy(), ref["n"].numpy())
+    drift = {}
+    for arm, widths in sums_by_arm.items():
+        for w, sm in widths.items():
+            drift[f"{arm}|{w}"] = fp_side_drift(sm, ref, active)
+            if drift[f"{arm}|{w}"]["share_cells_different"] > FP_DRIFT_MAX_SHARE or drift[f"{arm}|{w}"]["share_active_status_different"] > FP_DRIFT_MAX_SHARE:
+                raise AnalysisStopped(f"{arm} {w}: the FP side (n_a) differs from the reference in more than {FP_DRIFT_MAX_SHARE:g} of the FP-active cells ({drift[f'{arm}|{w}']['cells_with_different_n_a']} cells): the FP pass must be the same in every job")
     D = {(a, w): derived(sm, theta) for a, ws in sums_by_arm.items() for w, sm in ws.items()}
     gates = {f"{a}|{w}": identity_gate(d, active) for (a, w), d in D.items()}
     bad = [k for k, g in gates.items() if not g["passed"]]
@@ -322,15 +335,35 @@ def analyse(sums_by_arm, theta, tier, script, f5=None, selective=None, committed
         cells = {}
         for a, w in primary:
             T, mask = f5[a]["T"], f5[a]["mask"]; d = D[a, w]; li, ii = np.asarray(T["lang"]).astype(int), np.asarray(T["ids"]).astype(int)
-            res = h5_cell(T["base"], T[w]["r1"], d["g"][li, ii], d["log_nu"][li, ii], T[w]["w1"], T["lang"], mask, d["n_a"][li, ii], n_boot=h5_n_boot or n_boot)
+            res = h5_cell(T["base"], T[w]["r1"], d["g"][li, ii], d["log_nu"][li, ii], T[w]["w1"], T["lang"], mask, d["n_a"][li, ii], n_boot=se.N_BOOT if h5_n_boot is None else h5_n_boot)
+            res["full_population"] = d113_full_population(T["base"], T[w]["r1"], T[w]["w1"], T["lang"], mask, se.N_BOOT if h5_n_boot is None else h5_n_boot)
             for k, v in res["improvement"].items():
                 v["wording"] = improvement_wording(v["improvement"], v["lo"], v["hi"])
             cells[f"{a}|{w}"] = {"result": res, "wording": res["improvement"]["Bplus_over_B"]["wording"]}
         H5 = {"cells": cells, "statement": h5_overall([c["result"]["cell_met"] for c in cells.values()]),
               "note": "the 10 % relative improvement is the D-113 convention, not a claim: every improvement is reported with its interval and worded from the interval (D-121)"}
     failed = sorted(a for a, c in (committed or {}).items() if not c["G2_committed"]["passed"])
-    return {"n_languages": n_lang, "gates": {"identity": gates}, "populations": pops, "H3": H3, "H4": H4, "descriptive": desc, "H5": H5,
+    return {"n_languages": n_lang, "fp_side_drift": drift, "gates": {"identity": gates}, "populations": pops, "H3": H3, "H4": H4, "descriptive": desc, "H5": H5,
             "labels": {"sidecar_internal": bool(failed), "failed_arms": failed, "committed_comparison": "run" if committed else "not run"}}
+
+
+def fp_side_drift(sm, ref, active):
+    """D-123: how far a condition's full-precision-side sums are from the reference's (legacy INT6): cells with a different n_a among the FP-active cells, the largest difference, the cells whose FP-active status differs, and the largest
+    relative differences of Sa and Saa. The FP-active set is always the reference's (the freeze defines it as the same in every condition and arm)."""
+    na, na0 = sm["stats"]["n_a"].numpy().astype(np.int64), ref["stats"]["n_a"].numpy().astype(np.int64); n = sm["n"].numpy()
+    diff = np.abs(na - na0); total = max(int(active.sum()), 1)
+    rel = lambda k: float(np.max(np.abs(sm["stats"][k].numpy()[active] - ref["stats"][k].numpy()[active]) / np.maximum(np.abs(ref["stats"][k].numpy()[active]), 1e-300))) if active.any() else 0.0
+    status = int((fp_active(na, n) != active).sum())
+    return {"cells_with_different_n_a": int(((diff > 0) & active).sum()), "share_cells_different": float(((diff > 0) & active).sum() / total), "max_abs_delta_n_a": int(diff[active].max()) if active.any() else 0,
+            "cells_with_different_active_status": status, "share_active_status_different": float(status / total), "max_rel_delta_Sa": rel("Sa"), "max_rel_delta_Saa": rel("Saa")}
+
+
+def d113_full_population(base, r1, w1, lang, mask, n_boot):
+    """The D-113 value next to the restricted H5 population: models A and B on the reliability mask alone (no n_a floor, no g / nu requirement), exactly as survival_effect does."""
+    mask = np.asarray(mask, dtype=bool); y = np.asarray(w1, dtype=np.float64)[mask]; lg = np.asarray(lang)[mask]; b = np.asarray(base)[mask]; r = np.asarray(r1)[mask]
+    eA = np.abs(y - se.loo_language(b, y, lg)[0]); eB = np.abs(y - se.loo_language(np.column_stack([b, r]), y, lg)[0]); im = se.improvement(eA, eB, lg, n_boot, se.SEED)
+    im["wording"] = improvement_wording(im["improvement"], im["lo"], im["hi"])
+    return {"n": int(mask.sum()), "n_languages": int(len(np.unique(lg))), "B_over_A": im}
 
 
 def torch_equal(a, b):
@@ -358,16 +391,19 @@ def render_md(res):
     L += ["## Gates: identity (r from g, sigma_a, sigma_e against r from the sums)", "", "| cell | checked | excluded (degenerate) | largest difference |", "|---|---|---|---|"]
     for k, g in res["gates"]["identity"].items():
         L.append(f"| {k} | {g['checked']} | {sum(g['excluded'].values())} | {g['max_abs_diff']:.2e} |")
+    L += ["", "## FP side across jobs (D-123): cells whose n_a differs from the reference among the FP-active cells", "", "| cell | cells with different n_a | largest difference | cells with different active status | max relative difference of Sa |", "|---|---|---|---|---|"]
+    for k, v in res["fp_side_drift"].items():
+        L.append(f"| {k} | {v['cells_with_different_n_a']} | {v['max_abs_delta_n_a']} | {v['cells_with_different_active_status']} | {v['max_rel_delta_Sa']:.2e} |")
     L += ["", "## Populations (FP-active cells; silent = no quantized activation; clipped lambda counted, never dropped)", "", "| cell | active | silent | clipped low | clipped high |", "|---|---|---|---|---|"]
     for k, p in res["populations"].items():
         L.append(f"| {k} | {p['active']} | {p['silent_count']} | {p['clipped_low']} | {p['clipped_high']} |")
     h3 = res["H3"]
     L += ["", "## H3: does lambda follow the feature's scale, and nu not?", "", "| cell | median Spearman(lambda, log sigma_a) | median Spearman(nu, log sigma_a) | rule (convention) |", "|---|---|---|---|"]
     for k, c in h3["cells"].items():
-        L.append(f"| {k} | {_f(c['median_spearman_lambda'])} | {_f(c['median_spearman_nu'])} | {'met' if c['met'] else 'not met'} |")
+        L.append(f"| {k} | {_f(c['median_spearman_lambda'])} | {_f(c['median_spearman_nu'])} | {'not estimable' if c['met'] is None else ('met' if c['met'] else 'not met')} |")
     for k, c in h3["reported"].items():
         L.append(f"| {k} (reported) | {_f(c['median_spearman_lambda'])} | {_f(c['median_spearman_nu'])} | - |")
-    o = h3["overall"]; L += ["", f"Overall: {'met in all six cells' if o['met'] else 'not met'}; failing cells {o['failing'] or 'none'}; missing {o['missing'] or 'none'}.", "",
+    o = h3["overall"]; L += ["", f"Overall: {'met in all six cells' if o['met'] else 'not met'}; failing cells {o['failing'] or 'none'}; not estimable {o['not_estimable'] or 'none'}; missing {o['missing'] or 'none'}.", "",
                              "## H4: tier pattern in the encoder perturbation (outcome = minus the mean of log nu per language)", "",
                              "Primary s = z(width) - z(INT16) (quantization-specific part, standardized slopes); secondary z(width) against 0. Outcome words: present (95 % interval excludes 0 and |estimate| >= 0.20), absent (90 % interval inside +-0.20), otherwise inconclusive; inconclusive is an accepted result.", "",
                              "| cell | covariate | slope INT16 | slope width | primary s [95 %] | primary outcome | secondary z [95 %] | secondary outcome | dropped replicates |", "|---|---|---|---|---|---|---|---|---|"]
@@ -376,10 +412,11 @@ def render_md(res):
             c = v[name]; L.append(f"| {k} | {'sigma_a' if name != 'standard' else 'none'} | {_f(c['slope_16'])} | {_f(c['slope_w'])} | {_f(c['primary']['estimate'])} {_ci(c['primary']['ci95'])} | {c['primary']['outcome']} | {_f(c['secondary']['estimate'])} {_ci(c['secondary']['ci95'])} | {c['secondary']['outcome']} | {c['dropped_replicates']} |")
     if res["H5"] is not None:
         L += ["", "## H5: do g and log nu add to model B for W1? (every improvement with its interval)", "", res["H5"]["note"] + ".", "",
-              "| cell | n | B over A | B+ over B | B+ over A | g only over B | nu only over B | wording of B+ over B | meets the 10 % convention |", "|---|---|---|---|---|---|---|---|---|"]
+              "| cell | n | B over A | B over A on the full D-113 population (n) | B+ over B | B+ over A | g only over B | nu only over B | wording of B+ over B | meets the 10 % convention |", "|---|---|---|---|---|---|---|---|---|---|"]
         for k, c in res["H5"]["cells"].items():
             r = c["result"]; im = r["improvement"]; cell = lambda n: f"{_f(im[n]['improvement'])} {_ci((im[n]['lo'], im[n]['hi']))}"
-            L.append(f"| {k} | {r['n']} | {cell('B_over_A')} | {cell('Bplus_over_B')} | {cell('Bplus_over_A')} | {cell('Bg_over_B')} | {cell('Bnu_over_B')} | {c['wording']} | {'yes' if r['cell_met'] else 'no'} |")
+            fpop = r["full_population"]; full = f"{_f(fpop['B_over_A']['improvement'])} {_ci((fpop['B_over_A']['lo'], fpop['B_over_A']['hi']))} (n {fpop['n']})"
+            L.append(f"| {k} | {r['n']} | {cell('B_over_A')} | {full} | {cell('Bplus_over_B')} | {cell('Bplus_over_A')} | {cell('Bg_over_B')} | {cell('Bnu_over_B')} | {c['wording']} | {'yes' if r['cell_met'] else 'no'} |")
         L += ["", f"D-113 overall statement over the six cells: {res['H5']['statement']}."]
     d = res["descriptive"]
     L += ["", "## Descriptive tables", "", "### Lambda decomposition between arms (arm minus legacy; lambda = log sigma_e^2 - 2 log|g| - 2 log sigma_a, exact)", "", "| pair | cells | median delta lambda | median delta log sigma_e^2 | median -2 delta log abs g | identity error |", "|---|---|---|---|---|---|"]
@@ -392,7 +429,7 @@ def render_md(res):
     for k, c in d["arm_summary"].items():
         L.append(f"| {k} | {_f(c['median_g'])} | {_f(c['median_log_sigma_e2'])} | {_f(c['median_lambda'])} | {_f(c['flip']['on_off']['p50'], 4)} | {_f(c['flip']['off_on']['p50'], 4)} | {_f(c['nu']['overall']['p50'])} [{_f(c['nu']['overall']['p25'])}, {_f(c['nu']['overall']['p75'])}] | {_f(c['silent']['overall']['share'], 4)} | {_f(d['flip_prediction'][k]['spearman'])} |")
     if d["selectivity"]:
-        L += ["", "### Selectivity (secondary, descriptive): mean log nu of selective minus non-selective cells", "", "| cell | languages | mean difference [95 %] |", "|---|---|---|"]
+        L += ["", "### Selectivity (secondary, descriptive): mean log nu of selective cells minus cells of globally non-selective features", "", "Reading: a cell (language, feature) is selective iff the feature is selective and peaks in that language; cells of features selective for another language are in neither group.", "", "| cell | languages | mean difference [95 %] |", "|---|---|---|"]
         for k, c in d["selectivity"].items():
             L.append(f"| {k} | {c['languages_used']} | {_f(c['mean_difference'])} {_ci(c['ci95'])} |")
     L += ["", "## Limits", "", "One model, one layer, one SAE, simulated weight-only quantizers, 27 languages (clusters). Single-language script families are absorbed by the script dummies, so the tier slope rests on about 23 languages. Post hoc relative to Stage 1 (same tokens and features), with the Stage 3 rules fixed before the new statistics existed. Nulls, negatives and inconclusive outcomes are results."]
@@ -466,8 +503,11 @@ def main(argv=None):
     theta = torch.tensor(metas["legacy"]["theta"], dtype=torch.float32); tier, script = load_roster(a.roster, langs)
     committed = None if a.no_committed else {arm: sc.check_committed(Path(a.runs) / JOBS[arm][0], path) for arm, path in zip(ARMS3, a.committed)}
     max_act = selective = None
-    if not a.no_committed and Path(a.phase1).exists():
-        max_act = torch.load(a.phase1, map_location="cpu", weights_only=False)["max_activation"].double().numpy()
+    if Path(a.phase1).exists():
+        sv1 = torch.load(a.phase1, map_location="cpu", weights_only=False)
+        if list(sv1["languages"]) != list(langs):
+            raise AnalysisStopped("the committed survival.pt's language list differs from the sidecar's")
+        max_act = sv1["max_activation"].double().numpy()
     if not a.no_selectivity and Path(a.selectivity).exists():
         sel = torch.load(a.selectivity, map_location="cpu", weights_only=False)
         if list(sel["languages"]) != list(langs):
