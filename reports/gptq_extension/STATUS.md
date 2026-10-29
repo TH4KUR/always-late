@@ -215,3 +215,5 @@ Deadline: course deliverables 31 October 2026 (the report and deck are the team'
 
 
 - 2026-10-29 16:32 IST (Codex, user request D-125): copied existing 9B report/freeze plus eight detailed artifact files to main, with pinned hashes; added the CPU review queue to the existing cron prompt. GPTQ and matched-RTN 9B outcomes remain missing; no GPU job or paid session started.
+- 2026-10-29 17:13 IST (project-6d cron): new direction D-125 (cron prompt): CPU review of the imported 9B original-RTN results; task 1 (source and instrument audit) done: provenance hashes equal, frozen code equals the 2B entry points, same 300 sentences and corpus as 2B, instrument consistent; gaps: LM metadata lists INT4 only, P3a ordering to settle; details in `reports/functional_validation/gemma9b/REVIEW_STATUS.md`. Nothing fetched, no compute.
+
