@@ -11,6 +11,7 @@ from scipy.stats import spearmanr
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import phase1_analysis as an  # noqa: E402
+import survival_effect as se  # noqa: E402
 import survival_lambda as sl  # noqa: E402
 import survival_sidecar as sc  # noqa: E402
 
@@ -170,3 +171,27 @@ def h4_cell(y_w, y16, tier, script, n_boot=N_BOOT, seed=SEED, bound=H4_BOUND):
         ci95, ci90 = _intervals(reps[:, k], ok)
         out[name] = {"estimate": float(point[k]), "ci95": ci95, "ci90": ci90, "not_estimable": not ok, "outcome": h4_rule(point[k], ci95, ci90, bound)}
     return out
+
+
+# ------------------------------------------------------------------ H5: g and nu added to model B (D-113 code and rule unchanged)
+def h5_cell(base, r1, gain, log_nu, w1, lang, mask, n_a, n_boot=se.N_BOOT, seed=se.SEED):
+    """One (arm, state) cell of H5 on the F5 features: models A (base), B (base + R1), B+ (base + R1 + g + log nu) and the g-only and nu-only variants, all on the SAME rows (the reliability mask `mask`,
+    n_a >= MIN_TOKENS in the sidecar, g and nu defined), leave-language-out ridge as in D-113 (survival_effect, unchanged); the improvement of B+ over B in mean absolute error with the language-cluster
+    bootstrap of survival_effect and its rule (>= 10 % and the interval above 0)."""
+    base, r1, gain, log_nu, w1, lang, mask, n_a = (np.asarray(x) for x in (base, r1, gain, log_nu, w1, lang, mask, n_a))
+    mask = mask.astype(bool); enough = n_a >= MIN_TOKENS; defined = np.isfinite(gain) & np.isfinite(log_nu)
+    pop = mask & enough & defined
+    dropped = {"outside_mask": int((~mask).sum()), "n_a_below_floor": int((mask & ~enough).sum()), "undefined_g_or_nu": int((mask & enough & ~defined).sum())}
+    y = w1[pop].astype(np.float64); lg = lang[pop]; b, r, g, nu = base[pop], r1[pop], gain[pop], log_nu[pop]
+    X = {"A": b, "B": np.column_stack([b, r]), "B+": np.column_stack([b, r, g, nu]), "B+g": np.column_stack([b, r, g]), "B+nu": np.column_stack([b, r, nu])}
+    err = {k: np.abs(y - se.loo_language(v, y, lg)[0]) for k, v in X.items()}
+    imp = lambda a, c: se.improvement(err[a], err[c], lg, n_boot, seed)
+    out = {"n": int(pop.sum()), "n_languages": int(len(np.unique(lg))), "dropped": dropped, "mae": {k: float(v.mean()) for k, v in err.items()},
+           "improvement": {"B_over_A": imp("A", "B"), "Bplus_over_B": imp("B", "B+"), "Bplus_over_A": imp("A", "B+"), "Bg_over_B": imp("B", "B+g"), "Bnu_over_B": imp("B", "B+nu")}}
+    b_ = out["improvement"]["Bplus_over_B"]; out["cell_met"] = se.cell_met(b_["improvement"], b_["lo"])
+    return out
+
+
+def h5_overall(cells):
+    """The D-113 overall statement over the cells of (arm, INT6, INT4)."""
+    return se.overall_statement(cells)

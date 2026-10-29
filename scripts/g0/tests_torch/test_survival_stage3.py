@@ -203,6 +203,52 @@ class H4(unittest.TestCase):
         self.assertEqual(json.dumps(a, default=float), json.dumps(b, default=float)); self.assertNotEqual(json.dumps(a, default=float), json.dumps(c, default=float))
 
 
+class H5(unittest.TestCase):
+    """A toy F5-like table: 6 languages x 40 features, five baseline columns (model A), R1, and the sidecar's g and log nu; W1 is built from known ingredients."""
+    def table(self, seed=0, signal=None, n_per=40, n_lang=6):
+        g = np.random.default_rng(seed); n = n_per * n_lang; lang = np.repeat(np.arange(n_lang), n_per)
+        base = g.normal(size=(n, 5)); r1 = g.normal(size=n); gain = g.normal(size=n); lognu = g.normal(size=n); n_a = np.full(n, 100)
+        w1 = 0.5 * base[:, 0] + 0.3 * r1 + g.normal(0, 0.5, n)
+        if signal == "nu":
+            w1 = w1 + 1.5 * lognu
+        if signal == "g":
+            w1 = w1 + 1.5 * gain
+        if signal == "r1":
+            w1 = w1 + 1.5 * r1
+        return dict(base=base, r1=r1, g=gain, log_nu=lognu, w1=w1, lang=lang, mask=np.ones(n, bool), n_a=n_a)
+
+    def cell(self, T, **kw):
+        return s3.h5_cell(T["base"], T["r1"], T["g"], T["log_nu"], T["w1"], T["lang"], T["mask"], T["n_a"], n_boot=200, seed=1, **kw)
+
+    def test_with_no_information_in_g_and_nu_the_rule_is_not_met(self):
+        r = self.cell(self.table()); self.assertFalse(r["cell_met"]); self.assertLess(r["improvement"]["Bplus_over_B"]["improvement"], 0.10)
+        self.assertEqual((r["n"], r["n_languages"]), (240, 6)); self.assertEqual(set(r["improvement"]), {"B_over_A", "Bplus_over_B", "Bplus_over_A", "Bg_over_B", "Bnu_over_B"})
+
+    def test_a_real_dependence_on_log_nu_is_found_by_b_plus_and_the_nu_only_variant_not_the_g_only_one(self):
+        r = self.cell(self.table(signal="nu"))
+        self.assertTrue(r["cell_met"]); self.assertGreaterEqual(r["improvement"]["Bplus_over_B"]["improvement"], 0.10); self.assertGreater(r["improvement"]["Bplus_over_B"]["lo"], 0)
+        self.assertGreaterEqual(r["improvement"]["Bnu_over_B"]["improvement"], 0.10); self.assertLess(r["improvement"]["Bg_over_B"]["improvement"], 0.10)
+        r = self.cell(self.table(signal="g")); self.assertTrue(r["cell_met"]); self.assertGreaterEqual(r["improvement"]["Bg_over_B"]["improvement"], 0.10); self.assertLess(r["improvement"]["Bnu_over_B"]["improvement"], 0.10)
+
+    def test_the_population_is_the_mask_with_enough_tokens_and_defined_g_and_nu_and_the_drops_are_counted(self):
+        T = self.table(); T["n_a"][:10] = 19; T["n_a"][20:23] = 20; T["g"][5:7] = np.nan; T["g"][18:19] = np.nan; T["g"][10:14] = np.nan; T["log_nu"][14:16] = np.nan; T["mask"][16:20] = False
+        r = self.cell(T)
+        self.assertEqual(r["n"], 240 - 10 - 4 - 2 - 4); self.assertEqual(r["dropped"], {"outside_mask": 4, "n_a_below_floor": 10, "undefined_g_or_nu": 6})
+
+    def test_a_dependence_on_r1_is_model_b_over_a_and_does_not_meet_the_rule_which_asks_for_g_and_nu_beyond_b(self):
+        r = self.cell(self.table(signal="r1"))
+        self.assertGreaterEqual(r["improvement"]["B_over_A"]["improvement"], 0.10); self.assertGreaterEqual(r["improvement"]["Bplus_over_A"]["improvement"], 0.10)
+        self.assertLess(r["improvement"]["Bplus_over_B"]["improvement"], 0.10); self.assertFalse(r["cell_met"])
+
+    def test_models_a_b_and_b_plus_see_the_same_rows_and_the_result_is_reproducible(self):
+        T = self.table(signal="nu"); a, b = self.cell(T), self.cell(T)
+        self.assertEqual(json.dumps(a, default=float), json.dumps(b, default=float))
+        self.assertAlmostEqual(a["improvement"]["Bplus_over_A"]["improvement"], 1 - (1 - a["improvement"]["B_over_A"]["improvement"]) * (1 - a["improvement"]["Bplus_over_B"]["improvement"]), places=9)
+
+    def test_the_overall_statement_is_the_d113_one(self):
+        self.assertEqual(s3.h5_overall([False] * 6), "no clear predictive value beyond baselines"); self.assertEqual(s3.h5_overall([True] * 6), "adds predictive value"); self.assertEqual(s3.h5_overall([True, False]), "mixed")
+
+
 class Freeze(unittest.TestCase):
     def test_the_constants_of_the_module_equal_the_committed_freeze(self):
         F = json.loads((ROOT / "reports/survival_measurement/analysis_freeze.json").read_text())
