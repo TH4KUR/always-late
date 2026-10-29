@@ -277,6 +277,7 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 - **Default:** (c) until you answer (no GPU job without your go-ahead under the 27 October hold).
 - ANSWER: the user, 2026-10-29 (main chat): "you are free to use ada. you can start stage 1 on ada itself if needed." Read as option (a): Stage 2 on Ada with the thresholds as proposed (they may still be changed before the Stage 3 freeze is committed). Stage 1 runs locally (CPU, small files).
 - STATUS: answered (a), 2026-10-29
+- ANSWER (2, direct in the project-6d session): the user, 2026-10-29 07:08 IST: "approved, but report results honestly. the 10% improvement isnt backed by any actual claims so any improvement is reportable and good". Read as the direct go-ahead for the Stage 2 Ada jobs, and as the instruction to report every improvement with its interval (D-121). STATUS: APPLIED 2026-10-29 07:08 IST (D-121).
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
