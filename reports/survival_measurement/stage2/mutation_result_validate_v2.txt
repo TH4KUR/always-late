@@ -1,0 +1,18 @@
+# survival_validate.py incl. merge_recorded, 2026-10-29 07:54 IST: 17 mutants; the survivor 'stage-1 manifest never merged' is in the command-line wrapper (main), which the unit tests do not run; it is exercised by the real validation of job 45796
+KILLED          gate failures ignored
+KILLED          missing gate ignored
+KILLED          failed gate ignored
+KILLED          theta comparison not required
+KILLED          conditions not checked
+KILLED          regime/stream not checked
+KILLED          pre-activation source/dtype not checked
+KILLED          full-run check off
+KILLED          weights manifest never checked
+KILLED          smoke run compared with committed
+KILLED          arm weights not checked
+KILLED          built bits include INT0
+KILLED          sums failure hidden
+KILLED          stage-1 overrides the freeze file
+KILLED          conflicts not reported
+KILLED          input modified
+SURVIVED        stage-1 manifest never merged

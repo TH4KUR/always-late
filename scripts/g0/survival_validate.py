@@ -21,6 +21,19 @@ REQUIRED_GATES = ("G1", "G2_internal", "G3", "G4", "G6")
 METHOD = {"rtn-matched": "rtn_matched", "gptq": "gptq"}
 
 
+def merge_recorded(recorded, stage1_manifest):
+    """The recorded artifact hashes (artifact_hashes.json holds INT4 only) completed with the hashes of the stage-1 job of the same arm (`weights_manifest.json` of transfer_runs/{rtnm,gptq}-p1-mask): the freeze file wins;
+    widths it does not record come from the stage-1 manifest, so a job's INT6 artifact is compared with the one the committed stage-1 run used. -> (merged copy, list of conflicts)."""
+    method = stage1_manifest.get("method"); merged = {k: dict(v) for k, v in recorded.items()}; conflicts = []
+    for b, h in stage1_manifest.get("artifact_sha256", {}).items():
+        have = merged.setdefault(method, {}).get(b)
+        if have is None:
+            merged[method][b] = h
+        elif have != h:
+            conflicts.append(f"{method} {b} bits: freeze file {have[:8]}... differs from the stage-1 manifest {h[:8]}...")
+    return merged, conflicts
+
+
 def check_meta(meta, bits, full, n_lang=27, n_feat=16384, arm=None):
     why = []
     if arm is not None and sc._norm(meta.get("weights")) != sc._norm({"legacy": "rtn"}.get(arm, arm)):
@@ -84,9 +97,15 @@ def main(argv=None):
     ap.add_argument("--job", required=True); ap.add_argument("--jobname", required=True); ap.add_argument("--name", required=True, help="the output directory name under /home2/karma/duan-verify/out/phase1")
     ap.add_argument("--arm", choices=["legacy", "rtn-matched", "gptq"], required=True); ap.add_argument("--bits", nargs="+", type=int, required=True)
     ap.add_argument("--smoke", action="store_true", help="a subset run: no full-run or committed checks"); ap.add_argument("--committed-run"); ap.add_argument("--local-root", default=str(tv.LOCAL_RUNS))
-    ap.add_argument("--recorded", default=str(ROOT / "reports/gptq_extension/artifact_hashes.json"))
+    ap.add_argument("--recorded", default=str(ROOT / "reports/gptq_extension/artifact_hashes.json")); ap.add_argument("--stage1-manifest", help="default: transfer_runs/{rtnm,gptq}-p1-mask/weights_manifest.json of the arm")
     a = ap.parse_args(argv)
     recorded = json.loads(Path(a.recorded).read_text())["artifact_sha256"]
+    default = {"rtn-matched": "rtnm-p1-mask", "gptq": "gptq-p1-mask"}.get(a.arm)
+    manifest = a.stage1_manifest or (str(Path(a.local_root) / default / "weights_manifest.json") if default else None)
+    if manifest and Path(manifest).exists():
+        recorded, conflicts = merge_recorded(recorded, json.loads(Path(manifest).read_text()))
+        if conflicts:
+            print("WARNING: " + "; ".join(conflicts), file=sys.stderr)
     remote = lambda cmd: subprocess.run(tv.ADA + [cmd], capture_output=True, text=True).stdout
     fetch = lambda r, l: subprocess.run(["scp", "-q", "-o", "HostKeyAlias=ada-gw1", f"karma@10.4.24.30:{r}/*", l], check=True)
     rep = validate(a.job, a.jobname, a.name, a.arm, a.bits, remote, fetch, Path(a.local_root), full=not a.smoke, committed_run=a.committed_run, recorded=recorded)

@@ -110,6 +110,20 @@ class Validate(unittest.TestCase):
         self.assertIn("weights", self.validate("rtn-matched")["failed"])                                                                                 # method differs
         man["artifact_sha256"]["4"] = "e" * 64; (self.remote / "weights_manifest.json").write_text(json.dumps(man)); self.assertIn("weights", self.validate("gptq")["failed"])
 
+    def test_the_stage_1_manifest_supplies_the_hashes_of_the_widths_the_freeze_file_does_not_record(self):
+        rec = {"gptq": {"4": "a" * 64}, "rtn_matched": {"4": "c" * 64}}
+        stage1 = {"method": "gptq", "artifact_sha256": {"4": "z" * 64, "6": "b" * 64, "8": "d" * 64}}
+        merged, conflicts = sv.merge_recorded(rec, stage1)
+        self.assertEqual(merged["gptq"], {"4": "a" * 64, "6": "b" * 64, "8": "d" * 64})                          # the freeze file wins, the stage-1 manifest fills the gaps
+        self.assertEqual(len(conflicts), 1); self.assertIn("gptq 4 bits", conflicts[0])
+        self.assertEqual(rec["gptq"], {"4": "a" * 64})                                                           # the input is not modified
+        self.assertEqual(sv.merge_recorded(rec, {"method": "rtn_matched", "artifact_sha256": {"6": "e" * 64}})[0]["rtn_matched"], {"4": "c" * 64, "6": "e" * 64})
+        man = {"method": "gptq", "bits": [4, 6], "artifact_sha256": {"4": "a" * 64, "6": "b" * 64}, "pool_sha256": "p" * 64}
+        (self.remote / "weights_manifest.json").write_text(json.dumps(man))
+        self.assertNotIn("weights", sv.validate(43001, "sc-test", "sc-test", "gptq", list(BITS), self.run_remote, self.fetch, self.local_root, recorded=merged, n_lang=3, n_feat=F)["failed"])
+        man["artifact_sha256"]["6"] = "f" * 64; (self.remote / "weights_manifest.json").write_text(json.dumps(man))
+        self.assertIn("weights", sv.validate(43001, "sc-test", "sc-test", "gptq", list(BITS), self.run_remote, self.fetch, self.local_root, recorded=merged, n_lang=3, n_feat=F)["failed"])  # INT6 differs from stage 1
+
     def test_the_committed_comparison_is_reported_and_never_fails_the_job(self):
         rep = self.validate(committed_run=self.committed()); self.assertTrue(rep["committed"]["G2_committed"]["passed"])
         shutil.rmtree(self.tmp / "committed"); rep = self.validate(committed_run=self.committed(shift=0.05))
