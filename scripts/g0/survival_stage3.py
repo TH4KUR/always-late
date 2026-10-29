@@ -91,14 +91,14 @@ def identity_gate(d, active, tol=IDENTITY_TOL):
 
 
 # ------------------------------------------------------------------ H3
-def h3_cell(d, active, min_cells=3):
+def h3_cell(d, active, min_cells=3, scale=None):
     """Per language over its FP-active cells: Spearman(lambda, log sigma_a) and Spearman(nu, log sigma_a); the median over languages (languages with fewer than min_cells cells or a constant column are skipped)."""
     lam_rho, nu_rho = [], []
     for l in range(active.shape[0]):
         m = active[l]
         if m.sum() < min_cells:
             lam_rho.append(float("nan")); nu_rho.append(float("nan")); continue
-        ls = np.log(d["sigma_a"][l][m])
+        ls = np.log((d["sigma_a"] if scale is None else scale)[l][m])
         with np.errstate(all="ignore"):
             lam_rho.append(float(spearmanr(d["lam"][l][m], ls)[0])); nu_rho.append(float(spearmanr(d["nu"][l][m], ls)[0]))
     return {"median_spearman_lambda": float(np.nanmedian(lam_rho)) if np.isfinite(lam_rho).any() else float("nan"),
@@ -119,17 +119,20 @@ def h3_overall(cells, arms=("legacy", "matched", "gptq"), widths=("INT6", "INT4"
 
 
 # ------------------------------------------------------------------ H4
-def tier_slope(y, tier, script):
-    """OLS coefficient of the tier score in y ~ script dummies + tier (as phase1_analysis.partial_slope); NaN when the script-residualised tier has no variation (a degenerate resample)."""
+def tier_slope(y, tier, script, covariates=None):
+    """OLS coefficient of the tier score in y ~ script dummies (+ covariates) + tier (as phase1_analysis.partial_slope and freedman_lane_tier_test); NaN when the residualised tier has no variation (a degenerate resample)."""
     y, tier, script = np.asarray(y, dtype=float), np.asarray(tier, dtype=float), np.asarray(script)
-    Z = an._design(script); tr = tier - Z @ np.linalg.pinv(Z) @ tier; ss = float(tr @ tr)
+    Z = an._design(script)
+    if covariates is not None:
+        C = np.asarray(covariates, dtype=float); Z = np.column_stack([Z, C[:, None] if C.ndim == 1 else C])
+    tr = tier - Z @ np.linalg.pinv(Z) @ tier; ss = float(tr @ tr)
     return float(tr @ y / ss) if ss > 1e-12 else float("nan")
 
 
-def z_slope(y, tier, script):
+def z_slope(y, tier, script, covariates=None):
     """Standardized slope: slope * SD(tier) / SD(y) over the languages of the sample (each width with ITS OWN SD(y)); NaN if y is constant."""
     y = np.asarray(y, dtype=float); sd_y = float(y.std()); sd_t = float(np.asarray(tier, dtype=float).std())
-    return tier_slope(y, tier, script) * sd_t / sd_y if sd_y > 0 else float("nan")
+    return tier_slope(y, tier, script, covariates) * sd_t / sd_y if sd_y > 0 else float("nan")
 
 
 def h4_rule(estimate, ci95, ci90, bound=H4_BOUND):
@@ -150,13 +153,14 @@ def _intervals(reps, ok):
     return tuple(float(x) for x in np.percentile(reps, [2.5, 97.5])), tuple(float(x) for x in np.percentile(reps, [5, 95]))
 
 
-def h4_cell(y_w, y16, tier, script, n_boot=N_BOOT, seed=SEED, bound=H4_BOUND):
+def h4_cell(y_w, y16, tier, script, n_boot=N_BOOT, seed=SEED, bound=H4_BOUND, covariates=None):
     """One (arm, width): the PRIMARY quantization-specific standardized difference s_w = z_w - z_INT16, the SECONDARY z_w against 0 and the SENSITIVITY (slope_w - slope_INT16) * SD(tier) / SD(y_INT16),
     with language-cluster bootstrap intervals (the same resample for every width) and the rule of the freeze. Degenerate replicates are dropped and counted; more than MAX_DROPPED_SHARE -> not estimable."""
     y_w, y16, tier, script = np.asarray(y_w, float), np.asarray(y16, float), np.asarray(tier, float), np.asarray(script)
+    cov = None if covariates is None else np.asarray(covariates, float)
     def stats(idx):
-        yw, y0, t, sc_ = y_w[idx], y16[idx], tier[idx], script[idx]
-        zw, z0 = z_slope(yw, t, sc_), z_slope(y0, t, sc_); sw, s0 = tier_slope(yw, t, sc_), tier_slope(y0, t, sc_)
+        yw, y0, t, sc_ = y_w[idx], y16[idx], tier[idx], script[idx]; cv = None if cov is None else cov[idx]
+        zw, z0 = z_slope(yw, t, sc_, cv), z_slope(y0, t, sc_, cv); sw, s0 = tier_slope(yw, t, sc_, cv), tier_slope(y0, t, sc_, cv)
         sens = (sw - s0) * float(t.std()) / float(y0.std()) if y0.std() > 0 else float("nan")
         return zw - z0, zw, sens
     n = len(y_w); point = stats(np.arange(n)); rng = np.random.default_rng(seed); reps = []
@@ -165,8 +169,8 @@ def h4_cell(y_w, y16, tier, script, n_boot=N_BOOT, seed=SEED, bound=H4_BOUND):
         if np.all(np.isfinite(v)):
             reps.append(v)
     reps = np.array(reps).reshape(-1, 3); dropped = n_boot - len(reps); ok = dropped / n_boot <= MAX_DROPPED_SHARE and len(reps) > 1
-    out = {"n_boot": n_boot, "valid_replicates": int(len(reps)), "dropped_replicates": int(dropped), "slope_w": tier_slope(y_w, tier, script), "slope_16": tier_slope(y16, tier, script),
-           "z_w": z_slope(y_w, tier, script), "z_16": z_slope(y16, tier, script), "bound": bound}
+    out = {"n_boot": n_boot, "valid_replicates": int(len(reps)), "dropped_replicates": int(dropped), "slope_w": tier_slope(y_w, tier, script, cov), "slope_16": tier_slope(y16, tier, script, cov),
+           "z_w": z_slope(y_w, tier, script, cov), "z_16": z_slope(y16, tier, script, cov), "bound": bound, "scale_covariate": cov is not None}
     for name, k in (("primary", 0), ("secondary", 1), ("sensitivity_common_denominator", 2)):
         ci95, ci90 = _intervals(reps[:, k], ok)
         out[name] = {"estimate": float(point[k]), "ci95": ci95, "ci90": ci90, "not_estimable": not ok, "outcome": h4_rule(point[k], ci95, ci90, bound)}
@@ -239,3 +243,244 @@ def nu_between_arms(d_a, d_b, active):
     m = active & np.isfinite(d_a["log_nu"]) & np.isfinite(d_b["log_nu"]); x, y = d_a["log_nu"][m], d_b["log_nu"][m]
     rho, sd_slope = sl.h1_stats(x, y, np.zeros(len(x), dtype=bool), np.zeros(len(y), dtype=bool))
     return {"cells": int(m.sum()), "spearman": rho, "sd_ratio_slope": sd_slope, "ols_slope": float(np.polyfit(x, y, 1)[0]), "median_difference": float(np.median(y - x))}
+
+
+# ------------------------------------------------------------------ wording (D-121), selectivity (secondary), assembly, report
+class AnalysisStopped(RuntimeError):
+    pass
+
+
+def improvement_wording(improvement, lo, hi):
+    """D-121: every improvement is reported with its interval; its size does not decide how it is worded (the 10 % target is a convention, not a claim)."""
+    if not np.all(np.isfinite([improvement, lo, hi])):
+        return "not estimable"
+    if lo > 0:
+        return "improvement (interval above zero)"
+    if hi < 0:
+        return "worse (interval below zero)"
+    return "not distinguishable from zero (interval includes zero)"
+
+
+def selectivity_difference(d, active, selective, min_cells=20, n_boot=N_BOOT, seed=SEED):
+    """Secondary, descriptive: per language the difference of mean log nu between selective and non-selective FP-active cells (languages with at least min_cells selective cells), the mean over languages and a 95 % language-cluster interval."""
+    rows = []
+    for l in range(active.shape[0]):
+        a, b = active[l] & selective[l], active[l] & ~selective[l]
+        rows.append(float(d["log_nu"][l][a].mean() - d["log_nu"][l][b].mean()) if a.sum() >= min_cells and b.sum() > 0 else float("nan"))
+    v = np.array(rows); ok = np.isfinite(v)
+    if not ok.any():
+        return {"languages_used": 0, "mean_difference": float("nan"), "ci95": (float("nan"), float("nan")), "per_language": rows}
+    rng = np.random.default_rng(seed); u = v[ok]; reps = [float(u[rng.integers(0, len(u), len(u))].mean()) for _ in range(n_boot)]
+    return {"languages_used": int(ok.sum()), "mean_difference": float(u.mean()), "ci95": tuple(float(x) for x in np.percentile(reps, [2.5, 97.5])), "per_language": rows}
+
+
+def jsonable(o):
+    if isinstance(o, (np.floating, np.integer, np.bool_)):
+        return o.item()
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    raise TypeError(f"not JSON serialisable: {type(o)}")
+
+
+ARMS3 = ("legacy", "matched", "gptq")
+F5_LABEL = {"legacy": "legacy RTN", "matched": "matched RTN", "gptq": "GPTQ"}
+
+
+def analyse(sums_by_arm, theta, tier, script, f5=None, selective=None, committed=None, max_activation=None, n_boot=N_BOOT, seed=SEED, h5_n_boot=None):
+    """Everything of the freeze from the validated sums {arm: {width: sums}} (legacy: INT16, INT6, INT4; the others INT6, INT4). Stops (AnalysisStopped) if the arms disagree on the FP-active counts or an identity
+    gate fails; labels every number 'sidecar-internal' if a committed comparison failed. `f5` = {arm: {"T": feature table, "mask": reliability mask}} adds H5; `selective` [n_lang, d] adds the selectivity secondary."""
+    ref = sums_by_arm["legacy"]["INT6"]; n_lang = int(ref["n"].numel()); tier = np.asarray(tier); script = np.asarray(script)
+    for arm, widths in sums_by_arm.items():
+        for w, sm in widths.items():
+            if not (torch_equal(sm["stats"]["n_a"], ref["stats"]["n_a"]) and torch_equal(sm["n"], ref["n"])):
+                raise AnalysisStopped(f"{arm} {w}: the FP-active counts (n_a, n) differ from the reference: the FP side must be identical in every condition")
+    active = fp_active(ref["stats"]["n_a"].numpy(), ref["n"].numpy())
+    D = {(a, w): derived(sm, theta) for a, ws in sums_by_arm.items() for w, sm in ws.items()}
+    gates = {f"{a}|{w}": identity_gate(d, active) for (a, w), d in D.items()}
+    bad = [k for k, g in gates.items() if not g["passed"]]
+    if bad:
+        raise AnalysisStopped(f"identity gate failed in {bad}: the analysis stops (freeze)")
+    pops = {f"{a}|{w}": populations(d, active) for (a, w), d in D.items()}
+    primary = [(a, w) for a in ARMS3 for w in ("INT6", "INT4") if (a, w) in D]
+    h3c = {}
+    for a, w in primary:
+        r = h3_cell(D[a, w], active); r["met"] = h3_rule(r["median_spearman_nu"], r["median_spearman_lambda"]); h3c[f"{a}|{w}"] = r
+    H3 = {"cells": h3c, "overall": h3_overall({tuple(k.split("|")): v["met"] for k, v in h3c.items()}), "reported": {"legacy|INT16": h3_cell(D["legacy", "INT16"], active)}}
+    if max_activation is not None:
+        H3["sensitivity_log_max_activation"] = {f"{a}|{w}": h3_cell(D[a, w], active, scale=np.asarray(max_activation, dtype=float)) for a, w in primary}
+    def outcome(d):
+        return np.array([-d["log_nu"][l][active[l]].mean() if active[l].any() else np.nan for l in range(n_lang)])
+    y16 = outcome(D["legacy", "INT16"]); cov = np.array([np.log10(np.median(D["legacy", "INT6"]["sigma_a"][l][active[l]])) if active[l].any() else np.nan for l in range(n_lang)])
+    H4 = {"cells": {f"{a}|{w}": {"standard": h4_cell(outcome(D[a, w]), y16, tier, script, n_boot=n_boot, seed=seed),
+                                 "with_scale_covariate": h4_cell(outcome(D[a, w]), y16, tier, script, n_boot=n_boot, seed=seed, covariates=cov)} for a, w in primary}}
+    pair = {f"{a}_vs_legacy|{w}": (D["legacy", w], D[a, w]) for a in ("matched", "gptq") for w in ("INT6", "INT4") if (a, w) in D}
+    desc = {"arm_summary": {f"{a}|{w}": arm_summary(d, active, tier) for (a, w), d in D.items()}, "lambda_decomposition": {k: lambda_decomposition(x, y, active) for k, (x, y) in pair.items()},
+            "nu_between_arms": {k: nu_between_arms(x, y, active) for k, (x, y) in pair.items()}, "flip_prediction": {f"{a}|{w}": flip_prediction(d, active) for (a, w), d in D.items()},
+            "selectivity": None if selective is None else {f"{a}|{w}": selectivity_difference(D[a, w], active, np.asarray(selective, dtype=bool), n_boot=n_boot, seed=seed) for a, w in primary}}
+    H5 = None
+    if f5 is not None:
+        cells = {}
+        for a, w in primary:
+            T, mask = f5[a]["T"], f5[a]["mask"]; d = D[a, w]; li, ii = np.asarray(T["lang"]).astype(int), np.asarray(T["ids"]).astype(int)
+            res = h5_cell(T["base"], T[w]["r1"], d["g"][li, ii], d["log_nu"][li, ii], T[w]["w1"], T["lang"], mask, d["n_a"][li, ii], n_boot=h5_n_boot or n_boot)
+            for k, v in res["improvement"].items():
+                v["wording"] = improvement_wording(v["improvement"], v["lo"], v["hi"])
+            cells[f"{a}|{w}"] = {"result": res, "wording": res["improvement"]["Bplus_over_B"]["wording"]}
+        H5 = {"cells": cells, "statement": h5_overall([c["result"]["cell_met"] for c in cells.values()]),
+              "note": "the 10 % relative improvement is the D-113 convention, not a claim: every improvement is reported with its interval and worded from the interval (D-121)"}
+    failed = sorted(a for a, c in (committed or {}).items() if not c["G2_committed"]["passed"])
+    return {"n_languages": n_lang, "gates": {"identity": gates}, "populations": pops, "H3": H3, "H4": H4, "descriptive": desc, "H5": H5,
+            "labels": {"sidecar_internal": bool(failed), "failed_arms": failed, "committed_comparison": "run" if committed else "not run"}}
+
+
+def torch_equal(a, b):
+    import torch
+    return bool(torch.equal(a, b))
+
+
+def _f(x, k=3):
+    return "n/a" if x is None or (isinstance(x, float) and not np.isfinite(x)) else f"{x:.{k}f}"
+
+
+def _ci(c, k=3):
+    return f"[{_f(c[0], k)}, {_f(c[1], k)}]"
+
+
+def render_md(res):
+    """The generated report: every number comes from `res`; thresholds are conventions and are shown next to the numbers they label (D-120, D-121)."""
+    L = ["# Stage 3 results (generated; D-117 survival measurement-validity study)", "",
+         "Rules: `reports/survival_measurement/analysis_freeze.json` (D-120, committed before the Stage 2 outputs existed). **Every threshold below (H3: 0.2 and 0.5; H4: the 0.20 bound; H5: the 10 % target) is a pre-set convention, not a claim: the numbers and their intervals are always shown next to the label (D-121).**", ""]
+    lab = res["labels"]
+    if lab["sidecar_internal"]:
+        L += [f"**LABEL: sidecar-internal.** The comparison with the committed stage-1 files (G2(ii)) failed for {', '.join(lab['failed_arms'])}: every number is a statement about the sidecar's own sums, and the claim that the sidecar sees the same weights and tokens as stage 1 is not made.", ""]
+    else:
+        L += [f"Committed comparison (G2(ii)): {lab['committed_comparison']}.", ""]
+    L += ["## Gates: identity (r from g, sigma_a, sigma_e against r from the sums)", "", "| cell | checked | excluded (degenerate) | largest difference |", "|---|---|---|---|"]
+    for k, g in res["gates"]["identity"].items():
+        L.append(f"| {k} | {g['checked']} | {sum(g['excluded'].values())} | {g['max_abs_diff']:.2e} |")
+    L += ["", "## Populations (FP-active cells; silent = no quantized activation; clipped lambda counted, never dropped)", "", "| cell | active | silent | clipped low | clipped high |", "|---|---|---|---|---|"]
+    for k, p in res["populations"].items():
+        L.append(f"| {k} | {p['active']} | {p['silent_count']} | {p['clipped_low']} | {p['clipped_high']} |")
+    h3 = res["H3"]
+    L += ["", "## H3: does lambda follow the feature's scale, and nu not?", "", "| cell | median Spearman(lambda, log sigma_a) | median Spearman(nu, log sigma_a) | rule (convention) |", "|---|---|---|---|"]
+    for k, c in h3["cells"].items():
+        L.append(f"| {k} | {_f(c['median_spearman_lambda'])} | {_f(c['median_spearman_nu'])} | {'met' if c['met'] else 'not met'} |")
+    for k, c in h3["reported"].items():
+        L.append(f"| {k} (reported) | {_f(c['median_spearman_lambda'])} | {_f(c['median_spearman_nu'])} | - |")
+    o = h3["overall"]; L += ["", f"Overall: {'met in all six cells' if o['met'] else 'not met'}; failing cells {o['failing'] or 'none'}; missing {o['missing'] or 'none'}.", "",
+                             "## H4: tier pattern in the encoder perturbation (outcome = minus the mean of log nu per language)", "",
+                             "Primary s = z(width) - z(INT16) (quantization-specific part, standardized slopes); secondary z(width) against 0. Outcome words: present (95 % interval excludes 0 and |estimate| >= 0.20), absent (90 % interval inside +-0.20), otherwise inconclusive; inconclusive is an accepted result.", "",
+                             "| cell | covariate | slope INT16 | slope width | primary s [95 %] | primary outcome | secondary z [95 %] | secondary outcome | dropped replicates |", "|---|---|---|---|---|---|---|---|---|"]
+    for k, v in res["H4"]["cells"].items():
+        for name in ("standard", "with_scale_covariate"):
+            c = v[name]; L.append(f"| {k} | {'sigma_a' if name != 'standard' else 'none'} | {_f(c['slope_16'])} | {_f(c['slope_w'])} | {_f(c['primary']['estimate'])} {_ci(c['primary']['ci95'])} | {c['primary']['outcome']} | {_f(c['secondary']['estimate'])} {_ci(c['secondary']['ci95'])} | {c['secondary']['outcome']} | {c['dropped_replicates']} |")
+    if res["H5"] is not None:
+        L += ["", "## H5: do g and log nu add to model B for W1? (every improvement with its interval)", "", res["H5"]["note"] + ".", "",
+              "| cell | n | B over A | B+ over B | B+ over A | g only over B | nu only over B | wording of B+ over B | meets the 10 % convention |", "|---|---|---|---|---|---|---|---|---|"]
+        for k, c in res["H5"]["cells"].items():
+            r = c["result"]; im = r["improvement"]; cell = lambda n: f"{_f(im[n]['improvement'])} {_ci((im[n]['lo'], im[n]['hi']))}"
+            L.append(f"| {k} | {r['n']} | {cell('B_over_A')} | {cell('Bplus_over_B')} | {cell('Bplus_over_A')} | {cell('Bg_over_B')} | {cell('Bnu_over_B')} | {c['wording']} | {'yes' if r['cell_met'] else 'no'} |")
+        L += ["", f"D-113 overall statement over the six cells: {res['H5']['statement']}."]
+    d = res["descriptive"]
+    L += ["", "## Descriptive tables", "", "### Lambda decomposition between arms (arm minus legacy; lambda = log sigma_e^2 - 2 log|g| - 2 log sigma_a, exact)", "", "| pair | cells | median delta lambda | median delta log sigma_e^2 | median -2 delta log abs g | identity error |", "|---|---|---|---|---|---|"]
+    for k, c in d["lambda_decomposition"].items():
+        L.append(f"| {k} | {c['cells']} | {_f(c['median_delta_lambda'])} | {_f(c['median_delta_log_sigma_e2'])} | {_f(c['median_minus2_delta_log_abs_g'])} | {c['identity_max_abs_error']:.1e} |")
+    L += ["", "### log nu of an arm against legacy", "", "| pair | cells | Spearman | SD-ratio slope | OLS slope | median difference |", "|---|---|---|---|---|---|"]
+    for k, c in d["nu_between_arms"].items():
+        L.append(f"| {k} | {c['cells']} | {_f(c['spearman'])} | {_f(c['sd_ratio_slope'])} | {_f(c['ols_slope'])} | {_f(c['median_difference'])} |")
+    L += ["", "### Per arm and width", "", "| cell | median g | median log sigma_e^2 | median lambda | on-off median | off-on median | nu median [p25, p75] | silent share | predicted vs exact flips (Spearman) |", "|---|---|---|---|---|---|---|---|---|"]
+    for k, c in d["arm_summary"].items():
+        L.append(f"| {k} | {_f(c['median_g'])} | {_f(c['median_log_sigma_e2'])} | {_f(c['median_lambda'])} | {_f(c['flip']['on_off']['p50'], 4)} | {_f(c['flip']['off_on']['p50'], 4)} | {_f(c['nu']['overall']['p50'])} [{_f(c['nu']['overall']['p25'])}, {_f(c['nu']['overall']['p75'])}] | {_f(c['silent']['overall']['share'], 4)} | {_f(d['flip_prediction'][k]['spearman'])} |")
+    if d["selectivity"]:
+        L += ["", "### Selectivity (secondary, descriptive): mean log nu of selective minus non-selective cells", "", "| cell | languages | mean difference [95 %] |", "|---|---|---|"]
+        for k, c in d["selectivity"].items():
+            L.append(f"| {k} | {c['languages_used']} | {_f(c['mean_difference'])} {_ci(c['ci95'])} |")
+    L += ["", "## Limits", "", "One model, one layer, one SAE, simulated weight-only quantizers, 27 languages (clusters). Single-language script families are absorbed by the script dummies, so the tier slope rests on about 23 languages. Post hoc relative to Stage 1 (same tokens and features), with the Stage 3 rules fixed before the new statistics existed. Nulls, negatives and inconclusive outcomes are results."]
+    return "\n".join(L) + "\n"
+
+
+# ------------------------------------------------------------------ inputs and entry point
+JOBS = {"legacy": ("sc-legacy", ("INT16", "INT6", "INT4"), (16, 6, 4, 0)), "matched": ("sc-matched", ("INT6", "INT4"), (6, 4, 0)), "gptq": ("sc-gptq", ("INT6", "INT4"), (6, 4, 0))}
+ARM_WEIGHTS = {"legacy": "legacy", "matched": "rtn-matched", "gptq": "gptq"}
+
+
+def load_job(directory, arm):
+    """The saved sums and meta of one validated job directory; refuses a job whose meta did not pass every gate (survival_validate.check_meta) or whose conditions are not those of the arm."""
+    import survival_validate as sv
+    name, widths, bits = JOBS[arm]; d = Path(directory) / name; meta = json.loads((d / "meta.json").read_text())
+    chk = sv.check_meta(meta, list(bits), full=True, n_lang=len(meta["languages"]), n_feat=meta["n_feat"], arm=ARM_WEIGHTS[arm])
+    if not chk["ok"]:
+        raise AnalysisStopped(f"{name}: meta.json is not that of a passed full job: {chk['why']}")
+    sc.validate_dir(d, list(widths), n_lang=len(meta["languages"]), n_feat=meta["n_feat"])
+    return {w: sc.load_sums(d / f"sums_{w}.pt") for w in widths}, meta
+
+
+def selective_cells(selective, peak, n_lang):
+    """The committed selectivity file holds `selective` per FEATURE and `peak` (the language where the feature peaks): the cell (language l, feature j) is selective iff the feature is selective and its peak language is l
+    (this is how the freeze's 'the committed `selective` mask' is read for the per-cell secondary; stated in the report)."""
+    selective = np.asarray(selective, dtype=bool); peak = np.asarray(peak).astype(int); cells = np.zeros((n_lang, len(selective)), dtype=bool)
+    j = np.nonzero(selective)[0]; cells[peak[j], j] = True
+    return cells
+
+
+def load_roster(path, languages):
+    import json as _j
+    roster = {l["code"]: l for l in _j.loads(Path(path).read_text())["languages"]}
+    fams = sorted({roster[c]["script_family"] for c in languages})
+    return np.array([an.tier_score(roster[c]["tier"]) for c in languages]), np.array([fams.index(roster[c]["script_family"]) for c in languages])
+
+
+def load_f5(func_inputs, phase1_survival, languages):
+    """The F5 feature tables of the three arms and the D-113 primary (reliable) mask, exactly as survival_effect.main builds them."""
+    import torch
+    sv = torch.load(phase1_survival, map_location="cpu", weights_only=False)
+    meta_langs = json.loads((Path(func_inputs) / "jobs/gptq-f5-int64/meta_f5.json").read_text())["languages"]
+    if list(meta_langs) != list(languages):
+        raise AnalysisStopped("the F5 language list differs from the sidecar's language list")
+    tabs = {}
+    for arm in ARMS3:
+        sa, states = se.load_arm(func_inputs, F5_LABEL[arm]); tabs[arm] = se.feature_table(sa, states, sv, meta_langs)
+    rel = se.reliable_mask(tabs["legacy"]["cos16"])
+    return {arm: {"T": T, "mask": rel} for arm, T in tabs.items()}
+
+
+def main(argv=None):
+    import argparse
+    import survival_validate as sv
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--runs", default="/home/karma/Documents/ANLP/project/transfer_runs"); ap.add_argument("--out", default=str(ROOT / "reports/survival_measurement/stage3"))
+    ap.add_argument("--roster", default=str(ROOT / "reports/g0/phase1_languages.json")); ap.add_argument("--n-boot", type=int, default=N_BOOT)
+    ap.add_argument("--committed", nargs=3, metavar=("LEGACY", "MATCHED", "GPTQ"), default=[str(Path.home() / ".cache/anlp-always-late/phase1_runs/p1-mask/eq"), "/home/karma/Documents/ANLP/project/transfer_runs/rtnm-p1-mask/eq", "/home/karma/Documents/ANLP/project/transfer_runs/gptq-p1-mask/eq"])
+    ap.add_argument("--no-committed", action="store_true"); ap.add_argument("--no-f5", action="store_true"); ap.add_argument("--no-selectivity", action="store_true"); ap.add_argument("--func-inputs", default="/home/karma/Documents/ANLP/project/transfer_runs/func_inputs")
+    ap.add_argument("--phase1", default=str(Path.home() / ".cache/anlp-always-late/phase1_runs/p1-mask/eq/survival.pt")); ap.add_argument("--selectivity", default=str(Path.home() / ".cache/anlp-always-late/phase1_runs/p1-mask/eq/selectivity.pt"))
+    a = ap.parse_args(argv)
+    import torch
+    check_freeze()
+    jobs, metas = {}, {}
+    for arm in ARMS3:
+        jobs[arm], metas[arm] = load_job(a.runs, arm)
+    langs = metas["legacy"]["languages"]
+    for arm in ARMS3:
+        if metas[arm]["languages"] != langs or metas[arm]["theta_sha256"] != metas["legacy"]["theta_sha256"]:
+            raise AnalysisStopped(f"{arm}: languages or thresholds differ from the legacy job")
+    theta = torch.tensor(metas["legacy"]["theta"], dtype=torch.float32); tier, script = load_roster(a.roster, langs)
+    committed = None if a.no_committed else {arm: sc.check_committed(Path(a.runs) / JOBS[arm][0], path) for arm, path in zip(ARMS3, a.committed)}
+    max_act = selective = None
+    if not a.no_committed and Path(a.phase1).exists():
+        max_act = torch.load(a.phase1, map_location="cpu", weights_only=False)["max_activation"].double().numpy()
+    if not a.no_selectivity and Path(a.selectivity).exists():
+        sel = torch.load(a.selectivity, map_location="cpu", weights_only=False)
+        if list(sel["languages"]) != list(langs):
+            raise AnalysisStopped("the selectivity file's language list differs from the sidecar's")
+        selective = selective_cells(sel["selective"].numpy(), sel["peak"].numpy(), len(langs))
+    f5 = None if a.no_f5 else load_f5(a.func_inputs, a.phase1, langs)
+    res = analyse(jobs, theta, tier, script, f5=f5, selective=selective, committed=committed, max_activation=max_act, n_boot=a.n_boot)
+    res["freeze_sha256"] = check_freeze()["sha256"]; res["committed_checks"] = committed
+    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    (out / "stage3_results.json").write_text(json.dumps(res, indent=1, default=jsonable) + "\n"); (out / "stage3_results.md").write_text(render_md(res))
+    print("wrote", out / "stage3_results.json", "and", out / "stage3_results.md", "| labels:", res["labels"])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

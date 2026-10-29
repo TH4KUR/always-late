@@ -1,0 +1,28 @@
+# survival_stage3.py part 4 (covariates, wording, selectivity, analyse, renderer, main), 2026-10-29 11:21 IST: 21 mutants; first run 17 killed + 4 survived; four tests added (touching-zero interval, exact minimum of selective cells, gain lookup, no job read before the freeze check); the four were re-run and killed
+--- first run
+KILLED          wording decided by the 10 % size
+SURVIVED        wording lo non-strict
+KILLED          worse never said
+KILLED          wording ignores NaN
+SURVIVED        selectivity min cells strict
+KILLED          selectivity sign
+KILLED          FP-active agreement not checked
+KILLED          identity failure not fatal
+KILLED          H4 outcome sign
+KILLED          H4 reference width
+KILLED          covariate not log10
+KILLED          covariates ignored
+KILLED          log nu lookup lost
+SURVIVED        g lookup swapped
+KILLED          failed arms inverted
+KILLED          label not rendered
+KILLED          selective for every language
+KILLED          theta mismatch tolerated
+KILLED          job meta not checked
+KILLED          selectivity language order not checked
+SURVIVED        main skips the freeze check
+--- re-run of the four survivors after the new tests
+KILLED          wording lo non-strict
+KILLED          selectivity min cells strict
+KILLED          g lookup swapped
+KILLED          main skips the freeze check

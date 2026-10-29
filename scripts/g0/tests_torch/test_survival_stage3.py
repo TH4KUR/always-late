@@ -18,11 +18,11 @@ L, D = 4, 6
 THETA = torch.tensor([0.4, 0.8, 0.3, 1.0, 0.5, 0.6], dtype=torch.float32)
 
 
-def make_case(seed=0, n=300, noise=0.25, silence=None, exact=None, negative=None):
+def make_case(seed=0, n=300, noise=0.25, silence=None, exact=None, negative=None, n_lang=L):
     """-> (sums of the quantized condition, pre_fp [L][n, D], pre_q [L][n, D]) for L languages of n equal-budget tokens; `silence` = (lang, feature) pushed below theta in the quantized pass,
     `exact` = (lang, feature) left exactly equal in both passes."""
     g = torch.Generator().manual_seed(seed)
-    fp = [torch.randn(n, D, generator=g) * 1.2 + 0.3 for _ in range(L)]
+    fp = [torch.randn(n, D, generator=g) * 1.2 + 0.3 for _ in range(n_lang)]
     q = [x + noise * torch.randn(n, D, generator=g) * (1 + torch.arange(D) % 3) for x in fp]
     if silence is not None:
         l, j = silence; q[l][:, j] = -5.0
@@ -30,8 +30,8 @@ def make_case(seed=0, n=300, noise=0.25, silence=None, exact=None, negative=None
         l, j = exact; q[l][:, j] = fp[l][:, j]
     if negative is not None:
         l, j = negative; q[l][:, j] = 2.0 - fp[l][:, j] + 0.2 * torch.randn(n, generator=g)               # anti-correlated quantized feature: a negative gain
-    f = Feeder(L, THETA)
-    batches = [toy_batch(l, torch.ones(1, n, dtype=torch.bool).tolist(), torch.ones(1, n, dtype=torch.bool).tolist(), tokens=torch.arange(n)[None, :] + 5 + 1000 * l) for l in range(L)]
+    f = Feeder(n_lang, THETA)
+    batches = [toy_batch(l, torch.ones(1, n, dtype=torch.bool).tolist(), torch.ones(1, n, dtype=torch.bool).tolist(), tokens=torch.arange(n)[None, :] + 5 + 1000 * l) for l in range(n_lang)]
     f.condition("FP", [(b, x[None]) for b, x in zip(batches, fp)]); f.condition("INT4", [(b, x[None]) for b, x in zip(batches, q)])
     return f.sink.sums["INT4"], fp, q
 
@@ -170,6 +170,12 @@ class H4(unittest.TestCase):
         self.assertTrue(np.isnan(s3.tier_slope(y, np.zeros(27), self.SCRIPT)))                                                # no tier variation: undefined, not inf
         absorbed = np.array([{"lat": 0, "cyr": 1, "ara": 2, "dev": 0, "han": 1, "jpn": 2, "kor": 0}[c] for c in self.SCRIPT], dtype=float)      # the tier is a function of the script: nothing is left after the dummies
         self.assertTrue(np.isnan(s3.tier_slope(y, absorbed, self.SCRIPT)))
+
+    def test_a_covariate_enters_the_reduced_model_like_freedman_lane_does(self):
+        import phase1_analysis as an
+        g = np.random.default_rng(8); cov = g.normal(size=27); y = 0.4 * self.TIER + 0.6 * cov + g.normal(0, 0.2, 27)
+        self.assertAlmostEqual(s3.tier_slope(y, self.TIER, self.SCRIPT, covariates=cov), an.freedman_lane_tier_test(y, self.TIER, self.SCRIPT, n_perm=10, seed=0, covariates=cov)["slope"], places=10)
+        self.assertNotAlmostEqual(s3.tier_slope(y, self.TIER, self.SCRIPT, covariates=cov), s3.tier_slope(y, self.TIER, self.SCRIPT), places=3)
 
     def test_a_strong_quantization_specific_tier_effect_is_present_and_an_unchanged_pattern_is_absent_in_primary(self):
         g = np.random.default_rng(2)
@@ -314,6 +320,182 @@ class Descriptive(unittest.TestCase):
         self.assertAlmostEqual(r["ols_slope"], float(np.polyfit(x, y, 1)[0]), places=9); self.assertGreater(r["sd_ratio_slope"], 0); self.assertEqual(r["cells"], int(m.sum()))
         self.assertGreater(float(np.median(y - x)), 0)                                                                    # the noisier arm perturbs the encoder more
         self.assertAlmostEqual(r["median_difference"], float(np.median(y - x)), places=12)
+
+
+class Wording(unittest.TestCase):
+    def test_every_improvement_is_worded_from_its_interval_not_from_the_ten_percent_target(self):
+        self.assertEqual(s3.improvement_wording(0.012, 0.004, 0.02), "improvement (interval above zero)")                 # a 1.2 % improvement is reported as an improvement (D-121)
+        self.assertEqual(s3.improvement_wording(0.2, 0.15, 0.3), "improvement (interval above zero)")
+        self.assertEqual(s3.improvement_wording(0.03, -0.01, 0.07), "not distinguishable from zero (interval includes zero)")
+        self.assertEqual(s3.improvement_wording(0.01, 0.0, 0.02), "not distinguishable from zero (interval includes zero)")           # an interval that touches zero includes it
+        self.assertEqual(s3.improvement_wording(-0.05, -0.09, -0.01), "worse (interval below zero)")
+        self.assertEqual(s3.improvement_wording(float("nan"), float("nan"), float("nan")), "not estimable")
+
+
+class Analyse(unittest.TestCase):
+    NL = 12
+    TIER = np.array([0, 1, 2] * 4); SCRIPT = np.array(["a", "a", "b", "b", "c", "c", "d", "d", "e", "e", "f", "f"])
+
+    def sums(self, noise_by_arm=None):
+        noise_by_arm = noise_by_arm or {"legacy": (0.02, 0.2, 0.4), "matched": (None, 0.3, 0.6), "gptq": (None, 0.25, 0.5)}
+        out = {}
+        for arm, (n16, n6, n4) in noise_by_arm.items():
+            out[arm] = {}
+            for w, nz in (("INT16", n16), ("INT6", n6), ("INT4", n4)):
+                if nz is not None:
+                    out[arm][w] = make_case(seed=5, noise=nz, n=300, n_lang=self.NL)[0]
+        return out
+
+    def run_analysis(self, **kw):
+        return s3.analyse(self.sums(), THETA, self.TIER, self.SCRIPT, n_boot=60, seed=1, **kw)
+
+    def test_the_results_have_every_section_of_the_freeze_and_the_gates_pass(self):
+        r = self.run_analysis()
+        self.assertEqual(set(r), {"gates", "populations", "H3", "H4", "descriptive", "H5", "labels", "n_languages"})
+        self.assertTrue(all(g["passed"] for g in r["gates"]["identity"].values())); self.assertEqual(len(r["gates"]["identity"]), 7)           # legacy INT16, INT6, INT4 and the four patched cells
+        self.assertEqual(set(r["H3"]["cells"]), {f"{a}|{w}" for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")}); self.assertIn("legacy|INT16", r["H3"]["reported"])
+        self.assertEqual(set(r["H4"]["cells"]), {f"{a}|{w}" for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")})
+        c = r["H4"]["cells"]["gptq|INT4"]; self.assertEqual(set(c), {"standard", "with_scale_covariate"}); self.assertIn("primary", c["standard"]); self.assertEqual(r["H5"], None)
+        d = r["descriptive"]; self.assertIn("legacy|INT16", d["arm_summary"]); self.assertEqual(set(d["lambda_decomposition"]), {"matched_vs_legacy|INT6", "matched_vs_legacy|INT4", "gptq_vs_legacy|INT6", "gptq_vs_legacy|INT4"})
+        self.assertEqual(set(d["nu_between_arms"]), set(d["lambda_decomposition"])); self.assertEqual(r["labels"]["sidecar_internal"], False)
+        json.dumps(r, default=s3.jsonable)
+
+    def test_a_failing_identity_gate_stops_the_analysis(self):
+        from unittest import mock
+        real = s3.identity_gate; calls = []
+        def fake(d, active, tol=s3.IDENTITY_TOL):
+            r = real(d, active, tol); calls.append(1)
+            return {**r, "passed": False} if len(calls) == 5 else r                                                       # the identity is algebraic given the sums, so only a code error can break it: simulate one
+        with mock.patch.object(s3, "identity_gate", fake), self.assertRaises(s3.AnalysisStopped) as cm:
+            s3.analyse(self.sums(), THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
+        self.assertIn("identity gate failed", str(cm.exception))
+
+    def test_arms_that_disagree_on_the_fp_active_counts_are_refused(self):
+        sums = self.sums(); sums["matched"]["INT6"]["stats"]["n_a"] = sums["matched"]["INT6"]["stats"]["n_a"] + 1
+        with self.assertRaises(s3.AnalysisStopped):
+            s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1)
+
+    def test_a_failed_committed_comparison_labels_every_number_sidecar_internal(self):
+        r = s3.analyse(self.sums(), THETA, self.TIER, self.SCRIPT, n_boot=20, seed=1, committed={"legacy": {"G2_committed": {"passed": True}}, "gptq": {"G2_committed": {"passed": False}}})
+        self.assertTrue(r["labels"]["sidecar_internal"]); self.assertEqual(r["labels"]["failed_arms"], ["gptq"])
+
+    def test_the_scale_covariate_is_log10_of_the_median_sigma_a_of_the_active_cells(self):
+        sums = self.sums(); r = self.run_analysis(); d = s3.derived(sums["legacy"]["INT6"], THETA)
+        act = s3.fp_active(sums["legacy"]["INT6"]["stats"]["n_a"].numpy(), sums["legacy"]["INT6"]["n"].numpy()); cov = np.array([np.log10(np.median(d["sigma_a"][l][act[l]])) for l in range(self.NL)])
+        dd = s3.derived(sums["gptq"]["INT4"], THETA); y = np.array([-dd["log_nu"][l][act[l]].mean() for l in range(self.NL)])
+        d16 = s3.derived(sums["legacy"]["INT16"], THETA); y16 = np.array([-d16["log_nu"][l][act[l]].mean() for l in range(self.NL)])
+        direct = s3.h4_cell(y, y16, self.TIER, self.SCRIPT, n_boot=60, seed=1, covariates=cov)
+        self.assertEqual(json.dumps(direct, default=float), json.dumps(r["H4"]["cells"]["gptq|INT4"]["with_scale_covariate"], default=float))
+
+    def test_h4_primary_is_taken_against_the_legacy_int16_and_the_outcome_is_minus_mean_log_nu(self):
+        sums = self.sums(); r = self.run_analysis()
+        act = s3.fp_active(sums["legacy"]["INT6"]["stats"]["n_a"].numpy(), sums["legacy"]["INT6"]["n"].numpy())
+        def y(arm, w):
+            d = s3.derived(sums[arm][w], THETA); return np.array([-d["log_nu"][l][act[l]].mean() for l in range(self.NL)])
+        direct = s3.h4_cell(y("gptq", "INT4"), y("legacy", "INT16"), self.TIER, self.SCRIPT, n_boot=60, seed=1)
+        self.assertEqual(json.dumps(direct["primary"], default=float), json.dumps(r["H4"]["cells"]["gptq|INT4"]["standard"]["primary"], default=float))
+
+    def test_h5_looks_the_sidecar_values_up_at_language_and_feature_and_reports_every_improvement_with_its_wording(self):
+        sums = self.sums(); g = np.random.default_rng(0); n = 360
+        lang = np.repeat(np.arange(self.NL), n // self.NL); ids = g.integers(0, D, n)
+        d6 = s3.derived(sums["legacy"]["INT6"], THETA); looked = d6["log_nu"][lang, ids]
+        act = s3.fp_active(sums["legacy"]["INT6"]["stats"]["n_a"].numpy(), sums["legacy"]["INT6"]["n"].numpy()); keep = act[lang, ids]
+        T = {"lang": lang, "ids": ids, "base": g.normal(size=(n, 5))}
+        for st in ("INT6", "INT4"):
+            T[st] = {"r1": g.normal(size=n), "w1": g.normal(0, 0.3, n)}
+        T["INT6"]["w1"] = 2.0 * (looked - looked[keep].mean()) + g.normal(0, 0.2, n)                                                         # W1 of the INT6 cell is built from the looked-up log nu
+        gl = s3.derived(sums["legacy"]["INT4"], THETA)["g"][lang, ids]; T["INT4"]["w1"] = 2.0 * (gl - gl[keep].mean()) + g.normal(0, 0.2, n)      # W1 of the INT4 cell from the looked-up gain
+        f5 = {arm: {"T": T, "mask": keep.copy()} for arm in ("legacy", "matched", "gptq")}
+        r = s3.analyse(sums, THETA, self.TIER, self.SCRIPT, n_boot=60, seed=1, f5=f5, h5_n_boot=100)
+        cell = r["H5"]["cells"]["legacy|INT6"]; self.assertEqual(set(cell), {"result", "wording"}); self.assertEqual(cell["wording"], s3.improvement_wording(cell["result"]["improvement"]["Bplus_over_B"]["improvement"], cell["result"]["improvement"]["Bplus_over_B"]["lo"], cell["result"]["improvement"]["Bplus_over_B"]["hi"]))
+        self.assertGreater(cell["result"]["improvement"]["Bplus_over_B"]["improvement"], 0.1)                                                  # found only if g / nu are looked up at (language, feature)
+        self.assertGreater(r["H5"]["cells"]["legacy|INT4"]["result"]["improvement"]["Bg_over_B"]["improvement"], 0.1)                          # found only if the gain is looked up at (language, feature)
+        self.assertEqual(len(r["H5"]["cells"]), 6); self.assertIn("statement", r["H5"]); self.assertIn("wording", r["H5"]["cells"]["legacy|INT4"])
+
+    def test_the_selectivity_secondary_is_descriptive_and_uses_languages_with_enough_selective_cells(self):
+        sums = self.sums(); d = s3.derived(sums["legacy"]["INT6"], THETA); act = s3.fp_active(sums["legacy"]["INT6"]["stats"]["n_a"].numpy(), sums["legacy"]["INT6"]["n"].numpy())
+        sel = np.zeros_like(act); sel[:, :3] = True
+        r = s3.selectivity_difference(d, act, sel, min_cells=2, n_boot=50, seed=0)
+        per = [d["log_nu"][l][act[l] & sel[l]].mean() - d["log_nu"][l][act[l] & ~sel[l]].mean() for l in range(self.NL)]
+        self.assertEqual(r["languages_used"], self.NL); self.assertAlmostEqual(r["mean_difference"], float(np.mean(per)), places=12); self.assertEqual(len(r["ci95"]), 2)
+        self.assertEqual(s3.selectivity_difference(d, act, sel, min_cells=10 ** 6, n_boot=10, seed=0)["languages_used"], 0)
+        exact = int(min((act[l] & sel[l]).sum() for l in range(self.NL)))                                                                   # a language with exactly min_cells selective cells is used
+        self.assertEqual(s3.selectivity_difference(d, act, sel, min_cells=exact, n_boot=10, seed=0)["languages_used"], self.NL)
+        self.assertLess(s3.selectivity_difference(d, act, sel, min_cells=exact + 1, n_boot=10, seed=0)["languages_used"], self.NL)
+
+
+class SelectiveCells(unittest.TestCase):
+    def test_a_cell_is_selective_only_for_the_peak_language_of_a_selective_feature(self):
+        cells = s3.selective_cells(np.array([True, False, True, True]), np.array([2, 0, 0, 1]), 3)
+        self.assertEqual(cells.shape, (3, 4)); self.assertEqual(int(cells.sum()), 3)
+        self.assertTrue(cells[2, 0] and cells[0, 2] and cells[1, 3]); self.assertFalse(cells[:, 1].any()); self.assertFalse(cells[0, 0] or cells[1, 0])
+
+
+class Render(unittest.TestCase):
+    def test_the_markdown_report_states_the_labels_the_conventions_and_every_h5_cell(self):
+        a = Analyse(); a.NL = 12; r = s3.analyse(a.sums(), THETA, a.TIER, a.SCRIPT, n_boot=30, seed=1, committed={"gptq": {"G2_committed": {"passed": False}}})
+        md = s3.render_md(r)
+        self.assertIn("sidecar-internal", md); self.assertIn("H3", md); self.assertIn("H4", md); self.assertIn("convention", md.lower()); self.assertIn("legacy", md); self.assertIn("INT16", md)
+        self.assertIn("inconclusive", md.lower() + " inconclusive")                                                                            # the rule outcomes are written in words
+
+
+class Main(unittest.TestCase):
+    """`main` end to end on toy job directories (three jobs written with the real file layout), the toy roster and no F5 and no committed files."""
+    def setUp(self):
+        import tempfile, shutil
+        self.tmp = Path(tempfile.mkdtemp()); self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        a = Analyse(); a.NL = 12; sums = a.sums(); self.langs = [f"l{i}" for i in range(12)]
+        roster = [{"code": c, "tier": ["low", "mid", "high"][i % 3], "script_family": "abcdef"[i // 2]} for i, c in enumerate(self.langs)]
+        (self.tmp / "roster.json").write_text(json.dumps({"languages": roster}))
+        for arm, (name, widths, bits) in s3.JOBS.items():
+            d = self.tmp / name; d.mkdir()
+            for w in widths:
+                torch.save({"label": w, "stat_names": list(sc.STAT_NAMES), "stats": sums[arm][w]["stats"], "n": sums[arm][w]["n"]}, d / f"sums_{w}.pt")
+            gates = {k: {"passed": True} for k in ("G1", "G2_internal", "G4", "G6")}; gates["G3"] = {"passed": True, "max_abs_diff_theta_vs_csv": 4e-7}
+            (d / "meta.json").write_text(json.dumps({"study": "D-117 survival sidecar (Stage 2)", "gate_failures": [], "gates": gates, "saved_conditions": list(widths), "regime": "mask", "stream": "eq",
+                "pre_activation_source": "sae.hook_sae_acts_pre", "pre_activation_dtype": "torch.float32", "subset": False, "languages": self.langs, "n_feat": D, "weights": {"legacy": "rtn", "matched": "rtn-matched", "gptq": "gptq"}[arm],
+                "theta": THETA.tolist(), "theta_sha256": "t" * 64, "max_sentences": None, "seconds": 1.0, "peak_gpu_gb": 1.0}))
+
+    def run_main(self, *extra):
+        return s3.main(["--runs", str(self.tmp), "--out", str(self.tmp / "out"), "--roster", str(self.tmp / "roster.json"), "--no-committed", "--no-f5", "--n-boot", "30", *(extra or ("--no-selectivity",))])
+
+    def test_main_writes_the_json_and_the_markdown_and_checks_the_freeze_first(self):
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(self.run_main(), 0)
+        res = json.loads((self.tmp / "out" / "stage3_results.json").read_text()); md = (self.tmp / "out" / "stage3_results.md").read_text()
+        self.assertEqual(res["n_languages"], 12); self.assertEqual(res["freeze_sha256"], s3.check_freeze()["sha256"]); self.assertIn("## H4", md); self.assertIn("convention", md)
+        self.assertEqual(res["labels"]["committed_comparison"], "not run")
+
+    def test_main_reads_the_selectivity_file_per_feature_and_peak_language(self):
+        import contextlib, io
+        sel = tmp = self.tmp / "sel.pt"; peak = torch.arange(D) % 12; torch.save({"languages": self.langs, "selective": torch.tensor([True, True, True, False, True, False]), "peak": peak}, sel)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.run_main("--selectivity", str(sel))
+        res = json.loads((self.tmp / "out" / "stage3_results.json").read_text())
+        self.assertIsNotNone(res["descriptive"]["selectivity"]); self.assertEqual(set(res["descriptive"]["selectivity"]), {f"{a}|{w}" for a in ("legacy", "matched", "gptq") for w in ("INT6", "INT4")})
+        torch.save({"languages": self.langs[::-1], "selective": torch.tensor([True] * D), "peak": peak}, sel)                              # another language order is refused
+        import shutil; shutil.rmtree(self.tmp / "out")
+        with self.assertRaises(s3.AnalysisStopped):
+            self.run_main("--selectivity", str(sel))
+
+    def test_a_job_whose_meta_has_a_failed_gate_is_refused_and_nothing_is_written(self):
+        m = json.loads((self.tmp / "sc-gptq" / "meta.json").read_text()); m["gates"]["G4"]["passed"] = False; m["gate_failures"] = ["G4"]; (self.tmp / "sc-gptq" / "meta.json").write_text(json.dumps(m))
+        with self.assertRaises(s3.AnalysisStopped):
+            self.run_main()
+        self.assertFalse((self.tmp / "out").exists())
+
+    def test_jobs_with_different_thresholds_are_refused(self):
+        m = json.loads((self.tmp / "sc-matched" / "meta.json").read_text()); m["theta_sha256"] = "u" * 64; (self.tmp / "sc-matched" / "meta.json").write_text(json.dumps(m))
+        with self.assertRaises(s3.AnalysisStopped):
+            self.run_main()
+
+    def test_main_refuses_to_run_on_a_changed_freeze(self):
+        from unittest import mock
+        with mock.patch.object(s3, "check_freeze", side_effect=s3.FreezeError("changed")), mock.patch.object(s3, "load_job") as loader, self.assertRaises(s3.FreezeError):
+            self.run_main()
+        loader.assert_not_called()                                                                                                         # no job file is read before the freeze is checked
+        self.assertFalse((self.tmp / "out").exists())
 
 
 class Freeze(unittest.TestCase):
