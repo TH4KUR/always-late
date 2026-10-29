@@ -1,0 +1,463 @@
+{
+ "method": "language bootstrap, 5000 resamples, seed 0, same indices for 9B and 2B",
+ "n_languages": 27,
+ "9B": {
+  "FP_E_mean": {
+   "estimate": 0.7937400200028257,
+   "ci95": [
+    0.35856976831430903,
+    1.394127993283202
+   ]
+  },
+  "FP_E_median": {
+   "estimate": 0.2696055667732825,
+   "ci95": [
+    0.19742264976451132,
+    0.6084394076697786
+   ]
+  },
+  "FP_E_positive_languages": 27,
+  "INT8": {
+   "macro_mean_retention": {
+    "estimate": 1.003271035610647,
+    "ci95": [
+     0.9865997567625349,
+     1.0187824655660846
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.005413571208018,
+    "ci95": [
+     0.9988524276826994,
+     1.0157142441313753
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.0022845284153983,
+    "ci95": [
+     0.9908561686791613,
+     1.0140447911129562
+    ]
+   },
+   "languages_above_1": 17,
+   "languages_above_1.3": 0,
+   "macro_mean_without_the_largest_language": 0.9987870739530297
+  },
+  "INT7": {
+   "macro_mean_retention": {
+    "estimate": 1.0471868207074408,
+    "ci95": [
+     1.0174037832644156,
+     1.081803322254198
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.0257119557307002,
+    "ci95": [
+     0.9926608146191542,
+     1.0463150685452438
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.0099854735186446,
+    "ci95": [
+     0.9957949478600344,
+     1.0398714845135204
+    ]
+   },
+   "languages_above_1": 17,
+   "languages_above_1.3": 0,
+   "macro_mean_without_the_largest_language": 1.037517564107399
+  },
+  "INT6": {
+   "macro_mean_retention": {
+    "estimate": 1.005594273338665,
+    "ci95": [
+     0.9569616555736538,
+     1.0498045083746437
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.0185800407660024,
+    "ci95": [
+     0.9782457409992548,
+     1.0449306488686816
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.0166743047214095,
+    "ci95": [
+     0.9843853520876412,
+     1.0366241380587444
+    ]
+   },
+   "languages_above_1": 16,
+   "languages_above_1.3": 0,
+   "macro_mean_without_the_largest_language": 0.997846480013708
+  },
+  "INT5": {
+   "macro_mean_retention": {
+    "estimate": 1.20457853401397,
+    "ci95": [
+     1.0863925073952534,
+     1.336243575135971
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.0918988675964059,
+    "ci95": [
+     1.006438765096081,
+     1.3110251284553134
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.1016675095482624,
+    "ci95": [
+     1.0205296656724707,
+     1.246811627340475
+    ]
+   },
+   "languages_above_1": 21,
+   "languages_above_1.3": 9,
+   "macro_mean_without_the_largest_language": 1.174616689492128
+  },
+  "INT4": {
+   "macro_mean_retention": {
+    "estimate": 2.4785268328926304,
+    "ci95": [
+     1.7814471515712365,
+     3.368461268291281
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.5856691972911685,
+    "ci95": [
+     1.2382601438210978,
+     2.2640017854206422
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.4744128787303064,
+    "ci95": [
+     1.2626889837222586,
+     1.937324807469144
+    ]
+   },
+   "languages_above_1": 26,
+   "languages_above_1.3": 18,
+   "macro_mean_without_the_largest_language": 2.1920653829411156
+  },
+  "FP_dose_order": {
+   "languages_with_harm_strictly_increasing_as_the_multiplier_falls": 27,
+   "languages_with_the_freeze_P3a_inequality_E(0.354)>E(0.177)>E(0.088)": 0
+  },
+  "INT4_over_FP_at_multiplier_0.0884": {
+   "median": {
+    "estimate": 1.6894122027346667,
+    "ci95": [
+     1.4024037782697218,
+     2.9398382097275975
+    ]
+   },
+   "mean": {
+    "estimate": 3.613613425018808,
+    "ci95": [
+     2.389084201119181,
+     5.125117490328301
+    ]
+   },
+   "languages_above_1": 26
+  },
+  "smallest_FP_effects": [
+   {
+    "language": "ukr_Cyrl",
+    "E_FP": 0.0075,
+    "INT4_retention": 4.62
+   },
+   {
+    "language": "kan_Knda",
+    "E_FP": 0.01,
+    "INT4_retention": 9.93
+   },
+   {
+    "language": "ind_Latn",
+    "E_FP": 0.021,
+    "INT4_retention": 2.22
+   },
+   {
+    "language": "kor_Hang",
+    "E_FP": 0.0471,
+    "INT4_retention": 7.62
+   }
+  ],
+  "largest_INT4_retention": [
+   {
+    "language": "kan_Knda",
+    "retention": 9.93
+   },
+   {
+    "language": "kor_Hang",
+    "retention": 7.62
+   },
+   {
+    "language": "ukr_Cyrl",
+    "retention": 4.62
+   }
+  ]
+ },
+ "2B": {
+  "FP_E_mean": {
+   "estimate": 0.7036799078347667,
+   "ci95": [
+    0.3077195093396231,
+    1.3100947374249465
+   ]
+  },
+  "FP_E_median": {
+   "estimate": 0.26241236099798765,
+   "ci95": [
+    0.10424281019161245,
+    0.4941246961134986
+   ]
+  },
+  "FP_E_positive_languages": 27,
+  "INT8": {
+   "macro_mean_retention": {
+    "estimate": 1.0056094908426658,
+    "ci95": [
+     0.9914708460566162,
+     1.0187693363914665
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.007317402889264,
+    "ci95": [
+     0.9902275633304647,
+     1.0281073300609715
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.0103253465989628,
+    "ci95": [
+     0.9917492770350951,
+     1.0201230283032752
+    ]
+   },
+   "languages_above_1": 16,
+   "languages_above_1.3": 0,
+   "macro_mean_without_the_largest_language": 1.0034361223932189
+  },
+  "INT7": {
+   "macro_mean_retention": {
+    "estimate": 1.0339810142887866,
+    "ci95": [
+     1.006379775078225,
+     1.0653382980181536
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.0209646845159077,
+    "ci95": [
+     1.0051759489432652,
+     1.0367921757833038
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.0124873801003667,
+    "ci95": [
+     0.9793167804427031,
+     1.034923573472008
+    ]
+   },
+   "languages_above_1": 19,
+   "languages_above_1.3": 0,
+   "macro_mean_without_the_largest_language": 1.025720413976249
+  },
+  "INT6": {
+   "macro_mean_retention": {
+    "estimate": 1.0379249472192325,
+    "ci95": [
+     0.9974652366517565,
+     1.0828654280780694
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.030829420632132,
+    "ci95": [
+     0.9892012434572814,
+     1.0838548829288426
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.045372415905944,
+    "ci95": [
+     1.0087644028798541,
+     1.0719111812717879
+    ]
+   },
+   "languages_above_1": 17,
+   "languages_above_1.3": 1,
+   "macro_mean_without_the_largest_language": 1.0255339235284968
+  },
+  "INT5": {
+   "macro_mean_retention": {
+    "estimate": 1.1291452147046992,
+    "ci95": [
+     1.0713792278562344,
+     1.1882935626848103
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.0921123654592966,
+    "ci95": [
+     1.036225567959589,
+     1.2185157772515667
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.0860239293498277,
+    "ci95": [
+     0.9929234175161108,
+     1.254433181016235
+    ]
+   },
+   "languages_above_1": 22,
+   "languages_above_1.3": 4,
+   "macro_mean_without_the_largest_language": 1.1150967414808715
+  },
+  "INT4": {
+   "macro_mean_retention": {
+    "estimate": 2.1359636620783586,
+    "ci95": [
+     1.6838345428490549,
+     2.65614315098895
+    ]
+   },
+   "median_retention": {
+    "estimate": 1.5381170432313138,
+    "ci95": [
+     1.2809471833005106,
+     2.6292189189826747
+    ]
+   },
+   "ratio_of_mean_effects": {
+    "estimate": 1.3282314619604614,
+    "ci95": [
+     1.1685233730517883,
+     1.7051231068635604
+    ]
+   },
+   "languages_above_1": 24,
+   "languages_above_1.3": 16,
+   "macro_mean_without_the_largest_language": 1.997148755966497
+  },
+  "FP_dose_order": {
+   "languages_with_harm_strictly_increasing_as_the_multiplier_falls": 27,
+   "languages_with_the_freeze_P3a_inequality_E(0.354)>E(0.177)>E(0.088)": 0
+  },
+  "INT4_over_FP_at_multiplier_0.0884": {
+   "median": {
+    "estimate": 1.9106589120093769,
+    "ci95": [
+     1.4339350752967315,
+     3.137387960824996
+    ]
+   },
+   "mean": {
+    "estimate": 5.1109093659588645,
+    "ci95": [
+     2.0015762444841347,
+     10.862425693926003
+    ]
+   },
+   "languages_above_1": 27
+  },
+  "smallest_FP_effects": [
+   {
+    "language": "ben_Beng",
+    "E_FP": 0.0098,
+    "INT4_retention": 3.89
+   },
+   {
+    "language": "vie_Latn",
+    "E_FP": 0.0118,
+    "INT4_retention": 5.7
+   },
+   {
+    "language": "ind_Latn",
+    "E_FP": 0.0266,
+    "INT4_retention": 1.05
+   },
+   {
+    "language": "tam_Taml",
+    "E_FP": 0.0281,
+    "INT4_retention": 2.63
+   }
+  ],
+  "largest_INT4_retention": [
+   {
+    "language": "tel_Telu",
+    "retention": 5.75
+   },
+   {
+    "language": "vie_Latn",
+    "retention": 5.7
+   },
+   {
+    "language": "ben_Beng",
+    "retention": 3.89
+   }
+  ]
+ },
+ "difference_9B_minus_2B_INT4": {
+  "macro_mean_retention": {
+   "estimate": 0.34256317081427234,
+   "ci95": [
+    -0.4876631632527717,
+    1.30232058966465
+   ]
+  },
+  "median_retention": {
+   "estimate": 0.04755215405985469,
+   "ci95": [
+    -0.7769978569317637,
+    0.8382895717272838
+   ]
+  },
+  "spearman_of_the_per_language_retention_9B_vs_2B": 0.4548229548229548
+ },
+ "difference_9B_minus_2B_INT5": {
+  "macro_mean_retention": {
+   "estimate": 0.07543331930927082,
+   "ci95": [
+    -0.06775219056234173,
+    0.23235549933946398
+   ]
+  },
+  "median_retention": {
+   "estimate": -0.00021349786289071027,
+   "ci95": [
+    -0.12661690965516081,
+    0.2276887684637512
+   ]
+  },
+  "spearman_of_the_per_language_retention_9B_vs_2B": -0.17155067155067155
+ },
+ "difference_9B_minus_2B_INT6": {
+  "macro_mean_retention": {
+   "estimate": -0.03233067388056744,
+   "ci95": [
+    -0.09379699458181559,
+    0.025120200030637196
+   ]
+  },
+  "median_retention": {
+   "estimate": -0.012249379866129617,
+   "ci95": [
+    -0.08515139996135511,
+    0.03681191990302202
+   ]
+  },
+  "spearman_of_the_per_language_retention_9B_vs_2B": -0.03663003663003663
+ }
+}
