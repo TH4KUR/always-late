@@ -204,3 +204,5 @@ Deadline: course deliverables 31 October 2026 (the report and deck are the team'
 - 2026-10-29 11:51 IST (project-6d cron): D-117 all three sidecar jobs validated (G2(ii) passed in every arm at float32 resolution); next HF upload of the raw sums and the real Stage 3 run. Ledger `reports/survival_measurement/STATUS.md`.
 - 2026-10-29 11:53 IST (project-6d cron): D-117 task 7 done: raw sums uploaded to the private HF dataset (7291ebf99b); next the real Stage 3 run. Ledger `reports/survival_measurement/STATUS.md`.
 - 2026-10-29 12:35 IST (project-6d cron): D-117 COMPLETE: the frozen Stage 3 analysis ran once; plain-words results `reports/survival_measurement/stage3/README.md`, D-124, handoff 055. All compute finished (D-122); only the user's decisions remain. Idle firings only append a line.
+- 2026-10-29 13:11 IST (project-6d cron): idle firing: Ada queue empty, tree clean and equal to origin/main (02f020a), no new user message; D-117 is complete (handoff 055); all project compute finished (D-122). Open items are the user's only: Q29 (unstarted), whether any finding enters the course report (31 October), the viva / paper / slides phase.
+
