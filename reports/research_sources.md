@@ -1,5 +1,7 @@
 # Research sources discussed during the decision review
 
+**Current publication context, 30 October 2026:** [`publication_context_2026-10-30.md`](publication_context_2026-10-30.md) records the targeted primary-source checks used in the completed-study manuscript. In particular, Leask et al. (ICLR 2025), Makelov et al. (ICLR 2025), SAEBench (ICML 2025) and Chanin and Garriga-Alonso (ICML 2026) contextualize SAE nonuniqueness, task-grounded validation, proxy/functional divergence and sparsity dependence. These field-wide issues motivate operational definitions and controls; they do not by themselves invalidate the measured intervention effects. The original register below is retained as a dated record.
+
 Updated: 2026-10-21. This is the source register for the Q1-Q4 and Q13-Q15 discussions, including papers, official model/data/code sources and research-practice guidance. It supplements the [method reassessment](survival_method_reassessment.md) and [analysis log](progress_log.md); it is not the team's paper bibliography. Existing `paper/` files are not edited by this review.
 
 ## How to use and extend this register

@@ -1,11 +1,13 @@
 # Association-retention study (D-035): index
 
+**Reporting update, 30 October 2026:** The follow-ups selected in Q16 have been completed. Association retention measures language-label stability; later interventions show that label stability and effect preservation are different quantities. The old options and plans below retain their historical status. [Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md).
+
 Question: do the SAE features selected as language-selective before quantization keep their language association across all 27 languages after RTN weight quantization? Exploratory, mask regime, Gemma-2-2B, layer-12 Gemma Scope 16k SAE, FLORES-200.
 
 | file | what it is |
 |---|---|
 | [`interpretation.md`](interpretation.md) | the reading of the results, with limits (start here) |
-| [`next_steps.md`](next_steps.md) | follow-up options A to F for the review; nothing started |
+| [`next_steps.md`](next_steps.md) | historical options A to F; selected follow-ups completed |
 | [`results/eq/association_retention.md`](results/eq/association_retention.md) | generated report, equal-budget stream, 1,000 paired bootstrap draws (also `analysis.json`, `language_summary.csv`) |
 | [`results/all/association_retention.md`](results/all/association_retention.md) | generated report, all-token stream, aggregate profile (no intervals) |
 | [`results/crosscheck-eq/crosscheck.md`](results/crosscheck-eq/crosscheck.md) | firing-rate view against activation-mean view; status against the historical correlation |
@@ -14,7 +16,7 @@ Question: do the SAE features selected as language-selective before quantization
 | [`results/margin-function/report.md`](results/margin-function/report.md) | **A3, D-067:** does the function of a feature (F5 write-side similarity W1) depend on the margin that predicts the association loss? within-language Spearman, AUROCs for the association loss and for the function event on the same features, fixed-effects regression, cohort without English (also `analysis.json`, `margin_vs_function.csv`; figure [`fig_margin_auroc_light.png`](results/margin-function/fig_margin_auroc_light.png), dark and SVG next to it) |
 | [`artifact_inventory.md`](artifact_inventory.md), `frozen_cohort_manifest.json` | what the old saved files could support; frozen cohort and provenance |
 | [`plan_verification.md`](plan_verification.md) | verification of the plan before implementation (code and result statements, prior art, register corrections) |
-| [`STATUS.md`](STATUS.md), [`cron_prompt.md`](cron_prompt.md) | live status log and the prompt of the 50-minute job |
+| [`STATUS.md`](STATUS.md), [`cron_prompt.md`](cron_prompt.md) | historical status log and ended scheduling prompt |
 
 Plan and design: [`docs/superpowers/plans/2026-10-21-language-association-retention.md`](../../docs/superpowers/plans/2026-10-21-language-association-retention.md), [`reports/survival_method_reassessment.md` section 7](../survival_method_reassessment.md#7-selected-next-study-language-association-retention-d-035). Sources: [`reports/research_sources.md`](../research_sources.md). Decisions: D-035 to D-038 in [`reports/decisions_and_anomalies.md`](../decisions_and_anomalies.md).
 

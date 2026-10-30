@@ -73,3 +73,7 @@ with `ARM` = `gptq` and `rtnm`. **Control done 2026-10-28 13:5x:** the same comm
 ~/.venvs/anlp-torch/bin/python -B scripts/g0/gptq_ext/compare_transfer.py --legacy reports/intervention_transfer/results/external --matched <transfer_runs/analysis_external_rtnm> --gptq <transfer_runs/analysis_external_gptq> --roster reports/g0/phase1_languages.json --label "external panel, six languages" --out reports/gptq_extension/results/external
 ```
 (`--label` goes into the heading and the text states the number of languages of the data; the six languages are paired by language, so the bootstrap of the group-level contrasts is over six languages: read those intervals as very coarse.) The tool was dry-run on the control outputs (all three arms = the old external analysis: loads, writes the five files, zero differences); the main-study comparison it wrote before is reproduced byte for byte after this change.
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

@@ -144,3 +144,7 @@ Prepare a new method/artifact manifest and immutable weight-state loader; implem
 Only after real-model gates should the full experiment family run. Prioritize ordinary NLL plus survival and the central fixed/native transfer matrix first, then the existing functional/behavioral panels and external corpus. This ordering provides a validated shared artifact to every experiment; it does not authorize selecting or dropping endpoints based on their outcome.
 
 **Execution recommendation:** add GPTQ and a matched RTN comparator; retain legacy RTN as the bridge and INT16 as a labelled reference. Do not replace INT16 with GPTQ, rewrite old results, or claim the integration has already passed on Gemma.
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](FINAL_RESEARCH_QUESTIONS.md), [research paper](../paper/research-paper/main.tex), [current status](CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

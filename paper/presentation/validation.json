@@ -1,0 +1,14 @@
+{
+  "revision": 4,
+  "date": "2026-10-30",
+  "source_sha256": "f19858d9eae4f403f2dd42e93cef89a5a79af7ec3cc9b1359aedc8ead707cb0e",
+  "pdf_sha256": "bf9902a818ba808b465c4390191b18758a44ed25a9823190d66dce8920019c63",
+  "slides": 21,
+  "build_command": "bash paper/presentation/build.sh final",
+  "pending_result_boxes": false,
+  "unresolved_references": false,
+  "overfull_boxes": false,
+  "rendered": "build/rendered-rev4/slide-01.png through slide-21.png; contact.png; all final renders inspected",
+  "source_evidence_map": "../course-report/evidence_map.md",
+  "new_model_runs_or_analyses": false
+}

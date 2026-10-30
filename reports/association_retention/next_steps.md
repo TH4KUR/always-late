@@ -50,3 +50,7 @@ Written 2026-10-21, updated after the user's Q16 answer (D-039). **Selected: clo
 - Q16's work selection is answered: A/B/C/F, including the cross-precision functional comparison. Exact task/language coverage and intervention parameters still need a concrete implementation plan and measured pilot cost.
 - The licence for our own statistics (`license: other` for now) and a durable backup for the sentence shards remain unresolved. Dataset visibility is settled as the user's later action; D-035's compact upload is finished and verified, and the dataset remains private.
 - The remaining open review items Q6, Q7, Q8, Q11 and Q12 in `DECISIONS_FOR_REVIEW.md` (not blocking).
+
+## Reporting update, 30 October 2026 (evidence through 29 October)
+
+The user requested final documentation and a research paper from the completed body of work. [Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). The Gemma-2-2B three-quantizer comparison, survival measurement study, Llama consistency check and original-RTN 9B review are complete. The pending 9B GPTQ extension has no result. Matched RTN on 9B, the precision audit and broader model/SAE coverage are future work rather than blocking report requirements. The user later deleted all recurring jobs; no historical scheduling prompt authorizes recreating them. Earlier questions, estimates and next steps above remain the historical record; the final synthesis does not relabel exploratory findings or change frozen pass/fail criteria.

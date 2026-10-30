@@ -1,3 +1,5 @@
+> **Current reporting pointer, 30 October 2026:** The Stage 2 sidecar jobs subsequently ran, passed their gates and supplied the completed [Stage 3 analysis](../stage3/README.md). The no-job and pending-confirmation statements below are the original code-stage record. See [final questions and answers](../../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../../paper/research-paper/main.tex) and [current status](../../CURRENT_STATUS.md).
+
 # Stage 2 code and its checks (D-119, task 4 of the study ledger)
 
 Written 2026-10-29 by the 40-minute cron session. Design: [`../stage2_design.md`](../stage2_design.md). Ledger: [`../STATUS.md`](../STATUS.md). **No Ada job has been submitted; no number from the model exists for this stage.** Everything here ran on CPU with the toy harness of `tests_torch/test_phase1_run.py`.

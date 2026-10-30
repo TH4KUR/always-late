@@ -1,90 +1,47 @@
-# Course-report validation: revision 3 (2026-10-27 02:38 IST, 2026-10-27)
+# Course-report validation: revision 4, 30 October 2026
 
-Status: complete draft for team review; not a submitted course ZIP. Revision 3 rewrites the report around the intervention-transfer study (Section 7 with the main matrix and the external Wikipedia panel); the revision 2 record is kept verbatim below.
+The completed-study report builds successfully with the existing local
+pdfLaTeX/BibTeX `build.sh`. Its final PDF has **9 pages**: main content and the
+separate limitations section end on page 6, references are on page 7, and the
+appendix is pages 8–9. This satisfies the eight-page main-content and two-page
+appendix limits. The four synthesis questions and completed GPTQ, measurement,
+continuous prediction and reviewed 9B results appear in the main content.
 
-- Built with the installed pdfLaTeX and BibTeX (no unresolved references or citations; no `[PENDING]` marker is left in `main.tex`).
-- 11 PDF pages: the main content ends at the top of page 8 and the limitations section follows on the same page, so the main content and the limitations together fit in eight pages; references are on page 9; the appendix is pages 10 and 11 (two pages).
-- The official checker printed `All Clear!` with an empty JSON report with the pinned version (`check.sh`) and with the newest upstream version (the upstream HEAD is the pinned commit `f626497`) on the final PDF. Earlier builds of revision 3 had been flagged for the appendix table bleeding into the bottom margin (fixed by shortening it and setting it in `\scriptsize`, not ignored) and one build of the external paragraph had pushed the limitations tail onto page 9 (fixed by condensing the paragraph, not by changing the layout).
-- The ACL files `acl.sty` and `acl_natbib.bst` and the official template copies are unchanged (sha256 in `manifest.json`); no margin, spacing, font-size or caption overrides are used for the body; the appendix table is set in `\scriptsize` inside the appendix.
-- All fonts are embedded and none is Type 3 (`fonts.txt`); the page size is A4 (`pdfinfo.txt`).
-- Independent fact-check of the transfer sections: a separate agent read `main.tex` against `reports/intervention_transfer/results/main/` and its verified findings were applied before this build (wording only, no number changed; D-094 Update, commit 542c246). The external-panel paragraph, the abstract sentence, the appendix row and the cross-corpus numbers were written afterwards from `reports/intervention_transfer/results/external/` (D-095) and have not had an independent review; every number in them was compared with the committed tables when written.
-- Not verified and not claimed: author names and order (taken from the project roster); the course AI-use disclosure (the team must check the course text). The optional online reference check of the checker (`check_full.py`) was not rerun (the external service returned a web page instead of BibTeX before); the bibliography (16 entries) was checked against the primary sources.
+`bash check.sh` completed on the final PDF with the pinned official ACL checker:
+**All Clear!** Its generated JSON is `{}`. No CLI checks were disabled and no
+upstream checker or official ACL asset was modified. The style hashes still
+match the preserved revision-3 manifest. The official template copies were not
+edited.
 
-- Update 2026-10-27 02:49 IST: the report was rebuilt after one clause (the INT6 cross-corpus reduction against the calibration median, D-096) was added to the external paragraph and four phrases were shortened; 11 pages, main content and limitations still end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!` again; `pdfinfo.txt`, `fonts.txt` and the hashes in `manifest.json` are those of this build.
+The final log has no undefined references/citations or overfull horizontal
+boxes. Standard reference-column balancing emits a 2.95218 pt vertical-box
+warning. The rendered reference page has no visible clipping, and the official
+checker records no margin-bleed finding. All fonts are embedded Type 1 fonts,
+with no Type 3 fonts. PDF metadata and fonts are retained in `pdfinfo.txt` and
+`fonts.txt`. Every final page was rendered and inspected; images and a contact
+sheet are retained in `rendered-rev4/`.
 
-- Update 2026-10-27 03:19 IST: rebuilt after the limitations sentence on the gradient baseline gained the post hoc numbers of D-097 and one phrase was shortened; 11 pages, main content and limitations end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!`; `pdfinfo.txt`, `fonts.txt` and the manifest hashes are those of this build.
+The evidence map tracks the distinct endpoints and uncertainty schemes. The
+revision reports the positive 3.1–4.4% survival-prediction gains while preserving
+the unmet 10% convention. It keeps the fresh-sentence, legacy-only Extension C
+benefit alongside the failed main gain criteria. Corrections distinguish the
+three frozen K64 evaluation control draws from five stored draws, the stricter
+selectivity cutoff from the activation-correlation cutoff, and nonselective
+positive controls from other-language selective controls. Belebele loss remains
+in nats/item, separate from accuracy. No new inference or statistical analysis
+was performed for the manuscript revision.
 
-- Update 2026-10-27 03:58 IST: rebuilt after the feature-level specificity sentence gained the support-matched result of D-098 (and lost the unmatched cosine-gap claim), and two short clauses were cut to keep the layout; 11 pages, main content and limitations end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!`; `pdfinfo.txt`, `fonts.txt` and the manifest hashes are those of this build.
+The optional online reference/name-service checker path was **not rerun**. An
+earlier attempt failed when Scholarcy returned a Cloudflare challenge; the
+preserved record remains incomplete. The official default CLI pass is the
+format-check claim. The prior editor-runtime download failure is historical;
+this existing multi-file manuscript uses its working local build. Existing
+bibliography records were preserved; the GPTQ entry and the Gao evaluation
+metadata were checked on primary arXiv pages on 30 October 2026. The final field-context edit adds Leask, Makelov and SAEBench using the official-proceedings-verified entries recorded in `reports/publication_context_2026-10-30.md`, followed by another successful build and official check. No exhaustive
+new literature audit or acceptance claim is implied.
 
-- Update 2026-10-27 04:37 IST: rebuilt after the group-level paragraph, the abstract and the discussion were softened with the paired per-language native-versus-fixed results of D-099, and a few phrases and one sentence were cut to keep the layout; 11 pages, main content and limitations end on page 8, references page 9, appendix pages 10 and 11; the official checker (pinned) printed `All Clear!`; `pdfinfo.txt`, `fonts.txt` and the manifest hashes are those of this build.
-
-Revision 2 record (kept verbatim):
-
-# Course-report validation: revision 2 (2026-10-26 09:13 IST, 26 October 2026)
-
-Status: complete draft for team review; not a submitted course ZIP.
-
-- Revision 2 of the report was built with the installed pdfLaTeX and BibTeX (no unresolved references or citations; the only TeX box warning is a 1.4 pt vbox on the balanced reference page).
-- 12 PDF pages: the main content (with the second-model section) ends on page 8; the limitations section is on page 9 (outside the page count); references are on page 10; the appendix is pages 11 and 12 (two pages).
-- The official checker printed `All Clear!` with an empty JSON report, with the pinned version (`f626497...`, via `check.sh`) and with the newest upstream version, on the final PDF. A first run after an edit had flagged `Text on page 12 bleeds into the bottom margin` (a floating appendix table that was too tall); it was fixed by shortening the table and rechecked, not ignored. A deliberately non-ACL PDF was flagged by the same checker (`pubcheck-negative-control.txt`).
-- The ACL template was re-downloaded from the official repository (HEAD `d5adc82...`): `acl.sty`, `acl_natbib.bst`, the template `.tex` and `formatting.md` are byte-identical to the copies in this folder; none was modified.
-- All fonts are embedded and none is Type 3 (`fonts.txt`); the page size is A4.
-- Independent fact-check: a separate agent read `main.tex` against the repository's result files and found no wrong number among those it could trace. Its framing findings were applied: the Llama verdict is now attributed to the failed existence prediction P1 (21 of 27 languages, 24 required), "pre-registered" became "pre-specified" with a definition (committed before scoring, no external registry), a mismatched AUROC pair was corrected, rows for extension D and the alpha-star rule were added to the rules table, the status words of the Belebele row and the prompt-check point estimates were qualified, and wording on depth, specificity and compute was aligned with the sources. Not applied: the suggestion to add the functional-study reproduction count (69 of 69 outputs, an earlier run) to the reproducibility paragraph, and a statement on the repository's visibility; the wandb sentence was reworded to what is certain.
-- Not verified by the reviewer and not claimed: author names and order (taken from the project roster). The post hoc wandb upload, which the reviewer could not confirm, finished afterwards (decision D-091, 15 new runs, 34 in the project, verified through the wandb API by the agent that ran it); the sentence in Appendix A was updated to that state at 09:15 IST.
-- The optional online reference check of the checker (`check_full.py`) again fails because the external service returns a web page instead of BibTeX; it is not claimed as passed. The bibliography (15 entries) was checked against the Anthology and arXiv records.
-
-Revision 1 record (kept verbatim):
-
-# Course-report validation — 26 October 2026
-
-Status: complete first draft for team review; not a submitted course ZIP.
-
-- The local pdfLaTeX/BibTeX build succeeded on the final source.
-- Nine PDF pages: main content ends on page 7, limitations also fit on page 7,
-  references occupy page 8, and the appendix occupies page 9. This meets the
-  course's eight-page main-content and two-page appendix maximums.
-- The final official CLI run printed `All Clear!`; its JSON report is `{}`.
-  `check.sh` now also fails if that JSON contains findings. No checker flags
-  disable any of the CLI's default checks.
-- Upstream `acl.sty` and `acl_natbib.bst` are byte-identical to the pinned
-  official repository. The document uses final mode, the official bibliography
-  style and standard packages; no geometry, font-size, caption-size or spacing
-  overrides are used to squeeze the content.
-- Final TeX log: no unresolved references/citations or overfull boxes.
-- PDF fonts are embedded; no Type 3 fonts. Every page was rendered and inspected
-  for layout. Reference columns are balanced with the standard balance package.
-- An independent read-only review checked scientific statements, measurement
-  definitions, denominators and plotted values. Its two methods findings
-  (discovery criteria and randomized top-three control matching) were corrected.
-- All 27 appendix language codes were checked against the committed roster.
-- Plots use committed result CSVs; error bars are explicitly labelled as
-  quartiles or stored confidence intervals, according to the source.
-
-## Important distinctions
-
-The official CLI currently omits its optional online reference/name-service
-path. An additional attempt using that official API on an earlier compiled
-draft failed because Scholarcy returned a Cloudflare challenge, not BibTeX.
-That optional path has not passed; no upstream code was patched or bypassed.
-The nine bibliography entries were separately verified against official
-Anthology records or primary arXiv metadata. A publication-check pass is a
-format check, not certification of the paper's scientific claims.
-
-The Codex editor compilation was attempted but could not download the Tectonic
-runtime bundle. The source is retained for editing; the delivered PDF was
-compiled with the already installed local TeX engine. Missing TeX support files
-were supplied in a per-user cache, without changing the official ACL styles.
-
-Machine-readable versions, hashes and page accounting are in `manifest.json`.
-The actual official CLI output is in `pubcheck-console.txt`, and its JSON is
-`pubcheck/errors-AlwaysLate-Final-Report.json`. The failed optional path's output
-is preserved in `pubcheck-full-console.txt`.
-
-## Before submission
-
-The team must review the interpretation and final wording, author order,
-course-specific AI disclosure requirements and any updated instructor rules.
-The code ZIP, presentation and complete `AlwaysLate-Final.zip` are separate
-remaining deliverables. The obsolete `paper/main.tex` has not been changed.
-
-**Update 2026-10-26 12:32:** the course guidelines no longer forbid AI-generated reports (rule 4 of `project_guidelines.txt` was edited by the user; decision D-093), so the 'AI disclosure' review item above is closed unless the instructors ask for a statement. The ACL style constraints and the page limits are unchanged.
+The exact previous manuscript, PDF, README, evidence map, bibliography and
+validation records are preserved under
+`reports/archive/reporting_revision_2026-10-29/paper/course-report/`. The manifest
+retains previous revision records and hashes. The author roster is unchanged.
+A submitted course ZIP is not produced or certified by this check.

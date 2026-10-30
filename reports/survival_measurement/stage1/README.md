@@ -1,3 +1,5 @@
+> **Current reporting pointer, 30 October 2026:** The measurement study is complete through Stage 3. The Stage 1 narrative below records its original analysis; requests for later stages are historical. [Stage 3](../stage3/README.md) gives the completed gain/noise audit and positive 3–4% activation-correlation prediction contribution. See [final questions and answers](../../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../../paper/research-paper/main.tex) and [current status](../../CURRENT_STATUS.md).
+
 # Stage 1 results in plain words (D-118)
 
 Written 2026-10-29 by Claude from [`stage1_eq.md`](stage1_eq.md) (primary) and [`stage1_all.md`](stage1_all.md) (sensitivity); every number below is in those generated files. Rules: [`../stage1_freeze.json`](../stage1_freeze.json), committed before the run. **Post hoc and exploratory.** Plan: [`../../../docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md`](../../../docs/superpowers/plans/2026-10-29-survival-measurement-validity-study.md).

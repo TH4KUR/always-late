@@ -1,20 +1,26 @@
 # Always Late: does compression forget language?
 
-ANLP course project, 2026. Gemma-2-2B, its layer-12 Gemma Scope 16k SAE, 27 FLORES-200 languages, weights rounded to INT8 down to INT4. We test whether language-specific features break first when the model is compressed, and what that does to the language.
+ANLP research project, 2026. We study what weight quantization preserves about multilingual SAE features: their activation patterns, language associations and measured intervention effects. The completed evidence combines 27 FLORES-200 languages, three Gemma-2-2B quantizers (original RTN, matched RTN and GPTQ), a six-language Wikipedia transfer panel, a Gemma-2-9B original-RTN scale extension and a limited Llama-3.2-1B consistency check.
 
-**Start with [`reports/PROJECT_RESULTS.md`](reports/PROJECT_RESULTS.md):** all results from the start of the project in plain words, why they are not conclusive, what the null results tell us, the second-model and downstream-task checks, per-language tables and a guide to every data file.
+**The main finding:** language-selective groups have a clear causal effect on next-token loss under the specified edits, while activation survival and language labels give only partial information about whether intervention effects are preserved. The size of low-bit changes depends substantially on the quantizer. These are useful, controlled findings within the evaluated systems; they do not establish a complete natural language circuit or universal behavior across models.
+
+**Start with the [final research questions and answers](reports/FINAL_RESEARCH_QUESTIONS.md), the [research paper](paper/research-paper/main.tex), and the [results overview](reports/PROJECT_RESULTS.md).** The final questions organize the completed evidence retrospectively. Original frozen predictions and their pass/fail outcomes are retained.
 
 | need | where |
 |---|---|
-| All results, simple language, per-language tables, data guide | [`reports/PROJECT_RESULTS.md`](reports/PROJECT_RESULTS.md) |
-| Current state and what was left open | [`reports/CURRENT_STATUS.md`](reports/CURRENT_STATUS.md) |
-| How the project progressed (the record, never shortened) | [decisions](reports/decisions_and_anomalies.md), [open questions](DECISIONS_FOR_REVIEW.md), [progress log](reports/progress_log.md), [handoffs](reports/handoffs/), [plans and designs](docs/superpowers/), [source register](reports/research_sources.md) |
-| Map of every document | [`reports/INDEX.md`](reports/INDEX.md) |
-| Claim-by-claim table of the functional study, figures | [`RESULTS_SUMMARY.md`](reports/functional_validation/RESULTS_SUMMARY.md), [`FIGURE_INDEX.md`](reports/functional_validation/FIGURE_INDEX.md) |
-| Rerun, environment, rules for whoever continues | [`HANDOFF.md`](HANDOFF.md), [`REPRODUCE.md`](reports/functional_validation/REPRODUCE.md), [`docs/CODEBASE.md`](docs/CODEBASE.md) |
-| Report, slides, final archive (due 31 October 2026) | [`paper/README.md`](paper/README.md), [`paper/course-report/README.md`](paper/course-report/README.md) |
-| Original proposal, course guidelines | [`anlp_revised.txt`](anlp_revised.txt), [`project_guidelines.txt`](project_guidelines.txt) |
+| Final questions, answers and claim boundaries | [`reports/FINAL_RESEARCH_QUESTIONS.md`](reports/FINAL_RESEARCH_QUESTIONS.md) |
+| Research paper and full project account | [`paper/research-paper/main.tex`](paper/research-paper/main.tex), [`reports/FULL_PROJECT_REPORT_DRAFT.md`](reports/FULL_PROJECT_REPORT_DRAFT.md) |
+| All results, per-language tables and data guide | [`reports/PROJECT_RESULTS.md`](reports/PROJECT_RESULTS.md) |
+| Current evidence and remaining work | [`reports/CURRENT_STATUS.md`](reports/CURRENT_STATUS.md) |
+| Quantizer comparison and measurement study | [`reports/gptq_extension/RESULTS.md`](reports/gptq_extension/RESULTS.md), [`reports/survival_measurement/stage3/README.md`](reports/survival_measurement/stage3/README.md) |
+| Functional claim map and figures | [`RESULTS_SUMMARY.md`](reports/functional_validation/RESULTS_SUMMARY.md), [`FIGURE_INDEX.md`](reports/functional_validation/FIGURE_INDEX.md) |
+| Full documentation map and history | [`reports/INDEX.md`](reports/INDEX.md), [decisions](reports/decisions_and_anomalies.md), [progress log](reports/progress_log.md), [handoffs](reports/handoffs/) |
+| Environment, reproduction and code ownership | [`HANDOFF.md`](HANDOFF.md), [`REPRODUCE.md`](reports/functional_validation/REPRODUCE.md), [`docs/CODEBASE.md`](docs/CODEBASE.md) |
+| Course report, presentation and submission | [`paper/README.md`](paper/README.md), [`paper/course-report/README.md`](paper/course-report/README.md) |
+| Original proposal and course guidelines | [`anlp_revised.txt`](anlp_revised.txt), [`project_guidelines.txt`](project_guidelines.txt) |
 
-Folders: `scripts/g0/` code and tests (completed transfer follow-ups in [`scripts/g0/transfer_followup/`](scripts/g0/transfer_followup/README.md)); `reports/` evidence, freezes, decisions; `docs/` plans and code map; `paper/` report and slides; `third_party/duan2026/` vendored reference code (do not edit); `data/` local data. Large files are outside git: the private [Hugging Face dataset](https://huggingface.co/datasets/karma-skz/always-late-artifacts), the run directories, and wandb (`karma-skz-/anlp-project`, [schema](reports/wandb_schema_v2.md), [artifact inventory](reports/artifacts.md)). No credentials belong in documentation.
+**Status, 30 October 2026 (evidence through 29 October):** the present experiments and analyses are the completed body of work. The Gemma-2-9B GPTQ run remains pending and has no reported result. Matched RTN on 9B, arithmetic-precision auditing and broader model/SAE coverage are future work. No recurring jobs should be recreated without the user's request.
 
-The previous README text is kept verbatim in [`reports/archive/doc_cleanup_2026-10-27/`](reports/archive/doc_cleanup_2026-10-27/README.md).
+Folders: `scripts/g0/` code; `reports/` evidence, freezes and decisions; `docs/` plans and code map; `paper/` research paper, course report and slides; `third_party/duan2026/` vendored reference code; `data/` local data. Large files are outside git: the private [Hugging Face dataset](https://huggingface.co/datasets/karma-skz/always-late-artifacts), run directories and wandb (`karma-skz-/anlp-project`, [schema](reports/wandb_schema_v2.md), [artifact inventory](reports/artifacts.md)). No credentials belong in documentation.
+
+Earlier wording is preserved in [`reports/archive/reporting_revision_2026-10-29/`](reports/archive/reporting_revision_2026-10-29/); earlier cleanup archives remain under `reports/archive/`.

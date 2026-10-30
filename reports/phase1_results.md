@@ -1,3 +1,5 @@
+> **Current reporting pointer, 30 October 2026:** The RTN-only scope below belongs to the original Phase 1 study. The completed project also includes matched RTN and GPTQ, intervention tests and scale/architecture checks, with each experiment's coverage stated explicitly. See [final questions and answers](FINAL_RESEARCH_QUESTIONS.md), [research paper](../paper/research-paper/main.tex) and [current status](CURRENT_STATUS.md).
+
 # Phase 1 results: do language-selective SAE features, and low-resource languages, lose more under RTN quantization?
 
 **Interpretation update, 2026-10-21 (Q13-Q15, D-032/D-033/D-034):** preserve the measurements below, but treat the magnitude-adjusted/unadjusted contrasts as associations, not identified direct/total effects. The tier-gap test and the overall language-level tests address distinct questions; their coexistence is not a contradiction. Attenuation after magnitude adjustment does not prove mediation, and a p-value above 0.05 does not identify an upstream cause. The user's confidence/diffuse-activity explanation is an investigation hypothesis. [Verified literature, source limits and exact saved-result synthesis](research_sources.md). Older causal or “explained” wording below records the earlier reading rules and is superseded by this interpretation; no numerical output is changed.
@@ -232,3 +234,7 @@ Every committed result file under `reports/phase1/` was regenerated from the cac
 - Small outputs per run and stream (summary, per-language, metadata, analysis report and JSON, behavioural link `behavior.md` / `behavior.json`; FLORES text statistics `reports/phase1/flores_text_stats.json`): `reports/phase1/{mask,none}/{eq,all}/`.
 - Large outputs (`survival.pt`, `selectivity.pt`, per-feature data): Hugging Face private dataset `karma-skz/always-late-artifacts`, `runs/phase1/` (index in `reports/artifacts.md`).
 - Reproduce: `bash scripts/g0/fetch_phase1.sh p1-mask <dest>`; `python3 scripts/g0/phase1_analysis.py --run <dest>/p1-mask/eq --out <out> --seed 0` (torch, numpy, scipy, pandas, statsmodels).
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](FINAL_RESEARCH_QUESTIONS.md), [research paper](../paper/research-paper/main.tex), [current status](CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

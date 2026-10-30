@@ -1,5 +1,7 @@
 # Documentation map, and the trail that is never deleted
 
+**Current synthesis, 30 October 2026 (evidence through 29 October):** [final research questions and answers](FINAL_RESEARCH_QUESTIONS.md), [research paper](../paper/research-paper/main.tex), [full project report](FULL_PROJECT_REPORT_DRAFT.md), [current status](CURRENT_STATUS.md). The completed work is the final evidence base; Gemma-2-9B GPTQ is pending. Earlier assessments and planning pages are dated records. The reporting revision keeps causal intervention results and genuine limitations in proportion; it does not modify frozen outcomes or generated tables.
+
 Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same day: **"ensure that you dont remove progress tracking (so that we know at the end of the project about all the directions and things we explored and thought of)".**
 
 ## The rule
@@ -10,9 +12,9 @@ Written 2026-10-23 23:48 IST (Claude), after the user's instruction of the same 
 
 | file | what it is |
 |---|---|
-| [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md) | **All results from the start in plain words:** why they are not conclusive, what the null results tell us, the second-model and downstream-task checks, per-language tables, guide to every data file |
-| [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | **Current state page:** evidence state, the HOLD, open choice Q29, deliverables |
-| [`functional_validation/gemma9b/README.md`](functional_validation/gemma9b/README.md) | **9B original-RTN results imported on main (D-125):** detailed source tables, execution freeze, provenance and the existing cron's CPU-review queue; GPTQ results still missing |
+| [`PROJECT_RESULTS.md`](PROJECT_RESULTS.md) | **All results from the start in plain words:** supported findings, task-dependent effects, what the null results tell us, the second-model and downstream-task checks, per-language tables, guide to every data file |
+| [`CURRENT_STATUS.md`](CURRENT_STATUS.md) | **Current state page:** completed evidence, pending 9B GPTQ extension and deliverables |
+| [`functional_validation/gemma9b/README.md`](functional_validation/gemma9b/README.md) | **9B original-RTN results imported on main (D-125):** detailed source tables, execution freeze, provenance and completed CPU review; GPTQ results still missing |
 | [`functional_validation/gemma9b/REVIEWED_SUMMARY.md`](functional_validation/gemma9b/REVIEWED_SUMMARY.md), [`review/`](functional_validation/gemma9b/review/) | **Reviewed statement of the imported 9B original-RTN results (D-127):** intervals, three aggregations, the 2B comparison, P3a and P3b findings, what is and is not supported; scripts and outputs of task 3 |
 | [`gptq_extension/RESULTS.md`](gptq_extension/RESULTS.md) | **GPTQ extension, results in plain words:** three ways of rounding the weights (legacy RTN, matched RTN, GPTQ) compared on every study of the project; what changes and what does not; limits |
 | [`survival_effect_rescue/README.md`](survival_effect_rescue/README.md) | **Does activation survival predict whether an intervention keeps its effect? (D-110 to D-114):** plain-language summary, the all-results review, the frozen analysis, the Gemma and Llama results; post hoc |

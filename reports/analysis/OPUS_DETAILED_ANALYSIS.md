@@ -1,3 +1,5 @@
+> **Current reporting pointer, 30 October 2026:** This is a dated assessment, preserved as written. Its earlier pending-review and publication-priority statements are historical. The 9B original-RTN results have since been reproduced and reviewed (D-127); GPTQ remains pending. Use the [final questions and answers](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex) and [current status](../CURRENT_STATUS.md) for the completed study.
+
 # Detailed analysis of all results of the "Always Late" project (independent audit)
 
 Written 2026-10-29 (IST) by Claude (Opus 5.5) as a **read-only audit**. No experiment, job or analysis of the project was run or changed. The only new computations are small CPU re-computations from committed result files, made to check the numbers. The scripts are in `/tmp/opus_analysis/`, outside the repository. Every number below is given with its source file, relative to `reports/` unless the path says otherwise. Where a number was only re-read from a generated report and not recomputed, this is said.
@@ -814,3 +816,9 @@ Q29 (run the precision audit), Q33 (answered), Q21 / Q23 / Q24 (archives, surviv
 | Novelty / publication assessments | D-065, D-088 | `novelty_assessment_2026-10-26.md`, `publication_reassessment_2026-10-26/`, `steering_feasibility_review_2026-10-28.md` | `docs/superpowers/plans/2026-10-26-publication-recovery-after-results.md` |
 
 *End of audit. Scratch scripts used for the checks: `/tmp/opus_analysis/verify.py` and inline commands; no repository file other than this one was written.*
+
+## Current reporting context, 30 October 2026
+
+This dated assessment is retained as a historical record; its old pending-work and publication-priority statements are not the current project status. [Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). The completed paper reports a controlled evaluation across three Gemma-2-2B quantizers, task/control checks and scoped scale/architecture extensions. It credits direct precedents and makes no first-ever or acceptance claim. A limited model/layer/SAE scope bounds generalization rather than invalidating controlled effects. Positive associations, supported intervention contrasts and informative nulls all belong in the final account. Original predictions and their outcomes are unchanged.
+
+The 9B original-RTN analysis was reproduced from raw files and reviewed (D-127); GPTQ remains pending, matched RTN is unrun. Belebele's primary interval is in correct-option NLL, not accuracy points. Continuous survival adds about 3–4% predictive improvement beyond baselines, below the 10% convention but not zero. F5 effect changes can coexist with high own-identity retrieval. These later clarifications govern current interpretation where the dated prose differs.

@@ -1,3 +1,5 @@
+> **Current reporting pointer, 30 October 2026:** The original-RTN 9B analysis has been reproduced byte for byte from raw per-state files and the review is complete (D-127). Start with [REVIEWED_SUMMARY.md](REVIEWED_SUMMARY.md), which gives intervals, aggregation sensitivity and the P3a sign/P3b definition defects. Older pending-review statements below describe the import stage. GPTQ is pending and matched RTN is unrun. This is a useful scale extension with its stated coverage. See [final questions and answers](../../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../../paper/research-paper/main.tex) and [current status](../../CURRENT_STATUS.md).
+
 # Gemma-2-9B results on main
 
 Imported 2026-10-29 at the user's request (D-125). **These are completed original-RTN results. GPTQ and matched-RTN 9B results are still missing.** Runtime implementation remains on the single `gemma9b-confirmation` branch.

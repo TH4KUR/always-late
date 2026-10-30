@@ -12,3 +12,7 @@ directory look uniform.
 Tests are in `tests/` (stdlib) and `tests_torch/` (the existing ML environment).
 Deployments archive the entire directory, so packages below it must stay included.
 No data, model weights, result files or old study entry points were removed by this cleanup.
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](../../reports/FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../../reports/CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

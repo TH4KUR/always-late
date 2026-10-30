@@ -5,213 +5,159 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{microtype}
-% The official template's optional inconsolata package is not required.
 \usepackage{graphicx}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{balance}
 \graphicspath{{figures/}}
 
-\title{Do Interventions on Language Features Survive Weight Quantization?\\
-Context, Weights, and Activation Survival in Gemma-2-2B}
+\title{Language Features under Weight Quantization:\\Activation Agreement and Intervention Effects}
 \author{Hemang Joshi \and Eashaan Thakur \and Shardul Joshi \and Nikhita Ravi\\
 International Institute of Information Technology, Hyderabad}
-
 \begin{document}
 \maketitle
-
 \begin{abstract}
-Quantization changes sparse autoencoder (SAE) activations, but an activation change need not change what an intervention on that feature does. In Gemma-2-2B with a frozen layer-12 Gemma Scope SAE, 27 FLORES-200 languages and round-to-nearest weight quantization, we first show that activation survival, language-association retention and causal contribution are different outcomes: 70.8\% of established language features keep their peak language at INT4, removing 64-feature language groups raises own-text loss beyond matched controls in all 27 languages, and individual feature effects drift as much for matched other directions. We then cross the two things quantization changes, the activations before an intervention (context) and the weights after it, for a fixed feature ablation. At INT6 the effect changes little (cosine 0.98, an error of about two numerical floors, above the rounding floor). At INT4 the group-level harm is amplified (median net harm 0.85 against 0.26 for the fixed full-precision edit); the context term of that edit is about three times the weight term ($|C|=0.31$, $|W|=0.10$), but with the quantized state's own activation the harm (0.43) is close to that of the weights alone in the median language, and the effect vector of single features is rotated (cosine 0.77) with the larger norm in the weight term, a substantial interaction, and largely the same rotation for other directions. Averaged fingerprints overstate transfer (+0.126 cosine). The sensitivity to other directions predicts the held-out error (21.5\% reduction at INT4, an interval including zero at INT6, and a similar gain in a rounding-only state); on eligible items at INT4 neither activation survival nor gradient attribution adds measurably. A six-language Wikipedia panel repeats the INT4 statements; at INT6 its group-level weight term is the larger one and the prediction criterion is met. Apart from one family, all analyses are exploratory; one model, one SAE, simulated quantization.
+How much does preservation of a sparse autoencoder (SAE) activation tell us about preservation of its effect on a language model? We investigate 27 languages using Gemma-2-2B, a fixed Gemma Scope dictionary, two round-to-nearest (RTN) implementations and GPTQ, with extensions to Gemma-2-9B and Llama-3.2-1B. Removing selected language-feature groups raises own-language next-token loss beyond activity-matched controls in all 27 languages of both Gemma sizes. Their effects remain near full precision at six bits and increase at four bits under RTN; GPTQ attenuates this increase. Activation agreement, language-association retention and intervention-effect similarity are distinct: at legacy RTN INT4, only 13.2\% of a 1,487-feature sample passes the activation-survival cutoff, yet median effect similarity is 0.839 and feature-identity retrieval is 99.7\%. Continuous activation correlation adds a small positive contribution to language-held-out effect prediction, reducing error by 3.1--4.4\%. An exact gain/noise decomposition clarifies its scale dependence. Crossed context--weight experiments show quantizer-dependent intervention transfer, with INT4 effect cosine improving from 0.768 under legacy RTN to 0.877 under GPTQ. A held-out comprehension intervention has no established full-precision effect, and patching the selected groups recovers little total quantization loss. Together these results support useful, bounded causal evidence from SAE interventions and a practical distinction between activation preservation and intervention portability. Most analyses are exploratory; the original held-out Belebele family is confirmatory.
 \end{abstract}
 
 \section{Introduction}
-Weight quantization reduces the numerical precision of language-model parameters, and its effects need not be uniform across languages or tasks \citep{marchisio-etal-2024-quantization}. Internal measurements can complement task metrics, but only if their interpretation is explicit. Calling a sparse autoencoder (SAE) feature ``lost'' can mean a changed activation pattern, a changed preferred language, or a changed effect on predictions. SAEs decompose an activation into sparse directions \citep{cunningham2023}; language-associated features have been identified and manipulated in full precision \citep{deng-etal-2025-unveiling}; and \citet{duan2026} measure activation correlations before and after weight quantization with a frozen SAE, leaving open whether interventions built on those features survive. The representation can change while a contribution remains, or an intervention can change because the downstream model changes.
+Weight quantization can change multilingual language-model behavior unevenly \citep{marchisio-etal-2024-quantization}. Sparse autoencoders (SAEs) offer an additional view by expressing internal activations as sparse combinations of learned directions \citep{cunningham2023}. Language-associated features can be selected and manipulated \citep{deng-etal-2025-unveiling}, and activation correlation before and after quantization measures one form of preservation \citep{duan2026}. The unresolved empirical question is how these observations relate to the effects of intervening on the corresponding features.
 
-We began by asking whether language-selective features were more vulnerable than non-selective controls and whether that explained resource-tier disparities. After implementation audits and negative primary contrasts we expanded the project to test the measurement assumptions directly, and then to its main question. This report presents the whole investigation, including hypotheses that were not supported. \textbf{RQ1:} how do activation preservation and language-association retention compare? \textbf{RQ2:} do selected language groups contribute to prediction and comprehension, and how does that change with precision? \textbf{RQ3:} do individual intervention effects support an interpretation of feature-specific damage? \textbf{RQ4:} does the group dependence appear on a second model? \textbf{RQ5 (main):} does the effect of a \emph{fixed} intervention survive quantization, and is a change due to the context, the weights, or their interaction; can it be predicted for held-out features?
+Several outcomes can differ without contradiction. A feature can change its activation magnitude while retaining a preferred language. An intervention can retain a recognizable output effect while its precise direction moves. A group can matter for predicting text without producing a measurable change on a particular comprehension endpoint. Evaluating these distinctions gives a more useful account of compression than treating every changed coordinate as a lost mechanism.
 
-Our contribution is a controlled case study: native interventions, donor patches and effect fingerprints across weight precisions (Sections 4, 6 and 8), and a crossed context--weights design for a fixed feature intervention with matched and random directions, a numerical floor, a held-out prediction target and an external-text check (Section 7). Ablation, patching and fingerprints are not new methods; the outcome is a set of distinctions and counterexamples to reading activation survival as functional survival, within one model and one measurement basis.
+We report the completed investigation through four \emph{retrospective synthesis questions}. They organize the accumulated evidence and do not replace the original frozen hypotheses: \textbf{RQ1}, how do language selectivity and resource tier relate to activation preservation across quantizers? \textbf{RQ2}, what do language-group interventions change across tasks and precision? \textbf{RQ3}, how informative are activation survival and association retention about intervention-effect preservation? \textbf{RQ4}, how do context, downstream weights and generic sensitivity affect transfer of a fixed intervention?
 
-\section{Related Work}
-\paragraph{Multilingual quantization.}
-\citet{marchisio-etal-2024-quantization} show that task, language and evaluation method affect the observed degradation; their behavioural evidence motivates our language panel but does not identify SAE features as its mechanism. Resource categories are a descriptive grouping \citep{joshi-etal-2020-state}, not controlled interventions on training data.
+Our contribution is a controlled empirical evaluation with activity-matched groups, donor patches, individual effect fingerprints, a crossed prefix/suffix design, two corpus panels, and a streamed measurement decomposition. The Gemma-2-9B extension tests the group pattern at another size; Llama supplies an informative contrasting model/dictionary setting. These experiments establish effects of defined interventions in the tested systems. Generalization and a complete account of natural language mechanisms are separate questions.
 
-\paragraph{Language-associated features.}
-\citet{deng-etal-2025-unveiling} identify language-specific SAE features and use ablation and steering, so an own-language loss effect in full precision is supporting evidence, not a novelty claim. Gemma Scope supplies open SAEs across Gemma 2 layers \citep{lieberum-etal-2024-gemma}. A frozen dictionary gives consistent coordinates across precision states without guaranteeing that each coordinate is an invariant mechanism.
+\section{Related Work and Measurement Context}
+\paragraph{Multilingual compression.}
+\citet{marchisio-etal-2024-quantization} show that quantization degradation depends on language, task and evaluation. Resource tiers describe a broader inclusion problem \citep{joshi-etal-2020-state}, but tiers do not experimentally manipulate training exposure. GPTQ uses approximate second-order information and calibration data to improve quantization \citep{frantar2022}. Our matched-RTN arm distinguishes changes in grid and scale granularity from the remaining combined contribution of calibration and compensation.
 
-\paragraph{Compression and causal interpretation.}
-\citet{duan2026} measure feature survival under round-to-nearest quantization by activation correlation. A pruning study already separates geometric survival from causal importance \citep{borobia2026}. \citet{chang-etal-2025-inputs} use activation patching to localize quantization error and compare the loss recovered by patching activations with that recovered by restoring weights (their Section 6), which is why a context-dominated result alone is not our contribution; \citet{hoang2026} analyze the geometry of intervention-induced logit changes; and \citet{vaidyanathan2026} show that the effect estimated by activation patching contains an interaction term that is a diagnostic rather than noise, small when the model is locally affine. We add a crossed design for a fixed SAE intervention under quantization, controls for generic drift, and a held-out prediction target. Belebele \citep{bandarkar-etal-2024-belebele} supplies a separate comprehension outcome.
+\paragraph{SAE features and their evaluation.}
+Gemma Scope supplies open SAEs \citep{lieberum-etal-2024-gemma}; JumpReLU and TopK improve reconstruction/sparsity tradeoffs \citep{rajamanoharan2024,gao2024}. These improvements coexist with shared questions about feature completeness and interpretation. \citet{leask2025canonical} show that SAE units need not be canonical, while \citet{makelov2025principled} evaluate task-grounded control without requiring exact feature recovery. SAEBench finds that proxy gains need not produce practical improvements \citep{karvonen2025saebench}. These studies motivate explicit functional endpoints and controls. Our fixed dictionary supplies an operational basis for paired comparisons; useful intervention evidence does not require claiming that its coordinates uniquely recover every natural computation.
 
-\section{Setting and Research History}
-We use Gemma-2-2B \citep{gemma2024} and a 16,384-feature JumpReLU \citep{rajamanoharan2024} Gemma Scope SAE at the layer-12 post-block residual stream; the model runs in bfloat16, the SAE and all edits in float32, and the same dictionary serves every condition. Quantization uses the vendored reference round-to-nearest (RTN) functions (output-channel scaling), restoring the original weights before each state; values stay in floating-point storage, so we do not evaluate integer kernels. States are full precision (FP), INT8 to INT4, and INT16 and INT12 as near-lossless rounding references (re-rounding bfloat16 weights still changes them). One BOS token is prepended; BOS and padding are excluded from statistics and edits.
+\paragraph{Preservation and intervention.}
+\citet{deng-etal-2025-unveiling} already show language-feature ablation and steering, so FP group effects are supporting evidence rather than a first-ever claim. \citet{duan2026} study activation survival under RTN; \citet{borobia2026} distinguish geometric survival and importance under pruning; \citet{hoang2026} examine the geometry of feature effects. \citet{chang-etal-2025-inputs} use activation patching to localize quantization error, and \citet{vaidyanathan2026} analyze interactions in patching. We connect activation, association and effect measurements across quantizers and test intervention transfer with explicit control directions. Belebele \citep{bandarkar-etal-2024-belebele} supplies a separate reading-comprehension endpoint.
 
-The panel is 27 parallel FLORES-200 \citep{nllb2022} languages in three descriptive tiers of nine (Appendix~\ref{app:languages}). Features are discovered on the development split; association studies use 27,036 content tokens per language on devtest; the loss evaluation uses 300 aligned devtest sentences per language. Devtest had been examined earlier, so all FLORES functional analyses are exploratory. Belebele items are split by passage origin into calibration and evaluation; calibration selects the answer format and 18 languages with accuracy above chance plus 0.05, and the frozen evaluation has 385 items per language.
+\section{Experimental Setting and Status}
+\paragraph{Models and dictionaries.}
+The primary model is Gemma-2-2B \citep{gemma2024}, with the layer-12 post-block residual Gemma Scope JumpReLU SAE (16,384 features). Inference uses bfloat16, SAE computations and edits float32. The completed original-RTN Gemma-2-9B extension uses its own 16k Gemma Scope SAE at layer 20 and the same language/sentence recipe. The contrasting Llama-3.2-1B setting \citep{grattafiori2024} uses a 14,336-feature TopK SAE ($k=48$), layer 12 of 16, with different training data and tokenizer. Comparisons between these setups do not isolate any one architectural difference.
 
-An initial implementation was retired after an audit; its outputs are not used. A rule is \emph{pre-specified} if committed to the repository before the data it judges were scored; none was registered externally. The only confirmatory family is the Belebele family (its first statement needs a positive FP macro effect; 99\% intervals for the five retention statements); everything else is exploratory.
+\paragraph{Quantizers and precision.}
+Legacy RTN is the project's reference implementation; attention scales share an output-coordinate scale across heads. Matched RTN uses a per-output-channel layout and the same grid as GPTQ. GPTQ calibrates on 8,192 Wikipedia tokens per language (221,184 total), disjoint from FLORES sentences and external evaluation articles. Selected transformer weights are rounded, with embeddings and normalization parameters unchanged; values remain in floating-point storage. We evaluate weight transformations, not integer-kernel speed or memory. The original ladder is FP, INT8--INT4, plus INT16/INT12 perturbation references and an INT0 restore identity. New quantizers use INT4/INT6 throughout, with INT8--INT4 in the activation stage. INT16 makes a small real weight change; it is a reference scale, not pure numerical noise.
 
-\section{Measurements and Interventions}
+\paragraph{Language and task panels.}
+The 27 parallel FLORES-200 \citep{nllb2022} languages comprise nine per descriptive resource tier (Appendix~\ref{app:languages}). Selection uses dev. Association evaluation uses 27,036 content tokens per language; functional loss uses 300 aligned devtest sentences per language. One BOS token is prepended and excluded, with padding, from statistics and edits. Belebele calibration selects a letter-answer format and 18 languages above chance plus 0.05. Evaluation has 385 questions per language in 219 passage clusters. A separate Wikipedia transfer panel has six languages, fresh articles, and fixed feature selections.
+
+\paragraph{Analysis status and reproducibility.}
+FLORES functional analyses reuse previously examined sentences and remain exploratory, including stages with choices frozen before their own outputs. The only fully confirmatory family is the original held-out Belebele family. No verified external preregistration is claimed. The final RQs are synthesis, not newly confirmed hypotheses. An audited initial pipeline was retired. Frozen code, manifests, sham/restore identities, input hashes and analysis reproduction checks support implementation integrity. Both new quantizers reproduce the FP values and reference conditions exactly; the 9B analysis reproduces its imported tables byte-identically from pinned raw files. This is analysis reproduction rather than independent repeated inference.
+
+\section{Measurements and Controls}
 \paragraph{Activation and association.}
-With $a_f^b(t)$ the activation of feature $f$ at token $t$ in state $b$, the preservation score is $c_f^b=\operatorname{corr}_t(a_f^{\mathrm{FP}}(t),a_f^b(t))$ and the historical survival cutoff is $c_f^b>0.9$. Language selectivity uses firing rates $r_{\ell f}$ and $S_f=\max_\ell r_{\ell f}/\operatorname{mean}_\ell r_{\ell f}$, with a shuffled-language null (95th percentile, 50 permutations), at least 50 peak tokens, a panel rate of at least $10^{-5}$ and the same peak in 80 of 100 resamples; the cohort has 8,086 features. A feature is \emph{established} on devtest if its original language is the unique supported firing-rate peak, and \emph{retained} at $b$ if that stays so; retention conditions on FP establishment. We also analyze the FP margin to the strongest competing language.
+For feature $f$, activation survival uses $R_1=\operatorname{corr}_t(a_f^{\mathrm{FP}}(t),a_f^b(t))$ and the historical threshold $R_1>0.9$. Language selectivity uses $S_f=\max_\ell r_{\ell f}/\operatorname{mean}_\ell r_{\ell f}$ from firing rates, a shuffled-language cutoff (50 permutations), support thresholds and stable peaks in 80 of 100 resamples. The 2B cohort has 8,086 selected features. A feature establishes its language on devtest when the original language is its unique supported peak; association retention conditions on that FP establishment. Thus activation correlation and association retention have different populations and meanings.
 
-\paragraph{Groups, controls and edits.}
-$G_\ell$ is the 64 highest-activation selective features of language $\ell$ on dev. Controls are matched greedily on log firing rate and log mean activation from 2,860 supported non-selective features (five draws; three in Study G). Matching is imperfect (75 of 81 language--size ratios within $[0.8,1.25]$; Thai, Yoruba and Lao outside at K64), so activity matching is not an identification argument for language specificity. With $x$ a residual, $a$ its SAE encoding and $d_f$ a decoder row, edits preserve the reconstruction error:
+\paragraph{Interventions and net harm.}
+$G_\ell$ contains the top 64 selective features by dev activation mass. Controls match log firing rate and log mean activation from 2,860 supported non-selective features, choosing among nearby unused candidates (three K64 control draws in the evaluations, from five available in the manifest). Matching is imperfect: 75/81 language--size ratios meet $[0.8,1.25]$, with Thai, Yoruba and Lao outside at K64. The comparison estimates excess harm against these controls, not exclusive language specificity. For residual $x$, activation $a_f$ and decoder $d_f$, edits preserve the reconstruction error:
 \begin{equation}
- x'=x+\sum_{f\in G}(a'_f-a_f)d_f,
- \label{eq:edit}
+ x'=x+\sum_{f\in G}(a'_f-a_f)d_f.
 \end{equation}
-zero ablation sets $a'_f=0$ and scaling $a'_f=\alpha a_f$; identity and sham edits check the path. For donor patches the recipient is quantized and $a'_f$ is the FP activation at the same position.
+Zero ablation sets $a'_f=0$, graded scaling sets $a'_f=\alpha a_f$, and donor patches substitute the FP activation at the same position. Harm is edited minus unedited NLL within the same model state. Excess harm $E_\ell^b$ subtracts mean control harm. Retention is $E_\ell^b/E_\ell^{\mathrm{FP}}$ where FP effect is established; a mean of ratios, median ratio and ratio of mean effects are distinct estimands. Donor recovery divides the patch's loss improvement by the quantization-induced loss gap. These patches are nonadditive and do not partition causal responsibility.
 
-\paragraph{Effects and uncertainty.}
-Harm is the change of the negative log-likelihood against the same state's unedited prediction (nats per token; Belebele nats per item). The group effect is
-\begin{equation}
- E_\ell^b=h_\ell^b(G_\ell)-\frac{1}{R}\sum_{r=1}^{R}h_\ell^b(C_{\ell r}),
- \label{eq:effect}
-\end{equation}
-negative harm is improvement and never clipped. Retention is $E_\ell^b/E_\ell^{\mathrm{FP}}$ for languages with a clearly positive FP effect, averaged per language (a mean of ratios; it differs from the ratio of means). Loss intervals are 2,000 paired cluster-bootstrap draws over aligned sentence identifiers; Belebele resamples passages; association intervals use 1,000 sentence resamples and can be shifted by near-tied peaks.
+\paragraph{Effect similarity and uncertainty.}
+$W_1$ is cosine similarity of a single-feature ablation's output-effect fingerprint with its FP fingerprint, with different-feature and direction controls. The F5 sample has 1,487 stratified features; 1,412 meet the INT16 reference criterion for reliable effects. The INT16 cosine's fifth percentile (0.9489) supplies a comparative fidelity convention. This is not a semantic correctness threshold. Loss intervals use 2,000 paired sentence-cluster resamples, Belebele passage resamples, and F5 language resamples. Transfer uses crossed feature/source-cluster resamples. The reviewed 9B comparisons additionally report 5,000 language-bootstrap intervals. Intervals condition on their samples and fixed feature/control choices; exploratory intervals are not multiplicity-adjusted confirmation.
 
-\section{Replication and Initial Tests}
-The vendored WikiText replication matches the published table closely (INT7 81.19\% against 81.26\%; INT6 51.15\% against 51.30\%), but the no-BOS FP perplexity is 458.4; with BOS added and masked it is about 16.1 and INT6 survival on WikiText is near 97.5\%. This shows sensitivity to the input regime, not that every published result is invalid, so we use BOS-masked evaluation and keep the no-BOS study as history. In that primary regime none of the three planned tests rejects after Holm correction (selective-minus-control survival $-0.28$ and $-1.44$ points at INT7 and INT6; adjusted $p=0.514$, $0.128$); a stricter post hoc threshold gives $-7.16$ at INT6, and matching activation magnitude reverses it to $+4.58$. The tier disparity (INT6 survival 69.4/90.6/95.1\% for low/mid/high) attenuates from $+12.3$ to $-0.81$ points per step after conditioning on activation scale ($p=0.667$), which is correlational and does not identify the cause of multilingual damage.
-
-\section{Association and Functional Results}
-\paragraph{Peaks persist beyond correlation survival.}
-Only 6,663 of 8,086 selected features (82.4\%) establish their peak on FP devtest; among them, retention falls gradually to 70.8\% at INT4 (Table~\ref{tab:ladder}); the INT16 reference loses 56 features (99.2\% retained) and no established feature becomes inactive. Correlation and association disagree: at INT6, 75.8\% of association-lost features still exceed the correlation cutoff; at INT4, 79\% of retained ones do not. The FP margin predicts association loss within a language (AUROC 0.90, 0.81, 0.75 at INT6/5/4; most borderline fifth against least at INT6: 20.7\% against 0.1\%), so much of the loss is sensitivity to near ties.
+\section{RQ1: Activation Preservation across Quantizers}
+\paragraph{Initial contrasts and resource tiers.}
+The published-regime WikiText reproduction closely matches the reference table (INT7 81.19\% versus 81.26\%, INT6 51.15\% versus 51.30\%). Adding BOS changes FP perplexity from 458.4 to about 16.1 and INT6 survival to about 97.5\%, demonstrating regime sensitivity. In the adopted BOS-masked regime, none of three original tests rejects after Holm correction: selective-minus-control survival is $-0.28$ and $-1.44$ percentage points at INT7/6 (adjusted $p=0.514,0.128$). Non-rejection is not equivalence. A stricter post hoc selectivity cutoff ($S>5$) gives $-7.16$ points at INT6, which reverses to $+4.58$ after matching in ten activation-magnitude bins. Tier survival at INT6 is 69.4/90.6/95.1\% (low/mid/high); its fitted tier slope attenuates from $+12.3$ to $-0.81$ points after scale adjustment. This is an observational adjustment, not an identified training-resource mechanism.
 
 \begin{table}[t]
 \centering
-\begin{tabular}{lrrr}
+\small
+\begin{tabular}{p{3.0cm}rrr}
 \toprule
-State & Corr. (\%) & Assoc. (\%) & Effect ratio\\
+INT4 measurement & Legacy & Matched & GPTQ\\
 \midrule
-INT8 & 100.00 & 98.1 & 1.01\\
-INT7 & 99.97 & 97.5 & 1.03\\
-INT6 & 94.94 & 94.7 & 1.04\\
-INT5 & 59.00 & 89.1 & 1.13\\
-INT4 & 13.75 & 70.8 & 2.14\\
+Active-feature survival (\%) & 12.7 & 18.6 & 30.5\\
+Mean loss increase (nats/token) & 0.590 & 0.385 & 0.130\\
+Median group-effect ratio & 1.54 & 1.36 & 1.22\\
+Median effect cosine ($W_1$) & 0.839 & 0.875 & 0.923\\
+Transfer cosine & 0.768 & 0.822 & 0.877\\
+Belebele accuracy (\%) & 23.6 & 29.1 & 31.8\\
 \bottomrule
 \end{tabular}
-\caption{Different measurements across precision. Correlation survival pools active features; association retention conditions on 6,663 established features; the effect ratio is the mean of 27 per-language ratios. Denominators and meanings differ; all exploratory.}
-\label{tab:ladder}
+\caption{Completed Gemma-2-2B quantizer comparison. Rows have distinct populations and estimands: survival averages per-language all-active shares, $W_1$ uses F5 features, transfer uses eligible feature--context items, and Belebele uses 18 languages.}
+\label{tab:quantizers}
 \end{table}
 
-\paragraph{Group dependence on loss, and little localized damage.}
-Zeroing a language's K64 group raises own-text loss beyond controls in all 27 languages at every precision: FP macro effect 0.704 nats/token $[0.684,0.723]$ (median 0.262), retention near one through INT6, 1.13 at INT5 and 2.14 at INT4 $[2.04,2.50]$ (the ratio of macro effects is only 1.33). This is dependence of a damaged model on the group, not better language ability. Restoring the group with FP activations at INT4 recovers 2.6\% of the loss gap (controls 1.2\%; all SAE features 17.4\%; whole residual 39.3\%), and about nothing at INT5 and INT6: necessity within a model is not responsibility for the difference between models. Matching association-lost and retained features on native activity shows no systematic harm difference (median lost-minus-retained $+0.0006$, $+0.0007$, $+0.0002$ nats/token at INT4/5/6).
+\paragraph{The quantizer changes preservation.}
+At INT6, average all-active survival is 85.0/89.7/97.5\% for legacy/matched/GPTQ; INT4 values appear in Table~\ref{tab:quantizers}. GPTQ exceeds legacy RTN at INT4 by 17.83 survival points $[16.29,19.38]$, and matched RTN by 11.86 $[11.18,12.50]$, with paired language-bootstrap intervals. Relative to legacy RTN it lowers mean NLL increase by 0.461 nats/token $[0.348,0.595]$, improving both metrics in all 27 languages. Matched RTN alone closes part of the gap. Its small selective contrasts cross the original within-family significance threshold, while GPTQ's do not; those reruns are exploratory additional families, not new confirmation. The result is quantizer-dependent multilingual preservation, with no robust quantizer-independent selective penalty established.
 
-\paragraph{The comprehension statement is not met.}
-On frozen Belebele the FP macro group effect is $-0.0001$ nats/item $[-0.0035,+0.0031]$; accuracy is 0.426 unedited, 0.426 with the group ablated and 0.425 with controls. No covered language has a clearly positive FP effect, so statement S0 is not met and S1--S5 are undefined; the whole group ($+0.0007$ $[-0.0030,+0.0042]$) agrees. Random sets of 1,024--2,860 features lower accuracy by 1.2--6.0 points while sham edits change nothing, so the edit path is sensitive and the null cannot exclude group effects of about half a point. Our frozen prompt scores above the lm-evaluation-harness prompt in all 18 languages (point estimates).
+\paragraph{An exact measurement decomposition.}
+For paired activations $a,b$, write the least-squares decomposition $b=ga+c+e$, with residual orthogonal to $a$. Then, on nondegenerate cells,
+\begin{equation}
+ \lambda=\log(R_1^{-2}-1)
+ =\log\sigma_e^2-2\log|g|-2\log\sigma_a.
+\end{equation}
+The survival threshold is $\lambda<-1.450$. Newly streamed sufficient statistics reproduce prior correlations within $3\times10^{-8}$ and the identity to about $10^{-14}$ across 214,506 FP-active language--feature cells. Threshold-normalized encoder perturbation $\nu$ measures RMS encoder preactivation change on FP-active tokens divided by the feature threshold. Across six INT4/6 cells, median Spearman$(\lambda,\log\sigma_a)$ is $-0.507$ to $-0.534$, whereas the corresponding $\nu$ correlations are $-0.004$ to $0.114$. Thus survival partly reflects signal scale; $\nu$ offers a different, more scale-separated diagnostic. RTN tier gradients also occur at INT16; GPTQ tier estimates change with scale adjustment. These results refine measurement interpretation without establishing either selective circuit destruction or an absence of language disparities.
 
-\paragraph{Individual effects drift, but directions drift too.}
-For 1,487 features the median cosine between FP and quantized effect fingerprints is 0.997/0.988/0.961/0.839 at INT8/6/5/4 (fraction above the INT16 reference 94.0/89.7/66.5/0.3\%), yet each feature's effect stays far closer to its own FP fingerprint than to others' (retrieval 0.997--1.000). In the 404-feature control that subtracts another matched decoder direction at the same positions and amplitudes the medians are 0.842 and 0.828 at INT4 (differences of medians 0.004--0.007 at INT8/6/5), so most drift is shared by arbitrary perturbations. About 31\% of features above the write-side reference fail the activation-survival cutoff at INT5, and association status has descriptive AUROC 0.506 for INT4 effect similarity (at INT6 on the F5 sample the FP margin predicts association loss at 0.86 but function change at 0.58): label stability and causal-effect stability are different.
+\section{RQ2: Causal Relevance across Tasks and Precision}
+\paragraph{Group ablation and graded dependence.}
+At FP the 2B K64 excess harm is positive in all 27 languages, with mean 0.704 nats/token $[0.684,0.723]$ and median 0.262. Retention stays near one through INT6, then increases: legacy INT4 median ratio 1.54 $[1.43,1.62]$, macro mean 2.14 $[2.04,2.50]$, ratio of means 1.33. GPTQ reduces the median ratio to 1.22 $[1.14,1.24]$; its macro mean 1.31 $[1.27,1.50]$ receives an inconclusive classification against the frozen $[0.75,1.33]$ band. The point estimates show increased sensitivity, not improved language ability or a location of quantization damage.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{direction-control.pdf}
-\caption{Median fingerprint similarity on the same 404 features and matched directions. Bars show interquartile ranges, not confidence intervals. The numerical drift is largely shared by alternative perturbations.}
-\label{fig:directions}
-\end{figure}
+Study G gives converging intervention evidence. Harm rises with deeper suppression in all 27 languages; median FP excess harm is 0.0223/0.0902/0.1687/0.2624 at multipliers 0.354/0.177/0.088/0. The strict precision-monotonicity rule fails under legacy RTN because of a small intermediate-width dip, while the dose-response and consistency rules hold. Main fine-gain repair criteria fail. A fresh-sentence legacy follow-up finds a small net improvement at $1.1\times$ ($-0.00135$ nats/token, 97.5\% interval $[-0.00197,-0.00032]$, 20/27 negative), but not at $1.2\times$ by its rule. The fresh-sentence follow-up was legacy-only. In the main 300-sentence comparison, GPTQ's best-gain-above-one count is 7/27, the same as FP. State-defined groups overlap FP groups less at INT4 (Jaccard 0.488 versus 0.855 at INT6) but are not more consequential (median difference $-0.0098$). Optimal gain is reliable within the study yet not associated with inverse shrinkage ($\rho=-0.17$, $p=0.804$).
 
-\section{Intervention Transfer under Quantization}
-\label{sec:transfer}
-\paragraph{Design.}
-The comparisons above change activations and weights together. We instead ask how the effect of a \emph{fixed} intervention changes when the model is quantized, and whether the change comes from the context (the residual and SAE activations before the edit), the weights (the layers after it) or their interaction. At the positions where a feature is active in FP we subtract its FP decoder contribution (float32; every cell subtracts its own unedited baseline; a zero edit is exactly zero). Let $D[p,s]$ be the mean centered change of the output logits with prefix state $p$ and suffix state $s$, each FP or quantized (Q). Then $C=D[\mathrm{Q},\mathrm{FP}]-D[\mathrm{FP},\mathrm{FP}]$, $W=D[\mathrm{FP},\mathrm{Q}]-D[\mathrm{FP},\mathrm{FP}]$, $I=D[\mathrm{Q},\mathrm{Q}]-D[\mathrm{Q},\mathrm{FP}]-D[\mathrm{FP},\mathrm{Q}]+D[\mathrm{FP},\mathrm{FP}]$, and $D[\mathrm{Q},\mathrm{Q}]-D[\mathrm{FP},\mathrm{FP}]=C+W+I$ exactly. A fifth cell uses the quantized state's own activation (native amplitude).
+\paragraph{Evidence at another Gemma size and a contrasting setup.}
+Reviewed 9B original-RTN results reproduce from pinned raw files. FP excess harm is positive in all 27 languages, median 0.270 $[0.197,0.608]$. Language-bootstrap median retention is 1.019 $[0.978,1.045]$ at INT6 and 1.586 $[1.238,2.264]$ at INT4. INT4 macro mean 2.479 and ratio of mean effects 1.474 show why the aggregation must be named. Paired 2B--9B difference intervals include zero, supporting a similar ladder without a size effect. The original prediction record contains a reversed dose-order inequality and a selectivity criterion guaranteed by selection; those two items are not independent confirmations. The direct dose-response is ordered in all 27 languages. No 9B GPTQ result is included.
 
-\paragraph{Controls, floor, populations.}
-Each edit is repeated along a matched swapped direction (another feature's decoder row) and three random norm-matched orthogonal directions. Because the model runs in bfloat16, even INT16 changes the logits; per direction kind the numerical floor is the 95th percentile of the INT16 error over calibration features (28.7 for the real direction), and an item is \emph{eligible} if its FP effect norm exceeds five floors. The normalized error is $\lVert D[\mathrm{Q},\mathrm{Q}]-D[\mathrm{FP},\mathrm{FP}]\rVert/(\lVert D[\mathrm{FP},\mathrm{FP}]\rVert+\text{floor})$. The feature level has 404 features with up to 16 contexts each (6,464 feature--context pairs; 2,203 eligible real-direction items of 235 features), split by a hash of the feature id into calibration and held-out halves; the group level ablates each language's K64 group and three matched control groups on the 300 evaluation sentences of the 27 languages and decomposes the net harm of Equation~\ref{eq:effect}. Intervals are 2,000-replicate crossed bootstraps over features and source-sentence clusters (group level: sentences only). Pre-declared: A3, the expectation that the context term dominates the weight term at the group level; H1, that the error is not explained by a rescaling of the FP effect or by the quantized state's own activation; H2 (descriptive), that $C$, $W$, $I$ reproduce between the calibration and the held-out half; H3, that the generic sensitivity (below) predicts the error beyond activation measurements; H4, that the averaged fingerprint transfers differently from its single contexts. The design, thresholds and hypotheses were frozen and hashed before the first quantized run; amendments made after a 12-feature instrument run and before the full runs concern a gate threshold, the form of the gradient baseline and one extra baseline column, and the claim rules were tightened once after an independent code review and before the outcomes were read (Appendix~\ref{app:rules}).
+Llama gives a positive but smaller FP median effect, 0.048 $[0.018,0.173]$, with 21/27 positive rather than the required 24. Its frozen consistency verdict is therefore not met. Its INT4 median ratio is 0.86 $[0.74,1.03]$, and dose ordering is less consistent. This establishes heterogeneity across the two model/dictionary setups while leaving the Gemma intervention contrasts intact.
 
-\begin{table*}[t]
-\centering\small
-\begin{tabular}{lrrrrrrrrrr}
-\toprule
- & \multicolumn{4}{c}{Group level (27 languages, nats/token)} & \multicolumn{6}{c}{Feature level (2,203 eligible items)}\\
-\cmidrule(lr){2-5}\cmidrule(lr){6-11}
-State & net harm & $|C|$ & $|W|$ & $|I|$ & cosine & error & floors & $C$ & $W$ & $I$\\
-\midrule
-INT16 (rounding) & 0.262 & 0.0005 & 0.0003 & 0.0002 & 0.998 & 0.056 & 0.71 & 0.055 & 0.053 & 0.074\\
-INT6 & 0.281 & 0.009 & 0.009 & 0.001 & 0.984 & 0.165 & 1.9 & 0.100 & 0.145 & 0.086\\
-INT4 & 0.848 & 0.310 & 0.104 & 0.071 & 0.768 & 0.664 & 7.7 & 0.359 & 0.560 & 0.315\\
-\bottomrule
-\end{tabular}
-\caption{Main results of the transfer study. Group level: median net harm with the FP edit (FP: 0.263) and median absolute terms over 27 languages. Feature level: medians over eligible real-direction items of the cosine between the quantized and FP effect vectors, the normalized error, the error in numerical floors, and the norms of $C$, $W$, $I$ relative to the FP norm plus floor. INT16 is the rounding-only reference.}
-\label{tab:transfer}
-\end{table*}
+\paragraph{Comprehension and donor recovery.}
+On held-out Belebele the FP excess correct-option loss is $-0.0001$ nats/item $[-0.0035,+0.0031]$. This endpoint is distinct from accuracy: 0.426 unedited, 0.426 group-ablated, 0.425 control-ablated. The required FP effect is not established, so the five conditional retention statements are undefined. Whole-group ablation agrees; non-selective control sets of 1,024--2,860 features lower accuracy by 1.2--2.2 points, with other-language selective controls reaching 6.0 points, and sham edits change nothing. Under GPTQ, unedited INT4 accuracy is 0.318, above chance (0.25), while the small group-accuracy change persists. The null is task-specific and does not negate the next-token effects.
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{transfer-terms.pdf}
-\caption{(a) Median relative norm of the context, weight and interaction terms of the effect vector, real direction (with 95\% interval) and the four control directions. (b) Group-level absolute context and weight terms of the net harm, one point per language. (c) Cosine of the averaged fingerprint minus the mean cosine of its contexts, with the rounding-only state as reference; the interval resamples features only.}
-\label{fig:terms}
-\end{figure*}
+At INT4, FP donor patches recover 2.6\% $[2.4,2.8]$ of the legacy RTN loss gap via K64, compared with 39.3\% $[38.5,40.0]$ via the full residual. GPTQ gives 2.0\% $[1.6,2.3]$ and 41.4\% $[40.2,42.4]$. These measured recovery shares show limited efficacy of this repair, rather than a bound on the features' causal contribution.
 
-\paragraph{Group level.}
-At INT6 the terms are small and equal (median $|C|=0.0091$ $[0.0056,0.0114]$, $|W|=0.0092$ $[0.0061,0.0133]$; the context term is larger in 12 of 27 languages), about 3.5\% of the FP net harm and about 19 and 35 times the rounding-only values, so the group effect changes little (net harm 0.281 against 0.263). At INT4 the median net harm is 0.85 with the fixed FP edit, and for that edit the context term is about three times the weight term ($|C|=0.310$ $[0.258,0.334]$, $|W|=0.104$ $[0.094,0.122]$, $|I|=0.071$); the interval of the median $|C|-|W|$ is $[+0.022,+0.073]$ (the context term is larger in 19 languages, as in the rounding-only state, so the count is not evidence; the interval is). The expectation that context dominates (A3) is supported at INT4 for this edit and undecided at INT6. A caveat matters for the reading: the median net harm of the four cells is 0.263 (FP/FP), 0.684 (quantized context, FP weights), 0.428 (FP context, quantized weights) and 0.848 (both), and with the quantized state's own activation 0.433. Paired per language (post hoc), native minus fixed is $-0.35$ $[-0.36,-0.29]$ (all 27 languages) and native minus weights-only $+0.014$ $[0.009,0.023]$ in the median, ranging from $-0.78$ to $+0.23$: close to the weights in the median language, not in every one; the context term of the fixed edit comes from subtracting a full-precision-sized contribution in a context where the feature's activation has changed.
+\section{RQ3: Activation Agreement and Functional Preservation}
+Only 6,663 of 8,086 selected 2B features establish their peak language on FP devtest. Of those, 70.8\% retain it at legacy INT4, whereas correlation survival in that established cohort is 13.75\%. A small FP peak margin predicts association loss (within-language AUROC 0.90/0.81/0.75 at INT6/5/4), consistent with near ties making labels sensitive. Matched lost/retained subgroup interventions do not show a systematic harm gap; median differences are $+0.0006,+0.0007,+0.0002$ nats/token at INT4/5/6. These findings distinguish association status from intervention effects.
 
-\paragraph{Feature level.}
-At INT6 the effect vector is rotated little (cosine 0.984, normalized error 0.165, 1.9 floors: small, but above the rounding floor); at INT4 it is rotated strongly (cosine 0.768) with a slightly larger norm (ratio 1.09) and a normalized error of 0.664 $[0.647,0.680]$, 7.7 floors. The error is almost orthogonal to the FP effect (97--99\% at every state, 99.7\% at INT16) and using the quantized state's own activation leaves 97\% of it, so neither a rescaling nor an activation change explains it (H1: the shares alone say nothing because they are equal in the rounding-only state, hence the requirement that the error clears the floor). Unlike the group-level loss, the \emph{weight} term has the larger norm in the effect vector (relative norms 0.145 against 0.100 at INT6, 0.560 against 0.359 at INT4; $\lVert C\rVert>\lVert W\rVert$ in 6\% and 10\% of items; exploratory, the terms are not additive), and the interaction is a third of the change at INT4. The two readings differ in what they measure: the norm of a mean logit change against a signed loss summed over a group. Most of the error is not specific to the feature's direction: matched and random directions give terms and errors of similar size, with small differences in both directions (INT4: the real direction's normalized error is above its controls by $+0.019$ $[0.009,0.032]$; the controls are not eligibility-filtered, so this mixes scale and specificity: in the 144 pairs with matched FP effect size the real direction's error norm is $\times1.12$ (INT6) and $\times1.14$ (INT4) that of its swapped direction ($\times1.00$ at INT16): a modest specific part, post hoc).
+The F5 sample provides a positive functional result alongside measured drift. At legacy INT4 only 13.2\% pass activation correlation 0.9, yet median effect cosine is 0.839 $[0.829,0.848]$, 99.9\% exceed different-feature controls and 99.7\% retrieve their own FP identity. Just 0.3\% meet the stricter INT16-derived fidelity convention. Thus identifiable function and exact preservation coexist at different levels. GPTQ improves median INT4 effect cosine to 0.923 and the share meeting that convention to 11.7\%. Binary association retention does not reliably discriminate this preservation (legacy descriptive AUROC 0.506; GPTQ 0.49 with sufficient events).
 
-\paragraph{Averages hide the contexts.}
-The cosine of a feature's \emph{averaged} fingerprint exceeds the mean cosine of its single contexts by 0.126 $[0.121,0.131]$ at INT4, 0.024 at INT6 and 0.0145 $[0.011,0.017]$ in the rounding-only state (Figure~\ref{fig:terms}c; a positive gap is expected from independent rounding noise); the averaged fingerprint also has the lower normalized error in all 404 features, in every state. Averaged fingerprints therefore overstate how well an intervention transfers (H4).
+Continuous $R_1$ is more informative. On 1,412 reliable features, leave-one-language-out ridge prediction of $W_1$ controls for activity, contexts and FP effect size. Adding $R_1$ reduces MAE by 3.1--4.4\% across all six quantizer/width cells, with every 95\% language-bootstrap interval above zero. Legacy INT4 improvement is 3.7\% $[2.3,5.2]$, GPTQ 3.5\% $[2.1,5.0]$. Partial rank correlations are 0.239--0.399. These are modest positive contributions, below the project's 10\% practical target; the target does not turn them into zero information. Adding gain and $\log\nu$ changes prediction by $-0.4$\% to $+1.8$\%, with all intervals including zero. In Llama's 610 reliable features the INT4 association repeats (partial $\rho=0.252$ $[0.184,0.322]$, MAE gain 4.2\% $[1.6,6.7]$); INT6 is unresolved. The gain/noise diagnostics clarify activation changes without demonstrating further predictive benefit here.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{transfer-predict.pdf}
-\caption{Relative reduction of the held-out error of the model with the generic sensitivity (A+B) against the strongest baseline, with crossed-bootstrap intervals, for the eligible items of the real direction (blue; the primary analysis) and for all items (grey; secondary). Dashed: the 10\% criterion.}
-\label{fig:predict}
-\end{figure}
+\section{RQ4: Portability of Fixed Interventions}
+\paragraph{Crossed design.}
+A fixed edit subtracts the FP decoder contribution at FP-active positions. Let $D[p,s]$ be its centered output-logit effect for prefix $p$ and suffix $s$, each FP or quantized Q, subtracting the cell's own unedited baseline. Define
+\begin{align}
+ C&=D[\mathrm{Q},\mathrm{FP}]-D[\mathrm{FP},\mathrm{FP}],\\
+ W&=D[\mathrm{FP},\mathrm{Q}]-D[\mathrm{FP},\mathrm{FP}],\\
+ I&=D[\mathrm{Q},\mathrm{Q}]-D[\mathrm{Q},\mathrm{FP}]\nonumber\\
+  &\quad-D[\mathrm{FP},\mathrm{Q}]+D[\mathrm{FP},\mathrm{FP}].
+\end{align}
+The total vector change equals $C+W+I$ exactly. Norms, medians and projected loss changes need not add. A fifth cell uses the quantized state's own amplitude. The panel contains 404 features and 6,464 pairs of features and contexts, with 2,203 eligible real-direction items (235 features) whose FP effect exceeds five INT16 reference floors. Matched swapped decoder rows and three random norm-matched directions control generic sensitivity. Feature hashes split calibration and held-out features; contexts can overlap between those halves.
 
-\paragraph{Prediction.}
-We fit ridge models on the calibration half and score the held-out features (feature-held-out: their contexts share source sentences with the calibration half). A uses activation measurements (cosine of FP and quantized activations, log activation, firing share, log effect and residual norms), G adds the loss gradient at the edited rows, B adds the generic sensitivity measured with the \emph{other} four directions at the same context. B reduces the held-out error against the strongest baseline (A+G at INT4, A at INT6, chosen on the calibration half) by 21.5\% $[12.7,29.4]$ at INT4, so the 10\% criterion is met, but by 10.9\% $[-1.2,21.4]$ at INT6, where the interval includes zero and the baselines are not better than the calibration median; on all 6,464 items, a secondary analysis with the floor-normalized error (grey in Figure~\ref{fig:predict}), the INT6 reduction is 37.1\% $[30.7,43.0]$. The pre-specified utility criterion needs both states on eligible items and is not met. The same model reduces the error by 23.4\% $[15.1,30.8]$ in the rounding-only INT16 state, so the INT4 gain cannot be attributed to a quantization-specific mechanism: B also predicts pure rounding error (it measures how noise-prone a context is). On eligible items at INT4 neither gradient attribution (held-out error 0.124 against 0.125, no interval) nor the Pearson survival of the feature adds to A or to B (survival: $-0.4\%$ $[-1.8,0.7]$ and $-0.6\%$ $[-4.3,3.4]$); at INT6 adding survival to B is slightly worse ($-6.5\%$ $[-12.0,-1.6]$).
+\paragraph{Context and downstream weights.}
+Legacy INT4 fixed group net harm is 0.848 versus 0.263 in FP; median absolute context/weight terms are 0.310/0.104 nats/token. Native-amplitude harm is 0.433. The paired native-minus-fixed difference is negative in every language (median $-0.351$ $[-0.358,-0.293]$); the native-minus-weights-only remainder is smaller in the median language ($+0.0138$ $[0.0093,0.0233]$) but heterogeneous. At the individual effect-vector level the weight-term norm is larger. These engineered contrasts show that attribution depends on edit definition and endpoint, rather than identifying one universal source of damage.
 
-\paragraph{External panel.}
-We ran the same design once on 1,800 Wikipedia passages (300 each in English, Hindi, Russian, Spanish, Yoruba and Chinese; 402 of the 404 features; same rules, floor recomputed: 1,444 of 6,406 items eligible). INT4 repeats the main result: the effect vector is rotated (cosine 0.754, normalized error 0.679), the weight term has the larger norm, the averaged fingerprint hides the error (cosine gap $+0.132$ $[0.125,0.140]$ against $+0.027$ in the rounding-only state; H4 supported), the context term of the fixed edit exceeds the weight term ($+0.053$ $[+0.040,+0.064]$, 4 of 6 languages; A3 supported), and B reduces the held-out error by 19.4\% $[5.1,31.8]$ (20.6\% $[9.3,31.2]$ when fitted on the FLORES calibration features, no refit). INT6 differs: the weight term is larger at the group level ($-0.0049$ $[-0.0060,-0.0031]$; A3 reversed), H4 is inconclusive, and the reduction is 23.4\% $[12.8,32.5]$ (against the calibration median, which beats both activation baselines at INT6, the FLORES-fitted cross-corpus reduction is 15.8\% $[-2.7,28.7]$), so the utility criterion is met here though not on FLORES; the rounding-only state is predicted as well (28.9\%). With six languages and a smaller eligible population this is an external-validity check, not a replication.
+\paragraph{Transfer and generic sensitivity.}
+At INT6 legacy effect cosine is 0.984 and normalized error 0.165, about 1.88 INT16 reference floors. At INT4 cosine is 0.768 $[0.760,0.776]$, error 0.664; matched RTN and GPTQ improve cosine to 0.822/0.877 and reduce error to 0.572/0.476. Drift shared with other directions indicates a substantial generic component. A post hoc common-support comparison retains 144 pairs on FLORES and 107 on Wikipedia with comparable FP effect size; the real direction's INT4 error norm is 1.14 $[1.07,1.25]$ and 1.18 $[1.05,1.24]$ times its swapped control. This supports a modest additional component on a selected subset, not universal feature specificity.
 
-\section{Graded Feature Scaling}
-Study G varies $\alpha$ in Equation~\ref{eq:edit} for the K64 groups with three down multipliers (0.3536, 0.1768, 0.0884) and their reciprocals, calibrated on a 100-sentence FP pilot, on 300 sentences, 27 languages and three control draws. In FP the median net harm rises 0.0223, 0.0902, 0.1687, 0.2624 as the group is suppressed more strongly and then zeroed (ordered in all 27 languages; 26 with a positive lower bound at the deepest down multiplier); strong amplification also raises harm; the curves are similar from FP through INT5 with an INT4 increase. The strict precision-monotonicity rule is not met and no relaxed tolerance is substituted. A follow-up on 562 reserve sentences with five control draws finds a small INT4 benefit of amplifying by 1.1 (median net harm $-0.00135$ nats/token, 97.5\% interval $[-0.00197,-0.00032]$, 20 of 27 languages; 1.2: not met), with a small harm at FP, INT6 and INT5. State-defined groups (Jaccard with the FP group 0.49 at INT4) are not more consequential ($-0.0098$), and the language-specific optimal gain is reproducible (reliability 0.917) but not explained by inverse activation shrinkage (rank correlation $-0.170$, $p=0.804$): a simple compensation explanation is not supported.
+Averaging fingerprints increases apparent agreement relative to context-level comparison (legacy INT4 cosine gap $+0.126$). Generic sensitivity improves main-panel held-out error prediction by 21.5\% $[12.7,29.4]$ at INT4, but the INT6 gain 10.9\% $[-1.2,21.4]$ is unresolved, so the original combined-width utility criterion is not met. A similar gain at INT16 shows that the predictor is not specific to quantization. Survival and scalar-loss gradient attribution add no measurable improvement for the main eligible INT4 vector-error target. The scalar gradient nevertheless predicts its own loss target moderately ($r=0.63$ at FP, $0.58$ for the INT4 shift); an effect-vector gradient approximation was not computed.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{gain-down.pdf}
-\caption{Median net harm under suppression, from the completed Study G curves. Net harm subtracts controls scaled by the same multiplier. The strongest precision change occurs at INT4.}
-\label{fig:gain}
-\end{figure}
-
-\section{A Second-Model Check}
-\label{sec:llama}
-We ran a minimum consistency check on Llama-3.2-1B \citep{grattafiori2024} with a public TopK \citep{gao2024} SAE (14,336 features, residual entering block 12) through an adapter around the frozen Gemma pipeline (same languages, sentences, selectivity rule, K64 groups, three control draws, Study G multipliers, 300 sentences; FP, INT8, INT6, INT5, INT4), with predictions fixed beforehand (Table~\ref{tab:llama}). The verdict is \emph{not consistent}: the group effect exists but is small (median $0.048$ nats/token against $0.262$; positive in 21 of 27 languages, 24 required; large in German, Yoruba and Amharic, negative in six languages); it is flat through INT6 (P2a met) but without INT4 amplification (the frozen mean retention is $-3.57$ because one language with $E=0.0027$ has a ratio of $-88.9$; the post hoc median is $0.86$, against $1.54$ on Gemma), and the down-dose ordering holds in 20 of 27 languages at FP and 15 at INT4. Control draws are heavy-tailed, so post hoc robustness variants cannot change the verdict. Model family, SAE architecture, depth and tokenizer all differ, and this dictionary labels 91\% of its supported features selective with only 898 candidate controls, so the check does not show that the Gemma findings fail elsewhere.
-
-\begin{table*}[t]
-\centering\small
-\begin{tabular}{p{4.2cm}p{4.9cm}p{3.5cm}p{1.1cm}}
-\toprule
-Prediction (fixed beforehand) & Llama-3.2-1B & Gemma-2-2B & Met\\
-\midrule
-P1: median $E>0$ with its interval above 0 and $E>0$ in $\geq 24$ of 27 languages & median $0.048$ $[0.018,0.173]$; 21 of 27 & median $0.262$; 27 of 27 & no\\
-P2a: macro retention in $[0.85,1.15]$ at INT8 and INT6 & $1.010$, $1.024$ & $1.006$, $1.038$ & yes\\
-P2b: INT4 retention $\geq$ INT6 $+0.30$ and the largest & INT5 $0.14$, INT4 $-3.57$ (median of ratios $0.86$) & $1.13$, $2.14$ (median $1.54$) & no\\
-P3a: down-dose ordering (H-G1) in $\geq 24$ of 27 languages and in the median, at FP and INT4 & 20 of 27 at FP, 15 of 27 at INT4 & met (Study~G) & no\\
-P3b (reported only): the deepest down multiplier costs more at INT4 in $\geq 20$ of 27 and the median ratio exceeds 1.3 & 14 of 27; median ratio $1.17$ & ratio $1.91$ & no\\
-\midrule
-Verdict & \multicolumn{3}{l}{not consistent (P1 fails)}\\
-\bottomrule
-\end{tabular}
-\caption{Pre-specified predictions and outcomes for the Llama-3.2-1B check. $E$ is the group effect of Equation~\ref{eq:effect} (nats/token); retention is the mean of per-language ratios $E^b_\ell/E^{\mathrm{FP}}_\ell$ over languages with a clearly positive FP effect (21 of 27). The median of the ratios is post hoc and not used for the verdict.}
-\label{tab:llama}
-\end{table*}
+\paragraph{Fresh-text check.}
+The six-language Wikipedia panel repeats the INT4 quantizer ordering: cosine 0.754/0.808/0.876 for legacy/matched/GPTQ. Generic sensitivity improves INT4 prediction by 19/29/30\%. At INT6 the criterion is met for both RTN arms but not GPTQ (3\% $[-14,+17]$), whose error is near the reference. Wikipedia also supplies GPTQ calibration text from different articles, so this comparison combines method and domain effects. The panel supports portability findings on fresh text without making every main-panel label identical.
 
 \section{Discussion and Conclusion}
-The original selective-destruction account is not established: primary contrasts were weak, the threshold-dependent disadvantage reversed with magnitude matching, and donor patches attributed little quantization loss to the selected groups. The main methodological lesson is to say what a survival measurement preserves: a correlation cutoff describes activation agreement, a peak label depends on a margin, and a logit fingerprint describes a sampled intervention in a changing downstream model.
+The final RQs have constructive answers. Quantizer and activation scale shape measured preservation (RQ1). Selected groups show controlled causal relevance to multilingual next-token prediction, with convergence across ablation, graded suppression and two Gemma sizes, while comprehension and repair depend on the endpoint (RQ2). Activation and effect measurements share modest positive information but retain distinct meanings (RQ3). Intervention portability can be measured, decomposed in engineered states and improved by a better quantization recipe (RQ4).
 
-The crossed design adds three findings. First, whether an intervention keeps its effect depends strongly on the precision (cosine 0.98 at INT6, 0.77 at INT4): at INT6 it changes little (about two floors, above the rounding floor) and at INT4 the effect vector is rotated rather than shrunk. Second, the answer to ``context or weights'' depends on the quantity and on the edit: for the fixed full-precision edit the group-level loss is amplified mostly through the context term, but with the quantized state's own activation the harm is close to that of the weights alone in the median language (not in every language), and the effect vector has its larger norm in the weight term; the interaction is never negligible at INT4, so a single split would mislead. Third, most of the transfer error is shared with other directions and their sensitivity predicts it (it also predicts the rounding-only error, so this is not shown to be quantization-specific); activation survival and, on eligible items at INT4, gradient attribution add nothing measurable; and averaged fingerprints hide it. Together with the earlier result that activation survival and association status are not reliable proxies for functional change, this argues against using activation survival as a proxy for the survival of interventions; it does not show that a better proxy is unavailable.
+These conclusions are meaningful within their experimental scope. A single frozen dictionary cannot establish a complete language circuit, but it can support reproducible contrasts under fixed interventions. Different dictionaries or model families test generalization; their absence from a particular arm does not erase a controlled effect. Our Llama comparison and quantizer ablations already demonstrate why that distinction matters. The work supplies an empirical measurement account rather than selective-destruction or universal circuit claims. The completed evidence stands as the present study; pending Gemma-2-9B GPTQ contributes no result.
 
-\label{main-content-end}
-\section*{Limitations, Challenges, and Future Work}
-All analyses use one base model, layer, frozen SAE and simulated round-to-nearest weights (not deployed integer kernels); dictionary fidelity can deteriorate after compression. Zero ablation can be off-distribution and does not establish unique necessity or semantic identity; matching is imperfect and control draws overlap. Language tiers confound script, tokenization, training data and competence. Most results are exploratory, and bootstrap intervals condition on the selected sample.
+\section*{Limitations, Challenges and Future Work}
+A dictionary can distribute or mix functions, and zero ablation can leave the natural activation distribution. Alternative dictionaries, layers, intervention definitions and activation quantization would test broader generalization. Activity matching does not equate every relevant feature property, and fixed groups/control draws limit the uncertainty captured by resampling. Language tiers confound script, tokenization, training exposure and competence. A reading benchmark is one endpoint among many.
 
-For the transfer study: the numerical floor is large (bfloat16 execution), so INT6 effects are only about two floors; ``held-out'' means held-out features (88\% of held-out source sentences also occur among calibration contexts); the group-level interval resamples sentences only and the averaged-fingerprint interval features only; the control directions of the specificity contrast are not eligibility-filtered; the ridge strength chosen was the largest of the three tried; the generic-sensitivity model also works in the rounding-only state, so its INT4 gain must not be read as quantization-specific; the gradient baseline is the scalar loss-attribution form, not the effect-vector form (post hoc, $r=0.63$ with the signed loss change, $0.58$ with its INT4 shift); and the six-language external panel is a validity check, not a replication of the 27-language study (its INT6 statuses differ and one language dominates its medians). The second-model check confounds model family, dictionary, depth and tokenizer; Gemma-2-9B with Gemma Scope was handed to another team and is not part of this report.
-
-Challenges included replacing the initial pipeline, accelerator memory limits, hardware heterogeneity (one node with different float results, one CPU run; both caught by gates), and CUDA failures. Future work should replicate across models and quantizers (including integer kernels and activation quantization), test behavioural steering with calibrated headroom, and test the generic-sensitivity predictor against a quantization-specific alternative. These are not completed results.
+Exploratory reuse of sentences limits confirmatory interpretation. Holding out languages or features does not ensure held-out documents. Numerical execution and reference perturbations matter for small differences; a paired arithmetic-precision audit remains an extension. Calibration and error compensation are not independently manipulated by the GPTQ comparison. Simulated rounded weights do not measure deployment kernels or realized compression costs. Additional independent corpora and task interventions would strengthen external validity.
 
 \clearpage
 \balance
 \bibliography{references}
-
 \clearpage
 \nobalance
 \appendix
@@ -219,77 +165,44 @@ Challenges included replacing the initial pipeline, accelerator memory limits, h
 \label{app:languages}
 \begin{table}[h]
 \centering\small
-\begin{tabular}{lp{5.4cm}}
+\begin{tabular}{lp{5.3cm}}
 \toprule
-Tier & Languages (FLORES-200 codes)\\
+Tier & FLORES-200 language codes\\
 \midrule
 High & eng\_Latn, deu\_Latn, spa\_Latn, fra\_Latn, por\_Latn, rus\_Cyrl, zho\_Hans, jpn\_Jpan, kor\_Hang\\
 Mid & hin\_Deva, ben\_Beng, tam\_Taml, tur\_Latn, vie\_Latn, ind\_Latn, tha\_Thai, pol\_Latn, ukr\_Cyrl\\
 Low & kan\_Knda, tel\_Telu, yor\_Latn, sun\_Latn, amh\_Ethi, ibo\_Latn, hau\_Latn, khm\_Khmr, lao\_Laoo\\
 \bottomrule
 \end{tabular}
-\caption{The fixed 27-language roster in the order English, German, Spanish, French, Portuguese, Russian, Chinese, Japanese, Korean; Hindi, Bengali, Tamil, Turkish, Vietnamese, Indonesian, Thai, Polish, Ukrainian; Kannada, Telugu, Yoruba, Sundanese, Amharic, Igbo, Hausa, Khmer, Lao. Tiers are descriptive groupings, not equal training exposure.}
-\label{tab:languages}
+\caption{Fixed descriptive tiers, nine languages each.}
 \end{table}
+The repository is \url{https://github.com/TH4KUR/always-late}; committed evidence maps identify result files, freezes and hashes. The artifact dataset is \url{https://huggingface.co/datasets/karma-skz/always-late-artifacts}; access is private and not all item-level files are public. Run summaries are at \url{https://wandb.ai/karma-skz-/anlp-project}. The revision-4 evidence map covers the whole completed study. Earlier report wording is archived verbatim.
 
-The repository is \url{https://github.com/TH4KUR/always-late}; its results summary and figure index map the headline numbers to their source files, and the evidence map in the report folder lists the tables behind each numerical block. The private artifact dataset is \url{https://huggingface.co/datasets/karma-skz/always-late-artifacts}; newer item-level files are recorded by location and checksum and are not all archived there. The Wikipedia text of the external panel is pinned by dataset revision and per-passage checksums in \texttt{reports/intervention\_transfer/freeze\_external.json} and is not in the repository (CC BY-SA). The Weights \& Biases project \url{https://wandb.ai/karma-skz-/anlp-project} holds the 19 earlier replication runs and 15 runs (\texttt{v2-*}) uploaded after the fact, one per result family (the transfer study is not among them), with headline numbers, tables, and figures read from the committed files (design: \texttt{reports/wandb\_schema\_v2.md}); no weights or item-level files are uploaded. Software: Python 3.10, PyTorch 2.14.1 (CUDA 12.6), TransformerLens 3.9.0, SAE Lens 6.54.5, Transformers 5.19.0. Jobs ran on 11 GB RTX 2080 Ti GPUs: about 3 GPU hours per precision state for the Gemma-2-2B functional and Study G runs, 1.5 for Llama-3.2-1B, about 3 to 5 for each of the six main transfer runs and 1.5 to 8 for the six external ones.
+The frozen environment records Python 3.10, PyTorch 2.14.1, TransformerLens 3.9.0, SAE Lens 6.54.5 and Transformers 5.19.0. Most 2B jobs used 11 GB RTX 2080 Ti accelerators; the supplied 9B run used a rented 96 GB RTX PRO 6000. Checks include sham identities, restored FP weights, quantized-weight hashes and analysis reproductions. The 9B review checks raw-file provenance and headers and reproduces tables byte-identically; it does not independently repeat the supplied GPU inference. All numbers here derive from completed saved outputs; this revision introduces no model run or new statistical analysis.
 
-Regeneration checks: the Phase 1 reproduction compared 89 output files against cached inputs (all identical); the Study G and prompt-check reproduction compared 45 outputs (zero differences), and the five Llama outputs were regenerated identically. These regenerate analyses; they are not independent repetitions of model inference. Freezes, sentence identifiers, matching manifests, run metadata, and SHA-256 checksums identify the runs; test suites (about 300 for the transfer study), mutation checks, an independent read-only code review, sham gates, and restore-only identities check the implementation, not the scientific interpretation. The transfer analysis ran once on the six validated main runs; its claim rules were tightened once, after the review and before any outcome was read (H1 also needs the error above the numerical floor, H4 must separate from the rounding-only state, A3 needs both readings of its wording, an unrun or unfittable state is not a failed criterion, incomplete runs stop the analysis).
-
-\section{Pre-specified Rules and Outcomes}
-\label{app:rules}
-The upper part of Table~\ref{tab:rules} lists the rules of Study G and its three extensions (B, C, D) as written before the data were scored, with their outcomes; the unsupported ones are named below it.
-\begin{table*}[!t]
-\centering\scriptsize
-\begin{tabular}{p{1.4cm}p{6.0cm}p{5.3cm}p{1.3cm}}
+\section{Frozen Rules and Completed Outcomes}
+Table~\ref{tab:inventory} condenses the hypothesis inventory. Historical rules and verdicts remain in their original files. The four final RQs organize these results retrospectively; practical thresholds do not convert small positive estimates into zero effects. The course page limit motivates compression of the inventory, not omission of unsupported hypotheses.
+\begin{table*}[t]
+\centering\small
+\begin{tabular}{p{2.2cm}p{6.1cm}p{6.2cm}}
 \toprule
-Rule & Condition fixed beforehand (languages counted out of 27) & Outcome & Verdict\\
+Block & Rule or question & Completed outcome and status\\
 \midrule
-H-G1, 2 & net harm strictly ordered over the three down multipliers and zero ablation (FP), in $\geq 24$ and in the median; lower bound above 0 at the deepest one, in $\geq 24$ & 27, medians 0.0223, 0.0902, 0.1687, 0.2624; 26 & met\\
-H-G3 & group harm increasing over the up multipliers in $\geq 24$ and net harm above 0 at the largest in $\geq 20$ (FP) & 27 and 24 & met\\
-H-G4 & tau $>0$ at the deepest down multiplier in $\geq 24$ and the median not falling by more than one bootstrap error & 27; median clause false & not met\\
-H-G5 & INT4 generic repair (control harm below 0 at 1.1 or 1.2); group-specific repair (net-harm upper bound below 0 in $\geq 14$); optimal gain against inverse shrinkage, rank correlation above 0.3 & controls 0.0000 and 0.0002; 12; $-0.034$ & not met\\
-H-G6 & net harm positive at the deepest down multiplier in $\geq 24$ in every state; rank correlation FP against INT4 $>0.5$ & 27 in every state; 0.936 & met\\
-H-Gc1 & INT4 repair on fresh sentences: median net-harm interval below 0 and $\geq 19$ negative & 1.1: $-0.0013$ $[-0.0020,-0.0003]$, 20 (met); 1.2: $-0.0017$ $[-0.0031,0.0003]$, 18 (not met) & met (1.1)\\
-H-Gc2, 3 & INT4 minus FP paired difference below 0 at both multipliers; matched controls not falling too at INT4 & $-0.0024$, $-0.0041$; controls $-0.0002$, $+0.0001$ & met\\
-R-D1 & same correlation, fresh sentences: $\rho\geq 0.30$, one-sided $p<0.05$, reliability $\geq 0.30$ & $\rho=-0.170$, $p=0.804$; reliability 0.917 & not supported\\
-H-Gb1 & contributing features move with precision (Jaccard with FP smaller at INT4 than at INT6 in $\geq 24$) & 27; 0.488 against 0.855 & met\\
-H-Gb2 & state-defined minus FP-defined net harm positive in $\geq 18$ and in the median (INT4) & 11; median $-0.0098$ & not met\\
-H-Gb3, 4 & dose-response of state-defined groups (3); generic repair (4a); group-specific repair (4b) & met; 4a not met; 4b: 16 of 27 & 3, 4b met; 4a not met\\
+Initial contrasts & Three selective-survival/tier contrasts; Holm within family & No rejection under original BOS-masked RTN. Matched/GPTQ reruns are exploratory additional families.\\
+Association & FP establishment and peak retention & 6,663/8,086 established; 70.8\% retain peak at legacy INT4. Margin prediction is descriptive.\\
+Functional F1--F4 & Excess group loss, donor recovery, retained/lost subgroup effects & 27/27 positive FP group effects; INT4 K64 recovery 2--3\%; small subgroup gaps. Exploratory.\\
+Belebele & Positive FP effect required before five precision statements & S0 not met; S1--S5 undefined. Original held-out family confirmatory; whole-group/prompt/positive-control checks exploratory.\\
+Study G & H-G1/2 suppression dose/specificity; H-G3 boost dose; H-G6 consistency & Met under legacy RTN. Strict precision ordering H-G4 not met; a two-error tolerance sensitivity does not alter the original verdict.\\
+Repair and gain & H-G5 generic/group-specific repair and inverse-shrinkage optimum & Main criteria not met. Fresh-sentence extension C meets its $1.1\times$ rule only; D shrinkage relation not supported.\\
+State-defined G & Groups move; new groups more consequential; dose and repair & Group movement, dose and group-specific repair rules met; greater consequence and generic repair rules not met. Exploratory.\\
+F5 and prediction & Identity, effect drift, association discrimination; continuous $R_1$ & High identity retrieval despite drift. Binary association inconclusive/non-discriminative; continuous gain 3.1--4.4\%, positive intervals, below 10\% target.\\
+Measurement audit & Gain/noise identity, scale separation, adjusted tiers and extra predictors & Identity verified; scale separation met by convention. Tier estimates mixed; gain/$\nu$ increments include zero. Exploratory.\\
+Transfer & Fixed edit; H1 residual drift, H3 prediction, H4 averaging; group A3 & Main H1/H4 supported; H3/A3 mixed; combined utility not met. External RTN utility met; GPTQ INT6 unresolved. Exploratory.\\
+Llama & Frozen existence/dose/INT4 consistency rule & Not consistent (P1 21/27, 24 required); FP median effect positive. INT4 F5 association/prediction modestly positive. Exploratory.\\
+Gemma-2-9B & FP effects, precision ladder, graded dependence & Positive 27/27, INT6 near FP, INT4 increase. Reversed frozen inequality and tautological selectivity item documented; no GPTQ result.\\
 \bottomrule
 \end{tabular}
-\vspace{1pt}
-
-\begin{tabular}{p{3.0cm}p{8.9cm}p{2.6cm}}
-\toprule
-Block & Headline result & Status\\
-\midrule
-Association retention & 6,663 of 8,086 selected features established; 70.8\% retain their peak at INT4; correlation survival at INT4 13.75\% & exploratory\\
-Original tests & no rejection after Holm ($-0.28$, $-1.44$ points at INT7, INT6); tier slope $+12.3$ to $-0.81$ after conditioning on scale & historical, not externally registered\\
-Group dependence on loss & macro effect 0.704 nats/token $[0.684,0.723]$, 27 of 27; retention 1.01--1.04 through INT6, 1.13 at INT5, 2.14 at INT4 & exploratory, frozen setting\\
-Patching & language group recovers 2.6\% of the INT4 loss gap, whole residual 39.3\% & exploratory\\
-Association versus function & lost-minus-retained medians (26 languages) $+0.0006$, $+0.0007$, $+0.0002$; margin AUROC for association loss 0.90/0.81/0.75; F5 sample: 0.86 for association loss, 0.58 for function (INT6) & exploratory\\
-Belebele & S0 not met: macro effect $-0.0001$ $[-0.0035,+0.0031]$; whole group $+0.0007$; frozen prompt above harness prompt in 18 of 18 (point estimates) & S0 confirmatory; rest exploratory\\
-Individual effects & median cosine 0.997/0.988/0.961/0.839 at INT8/6/5/4; matched other direction 0.828 against 0.842 at INT4 & exploratory\\
-Graded scaling & H-G1 to H-G3, H-G6 met; H-G4, repair rules not met & exploratory\\
-Fine amplification & 1.1 at INT4: net harm $-0.00135$ $[-0.00197,-0.00032]$, 20 of 27 languages; 1.2 not met & exploratory, fresh sentences\\
-Optimum and groups & optimum reliable (0.92), not related to shrinkage in this sample ($-0.17$); state-defined groups not more consequential ($-0.0098$) & exploratory, post hoc in origin\\
-Second model & Llama-3.2-1B: P1 not met (21 of 27), flat through INT6, no INT4 amplification; verdict not consistent & exploratory, pre-specified rule\\
-Transfer, group level & net harm 0.85 against 0.26 at INT4; $|C|=0.310$, $|W|=0.104$ (difference $[+0.022,+0.073]$, context larger in 19 of 27); INT6 $0.0091$ and $0.0092$ & A3 supported at INT4, undecided at INT6\\
-Transfer, feature level & 2,203 eligible items; cosine 0.984 and 0.768, normalized error 0.165 and 0.664 at INT6 and INT4, 97--99\% orthogonal to the FP effect; weight term larger; real direction close to its controls ($+0.019$ at INT4); averaged-fingerprint gap $+0.126$ at INT4 ($+0.0145$ at INT16) & H1 and H4 supported; rest exploratory\\
-Transfer, external panel & six languages, 1,444 eligible items; INT4 cosine 0.754, error 0.679, context larger ($+0.053$), gap $+0.132$; INT6 weight larger ($-0.0049$); error reduction 19.4\% and 23.4\%, cross-corpus 20.6\% and 19.7\% & H1, H3 supported, A3 and H4 mixed, utility met; exploratory\\
-Prediction & error reduction 21.5\% $[12.7,29.4]$ at INT4, 10.9\% $[-1.2,21.4]$ at INT6 (all items 37.1\%), 23.4\% at INT16; gradient and survival add nothing at INT4 & H3 mixed; utility not met\\
-\bottomrule
-\end{tabular}
-\caption{Upper: pre-specified rules of Study G and its extensions with outcomes (net harm: group minus matched controls, nats per token). Lower: every result block with its status.}
-\label{tab:rules}
+\caption{Completed study inventory. Status belongs to each design, not to whether the estimate is positive. The numerical results and their uncertainty are in the main text and evidence map.}
+\label{tab:inventory}
 \end{table*}
-
-\subsection*{Hypotheses That Were Not Supported}
-The original selective-versus-control tests (primary regime), the frozen Belebele statement S0 (making S1--S5 undefined), strict Study G precision monotonicity, the main-study repair rules (before the larger follow-up, which supported only the 1.1 multiplier), state-defined groups being more consequential, inverse shrinkage predicting the optimal gain, on Llama-3.2-1B the predictions P1, P2b, P3a, and P3b, and in the transfer study the utility criterion on FLORES (met at INT4, not at INT6; met on the external panel) and the context-dominance expectation at INT6 (undecided on FLORES, reversed on the external panel). They are reported as outcomes and were not converted by changing thresholds.
-
-\section{Result Inventory and Status}
-\label{app:inventory}
-The lower part of Table~\ref{tab:rules} lists every result block of the report with its headline numbers and its status (confirmatory, frozen, or exploratory). The repository's results summary numbers the same results as claims 1 to 18.
-
 \end{document}

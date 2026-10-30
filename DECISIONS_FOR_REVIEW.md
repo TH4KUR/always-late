@@ -281,3 +281,7 @@ Their script 06 (sliding-window perplexity) and arm R3 were never run (D-005, cl
 
 ---
 *Not decisions, reminders:* the prose of `paper/main.tex` is superseded in places (see `issues.md` A1-A6) and must be written by the team (course policy); the routine never edits `paper/`.
+
+## Reporting update, 30 October 2026 (evidence through 29 October)
+
+The user requested final documentation and a research paper from the completed body of work. [Current synthesis](reports/FINAL_RESEARCH_QUESTIONS.md), [research paper](paper/research-paper/main.tex), [current status](reports/CURRENT_STATUS.md). The Gemma-2-2B three-quantizer comparison, survival measurement study, Llama consistency check and original-RTN 9B review are complete. The pending 9B GPTQ extension has no result. Matched RTN on 9B, the precision audit and broader model/SAE coverage are future work rather than blocking report requirements. The user later deleted all recurring jobs; no historical scheduling prompt authorizes recreating them. Earlier questions, estimates and next steps above remain the historical record; the final synthesis does not relabel exploratory findings or change frozen pass/fail criteria.

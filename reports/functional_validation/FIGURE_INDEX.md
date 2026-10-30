@@ -58,3 +58,7 @@ The table files sit next to the figures (`table_*.md` and `.csv` in `figures/eva
 ## 6. Not figured (by design)
 
 The Study G extension B figure shows the median only; the per-language differences of H-Gb2 are in `gain_study/state_defined/results/analysis.json` (`rules.H-Gb2.INT4.per_language`). The Belebele prompt cross-check has a table (`promptcheck/report.md`, `languages.csv`) and no figure: 18 differences of the same sign fit a table.
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

@@ -133,3 +133,9 @@ The scientific rationale remains the accepted language-association work and mult
 ## 8. Implementation boundary and coordination
 
 The selected plan supersedes the earlier “no specific next study selected” status only for this bounded M0/M1 work. Writing it does not execute implementation, collect new measurements or approve every other candidate experiment. Preserve concurrent edits and historical attribution (the former shared communication folder was removed on 2026-10-21 at the user's instruction), and keep the Q13-Q15 follow-up scope separate.
+
+## Current reporting context, 30 October 2026
+
+This dated assessment is retained as a historical record; its old pending-work and publication-priority statements are not the current project status. [Current synthesis](FINAL_RESEARCH_QUESTIONS.md), [research paper](../paper/research-paper/main.tex), [current status](CURRENT_STATUS.md). The completed paper reports a controlled evaluation across three Gemma-2-2B quantizers, task/control checks and scoped scale/architecture extensions. It credits direct precedents and makes no first-ever or acceptance claim. A limited model/layer/SAE scope bounds generalization rather than invalidating controlled effects. Positive associations, supported intervention contrasts and informative nulls all belong in the final account. Original predictions and their outcomes are unchanged.
+
+The 9B original-RTN analysis was reproduced from raw files and reviewed (D-127); GPTQ remains pending, matched RTN is unrun. Belebele's primary interval is in correct-option NLL, not accuracy points. Continuous survival adds about 3–4% predictive improvement beyond baselines, below the 10% convention but not zero. F5 effect changes can coexist with high own-identity retrieval. These later clarifications govern current interpretation where the dated prose differs.

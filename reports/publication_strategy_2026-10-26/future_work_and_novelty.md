@@ -1,3 +1,5 @@
+> **Current reporting pointer, 30 October 2026:** This is a dated assessment, preserved as written. Its earlier pending-review and publication-priority statements are historical. The 9B original-RTN results have since been reproduced and reviewed (D-127); GPTQ remains pending. Use the [final questions and answers](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex) and [current status](../CURRENT_STATUS.md) for the completed study.
+
 # Verified future-work anchors and novelty boundaries
 
 > **Historical assessment / design-stage record.** The [26 October post-D-094 novelty assessment](../novelty_assessment_2026-10-26.md) supersedes novelty verdicts and forward priorities below. The broad claims have direct precedents; an exact protocol match was not found, but novelty is not verified. Keep this source/search history; use current results and the recovery plan for decisions.
@@ -97,3 +99,8 @@ If a full-text competitor matches the final actual contribution, revise the clai
 A credible preprint plus a peer-reviewed broad motivation supports investigation; it does
 not establish an A-tier result. Recheck updated versions before submission.
 
+## Current reporting context, 30 October 2026
+
+This dated assessment is retained as a historical record; its old pending-work and publication-priority statements are not the current project status. [Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). The completed paper reports a controlled evaluation across three Gemma-2-2B quantizers, task/control checks and scoped scale/architecture extensions. It credits direct precedents and makes no first-ever or acceptance claim. A limited model/layer/SAE scope bounds generalization rather than invalidating controlled effects. Positive associations, supported intervention contrasts and informative nulls all belong in the final account. Original predictions and their outcomes are unchanged.
+
+The 9B original-RTN analysis was reproduced from raw files and reviewed (D-127); GPTQ remains pending, matched RTN is unrun. Belebele's primary interval is in correct-option NLL, not accuracy points. Continuous survival adds about 3–4% predictive improvement beyond baselines, below the 10% convention but not zero. F5 effect changes can coexist with high own-identity retrieval. These later clarifications govern current interpretation where the dated prose differs.

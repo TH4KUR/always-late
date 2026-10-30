@@ -1,5 +1,7 @@
 # Study G: graded gain of language-selective features, per language, across the precision ladder
 
+**Reporting update, 30 October 2026:** Study G and extensions B/C/D are complete, as is the INT6/INT4 matched-RTN/GPTQ comparison. The graded group effects support the specified causal response. The legacy INT4 fine-gain repair is tiny, does not generalize to GPTQ, and has no established compensation mechanism; it is not the paper's practical contribution. Reviewed 9B original-RTN curves provide a scale extension, with the P3a sign and P3b definition defects disclosed. [Current synthesis](../../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../../paper/research-paper/main.tex), [current status](../../CURRENT_STATUS.md).
+
 **Completed (25 October 2026), including extensions B, C and D.** This page retains the
 original request, methodology and dated results. Its earlier instruction to continue Study G
 first is satisfied; current work is in [STATUS / NEXT STEP](../STATUS.md#next-step).
@@ -48,7 +50,7 @@ The previous page is [preserved verbatim](../../archive/novelty_cleanup_2026-10-
 
 **Runs.** Wrapper `scripts/g0/phase1_gain_run.py` around the frozen runner (never edited); one Ada job per state, 38 configurations per language (about 3 GPU hours per state); analysis `phase1_gain_analysis.py`, figures `phase1_gain_figures.py`; every module has tests written first and a mutation check.
 
-**Status of the evidence.** Exploratory: the devtest sentences were examined in earlier studies (D-039). One model, one layer, one SAE, RTN only, loss not task accuracy.
+**Status of the evidence.** Exploratory: the devtest sentences were examined in earlier studies (D-039). The original curves below use Gemma-2-2B, layer 12, Gemma Scope and legacy RTN, with next-token loss as the endpoint. The later matched-RTN/GPTQ comparison and reviewed original-RTN 9B extension are linked above; they provide additional coverage without changing these original curves.
 
 ## Status (update at every step; the date is the last update)
 

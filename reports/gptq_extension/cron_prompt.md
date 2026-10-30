@@ -46,3 +46,7 @@ The user's instruction takes priority over the older line in section 3 saying th
 6. If a step is too big for one firing, leave a clean intermediate state (tests green or the failing test written in the ledger).
 7. Cadence guard: run CronList. If fewer than three entries with the pointer prompt exist (the 7-day expiry or a restart), recreate them as described at the top of this file and note it in the ledger. If the user has said stop, delete them and do not recreate.
 ```
+
+## Reporting update, 30 October 2026 (evidence through 29 October)
+
+The user requested final documentation and a research paper from the completed body of work. [Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). The Gemma-2-2B three-quantizer comparison, survival measurement study, Llama consistency check and original-RTN 9B review are complete. The pending 9B GPTQ extension has no result. Matched RTN on 9B, the precision audit and broader model/SAE coverage are future work rather than blocking report requirements. The user later deleted all recurring jobs; no historical scheduling prompt authorizes recreating them. Earlier questions, estimates and next steps above remain the historical record; the final synthesis does not relabel exploratory findings or change frozen pass/fail criteria.

@@ -1,10 +1,12 @@
 # Functional validation across precision (D-039, D-040): index
 
-Question: do the SAE features selected as language-selective before quantization carry function for their language (necessity beyond activity-matched controls), is that function kept in each RTN-quantized model (INT8/7/6/5/4), where does quantization damage sit (FP-donor patching), and does association retention (D-035) predict functional retention? Exploratory on already examined FLORES devtest for the loss task; Belebele is the held-out task, frozen before scoring.
+**Reporting update, 30 October 2026:** The studies are complete. Their controlled group edits support causal loss effects, while the Belebele primary NLL family is not met; its accuracy changes are a separate endpoint. See also the three-quantizer comparison and reviewed original-RTN 9B scale extension. Historical queued/running entries below are retained as provenance. [Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md).
+
+Question: do the SAE features selected as language-selective before quantization carry function for their language (necessity beyond activity-matched controls), is that function kept in each RTN-quantized model (INT8/7/6/5/4), how much loss is repaired by specified FP-donor patches, and does association retention (D-035) predict functional retention? Exploratory on already examined FLORES devtest for the loss task; Belebele is the held-out task, frozen before scoring.
 
 | file | what it is |
 |---|---|
-| [`STATUS.md`](STATUS.md) | live status, NEXT STEP, gates, log (start here) |
+| [`STATUS.md`](STATUS.md) | historical execution status, NEXT STEP, gates and log; current synthesis linked above |
 | [`RESULTS_SUMMARY.md`](RESULTS_SUMMARY.md) | **results summary for the paper team**: per question (F1 to F5, Belebele) the status (frozen, confirmatory, exploratory), the headline numbers, the evidence links, what can and cannot be claimed |
 | [design](../../docs/superpowers/specs/2026-10-21-functional-validation-design.md) | questions F1 to F4 and B, tasks, groups and controls, interventions, estimands, decision rules, freeze protocol, compute, risks |
 | [plan](../../docs/superpowers/plans/2026-10-21-functional-validation.md) | tasks 0 to 9 with tests, mutants, gates and the job queue order |

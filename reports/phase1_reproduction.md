@@ -11,3 +11,7 @@ Every committed result file under `reports/phase1/` was regenerated from the cac
 | mask/eq | 23 | 23 |
 | none/all | 21 | 21 |
 | none/eq | 21 | 21 |
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](FINAL_RESEARCH_QUESTIONS.md), [research paper](../paper/research-paper/main.tex), [current status](CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

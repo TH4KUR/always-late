@@ -13,3 +13,7 @@ These files were produced by our own earlier pipeline (`src/` and the Phase-1 / 
 | `w0_sanity_check_result.json`, `multilang_sanity_check_result.json`, `mid_submission_results.json` | early checks and the mid-submission summary |
 
 > **Note 2026-10-29:** the byte-identical copy `phase1_survival_results_27lang.json` was removed (it equalled `phase1_survival_results_27lang_gpu.json`, sha256 `cfca6f928de65147...`, checked with `cmp` before the removal; `issues.md` line 260 records the copy). The `_gpu.json` file is the one kept.
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

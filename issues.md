@@ -314,3 +314,7 @@ Everything the pipeline downloads or depends on, and what I found. "Verified" me
 General reproducibility gap: none of the three downloaded artifacts (model, SAE, FLORES) is pinned by revision or hash, so a later re-run could silently use different files.
 
 - 2026-10-29 (Claude): the copy named at line 260, `reports/legacy_pipeline/phase1_survival_results_27lang.json`, was removed after `cmp` showed it byte-identical to the `_gpu.json` file (note in `reports/legacy_pipeline/README.md`).
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](reports/FINAL_RESEARCH_QUESTIONS.md), [research paper](paper/research-paper/main.tex), [current status](reports/CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

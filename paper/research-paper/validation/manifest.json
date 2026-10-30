@@ -1,0 +1,22 @@
+{
+  "revision_date": "2026-10-30",
+  "evidence_through": "2026-10-29",
+  "pdf": "Feature-Survival-and-Intervention-Preservation.pdf",
+  "pdf_sha256": "a15d32478f8983ba5e39f5077007986bc703db30aa4e635467487345a5057d75",
+  "source_sha256": "c83d97e7f788b1bb2152930f7b4b01238ed68548a9075a09932a1a622f4cf156",
+  "upstream_styles_unchanged": true,
+  "style_sha256": {
+    "acl.sty": "19dfeddc2c0e448f3926a0bef048a9db3f3611b46265b760caabd7ada4f361de",
+    "acl_natbib.bst": "6fbb306202290f4b68e74ac1460a8b27398500cb6dfeb4492e74c457eae7cd1e"
+  },
+  "pinned_checker_commit": "f626497051df8689e990fac36ba9f42cd630e31c",
+  "compiled_by": "Local pdfLaTeX and BibTeX",
+  "native_editor_compiler": "Unavailable: Tectonic runtime bundle download failed",
+  "new_model_runs": 0,
+  "new_statistical_analyses": 0,
+  "figures": "Stored CSV estimates and existing confidence endpoints only",
+  "rendered_pages_inspected": 11,
+  "pinned_format_check": "All Clear",
+  "latest_format_check": "All Clear",
+  "official_findings": {}
+}

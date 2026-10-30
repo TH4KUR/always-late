@@ -1,6 +1,8 @@
 # What changes when we quantize with GPTQ instead of RTN? (plain-language results)
 
-Written 2026-10-28 (IST), at the user's request of 2026-10-27: "run tests again with GPTQ quantization and try to keep other things same as before so that we can draw a fair comparison." Written for readers who did not follow the work. Short words on purpose. The full record is in [`STATUS.md`](STATUS.md) (ledger and log), the decisions D-101 to D-111 in [`../decisions_and_anomalies.md`](../decisions_and_anomalies.md), and the plan in [`../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md`](../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md). **Status: stages 1 to 3 are done and checked; Study G, F5 and the external panel are still running (section 7).** Everything here is **exploratory**: it asks "does the old finding survive another quantizer?", it does not test a new claim.
+**Reporting update, 30 October 2026:** all planned stages reported here are complete (D-104 to D-111). The comparison supports quantizer-dependent magnitudes alongside several stable intervention findings. Each result retains its exploratory status. [Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md).
+
+Written 2026-10-28 (IST), at the user's request of 2026-10-27: "run tests again with GPTQ quantization and try to keep other things same as before so that we can draw a fair comparison." Written for readers who did not follow the work. Short words on purpose. The full record is in [`STATUS.md`](STATUS.md) (ledger and log), the decisions D-101 to D-111 in [`../decisions_and_anomalies.md`](../decisions_and_anomalies.md), and the plan in [`../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md`](../../docs/superpowers/plans/2026-10-27-gptq-matched-comparison.md). **Status: the planned three-arm comparison, Study G, F5 and the external panel are complete (section 7).** Everything here is **exploratory**: it asks whether the earlier findings persist under different quantization recipes; the results are evidence with that status.
 
 ## 1. The short answer
 
@@ -73,7 +75,7 @@ The recipe of the error keeps its order in every arm (weights part largest, cont
 
 ### 4.4 What the language-feature groups do (loss task) and where the damage sits (rescue)
 
-(D-107, `results/stage3/`.) Removing a language's top-64 features hurts that language's text in **all 27 languages in every arm** (full precision included). At 4 bits the harm is **bigger than in full precision** ("amplified"), but less so with a better quantizer:
+(D-107, `results/stage3/`.) Removing a language's top-64 features hurts that language's text in **all 27 languages in every arm** (full precision included). At 4 bits the point estimate is **bigger than in full precision**, but less so with a better quantizer; the formal GPTQ classification is inconclusive:
 
 | 4 bits | legacy RTN | matched RTN | GPTQ |
 |---|---|---|---|
@@ -107,7 +109,7 @@ The old pre-set test "does the association-retention label (lost / retained) tel
 | Rounding hurts low-resource languages' features more (6 bits) | **mostly a feature of the legacy quantizer**: the tier gap at 6 bits nearly closes; at 4 bits all languages suffer and the order reverses |
 | Language-specific features survive no worse than ordinary ones (Phase 1 null) | **fragile** (section 4.2): verdict depends on the quantizer, effect tiny |
 | Removing the language group hurts that language | **holds** in 27 of 27 languages |
-| That harm is amplified at 4 bits | **holds, smaller** (median 1.22 instead of 1.54) |
+| The INT4 harm is larger in point estimate | **smaller under GPTQ** (median 1.22 instead of 1.54); the pre-set classification is inconclusive rather than amplified |
 | Patching the language features back repairs very little of the loss gap | **holds** (2 to 3 % of the gap; a recovery share, not a causal share) |
 | Transfer test: verdict "not met" | **holds**; the error itself shrinks by about 28 % at 4 bits |
 | Belebele: no effect of removing the group | **holds**, and now also at an above-chance 4-bit model |
@@ -118,11 +120,11 @@ The old pre-set test "does the association-retention label (lost / retained) tel
 ## 6. What we cannot say
 
 - **We cannot say GPTQ is better "because of error compensation".** GPTQ saw example text from the same 27 languages and RTN saw none. Matched RTN is there to separate the grid and granularity change; the remaining gap mixes compensation and calibration. A GPTQ run with no calibration text is not possible; a different or smaller calibration text would be a new experiment.
-- **One model, one layer, one feature dictionary, weights-only rounding.** Nothing here covers other models (the Gemma-2-9B check belongs to another team [Note 2026-10-29: original-RTN 9B results were imported on 2026-10-29 (D-125) and are unreproduced; no 9B GPTQ or matched-RTN result exists]), other layers, or activation quantization.
+- **Coverage:** this controlled three-arm comparison uses Gemma-2-2B, layer 12, Gemma Scope and simulated weight-only quantization. Reviewed 9B original-RTN results extend part of the study in scale, not quantizer coverage; 9B GPTQ remains pending and matched RTN is unrun. Other layers, dictionaries and activation quantization require new studies. These boundaries limit generalization without negating the measured comparisons.
 - **All contrasts are exploratory.** No multiplicity rule covers three arms. The three-arm intervals in sections 4.3 and 4.4 are each arm's own, not paired contrasts (the stage 1 and group-level transfer contrasts are paired by language).
 - **Not repeated:** F4 (its feature sets come from the legacy quantizer's own association losses) and the association retention study E3 (a 2.76 GB file per arm does not fit the cluster disk, 2.4 GB free). The Belebele pre-set statements S1 to S5 need all six bit widths and were not rerun (only 6 and 4 bits were).
 
-## 7. Still running or not yet read (updated when they finish)
+## 7. Completion record (historical jobs, all finished)
 
 - ~~**F5** (does a single feature do the same thing after rounding?): jobs 44072, 44073.~~ **Done 2026-10-28 (section 4.6, D-108).**
 - ~~**Study G** (graded gain, the user's major study; INT4 and INT6): jobs 44074 to 44077.~~ **Done 2026-10-28 (section 4.7, D-109).**

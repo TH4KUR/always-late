@@ -84,3 +84,7 @@ The pairs figures of the sensitivity comparisons add `--figures --label-a ... --
 ## Tests
 
 `python3 -B -m unittest discover -s scripts/g0/tests` (stdlib, 265) and `OMP_NUM_THREADS=4 ~/.venvs/anlp-torch/bin/python -B -m unittest discover -s scripts/g0/tests_torch` (torch, 1220); key behaviours of each module are mutation-checked with `scripts/g0/mutcheck.py` (the counts are in the Log of `STATUS.md`).
+
+## Current reporting pointer, 30 October 2026
+
+[Current synthesis](../FINAL_RESEARCH_QUESTIONS.md), [research paper](../../paper/research-paper/main.tex), [current status](../CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.

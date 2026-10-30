@@ -1,0 +1,23 @@
+name                                 type              encoding         emb sub uni object ID
+------------------------------------ ----------------- ---------------- --- --- --- ---------
+GGVWDI+NimbusRomNo9L-Medi            Type 1            Custom           yes yes yes     67  0
+PDQDRB+NimbusRomNo9L-Regu            Type 1            Custom           yes yes yes     68  0
+HIPSAQ+CMSY10                        Type 1            Builtin          yes yes yes     70  0
+MFPIGD+CMMI10                        Type 1            Builtin          yes yes yes     71  0
+KRYAOH+CMR10                         Type 1            Builtin          yes yes yes     72  0
+MSKQIC+NimbusRomNo9L-ReguItal        Type 1            Custom           yes yes yes     74  0
+UCBXHM+CMMI8                         Type 1            Builtin          yes yes yes    117  0
+LCTDLU+CMR8                          Type 1            Builtin          yes yes yes    118  0
+SJYSIC+CMSY8                         Type 1            Builtin          yes yes yes    119  0
+YQJSDJ+CMEX10                        Type 1            Builtin          yes yes yes    137  0
+BXGEVL+DejaVuSerif                   CID TrueType      Identity-H       yes yes yes    156  0
+ZWWTAW+CMSY9                         Type 1            Builtin          yes yes yes    184  0
+QEJRYF+CMMI9                         Type 1            Builtin          yes yes yes    185  0
+BXGEVL+DejaVuSerif                   CID TrueType      Identity-H       yes yes yes    189  0
+BXGEVL+DejaVuSerif                   CID TrueType      Identity-H       yes yes yes    205  0
+BXGEVL+DejaVuSerif                   CID TrueType      Identity-H       yes yes yes    228  0
+EKSGLC+CMR9                          Type 1            Builtin          yes yes yes    246  0
+GEKBDU+CMMI7                         Type 1            Builtin          yes yes yes    247  0
+DDSHKI+CMR7                          Type 1            Builtin          yes yes yes    248  0
+YNZEYY+NimbusMonL-Regu               Type 1            Custom           yes yes yes    304  0
+JMBAPD+CMSY7                         Type 1            Builtin          yes yes yes    314  0

@@ -1,61 +1,54 @@
-# Evidence map for the course-report draft
+# Evidence map: completed-study course report, revision 4
 
-All paths below are relative to the repository root. The report introduces no
-new model runs or hypothesis tests. Figures only summarize committed CSVs.
-Rounded manuscript numbers must retain the source's population, estimand and
-analysis status. Sources are the current reports, not the retired pipeline.
+Updated 30 October 2026. Paths below are relative to the repository root. The
+manuscript introduces no model run, reanalysis or new hypothesis test. Rounded
+numbers retain the source population, units, estimand and uncertainty scheme.
+The final four RQs are retrospective synthesis questions from
+`reports/FINAL_RESEARCH_QUESTIONS.md`; frozen original rules remain unchanged.
 
-| Manuscript block | Source | Required qualification |
-| --- | --- | --- |
-| Fixed setting, groups, checks and freezes | `docs/superpowers/specs/2026-10-21-functional-validation-design.md`; `reports/functional_validation/evaluation_freeze_lm.json`; `evaluation_freeze_mc.json`; `groups_manifest.json` | Use implemented/frozen settings where early design estimates differ. FP is bfloat16 model inference, not an ideal exact-real baseline. |
-| Selectivity discovery rule | `scripts/g0/phase1_run.py:166`; `scripts/g0/phase1_lib.py:180`; `reports/phase1_results.md` | Null threshold and discovery stability are distinct from devtest association establishment. |
-| Language roster and descriptive tiers | `reports/g0/phase1_languages.json` | Nine languages per tier; taxonomy does not identify training-data causality. |
-| BOS replication and pipeline retirement | `reports/audit_our_vs_duan.md`; `reports/progress_log.md` (16 October post-mortem) | Same-window BOS diagnostic changes regime and potentially active population; no use of retired outputs as current results. |
-| Original tests and magnitude/tier checks | `reports/phase1_summary.md`; `reports/phase1_results.md` | No verified external OSF registration; stricter thresholds are post hoc, adjustment is correlational. |
-| 8,086 selected, 6,663 established; precision retention | `reports/association_retention/interpretation.md`; `results/eq/analysis.json` | Retention among established differs from retention in the fixed original cohort and from pooled all-active correlation survival. |
-| Margin prediction and function comparison | `reports/association_retention/results/within-language/report.md`; `results/margin-function/report.md` | Same-data descriptive prediction and stratified samples; margin is not a causal explanation. |
-| Group effect and retention ratios | `reports/functional_validation/results/eval/report.md`; `retention.csv`; `figures/eval/table_effects.csv` | 300 sentences per language, mean of per-language ratios; 2.14 is not the ratio of macro effects (1.33). |
-| Control mismatches | `reports/functional_validation/groups_matching.md`; `scripts/g0/phase1_func_groups.py` | Sampling among the three nearest unused candidates; five main K64 draws; pool overlap and Yoruba/Lao/Thai mismatches remain. |
-| Rescue fractions | `reports/functional_validation/figures/rescue/table_rescue.csv` | INT6 uses 12 qualifying languages; nonadditive patches are not an exact causal partition. |
-| Lost versus retained matched effects | `reports/functional_validation/results/f4/INT4/report.md`; `INT5/report.md`; `INT6/report.md` | Small observed contrasts do not prove universal equivalence. |
-| Frozen Belebele statements | `reports/functional_validation/results/mc_eval/statements.md`; `accuracy.csv` | Only confirmatory family; S0 not met, retention statements undefined. Primary endpoint is four-way correct-option log probability, not accuracy alone. |
-| Whole-group and positive-control results | `reports/functional_validation/results/mc_ksens/report.md`; `results/mc_posctrl/summary.md` | Exploratory; random sets affect the task, but do not establish own-group irrelevance. |
-| Prompt check | `reports/functional_validation/promptcheck/report.md`; `languages.csv` | 250 calibration items; distinct from 385 held-out evaluation items; one alternative prompt. |
-| Individual-effect table and threshold | `reports/functional_validation/results/f5/report.md`; `f5_tables.csv`; `scripts/g0/phase1_func_f5_metrics.py` | 1,487 sampled features; numerical floor 0.9489 is not semantic truth. |
-| Direction-control figure | `reports/functional_validation/figures/f5/ladder_control_table.csv` | Same 404 features; quartile bars are not confidence intervals; generic drift does not prove exact equivalence. |
-| Fixed-amplitude/context sensitivities | `reports/functional_validation/results/f5_sensitivity/` | Sensitivities are exploratory; no new causal mechanism is inferred. |
-| Gain suppression figure and hypothesis failures | `reports/functional_validation/gain_study/results/curves.csv`; `report.md`; `calibration/calibration.md` | Plot medians of stored per-language net effects; main strict precision rule failed. |
-| Fine-gain figure | `reports/functional_validation/gain_study/extension_c/bands.csv`; `report.md`; `analysis.json` | Use saved interval endpoints exactly; primary ratios 1.1/1.2, 97.5% intervals, only 1.1 rule met. |
-| State-defined and optimum/shrinkage checks | `reports/functional_validation/gain_study/state_defined/results/report.md`; `extension_d/report.md` | Exploratory, conditional findings; no compensation mechanism and no feature-identity claim. |
-| Second-model check (Llama-3.2-1B): design, predictions, verdict function | `docs/superpowers/plans/2026-10-26-llama-consistency-check.md` sections 3, 6, 7; `reports/decisions_and_anomalies.md` D-087 | Written before any Llama number; predictions P1 to P3b and the verdict function are copied in the report's Table 2 and Section 8. |
-| Second-model check: results table, retention, diagnostics | `reports/functional_validation/llama/report.md`; `analysis.json`; `reports/decisions_and_anomalies.md` D-090 | Exploratory; model, SAE architecture and recipe, depth and tokenizer all differ from Gemma; the verdict is a statement about this model and SAE, not about other models. |
-| Second-model check: control draws, outlier draws, median of the retention ratios | `reports/functional_validation/llama_robust/report.md`; `robust.json`; `languages.csv` | Post hoc; labelled so; cannot change the pre-registered verdict. The perturbation norms at FP and INT4 are in `llama/analysis.json` (`diagnostics`). |
-| Appendix rules table (H-G1 to H-G6, H-Gc1 to H-Gc3, H-Gb1 to H-Gb4b) | `reports/functional_validation/gain_study/results/report.md`; `extension_c/report.md`; `state_defined/results/report.md` | Rules written in the design documents before the data; outcomes copied from the committed verdict tables. |
-| Appendix result inventory | `reports/functional_validation/RESULTS_SUMMARY.md` claims 1 to 17 | Same numbers as the sections above; status words as in the summary. |
-| Software, hardware and cost statement | `HANDOFF.md` section 5; `reports/functional_validation/STATUS.md` (job runtimes) | Versions of the Ada environment; per-state GPU hours are rounded. |
-| Reproduction counts and artifacts | `reports/phase1_reproduction.md`; `reports/functional_validation/REPRODUCE.md`; `reports/handoffs/039-2026-10-26-task17-prompt-check-done-all-queues-empty.md` | Regeneration of analysis outputs is not independent repetition of inference; newer inputs not all archived to HF. |
-
-## Citation provenance
-
-The six Anthology BibTeX records were downloaded directly from the cited
-Anthology pages on 26 October 2026. Duan (2606.03002), Borobia et al.
-(2603.25325), and Hoang et al. (2607.24645) were checked against their primary
-arXiv pages in this chat and are identified as preprints. They are linked using
-their genuine arXiv-issued DOI, rather than being mislabelled as proceedings
-papers. The manuscript does not make a first-ever or exhaustive novelty claim.
-
-Added 2026-10-26 (second revision): Gemma 2 (arXiv 2408.00118), JumpReLU SAEs (2407.14435), Cunningham et al. (2309.08600), Gao et al. TopK SAEs (2406.04093), the NLLB Team paper for FLORES-200 (2207.04672) and The Llama 3 Herd of Models (2407.21783) were checked against their arXiv abstract pages on 26 October 2026 (titles, author order, years); long author lists are truncated with `and others`, which the official bibliography style supports.
-
-## Update 2026-10-26 21:47: Section 7 (Intervention Transfer under Quantization), revision 3
-
-The sections of revision 3 are numbered 1 Introduction, 2 Related Work, 3 Setting and Research History, 4 Measurements and Interventions, 5 Replication and Initial Tests, 6 Association and Functional Results, 7 Intervention Transfer under Quantization, 8 Graded Feature Scaling, 9 A Second-Model Check, 10 Discussion and Conclusion; the rows above that cite older section numbers refer to revision 2. Every number of Section 7 and of the abstract's transfer sentences comes from `reports/intervention_transfer/results/main/` (`README.md`, `claim_status.json`, `analysis_summary.json`, `component_summary.csv`, `group_per_language.csv`, `averaged_fingerprints.csv`, `predictive_validation.csv`); the group-level cell medians (0.263, 0.684, 0.428, 0.848, native 0.433) are from `group_per_language.csv`.
-
-| Claim in the manuscript | Source | Status and caveat |
+| Manuscript block | Completed source files | Interpretation and uncertainty |
 |---|---|---|
-| Group level, INT6 and INT4: net harm, |C|, |W|, |I|, languages with |C|>|W|, interval of the median difference | `claim_status.json` (A3), `group_per_language.csv`, D-094 | Context term of the FIXED full-precision edit; the count 19 of 27 also holds at INT16, so the interval is the evidence; exploratory beyond the declared rule A3 (mixed). |
-| Feature level: cosine, normalized error, floors, orthogonal share, relative norms | `component_summary.csv`, `claim_status.json` (H1), D-094 | H1 supported; weight-term norm statement exploratory (terms not additive); controls are not eligibility-filtered. |
-| Averaged fingerprints (H4) | `averaged_fingerprints.csv`, `claim_status.json` (H4) | Features-only interval; INT16 reference +0.0145. |
-| Prediction (A+B), strongest baseline, INT16, all-items series | `predictive_validation.csv`, `claim_status.json` (H3, UTILITY) | Utility not met; INT6 interval includes zero; INT16 gain shows it is not quantization-specific. |
-| Survival and gradient add nothing | `analysis_summary.json` (survival blocks), D-094 | Eligible items at INT4; INT6 survival is worse; the gradient has no interval. |
-| Figures 1 and 2 | `paper/course-report/make_transfer_figures.py` from `results/main/*.csv` | Regenerated 2026-10-26; legend moved. |
-| External-panel paragraph | pending until the six external runs are validated and analysed once (D-095) | Marked `[PENDING ...]` in `main.tex`. |
+| Models, data, interventions | `reports/functional_validation/evaluation_freeze_lm.json`, `evaluation_freeze_mc.json`, `groups_manifest.json`; `reports/intervention_transfer/freeze.json`; `reports/functional_validation/gemma9b/REVIEWED_SUMMARY.md` | Gemma 2B main setting, 9B original-RTN extension, contrasting Llama/TopK setting. Inference bfloat16, edits float32. Simulated rounded weights, no integer-kernel claim. |
+| Quantizer recipe, calibration and exact FP bridge | `reports/gptq_extension/RESULTS.md`; `freeze.json`; `results/stage1/bridge.json` | Legacy attention granularity differs from matched RTN. Matched RTN shares GPTQ's grid/layout. Calibration and compensation jointly change under GPTQ. Calibration disjoint from evaluation sentences/articles. |
+| BOS reproduction and retired pipeline | `reports/audit_our_vs_duan.md`; `reports/phase1_reproduction.md`; `reports/phase1_summary.md` | Regime sensitivity, not a universal indictment of previous work. Retired outputs do not provide active evidence. |
+| RQ1 initial survival, selectivity and tier contrasts | `reports/phase1_summary.md`; `reports/phase1_results.md` | Original Holm non-rejections do not establish equivalence. Strict-cutoff and magnitude adjustments are exploratory. Tier adjustment is correlational. No verified external registration. |
+| RQ1 quantizer survival/NLL improvements | `reports/gptq_extension/results/stage1/stage1_comparison.md`; `stage1_summary.csv` | INT4 GPTQ-minus-legacy mean survival +17.827 pp [16.294,19.382], mean NLL difference −0.4608 [−0.5945,−0.3483]. Paired 27-language bootstrap. Additional selective-test families remain exploratory. |
+| Quantizer comparison table | `reports/gptq_extension/RESULTS.md`; stage1 comparison; stage3 eval/F5/mc reports; stage2 transfer tables | Survival averages all-active per-language shares (12.7/18.6/30.5%); established-cohort 13.75% is a different denominator. W1 uses F5; transfer eligible items; Belebele 18 languages. No row implies one common population. |
+| RQ1 exact gain/noise identity and scale correlations | `reports/survival_measurement/stage3/stage3_results.md`; `stage3_results.json`; `stage3/README.md`; `stage2/README.md` | 214,506 FP-active language-feature cells. Identity excludes degenerate cells; reported covariance decomposition is descriptive. Lambda scale correlations −0.534 to −0.507 versus nu −0.004 to 0.114. Tier-adjusted results mixed; no blanket claim that tier disparities vanish. |
+| RQ2 group excess effects | `reports/functional_validation/results/eval/report.md`; `effects_by_language.csv`; `retention.csv` | FP 0.7037 [0.6844,0.7225] nats/token is a sentence-bootstrap macro mean on fixed languages/groups/controls. Median effect 0.2624. Macro mean ratio 2.14, median 1.54 and pooled ratio 1.33 are different. |
+| Imperfect activity controls | `reports/functional_validation/groups_matching.md`; `scripts/g0/phase1_func_groups.py` | Three K64 draws in the frozen main/gain/transfer evaluations; the matching manifest retains five control draws. Thai/Yoruba/Lao mismatch at K64 and control reuse limit language specificity, without invalidating effect-of-edit contrasts. |
+| RQ2 GPTQ effect ratios | `reports/gptq_extension/results/stage3/analysis_gptq_eval/report.md` | INT4 median ratio 1.22 [1.14,1.24], macro 1.31 [1.27,1.50], frozen class inconclusive; near-FP INT6. Distinguish point estimate from conventional classification. |
+| RQ2 graded gain and all extensions | `reports/functional_validation/gain_study/results/report.md`; `extension_c/report.md`; `extension_d/report.md`; `state_defined/results/report.md`; `reports/gptq_extension/RESULTS.md` | H-G1/2/3/6 met in original arm, strict H-G4 and main repair criteria not met. Fresh-sentence 1.1 rule met, 1.2 not; that 562-sentence Extension C was legacy-only, not rerun with GPTQ; the GPTQ gain comparison uses the main 300 sentences; −0.00135 nats/token with saved 97.5% interval. State-defined groups move without greater net harm. No compensation mechanism inferred from the shrinkage null. |
+| RQ2 reviewed Gemma-2-9B | `reports/functional_validation/gemma9b/REVIEWED_SUMMARY.md`; `review/task3_compare.json`; `results/analysis/curves.csv` | Byte-identical raw analysis reproduction now completed. 5,000 language-bootstrap intervals differ from 2B sentence-bootstrap report intervals. Median INT4 ratio 1.586 [1.238,2.264], macro 2.479, ratio of means 1.474. Tiny denominators affect mean. Paired size contrasts include zero. Reversed inequality and circular criterion documented. No 9B GPTQ result. |
+| RQ2 Llama comparison | `reports/functional_validation/llama/report.md`; `llama_robust/report.md`; `llama_robust/robust.json` | FP median effect positive but 21/27 below rule's 24/27. Frozen verdict not consistent retained. INT4 median ratio 0.856 [0.74,1.03] instead of unstable macro mean. Model and SAE differences jointly vary. |
+| RQ2 Belebele family and accuracy | `reports/functional_validation/results/mc_eval/report.md`; `statements.md`; `accuracy.csv` | **−0.0001 [−0.0035,+0.0031] is nats/item of excess correct-option loss, not accuracy points.** 18 languages, 385 items each, 219 passage clusters. Original family confirmatory: S0 not met, S1–S5 undefined. |
+| Task sensitivity and prompt/whole-group controls | `reports/functional_validation/results/mc_ksens/report.md`; `mc_posctrl/summary.md`; `promptcheck/report.md`; GPTQ `analysis_gptq_mc/` | Exploratory. Nonselective 1,024/full-pool sets lower accuracy 1.20/2.19 pp; other-language selective full-pool controls lower it 6.01 pp; null does not establish comprehension irrelevance. GPTQ INT4 unedited accuracy 0.318 above 0.25 chance. |
+| RQ2 donor recovery | `reports/functional_validation/results/rescue/report.md`; GPTQ `results/stage3/analysis_gptq_rescue/report.md` | K64 recovery 2.6% [2.4,2.8] legacy, 2.0% [1.6,2.3] GPTQ; full residual 39.3%/41.4%. Nonadditive patch efficacy; neither mediation fraction nor upper bound on causal responsibility. |
+| RQ3 association and margin | `reports/association_retention/interpretation.md`; `results/within-language/report.md`; `results/margin-function/report.md`; `reports/functional_validation/results/f4/INT{4,5,6}/report.md` | 6,663 FP-established among 8,086 selected; retention 70.8% at INT4. Margins forecast label sensitivity descriptively. Small lost/retained effect contrasts do not establish universal equivalence. |
+| RQ3 recognizable effects despite drift | `reports/functional_validation/results/f5/report.md`; GPTQ `results/stage3/` F5 summaries; `reports/gptq_extension/RESULTS.md` | 1,487 stratified features: legacy INT4 activation survival 13.2%, median W1 0.839 [0.829,0.848], own-identity retrieval 99.7%. INT16-derived fidelity convention is stricter than identity. Language-bootstrap uncertainty. |
+| RQ3 continuous R1 prediction | `reports/survival_effect_rescue/stage4_gemma_report_2026-10-28.md`; `results/survival_effect_results.json`; `llama/llama_vs_gemma_report_2026-10-28.md` | 1,412 reliable Gemma features; leave-language-out ridge, language bootstrap. Increment 3.1–4.4%, every primary interval above zero: **small positive information**, below a 10% practical convention. Llama INT4 4.2% [1.6,6.7], INT6 unresolved. |
+| RQ3 gain/nu beyond R1 | `reports/survival_measurement/stage3/stage3_results.md:80` | B+ versus B increments −0.4% to +1.8%, all intervals include zero. Do not confuse with the positive B-versus-A R1 increments. |
+| RQ4 crossed context/weight design and transfer | `reports/intervention_transfer/results/main/README.md`; `group_per_language.csv`; `component_summary.csv`; `claim_status.json`; GPTQ `results/stage2/transfer_feature_level.csv` | Fixed FP-amplitude edit, 404 features, 6,464 pairs, 2,203 eligible items/235 features. Vector decomposition exact; norms/medians not additive. Crossed feature/source-cluster bootstrap, group intervals sentences only. |
+| RQ4 native versus fixed and support controls | `reports/intervention_transfer/results/recovery/README.md`; `native_fixed_summary.csv`; `support_contrast.csv` | Paired native-minus-fixed median −0.351, negative in 27/27. Weights-only similarity is a median-language observation, not all-language identity. Common-support effects refer to 144/107 selected pairs, one control kind. |
+| RQ4 prediction and averaging | Main `predictive_validation.csv`, `averaged_fingerprints.csv`; recovery `gradient_vs_nll.csv` | INT4 eligible gain 21.5% [12.7,29.4], INT6 10.9% [−1.2,21.4], utility not met. INT16 prediction gain limits quantization specificity. Scalar NLL gradient differs from an uncomputed vector-JVP predictor. |
+| RQ4 external corpus | `reports/intervention_transfer/results/external/`; `reports/gptq_extension/RESULTS.md:99`; extension external comparison | Six fresh-text languages; GPTQ calibration shares Wikipedia domain. INT4 quantizer ordering repeats. External RTN both-width utility met, GPTQ only INT4. No pending external-result placeholder. |
+| Final inventory and scope | All sources above; `reports/FINAL_RESEARCH_QUESTIONS.md` | Operational causal contrasts survive scope limits. SAE nonuniqueness/incomplete recovery/generalization are shared methodological issues, not a reason to label all observed effects unreliable. No promise of acceptance or exhaustive novelty. |
+
+## Literature provenance
+
+The existing official Anthology records and preprint records are preserved from
+prior revisions, whose detailed citation-verification record is archived with
+the former evidence map. Gao et al. (2406.04093) was rechecked against primary
+arXiv metadata on 30 October 2026 for the discussion of reconstruction/sparsity
+tradeoffs and feature-quality evaluation. GPTQ (Frantar et al., 2210.17323) was
+added from primary arXiv metadata the same day, using the 2022 preprint year and
+persistent arXiv-issued DOI. The course manuscript does not make a first-ever
+claim. The synthesis distinguishes controlled effect, natural-mechanism
+interpretation and external validity.
+
+Added field-context references on 30 October 2026: Leask et al. (ICLR 2025),
+Makelov et al. (ICLR 2025) and SAEBench (ICML 2025) use the exact entries in
+`paper/research-paper/references.bib`, verified against official proceedings as
+recorded in `reports/publication_context_2026-10-30.md`. They support the shared
+noncanonical-coordinate, task-grounded validation and proxy/practical-outcome
+distinctions in Related Work. They introduce no new result about our systems.
