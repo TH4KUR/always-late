@@ -1,47 +1,11 @@
-# Course-report validation: revision 4, 30 October 2026
+# Course-report validation: revision 5, 30 October 2026
 
-The completed-study report builds successfully with the existing local
-pdfLaTeX/BibTeX `build.sh`. Its final PDF has **9 pages**: main content and the
-separate limitations section end on page 6, references are on page 7, and the
-appendix is pages 8–9. This satisfies the eight-page main-content and two-page
-appendix limits. The four synthesis questions and completed GPTQ, measurement,
-continuous prediction and reviewed 9B results appear in the main content.
+The report was rewritten in plain academic language after the user's readability feedback. It explains terms before using them, gives findings before statistical qualifications, and has a Problems Found and Corrected section. That section explicitly describes the missing BOS in Duan's released Gemma evaluation and the correction applied to our later experiments. It also records our retired pipeline, INT16 assumption, hardware rerun and the 9B checklist defects.
 
-`bash check.sh` completed on the final PDF with the pinned official ACL checker:
-**All Clear!** Its generated JSON is `{}`. No CLI checks were disabled and no
-upstream checker or official ACL asset was modified. The style hashes still
-match the preserved revision-3 manifest. The official template copies were not
-edited.
+`bash build.sh` succeeds with the existing local pdfLaTeX/BibTeX toolchain. The PDF has **10 pages**: the main discussion ends on page 7, limitations also occupy page 7, references are on page 8, and the appendix is pages 9–10. It meets the eight-page main-content and two-page appendix limits. The author order, numerical evidence, bibliography and official ACL assets are preserved.
 
-The final log has no undefined references/citations or overfull horizontal
-boxes. Standard reference-column balancing emits a 2.95218 pt vertical-box
-warning. The rendered reference page has no visible clipping, and the official
-checker records no margin-bleed finding. All fonts are embedded Type 1 fonts,
-with no Type 3 fonts. PDF metadata and fonts are retained in `pdfinfo.txt` and
-`fonts.txt`. Every final page was rendered and inspected; images and a contact
-sheet are retained in `rendered-rev4/`.
+`bash check.sh` reports **All Clear!** with an empty findings JSON. No checker flags are disabled. The final log has no undefined citations/references or overfull boxes. All fonts are embedded, with no Type 3 fonts. All ten final pages were rendered at 90 dpi and inspected, including the BOS section, equations, quantizer table, references and inventory table. Renders are retained in ignored `rendered/readability/`; hashes and page counts are in `manifest.json`.
 
-The evidence map tracks the distinct endpoints and uncertainty schemes. The
-revision reports the positive 3.1–4.4% survival-prediction gains while preserving
-the unmet 10% convention. It keeps the fresh-sentence, legacy-only Extension C
-benefit alongside the failed main gain criteria. Corrections distinguish the
-three frozen K64 evaluation control draws from five stored draws, the stricter
-selectivity cutoff from the activation-correlation cutoff, and nonselective
-positive controls from other-language selective controls. Belebele loss remains
-in nats/item, separate from accuracy. No new inference or statistical analysis
-was performed for the manuscript revision.
+This is a writing and presentation revision. No model run or statistical analysis was added. The evidence map retains each finding's source, units, population and uncertainty. The small positive prediction gains, limited repair, comprehension null, Llama difference and pending 9B GPTQ are still explicit. The prior revision-4 manifest is preserved under `previous_revisions`.
 
-The optional online reference/name-service checker path was **not rerun**. An
-earlier attempt failed when Scholarcy returned a Cloudflare challenge; the
-preserved record remains incomplete. The official default CLI pass is the
-format-check claim. The prior editor-runtime download failure is historical;
-this existing multi-file manuscript uses its working local build. Existing
-bibliography records were preserved; the GPTQ entry and the Gao evaluation
-metadata were checked on primary arXiv pages on 30 October 2026. The final field-context edit adds Leask, Makelov and SAEBench using the official-proceedings-verified entries recorded in `reports/publication_context_2026-10-30.md`, followed by another successful build and official check. No exhaustive
-new literature audit or acceptance claim is implied.
-
-The exact previous manuscript, PDF, README, evidence map, bibliography and
-validation records are preserved under
-`reports/archive/reporting_revision_2026-10-29/paper/course-report/`. The manifest
-retains previous revision records and hashes. The author roster is unchanged.
-A submitted course ZIP is not produced or certified by this check.
+The existing multi-file manuscript uses its local build. The native editor runtime was not retried after its earlier download failure. The optional online reference checker was not rerun; its earlier Scholarcy challenge remains an incomplete historical check. Existing verified bibliography records were preserved. The current check makes no new literature or submission claim.

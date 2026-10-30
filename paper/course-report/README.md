@@ -1,4 +1,4 @@
-# Course final report: revision 4
+# Course final report: revision 5
 
 Updated 30 October 2026. The report covers the completed study, including the
 Gemma-2-2B matched-RTN/GPTQ extension, survival measurement decomposition,
@@ -14,15 +14,18 @@ transfer, and modest positive survival-prediction gains. It retains the Belebele
 null, limited repair, Llama discrepancy, imperfect matching and documented 9B
 criterion errors. Model/dictionary coverage limits generalization; the text does
 not use that boundary to dismiss the controlled findings. Shared SAE evaluation
-challenges appear with relevant literature. No new experiment or analysis was
-introduced by the reporting revision.
+challenges appear with relevant literature. Revision 5 rewrites the text in plain academic language, defines terms before
+using them, and adds a clear Problems Found and Corrected section, including the
+Duan BOS discovery and our protocol correction. No new experiment or analysis
+was introduced.
 
 ## Deliverables and page limits
 
 - [`main.tex`](main.tex) is the only active course manuscript.
 - [`AlwaysLate-Final-Report.pdf`](AlwaysLate-Final-Report.pdf) is the compiled
-  revision-4 report: **9 pages**. Main content and the separate limitations
-  section end on page 6; references occupy page 7; appendix pages 8–9.
+  revision-5 report: **10 pages**. Main discussion ends on page 7; the
+  separate limitations section is also on page 7. References occupy page 8;
+  appendix pages 9–10.
 - [`evidence_map.md`](evidence_map.md) maps claims, units, populations, intervals
   and analysis status to completed result files.
 - [`validation/validation.md`](validation/validation.md) and
@@ -32,7 +35,7 @@ introduced by the reporting revision.
 
 The course deadline is 31 October 2026. Its maximum is eight main-content pages,
 excluding references and a separate limitations/challenges/future-work section,
-plus at most two appendix pages. Revision 4 meets these limits. The course
+plus at most two appendix pages. Revision 5 meets these limits. The course
 requires a code archive and presentation in `AlwaysLate-Final.zip`; this directory
 provides the report, not evidence that a final ZIP has been submitted. Author
 names and order follow the existing roster.
@@ -47,7 +50,7 @@ bash check.sh
 The local build uses installed pdfLaTeX and BibTeX and the existing optional
 per-user TeX support cache. `check.sh` runs the pinned official ACL checker with
 its default CLI checks and fails if the generated JSON contains findings. The
-revision-4 checker prints **All Clear!** and records `{}`. No official style or
+revision-5 checker prints **All Clear!** and records `{}`. No official style or
 checker implementation was modified. No body font, margin or spacing overrides
 were introduced.
 
@@ -65,7 +68,9 @@ Revision 1 established the course report on 26 October. Revision 2 added the
 Llama and gain-study inventory. Revision 3 emphasized intervention transfer and
 added the external panel on 26–27 October. Revision 4 reorganizes the completed
 investigation around the four synthesis questions and incorporates the newer
-completed studies. Detailed older records and exact overwritten source/output
+completed studies. Revision 5 simplifies the writing and makes the BOS correction
+and project problems explicit. The revision-4 source and PDF remain in Git at
+commit `0dc8814`. Detailed older records and exact overwritten source/output
 bytes are preserved under
 [`reports/archive/reporting_revision_2026-10-29/paper/course-report/`](../../reports/archive/reporting_revision_2026-10-29/paper/course-report/).
 The files in `draft/` are superseded working copies, not competing active sources.

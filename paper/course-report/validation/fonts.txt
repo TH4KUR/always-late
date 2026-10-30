@@ -1,18 +1,18 @@
 name                                 type              encoding         emb sub uni object ID
 ------------------------------------ ----------------- ---------------- --- --- --- ---------
-KGRUBS+NimbusRomNo9L-Medi            Type 1            Custom           yes yes yes     65  0
-DWOXBU+NimbusRomNo9L-Regu            Type 1            Custom           yes yes yes     66  0
-KHCRDT+NimbusRomNo9L-ReguItal        Type 1            Custom           yes yes yes     70  0
-ODYIMM+CMMI10                        Type 1            Builtin          yes yes yes    117  0
-BBDJBV+CMR10                         Type 1            Builtin          yes yes yes    118  0
-HFULCQ+CMR8                          Type 1            Builtin          yes yes yes    144  0
-AODWEB+CMMI8                         Type 1            Builtin          yes yes yes    145  0
-SJYSIC+CMSY8                         Type 1            Builtin          yes yes yes    148  0
-YQJSDJ+CMEX10                        Type 1            Builtin          yes yes yes    149  0
-KUCLEQ+CMSY10                        Type 1            Builtin          yes yes yes    150  0
-WNIPUR+CMMI9                         Type 1            Builtin          yes yes yes    160  0
-WIRDCL+CMR6                          Type 1            Builtin          yes yes yes    161  0
-EJASTL+CMR7                          Type 1            Builtin          yes yes yes    162  0
-VHUKZV+NimbusMonL-Regu               Type 1            Custom           yes yes yes    245  0
-BBAENT+CMR9                          Type 1            Builtin          yes yes yes    255  0
-OPEKTB+CMSY9                         Type 1            Builtin          yes yes yes    256  0
+VDRPSG+NimbusRomNo9L-Medi            Type 1            Custom           yes yes yes     67  0
+DWOXBU+NimbusRomNo9L-Regu            Type 1            Custom           yes yes yes     68  0
+OZLJDH+CMMI10                        Type 1            Builtin          yes yes yes    119  0
+FAEAVV+CMR10                         Type 1            Builtin          yes yes yes    120  0
+HFULCQ+CMR8                          Type 1            Builtin          yes yes yes    145  0
+AODWEB+CMMI8                         Type 1            Builtin          yes yes yes    146  0
+SJYSIC+CMSY8                         Type 1            Builtin          yes yes yes    149  0
+YQJSDJ+CMEX10                        Type 1            Builtin          yes yes yes    150  0
+KUCLEQ+CMSY10                        Type 1            Builtin          yes yes yes    151  0
+WNIPUR+CMMI9                         Type 1            Builtin          yes yes yes    158  0
+WIRDCL+CMR6                          Type 1            Builtin          yes yes yes    159  0
+EJASTL+CMR7                          Type 1            Builtin          yes yes yes    160  0
+LLFQMA+NimbusRomNo9L-ReguItal        Type 1            Custom           yes yes yes    216  0
+VHUKZV+NimbusMonL-Regu               Type 1            Custom           yes yes yes    249  0
+BBAENT+CMR9                          Type 1            Builtin          yes yes yes    259  0
+OPEKTB+CMSY9                         Type 1            Builtin          yes yes yes    260  0

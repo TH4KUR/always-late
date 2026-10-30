@@ -1,9 +1,9 @@
 # Research manuscript: feature survival and intervention preservation
 
-Written 30 October 2026 from completed evidence through 29 October. The manuscript presents the study as a controlled empirical contribution to multilingual quantization and mechanistic interpretability. It reports positive intervention effects, modest prediction gains, task nulls and unresolved comparisons together. It does not assume that a learned SAE dictionary is a complete ontology of circuits.
+Readability revision, 30 October 2026 from completed evidence through 29 October. The manuscript presents the study as a controlled empirical contribution to multilingual quantization and mechanistic interpretability. It reports positive intervention effects, modest prediction gains, task nulls and unresolved comparisons together. It explains the measures before using them, puts findings before qualifications, and has a dedicated section on the missing-BOS problem found in the earlier Gemma evaluation. The protocol correction is explicit. SAE features may mix concepts or leave information unexplained; the paired edit results remain reportable.
 
 - [`main.tex`](main.tex): editable manuscript in the unmodified official ACL style; no target venue or acceptance is implied.
-- `Feature-Survival-and-Intervention-Preservation.pdf`: compiled manuscript when the build succeeds.
+- [`Feature-Survival-and-Intervention-Preservation.pdf`](Feature-Survival-and-Intervention-Preservation.pdf): compiled manuscript; current build and page count are recorded in [`validation.md`](validation.md).
 - [`evidence_map.md`](evidence_map.md): numerical provenance, uncertainty and evidence status.
 - [`../../reports/FINAL_RESEARCH_QUESTIONS.md`](../../reports/FINAL_RESEARCH_QUESTIONS.md): canonical retrospective synthesis questions and answers.
 - [`make_figures.py`](make_figures.py): plots stored estimates and existing intervals, with no new analysis.

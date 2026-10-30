@@ -1,4 +1,4 @@
-# Evidence map: completed-study course report, revision 4
+# Evidence map: completed-study course report, revision 5
 
 Updated 30 October 2026. Paths below are relative to the repository root. The
 manuscript introduces no model run, reanalysis or new hypothesis test. Rounded
@@ -10,7 +10,7 @@ The final four RQs are retrospective synthesis questions from
 |---|---|---|
 | Models, data, interventions | `reports/functional_validation/evaluation_freeze_lm.json`, `evaluation_freeze_mc.json`, `groups_manifest.json`; `reports/intervention_transfer/freeze.json`; `reports/functional_validation/gemma9b/REVIEWED_SUMMARY.md` | Gemma 2B main setting, 9B original-RTN extension, contrasting Llama/TopK setting. Inference bfloat16, edits float32. Simulated rounded weights, no integer-kernel claim. |
 | Quantizer recipe, calibration and exact FP bridge | `reports/gptq_extension/RESULTS.md`; `freeze.json`; `results/stage1/bridge.json` | Legacy attention granularity differs from matched RTN. Matched RTN shares GPTQ's grid/layout. Calibration and compensation jointly change under GPTQ. Calibration disjoint from evaluation sentences/articles. |
-| BOS reproduction and retired pipeline | `reports/audit_our_vs_duan.md`; `reports/phase1_reproduction.md`; `reports/phase1_summary.md` | Regime sensitivity, not a universal indictment of previous work. Retired outputs do not provide active evidence. |
+| BOS reproduction and retired pipeline | `reports/audit_our_vs_duan.md`; `reports/phase1_reproduction.md`; `reports/phase1_summary.md` | Released Gemma code reproduced; missing BOS identified. Same-content correction changes FP perplexity 458.4 to 16.1 and INT6 survival 51.15% to 97.52%, with regime-specific active populations. Our later input protocol is corrected; no upstream patch or whole-paper refutation is claimed. Retired outputs are excluded. |
 | RQ1 initial survival, selectivity and tier contrasts | `reports/phase1_summary.md`; `reports/phase1_results.md` | Original Holm non-rejections do not establish equivalence. Strict-cutoff and magnitude adjustments are exploratory. Tier adjustment is correlational. No verified external registration. |
 | RQ1 quantizer survival/NLL improvements | `reports/gptq_extension/results/stage1/stage1_comparison.md`; `stage1_summary.csv` | INT4 GPTQ-minus-legacy mean survival +17.827 pp [16.294,19.382], mean NLL difference −0.4608 [−0.5945,−0.3483]. Paired 27-language bootstrap. Additional selective-test families remain exploratory. |
 | Quantizer comparison table | `reports/gptq_extension/RESULTS.md`; stage1 comparison; stage3 eval/F5/mc reports; stage2 transfer tables | Survival averages all-active per-language shares (12.7/18.6/30.5%); established-cohort 13.75% is a different denominator. W1 uses F5; transfer eligible items; Belebele 18 languages. No row implies one common population. |
