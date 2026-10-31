@@ -1,18 +1,34 @@
 # Always Late: does compression forget language?
 
-ANLP research project, 2026. We study what weight quantization preserves about multilingual SAE features: their activation patterns, language associations and measured intervention effects. The evidence combines 27 FLORES-200 languages, three Gemma-2-2B quantizers (original RTN, matched RTN and GPTQ), a six-language Wikipedia transfer panel, a Gemma-2-9B three-arm confirmation and a limited Llama-3.2-1B consistency check.
+ANLP course project (IIIT Hyderabad, Monsoon 2026). We study what weight quantization preserves about multilingual SAE features: their activation patterns, language associations and measured intervention effects. The evidence combines 27 FLORES-200 languages, three Gemma-2-2B quantizers (legacy RTN, matched RTN and GPTQ), a Gemma-2-9B confirmation and a Llama-3.2-1B consistency check.
 
-**The main finding:** language-selective groups have a clear causal effect on next-token loss under the specified edits, while activation survival and language labels give only partial information about whether intervention effects are preserved. The size of low-bit changes depends substantially on the quantizer.
+**The main finding:** language-selective feature groups have a clear causal effect on next-token loss, but activation survival overstates functional damage (13% survival vs 99.7% effect identity at INT4). The features carry almost none of the actual quantization damage (rescue fraction 2.6%).
+
+## Deliverables
 
 | need | where |
 |---|---|
-| Final report, slides, explainer | [`paper/course-report/main.pdf`](paper/course-report/main.pdf), [`paper/slides/main.pdf`](paper/slides/main.pdf), [`paper/project-explainer/main.pdf`](paper/project-explainer/main.pdf) |
-| All findings, every study | [`reports/COMPLETE_FINDINGS.md`](reports/COMPLETE_FINDINGS.md) |
-| Results in plain words, final research questions | [`reports/PROJECT_RESULTS.md`](reports/PROJECT_RESULTS.md), [`reports/FINAL_RESEARCH_QUESTIONS.md`](reports/FINAL_RESEARCH_QUESTIONS.md) |
+| Final report (ACL format, 8 pages) | [`paper/course-report/main.pdf`](paper/course-report/main.pdf) |
+| Beamer slides | [`paper/slides/main.pdf`](paper/slides/main.pdf) |
+| HTML slides (reveal.js) | [`paper/slides/slides.html`](paper/slides/slides.html), [`paper/slides/slides-html.pdf`](paper/slides/slides-html.pdf) |
+| Quick-access copies | [`AlwaysLate-Final-Report.pdf`](AlwaysLate-Final-Report.pdf), [`AlwaysLate-HTML-Slides.pdf`](AlwaysLate-HTML-Slides.pdf) |
+| All findings | [`reports/COMPLETE_FINDINGS.md`](reports/COMPLETE_FINDINGS.md) |
+| Results summary, research questions | [`reports/PROJECT_RESULTS.md`](reports/PROJECT_RESULTS.md), [`reports/FINAL_RESEARCH_QUESTIONS.md`](reports/FINAL_RESEARCH_QUESTIONS.md) |
 | Decision and anomaly log | [`reports/decisions_and_anomalies.md`](reports/decisions_and_anomalies.md) |
-| Reproduction and code map | [`REPRODUCE.md`](reports/functional_validation/REPRODUCE.md), [`docs/CODEBASE.md`](docs/CODEBASE.md) |
-| Original proposal and course guidelines | [`anlp_revised.txt`](anlp_revised.txt), [`project_guidelines.txt`](project_guidelines.txt) |
 
-Folders: `scripts/g0/` code and tests; `reports/` results per study, with their freezes and amendments; `docs/superpowers/` the frozen designs and plans; `paper/` the final documents; `out/analysis/` the Gemma-2-9B analysis outputs; `third_party/duan2026/` vendored reference code; `data/` local data (not in git).
+## Repository structure
 
-Large files are outside git: the private [Hugging Face dataset](https://huggingface.co/datasets/karma-skz/always-late-artifacts), run directories and wandb (`karma-skz-/anlp-project`, [schema](reports/wandb_schema_v2.md), [artifact inventory](reports/artifacts.md)). The course submission archive is built with `bash scripts/make_final_archive.sh <output dir>`.
+- `scripts/g0/` — experiment code and tests
+- `reports/` — results per study, with freezes and amendments
+- `paper/` — report, slides (beamer + HTML), and project explainer source
+- `out/analysis/` — Gemma-2-9B analysis outputs
+- `third_party/duan2026/` — vendored reference code from the reproduced study
+- `data/` — local data (not in git)
+
+## External resources
+
+- **GitHub**: [TH4KUR/always-late](https://github.com/TH4KUR/always-late)
+- **HF artifacts**: [karma-skz/always-late-artifacts](https://huggingface.co/datasets/karma-skz/always-late-artifacts)
+- **wandb**: [karma-skz-/anlp-project](https://wandb.ai/karma-skz-/anlp-project) ([schema](reports/wandb_schema_v2.md), [artifact inventory](reports/artifacts.md))
+
+The course submission archive is built with `bash scripts/make_final_archive.sh <output dir>`.
