@@ -45,6 +45,9 @@ reports/_gpu_equiv_check.json
 *.fdb_latexmk
 *.synctex.gz
 
+# Handoff (local only)
+HANDOFF.md
+
 # Env files with secrets
 *.env
 .env

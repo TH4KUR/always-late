@@ -12,7 +12,7 @@
 \usetikzlibrary{arrows.meta,positioning}
 \graphicspath{{figures/}}
 
-% Dark palette (matches the figures in figures/, drawn by ../course-report/make_figures.py --dark)
+% Dark palette
 \definecolor{bgdark}{HTML}{16181D}
 \definecolor{panel}{HTML}{22252C}
 \definecolor{ink}{HTML}{F0EFEC}
@@ -32,7 +32,7 @@
 \setbeamercolor{enumerate item}{fg=blue}
 \setbeamercolor{footline}{fg=muted}
 
-\newcommand{\takeaway}[1]{\par\vspace{4pt}{\large #1}\par}
+\newcommand{\takeaway}[1]{\par\vspace{3pt}{\large #1}\par}
 \newcommand{\aside}[1]{{\small\color{muted}#1}}
 
 \title{Language Features under Weight Quantization}
@@ -48,55 +48,119 @@
 \end{frame}
 
 % ──────────────────────────────────────────────
-\begin{frame}{The Research Question we started with}
+\begin{frame}{The question}
 \vfill
 \centering
 {\Large When a model's weights are rounded to fewer bits,\\[6pt]
 do the internal features that \alert{explain} it\\[6pt]
 still \alert{do the same job}?}
 \vfill
-\aside{27 languages $\cdot$ Gemma-2-2B (main) $\cdot$ Gemma-2-9B check $\cdot$ a fixed sparse autoencoder (SAE)}
+\aside{27 languages $\cdot$ Gemma-2-2B (main) $\cdot$ Gemma-2-9B confirmation $\cdot$ Llama-3.2-1B cross-check $\cdot$ one fixed SAE per model}
 \vfill
 \end{frame}
 
 % ──────────────────────────────────────────────
 \begin{frame}{Background}
 \begin{itemize}
-\item \textbf{Quantization} stores weights with fewer bits (8 \ldots 4). Cheaper, but behaviour can change.
-\item A \textbf{sparse autoencoder} splits a hidden state into a few active \textbf{features}.
-\item Some features fire mostly for \textbf{one language}.
-\item Earlier work asked only: does a feature still \emph{fire} the same way after quantization?
+\item \textbf{Quantization} rounds weights to fewer bits (8\ldots4). Reduces cost, but behaviour can change across languages (Marchisio et al., 2024).
+\item A \textbf{sparse autoencoder (SAE)} decomposes a hidden state into a few active \textbf{features} from a learned dictionary (Gao et al., 2024).
+\item Some features fire mostly for \textbf{one language}; editing them changes that language's output (Deng et al., 2025).
+\item Duan (2026) measured whether feature \emph{activations} survive quantization.
 \end{itemize}
-\vspace{8pt}
-\takeaway{We also ask: does it still \alert{do} the same thing?}
+\vspace{6pt}
+\takeaway{We go further: does the feature still \alert{do the same thing} after quantization?}
 \end{frame}
 
 % ──────────────────────────────────────────────
-\begin{frame}{Methodology}
+\begin{frame}{Related work and our contribution}
+\small
+\begin{tabular}{p{3.4cm}p{5.2cm}p{4cm}}
+\toprule
+\textbf{Work} & \textbf{What they measure} & \textbf{Gap}\\
+\midrule
+Marchisio et al.~(2024) & Task outputs across languages after quantization & No internal mechanism\\
+Deng et al.~(2025) & Language-selective SAE features; causal edits & No quantization\\
+Duan (2026) & Activation survival ($R_1$) under quantization & No functional test\\
+Makelov et al.~(2025) & Judge features by edits, not proxy metrics & Not applied to quantization\\
+\bottomrule
+\end{tabular}
+\vspace{6pt}
+\takeaway{We connect these: measure both \alert{activation survival} and \alert{functional preservation}, and show they come apart.}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Research questions}
+\begin{description}
+\item[\color{blue}RQ1] Which language features retain their \textbf{activation patterns} after quantization?
+\item[\color{blue}RQ2] How does \textbf{editing} language features affect prediction and comprehension before and after quantization?
+\item[\color{blue}RQ3] How well do \textbf{activation measures} predict whether a feature's \textbf{output effect} is preserved?
+\item[\color{blue}RQ4] How much does the \textbf{same feature edit} change when the model is quantized, and what explains that change?
+\end{description}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Experimental setup}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\textbf{Models \& SAEs}
+\begin{itemize}\small
+\item Gemma-2-2B, layer-12, 16k JumpReLU SAE
+\item Gemma-2-9B, layer-20, 16k SAE
+\item Llama-3.2-1B, layer-12, TopK SAE ($k{=}48$)
+\end{itemize}
+\vspace{4pt}
+\textbf{Data}
+\begin{itemize}\small
+\item 27 FLORES-200 languages (9 per resource tier)
+\item 300 aligned devtest sentences per language
+\item Belebele: 385 questions $\times$ 18 languages
+\end{itemize}
+
+\column{0.48\textwidth}
+\textbf{Quantizers}
+\begin{itemize}\small
+\item Legacy RTN (reproducing Duan)
+\item Matched RTN (one scale per channel)
+\item GPTQ (calibrated, 221k tokens)
+\end{itemize}
+\vspace{4pt}
+\textbf{Feature selection}
+\begin{itemize}\small
+\item 8,086 language-selective features (2B)
+\item Top $K{=}64$ per language (``K64 group'')
+\item Activity-matched control groups
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Methodology: the core test}
 \centering
 \begin{tikzpicture}[
   box/.style={draw=blue, line width=0.8pt, rounded corners=4pt, fill=panel, text=ink,
               text width=2.55cm, minimum height=1.55cm, align=center, font=\small},
   arr/.style={-{Stealth[length=6pt]}, line width=1pt, color=muted}]
 \node[box] (a) {Pick the \textbf{64 features} that fire most for one language};
-\node[box, right=0.45cm of a] (b) {\textbf{Turn them off}};
-\node[box, right=0.45cm of b] (c) {Measure how much worse \textbf{next-word prediction} gets};
-\node[box, right=0.45cm of c] (d) {Subtract the harm of turning off \textbf{64 ordinary features}};
+\node[box, right=0.45cm of a] (b) {\textbf{Zero-ablate} (set $a'_f = 0$)};
+\node[box, right=0.45cm of b] (c) {Measure rise in \textbf{next-token loss} (NLL)};
+\node[box, right=0.45cm of c] (d) {Subtract rise from \textbf{matched controls}};
 \draw[arr] (a) -- (b); \draw[arr] (b) -- (c); \draw[arr] (c) -- (d);
 \end{tikzpicture}
 
-\vspace{14pt}
+\vspace{8pt}
+\[
+\text{Excess harm: } E_\ell^b = \Delta\text{NLL}(\text{group}_\ell) - \overline{\Delta\text{NLL}(\text{controls}_\ell)}, \qquad \text{Effect ratio: } \rho = E^{(b)}/E^{(\text{FP})}
+\]
+
+\vspace{4pt}
 \begin{tikzpicture}
 \node[draw=gold, line width=0.8pt, rounded corners=4pt, fill=panel, text=ink, align=center, inner sep=7pt, font=\small]
-{Repeat on the full model (FP) and with weights rounded to \textbf{8, 7, 6, 5 and 4 bits}};
+{Repeat at FP and with weights rounded to \textbf{8, 7, 6, 5, 4 bits}};
 \end{tikzpicture}
-
-\vspace{10pt}
-\aside{The result is the \textbf{excess harm}: how much those features matter for that language.}
 \end{frame}
 
 % ──────────────────────────────────────────────
-\begin{frame}{A correction to earlier work}
+\begin{frame}{A correction to earlier work (Duan, 2026)}
 \begin{columns}[c]
 \column{0.5\textwidth}
 \centering
@@ -110,188 +174,268 @@ INT7 survival & 81\% & \alert{$>$99.9\%}\\
 \bottomrule
 \end{tabular}
 \column{0.46\textwidth}
-We re-ran the earlier study's own code and matched its numbers.\\[8pt]
-Its inputs left out the \textbf{start-of-text token} (BOS).\\[8pt]
-That one token made the model look $28\times$ worse and half the features look ``dead''.
-\end{columns}
-\vspace{12pt}
-\aside{All our results use the corrected inputs. We also retired our own first pipeline after finding flaws in it.}
-\end{frame}
-
-% ──────────────────────────────────────────────
-\begin{frame}{Finding 1: language features matter, in every language}
-\centering
-\includegraphics[width=0.86\textwidth]{slide-harm}
-\takeaway{\textbf{Left:} turning off a language's features hurts that language in \alert{all 27}.\quad
-\textbf{Right:} the harm stays close to full precision down to 5 bits, then \alert{grows at 4 bits}.}
-\end{frame}
-
-% ──────────────────────────────────────────────
-\begin{frame}{Finding 2: more suppression, more harm}
-\begin{columns}[c]
-\column{0.58\textwidth}
-\includegraphics[width=\textwidth]{slide-dose}
-\column{0.4\textwidth}
-We turned features \textbf{down} step by step instead of fully off.\\[8pt]
-Harm rises smoothly, in \alert{every language}.\\[8pt]
-At 4 bits the same step hurts more.
-\end{columns}
-\vspace{6pt}
-\aside{A graded response is evidence that these features have a real causal role.}
-\end{frame}
-
-% ──────────────────────────────────────────────
-\begin{frame}{Finding 3: ``dead'' features still work}
-\begin{columns}[c]
-\column{0.6\textwidth}
-\includegraphics[width=\textwidth]{slide-identity}
-\column{0.38\textwidth}
-\textbf{Orange:} the usual test says only \alert{13\%} of features survive at 4 bits.\\[8pt]
-\textbf{Violet:} yet \alert{99.7\%} can still be recognised from what they do to the output.
+We reproduced Duan's numbers with their code (INT6: 51.15\% vs.\ 51.30\%).\\[6pt]
+The gap: their Gemma inputs omitted the \textbf{beginning-of-sequence (BOS) token}.\\[6pt]
+One token shifted perplexity $28\times$ and halved apparent feature survival.
 \end{columns}
 \vspace{8pt}
-\takeaway{Whether a feature \emph{fires the same} and whether it \emph{works the same} are different questions.}
+\aside{All subsequent results use corrected inputs. We also retired our own first pipeline after finding separate flaws.}
 \end{frame}
 
-% ──────────────────────────────────────────────
-\begin{frame}{Finding 4: the change is not about the feature}
-\begin{columns}[c]
-\column{0.6\textwidth}
-\includegraphics[width=\textwidth]{slide-swap}
-\column{0.38\textwidth}
-How similar is a feature's effect to its full-precision effect?\\[8pt]
-A \textbf{random other direction} at the same places drifts \alert{almost equally}.
-\end{columns}
-\vspace{8pt}
-\takeaway{The 4-bit drift comes from the model around the features, not from the features.}
-\end{frame}
-
-% ──────────────────────────────────────────────
-\begin{frame}{Finding 5: fixing the features fixes little}
-\begin{columns}[c]
-\column{0.6\textwidth}
-\includegraphics[width=\textwidth]{slide-repair}
-\column{0.38\textwidth}
-We put the full-precision values back into the 4-bit model.\\[8pt]
-Restoring the language features recovers only \alert{2.6\%} of the lost quality.\\[8pt]
-Restoring the whole layer recovers 39\%.
-\end{columns}
-\vspace{6pt}
-\takeaway{The features are not where the compression damage sits.}
-\end{frame}
-
-% ──────────────────────────────────────────────
-\begin{frame}{Finding 6: where does the change in an edit come from?}
-\begin{columns}[c]
-\column{0.46\textwidth}
-\centering
-\includegraphics[width=\textwidth]{slide-terms-design}
-\column{0.52\textwidth}
-\small
-$D[\mathrm{early},\mathrm{late}]$ = how much the edit changes the output, with the early and late layers each at full precision (FP) or 4-bit (Q).
-\begin{align*}
-\textcolor{blue}{C} &= D[\mathrm{Q},\mathrm{FP}] - D[\mathrm{FP},\mathrm{FP}]\\
-\textcolor{gold}{W} &= D[\mathrm{FP},\mathrm{Q}] - D[\mathrm{FP},\mathrm{FP}]\\
-\textcolor{violet}{I} &= D[\mathrm{Q},\mathrm{Q}] - D[\mathrm{Q},\mathrm{FP}]\\
-&\quad - D[\mathrm{FP},\mathrm{Q}] + D[\mathrm{FP},\mathrm{FP}]
-\end{align*}
-\aside{$C + W + I$ adds up exactly to the full change $D[\mathrm{Q},\mathrm{Q}] - D[\mathrm{FP},\mathrm{FP}]$.}
-\end{columns}
-\vspace{2pt}
-\takeaway{We keep one edit exactly as at full precision and round \alert{only part} of the model.}
-\end{frame}
-
-% ──────────────────────────────────────────────
-\begin{frame}{Finding 6: the answer depends on what we measure}
-\centering
-\includegraphics[width=0.8\textwidth]{slide-terms-bars}
-\takeaway{One feature: \alert{processing (W)} matters most; a random edit changes as much.\\
-A language's group: the \alert{new input (C)} matters most (19 of 27 at 4 bits).}
-\end{frame}
-
-% ──────────────────────────────────────────────
-\begin{frame}{Which features stop firing? Weak ones.}
+% ══════════════════════════════════════════════
+% RQ1
+% ══════════════════════════════════════════════
+\begin{frame}{RQ1: Which activations survive?}
 \begin{columns}[c]
 \column{0.55\textwidth}
 \includegraphics[width=\textwidth]{slide-tiers}
 \column{0.43\textwidth}
-Low-resource languages lose \alert{more} features.\\[6pt]
-Language-selective features stop firing slightly more often.\\[6pt]
-Both gaps come from \alert{weaker activations}: at equal strength they \alert{disappear}.
+\textbf{Activation survival:}
+\[
+R_1 = \operatorname{corr}_t\!\big(a_f^{\text{FP}}(t),\, a_f^{b}(t)\big)
+\]
+Rule: $R_1 > 0.9$.\\[4pt]
+Low-resource languages lose \alert{more} features; selective features survive slightly less often.\\[4pt]
+Both gaps trace to \alert{weaker activations} ($\rho_s = 0.35$ at INT6). Matching on strength \alert{removes} the gap.
 \end{columns}
-\vspace{6pt}
-\takeaway{Activation strength, not language or resource level, predicts which features stop firing.}
+\vspace{2pt}
+\aside{Selective features: median peak activation 9.8 vs.\ controls 14.2 at $S>5$.}
 \end{frame}
 
 % ──────────────────────────────────────────────
-\begin{frame}{More features $\neq$ more resources}
+\begin{frame}{RQ1: Feature counts do not follow resource tier}
 \begin{columns}[c]
 \column{0.6\textwidth}
 \includegraphics[width=\textwidth]{slide-counts}
 \column{0.38\textwidth}
 \small
-Lao, Yoruba and Khmer have more language-specific features than German or Spanish.\\[6pt]
-A feature counts when it fires for \alert{one language} much more than the rest.\\[6pt]
-Close relatives (Spanish--Portuguese, Russian--Ukrainian) \alert{share} features.
+Range: 73 (Portuguese) to 1,719 (English).\\[3pt]
+Lao (464), Yoruba (453), Khmer (444) exceed most high-resource languages.\\[3pt]
+Close relatives share: Portuguese--Spanish, Russian (83)--Ukrainian (84).\\[3pt]
+$\rho_s = -0.07$ (count vs.\ tier).
+\end{columns}
+\vspace{2pt}
+\aside{Count reflects how distinct a language looks to the model, not its resources (descriptive, post hoc).}
+\end{frame}
+
+% ══════════════════════════════════════════════
+% RQ2
+% ══════════════════════════════════════════════
+\begin{frame}{RQ2: Language features matter in every language}
+\centering
+\includegraphics[width=0.86\textwidth]{slide-harm}
+
+\vspace{2pt}
+\small
+\textbf{Left:} FP excess harm positive in \alert{all 27} languages. Mean $0.704$ $[0.684, 0.723]$, median $0.262$ nats/token.\\
+\textbf{Right:} INT4 median ratio $\rho = \alert{1.54}$ $[1.43, 1.62]$; mean ratio $2.14$ $[2.04, 2.50]$.
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{RQ2: Dose--response confirms causal role}
+\begin{columns}[c]
+\column{0.58\textwidth}
+\includegraphics[width=\textwidth]{slide-dose}
+\column{0.4\textwidth}
+Gradual suppression: $a'_f = \alpha\, a_f$.\\[6pt]
+FP harm increases monotonically in \alert{all 27 languages}.\\[6pt]
+Median harm: $0.022 \to 0.090 \to 0.169 \to 0.262$ nats/token.\\[6pt]
+INT4 curve is \alert{higher at every step}.
 \end{columns}
 \vspace{4pt}
-\aside{The count shows how distinct a language looks to the model, not its resources (descriptive).}
+\aside{Dose and consistency rules hold; strict precision-wise monotonicity fails due to a small intermediate-width dip.}
+\end{frame}
+
+% ══════════════════════════════════════════════
+% RQ3
+% ══════════════════════════════════════════════
+\begin{frame}{RQ3: Activation survival $\neq$ functional preservation}
+\begin{columns}[c]
+\column{0.6\textwidth}
+\includegraphics[width=\textwidth]{slide-identity}
+\column{0.38\textwidth}
+\textbf{Effect fingerprint cosine:}
+\[
+W_1 = \frac{\mathbf{d}_f^{\text{FP}} \cdot \mathbf{d}_f^{b}}{\|\mathbf{d}_f^{\text{FP}}\|\;\|\mathbf{d}_f^{b}\|}
+\]
+At legacy INT4 ($n = 1{,}487$):\\[4pt]
+\begin{tabular}{lr}
+$R_1 > 0.9$ survival & \alert{13.2\%}\\
+Identified by $W_1$ & \alert{99.7\%}\\
+Median $W_1$ & $0.839$\\
+\end{tabular}
+\end{columns}
+\vspace{4pt}
+\takeaway{Activation cutoff declares 87\% ``dead''; almost all still produce recognizable output effects.}
 \end{frame}
 
 % ──────────────────────────────────────────────
-\begin{frame}{Does it hold elsewhere?}
+\begin{frame}{RQ3: The 4-bit drift is generic (direction-swap control)}
+\begin{columns}[c]
+\column{0.6\textwidth}
+\includegraphics[width=\textwidth]{slide-swap}
+\column{0.38\textwidth}
+Ablate a \textbf{different feature's direction} at the same positions and strengths.\\[6pt]
+\begin{tabular}{lr}
+Feature direction $W_1$ & 0.842\\
+Swapped direction $W_1$ & 0.828\\
+\textbf{Gap} & \alert{0.014}\\
+\end{tabular}\\[6pt]
+Gap is small and consistent at every precision.
+\end{columns}
+\vspace{4pt}
+\takeaway{INT4 similarity loss is generic to downstream computation, not specific to the features.}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{RQ3: Restoring features recovers almost nothing}
+\begin{columns}[c]
+\column{0.6\textwidth}
+\includegraphics[width=\textwidth]{slide-repair}
+\column{0.38\textwidth}
+Patch FP activations into INT4:\\[4pt]
+\small
+\begin{tabular}{lr}
+Language group K64 & \alert{2.6\%} $[2.4, 2.8]$\\
+Matched control & 1.2\%\\
+Full residual & 39.3\% $[38.5, 40.0]$\\
+\end{tabular}\\[6pt]
+\normalsize
+GPTQ: 2.0\%.
+\end{columns}
+\vspace{4pt}
+\takeaway{Language-group features carry $<$3\% of the INT4 compression damage.}
+\end{frame}
+
+% ══════════════════════════════════════════════
+% RQ4
+% ══════════════════════════════════════════════
+\begin{frame}{RQ4: Decomposing the change in a fixed edit}
+\begin{columns}[c]
+\column{0.56\textwidth}
+\includegraphics[width=\textwidth]{slide-terms-bars}
+\column{0.42\textwidth}
+Fix edit at FP direction and strength. Cross FP/quantized layers:
+\begin{align*}
+C &= D[\text{Q},\text{FP}] - D[\text{FP},\text{FP}]\\
+W &= D[\text{FP},\text{Q}] - D[\text{FP},\text{FP}]\\
+I &= D[\text{Q},\text{Q}] - C - W\\
+  &\quad - D[\text{FP},\text{FP}]
+\end{align*}
+\vspace{-8pt}
+\small
+At INT4: median $|C| = 0.310$, $|W| = 0.104$ nats/token.\\[2pt]
+\aside{For single-feature output vectors, $W$ is larger. Attribution depends on the edit and the outcome.}
+\end{columns}
+\end{frame}
+
+% ══════════════════════════════════════════════
+% Belebele and cross-checks
+% ══════════════════════════════════════════════
+\begin{frame}{The Belebele null (our only confirmatory test)}
+\begin{columns}[c]
+\column{0.5\textwidth}
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+\textbf{Condition} & \textbf{Accuracy}\\
+\midrule
+Unedited & 42.6\%\\
+K64 removed & 42.6\%\\
+Control removed & 42.5\%\\
+\midrule
+FP excess loss & $-0.0001$ nats\\
+95\% CI & $[-0.0035, +0.0031]$\\
+\bottomrule
+\end{tabular}
+\column{0.48\textwidth}
+This was our \alert{held-out, pre-registered} test.\\[4pt]
+Zeroing K64 does not change Belebele reading-comprehension accuracy.\\[4pt]
+Larger edits (1,024--2,860 features) \emph{do} lower accuracy by 1.2--6.0 pts. Sham edits change nothing.
+\end{columns}
+\vspace{4pt}
+\takeaway{The groups help next-token prediction but have no detectable effect on this comprehension task.}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Cross-model and cross-quantizer checks}
 \begin{columns}[T]
 \column{0.32\textwidth}
-\textbf{\color{blue}Gemma-2-9B}\\[4pt]
-Same picture: harm in \alert{27/27} languages, about the same at 6 bits, growth at 4 bits.\\[4pt]
-All predictions written \emph{before} the run were met.
+\textbf{\color{blue}Gemma-2-9B}\\[3pt]
+\small
+FP excess harm positive in \alert{27/27} (median $0.270$ $[0.197, 0.608]$).\\[3pt]
+INT4 ratio $1.586$ $[1.238, 2.264]$.\\[3pt]
+All frozen predictions met. Two defective criteria documented.
 \column{0.32\textwidth}
-\textbf{\color{blue}Three quantizers}\\[4pt]
-RTN as in prior work, standard RTN and GPTQ all give the \alert{same pattern}.\\[4pt]
-\aside{Charts show prior work's RTN for direct comparison.}
+\textbf{\color{blue}Three quantizers}\\[3pt]
+\small
+Legacy, matched RTN and GPTQ give the \alert{same qualitative pattern}.\\[3pt]
+GPTQ halves INT4 amplification (ratio 1.22 vs.\ 1.54 on 2B).
 \column{0.32\textwidth}
-\textbf{\color{blue}Llama-3.2-1B}\\[4pt]
-Weaker: harm in 21/27 languages (rule: 24).\\[4pt]
-\aside{Model, SAE and tokenizer all differ, so the cause is unclear.}
+\textbf{\color{blue}Llama-3.2-1B}\\[3pt]
+\small
+FP effect in 21/27 (rule: 24). Verdict: \alert{not consistent}.\\[3pt]
+Median $E = 0.048$; INT4 ratio 0.86.\\[3pt]
+\aside{Model, SAE, tokenizer all differ.}
 \end{columns}
 \end{frame}
 
 % ──────────────────────────────────────────────
+\begin{frame}{Summary: INT4 measurements across quantizers (Gemma-2-2B)}
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{INT4 measurement} & \textbf{Legacy} & \textbf{Matched} & \textbf{GPTQ}\\
+\midrule
+Active-feature survival (\%) & 12.7 & 18.6 & 30.5\\
+Mean loss increase (nats/token) & 0.590 & 0.385 & 0.130\\
+Median group-effect ratio ($\rho$) & 1.54 & 1.36 & 1.22\\
+Median effect cosine ($W_1$) & 0.839 & 0.875 & 0.923\\
+Transfer cosine & 0.768 & 0.822 & 0.877\\
+Belebele accuracy (\%) & 23.6 & 29.1 & 31.8\\
+\bottomrule
+\end{tabular}
+\vspace{6pt}
+\aside{Rows answer different questions. Survival: active-feature shares per language; $W_1$: F5 sample (1,487 features); transfer: eligible feature--context pairs; Belebele: 18 languages.}
+\end{frame}
+
+% ══════════════════════════════════════════════
+% Wrap-up
+% ══════════════════════════════════════════════
 \begin{frame}{Limitations}
 \small
 \begin{itemize}
-\item \textbf{Reading comprehension (Belebele):} turning the features off does \alert{not} change accuracy.\\
-\aside{Our held-out, confirmatory test. The features matter for next-word prediction, not clearly for this task.}
-\item \textbf{One layer, one SAE:} earlier work finds language-specific units mostly in early and late layers; we tested only a middle layer (compute budget), a conservative place to look.
-\item \textbf{Fixed-length inputs:} sentences are cut to a set length. The same cut text is used at every precision, so comparisons stay fair; testing complete sentences is future work.
-\item \textbf{Mostly exploratory:} most FLORES analyses reuse sentences we had already examined.
+\item \textbf{One layer, one SAE per model:} language-specific neurons concentrate in early/late layers (Tang et al., 2024; Kojima et al., 2024); middle-layer test is conservative.
+\item \textbf{Fixed-length inputs:} truncation removes a length confound but may change internal representations. Paired comparisons keep both sides equal.
+\item \textbf{Mostly exploratory:} most FLORES analyses reuse examined sentences. Only Belebele was confirmatory (null result).
+\item \textbf{Llama inconsistency:} cross-family check failed (21/27), but model, SAE, tokenizer all changed.
 \end{itemize}
-\vspace{6pt}
 \end{frame}
 
 % ──────────────────────────────────────────────
-\begin{frame}{Claims and Findings}
+\begin{frame}{Claims}
 \begin{enumerate}
-\item Language features help next-word prediction in \alert{all 27 languages}, on both Gemma sizes.
-\item Turning them down step by step gives a \alert{smooth dose-response}.
-\item The usual activation test \alert{understates} preservation: 13\% ``survive'', 99.7\% still work.
-\item The 4-bit drift is \alert{generic}, and restoring the features repairs only \alert{2.6\%}.
-\item Activation agreement, task performance and an edit's effect need \alert{separate measurements}.
+\item Language features contribute to next-token prediction in \alert{all 27 languages} on both Gemma sizes, with dose--response in every language.
+\item The activation-survival cutoff \alert{understates} functional preservation: 13.2\% pass $R_1 > 0.9$, yet 99.7\% are identifiable by output effect $W_1$.
+\item The INT4 effect-similarity loss is \alert{generic} (direction-swap gap 0.014), and restoring language-group activations recovers only \alert{2.6\%} $[2.4, 2.8]$ of the loss gap.
+\item Activation agreement, task performance and an edit's output effect require \alert{separate measurements}: they answer different questions and give different answers.
 \end{enumerate}
 \end{frame}
 
 % ──────────────────────────────────────────────
 \begin{frame}{Reproducibility}
 \begin{itemize}
-\item Reproduced the earlier study before reporting its BOS problem
-\item Predictions and code hashes frozen before the data existed
-\item Two faulty 9B predictions documented, not counted
-\item Null and failed results reported alongside the positive ones
+\item Reproduced Duan's numbers with their released code before reporting the BOS issue
+\item 9B predictions and code hashes frozen before any 9B data existed
+\item Two defective 9B prediction criteria documented, not counted
+\item Null results (Belebele, Llama, failed repair) reported with same detail as positives
 \end{itemize}
 \vspace{10pt}
-\aside{Code: \texttt{github.com/TH4KUR/always-late}\\
-Artifacts: \texttt{huggingface.co/datasets/karma-skz/always-late-artifacts}\\
-Runs: \texttt{wandb.ai/karma-skz-/anlp-project}}
+\aside{\texttt{github.com/TH4KUR/always-late}\\
+\texttt{huggingface.co/datasets/karma-skz/always-late-artifacts}\\
+\texttt{wandb.ai/karma-skz-/anlp-project}}
 \end{frame}
 
 \end{document}

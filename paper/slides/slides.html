@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Language Features under Weight Quantization: Activation Agreement and Intervention Effects</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reset.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.css">
+
+<style>
+/* Direction
+   Product    Viva deck: do language-specific SAE features keep their function under weight quantization
+   Character  exact, sober, evidence-first
+   World      instrument readouts on dark graphite
+   Moments    the dissociation figure (slide 11) and the drawn null interval (slide 16)
+   Signature  bit-width ladder and mono INT labels
+
+   Color meaning (matches the figures)
+   blue    chrome accent: RQ labels, progress
+   gold    INT4 and the activation side; also the honesty frame on the null result
+   violet  the function side: output effect, feature
+   Spacing on a 4px grid. Sizes: 16 20 24 28 36 40 56 72 96. Weights 400 500, 600 for titles only. */
+
+:root {
+  --bg: #16181D;
+  --panel: #22252C;
+  --ink: #F0EFEC;
+  --ink-2: #CFCDC6;
+  --muted: #A9A8A0;
+  --blue: #3987E5;
+  --violet: #9085E9;
+  --gold: #E0A526;
+  --line: rgba(240, 239, 236, 0.10);
+  --line-2: rgba(240, 239, 236, 0.20);
+  --step: rgba(240, 239, 236, 0.04);
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --r-main-color: var(--ink);
+}
+
+html, body, .reveal-viewport { background: var(--bg); }
+
+/* ───────────── reveal base ───────────── */
+.reveal {
+  font: 400 24px/32px var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+.reveal .slides { text-align: left; }
+.reveal .slides > section {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 40px 64px 56px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: 32px;
+}
+.reveal .slides img {
+  display: block; max-width: 100%; max-height: none;
+  margin: 0; border: 0; background: none; box-shadow: none;
+}
+.reveal a { color: var(--blue); text-decoration: none; }
+.reveal p { margin: 0; }
+.reveal strong, .reveal b { font-weight: 500; color: var(--ink); }
+
+.reveal .progress { height: 4px; background: var(--line); color: var(--blue); }
+.reveal .progress span { background: currentColor; transition: transform .2s ease; }
+.reveal .slide-number {
+  background: transparent; color: var(--muted);
+  font: 400 14px/16px var(--mono);
+  right: 24px; bottom: 20px; padding: 0;
+}
+.reveal .controls { color: var(--muted); }
+
+/* ───────────── type ───────────── */
+.kicker { font: 500 16px/24px var(--sans); color: var(--muted); }
+.kicker .rqn { font-family: var(--mono); font-weight: 500; color: var(--blue); margin-right: 8px; }
+.reveal h2 {
+  margin: 8px 0 0;
+  font: 600 36px/44px var(--sans);
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--ink);
+  max-width: 1152px;
+  text-wrap: balance;
+}
+.reveal h3 { margin: 0; font: 500 24px/32px var(--sans); text-transform: none; color: var(--ink); }
+.sm  { font: 400 20px/28px var(--sans); color: var(--muted); text-wrap: pretty; }
+.sm b { color: var(--ink); }
+.cap { font: 400 16px/24px var(--mono); color: var(--muted); }
+.mono { font-family: var(--mono); }
+.g { color: var(--gold); }
+.v { color: var(--violet); }
+.b { color: var(--blue); }
+.dim { color: var(--muted); }
+.dot { margin: 0 -0.2em; }
+
+/* ───────────── layout ───────────── */
+.hd { min-width: 0; }
+.body { min-height: 0; display: grid; gap: 48px; align-items: center; }
+.cols-fig   { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.cols-even  { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.cols-3     { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; align-items: stretch; }
+.stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+
+.figcol { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fig {
+  border: 1px solid var(--line-2); border-radius: 12px;
+  padding: 8px; background: var(--bg);
+}
+.fig img {
+  width: 100%; height: auto;
+  max-height: var(--fh, 400px);
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+/* stats: one big figure, one label */
+.stat .n { font: 500 56px/64px var(--mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat .n.lg { font-size: 72px; line-height: 72px; letter-spacing: -0.03em; }
+.stat .n.xl { font-size: 96px; line-height: 96px; letter-spacing: -0.04em; }
+.stat .n.lg { margin-bottom: 8px; }
+.stat .l { font: 400 20px/28px var(--sans); color: var(--ink-2); }
+.stat .ci { font: 400 16px/24px var(--mono); color: var(--muted); }
+
+/* hairline lists */
+.list { border-bottom: 1px solid var(--line); }
+.list > .r {
+  display: grid; grid-template-columns: var(--c1, 120px) minmax(0, 1fr);
+  align-items: center; column-gap: 20px;
+  padding: 16px 0; border-top: 1px solid var(--line);
+}
+.list .k { font: 500 32px/36px var(--mono); font-variant-numeric: tabular-nums; }
+.list .t { font: 400 20px/28px var(--sans); color: var(--ink-2); }
+.list .t .ci { display: block; font: 400 16px/24px var(--mono); color: var(--muted); }
+
+/* bullets */
+.bul { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.bul > li { position: relative; padding-left: 20px; font: 400 24px/32px var(--sans); color: var(--ink-2); }
+.bul > li::before { content: ''; position: absolute; left: 0; top: 12px; width: 8px; height: 8px; border-radius: 2px; background: var(--muted); }
+
+/* equation */
+.eq { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 24px; text-align: center; }
+.eq .katex-display { margin: 4px 0; }
+.eq .why { font: 400 16px/24px var(--sans); color: var(--muted); padding-bottom: 4px; }
+.reveal .katex { font-size: 1.12em; color: var(--ink); }
+
+/* table */
+table.t { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; }
+table.t th { font: 500 16px/24px var(--sans); color: var(--muted); text-align: right; padding: 16px 20px; border-bottom: 1px solid var(--line-2); }
+table.t td { font: 400 24px/32px var(--sans); padding: 16px 20px; border-top: 1px solid var(--line); text-align: right; }
+table.t tr:first-child td { border-top: 0; }
+table.t th:first-child, table.t td:first-child { text-align: left; }
+table.t td.n { font-family: var(--mono); font-weight: 400; font-variant-numeric: tabular-nums; }
+table.t .hl { background: var(--step); }
+table.t td.hl.n { font-weight: 500; }
+
+/* ───────────── 1 title ───────────── */
+.reveal .slides > section.title-slide { grid-template-rows: minmax(0, 1fr); align-content: center; padding-left: 64px; }
+.title-slide .in { max-width: 760px; align-self: center; }
+.title-slide .eyebrow { font: 500 20px/28px var(--mono); color: var(--blue); }
+.reveal .title-slide h1 {
+  margin: 24px 0 0; font: 600 56px/64px var(--sans); letter-spacing: -0.02em;
+  text-transform: none; color: var(--ink); text-wrap: balance;
+}
+.title-slide .sub { margin-top: 16px; font: 400 28px/36px var(--sans); color: var(--ink-2); }
+.title-slide .authors { margin-top: 48px; font: 500 24px/32px var(--sans); display: flex; flex-wrap: wrap; column-gap: 28px; }
+.title-slide .inst { margin-top: 8px; font: 400 20px/28px var(--sans); color: var(--muted); }
+.ladder { position: absolute; right: 64px; top: 50%; margin-top: -88px; display: grid; grid-template-columns: 64px 320px; row-gap: 16px; column-gap: 16px; align-items: center; }
+.ladder .lb { font: 400 20px/24px var(--mono); color: var(--muted); text-align: right; }
+.ladder .br { height: 12px; border-radius: 2px; background: rgba(240,239,236,.22); }
+.ladder .lb.last { color: var(--gold); }
+.ladder .br.last { background: var(--gold); }
+.ladder-cap { position: absolute; right: 64px; top: 50%; margin-top: 152px; width: 400px; font: 400 16px/24px var(--mono); color: var(--muted); text-align: right; }
+
+/* ───────────── 2 question ───────────── */
+.reveal .slides > section.question { grid-template-rows: minmax(0, 1fr); align-content: center; }
+.reveal .slides > section.question > div { align-self: center; }
+.question .big { font: 500 48px/56px var(--sans); letter-spacing: -0.015em; max-width: 1056px; text-wrap: balance; }
+.question .big em { font-style: normal; color: var(--gold); }
+.question .meta { margin-top: 48px; font: 400 20px/28px var(--mono); color: var(--muted); }
+.question .meta b { color: var(--ink); font-weight: 500; }
+
+/* ───────────── 3 related work ───────────── */
+.lineage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px; }
+.lin { position: relative; padding-top: 24px; border-top: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 8px; }
+.lin::before { content: ''; position: absolute; left: 0; top: -5px; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.lin .who { font: 500 24px/32px var(--sans); }
+.lin .what { font: 400 20px/28px var(--sans); color: var(--muted); min-height: 112px; }
+.lin .role { font: 400 16px/24px var(--mono); color: var(--blue); }
+.lin.ours { border-top: 2px solid var(--gold); }
+.lin.ours::before { background: var(--gold); top: -6px; }
+.lin.ours .who { color: var(--gold); }
+.lin.ours .what { color: var(--ink-2); }
+.lin.ours .role { color: var(--gold); }
+.ground { margin-top: 48px; }
+.ground .lab { font: 500 16px/24px var(--sans); color: var(--muted); margin-bottom: 16px; }
+.ground .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 32px; }
+.gr { padding: 16px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.gr .who { font: 500 20px/28px var(--sans); }
+.gr .what { font: 400 20px/28px var(--sans); color: var(--muted); }
+
+/* ───────────── 4 research questions ───────────── */
+.rqs { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 24px; height: 100%; }
+.rq { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.rq .tag { font: 500 20px/28px var(--mono); color: var(--blue); }
+.rq .q { font: 500 28px/36px var(--sans); text-wrap: balance; }
+.rq .m { margin-top: auto; font: 400 16px/24px var(--sans); color: var(--muted); }
+
+/* ───────────── 5 setup ───────────── */
+.setup .col { display: grid; grid-template-rows: auto repeat(3, 112px); min-width: 0; }
+.setup .col > h3 { padding-bottom: 16px; }
+.setup .it { border-top: 1px solid var(--line); padding: 16px 0; display: flex; flex-direction: column; justify-content: center; }
+.setup .it .a { font: 500 24px/32px var(--sans); }
+.setup .it .d { font: 400 16px/24px var(--mono); color: var(--muted); }
+
+/* ───────────── 6 method ───────────── */
+.pipe { display: grid; grid-template-columns: 1fr 24px 1fr 24px 1fr 24px 1fr; align-items: stretch; column-gap: 8px; }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 4px; }
+.step .no { font: 500 16px/24px var(--mono); color: var(--blue); }
+.step .t { font: 500 24px/32px var(--sans); }
+.step .d { font: 400 16px/24px var(--sans); color: var(--muted); }
+.chev { align-self: center; color: var(--muted); display: flex; justify-content: center; }
+.repeat { display: flex; align-items: center; justify-content: space-between; gap: 24px; border: 1px solid var(--line-2); border-radius: 12px; padding: 16px 24px; }
+.repeat .lab { font: 500 24px/32px var(--sans); }
+.repeat .lad { font: 400 20px/28px var(--mono); color: var(--muted); display: flex; gap: 16px; }
+.repeat .lad .last { color: var(--gold); }
+
+/* ───────────── 11 hero ───────────── */
+.hero h2 { font-size: 40px; line-height: 48px; }
+.hero .stat .n { font-size: 96px; line-height: 96px; letter-spacing: -0.04em; margin-bottom: 12px; }
+.hero .fig { border-color: var(--line-2); }
+
+/* ───────────── 14 terms ───────────── */
+.xgrid { display: grid; grid-template-columns: 112px 1fr 1fr; gap: 8px; align-items: stretch; }
+.xgrid > div { padding: 8px 12px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; text-align: center; font: 400 16px/24px var(--sans); }
+.xgrid .h { color: var(--muted); }
+.xgrid .rh { color: var(--muted); text-align: right; }
+.xgrid .cell { background: var(--panel); border: 1px solid var(--line); min-height: 64px; }
+.xgrid .cell b { font: 500 20px/28px var(--mono); }
+.xgrid .cell .s { color: var(--muted); }
+.xgrid .cC b { color: var(--blue); }
+.xgrid .cW b { color: var(--gold); }
+.xgrid .cI b { color: var(--violet); }
+.res { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.res > div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; font: 400 16px/24px var(--sans); color: var(--muted); }
+.res > div b { display: block; font: 500 20px/28px var(--sans); }
+
+/* ───────────── 16 null ───────────── */
+.honest { grid-template-rows: auto minmax(0, 1fr); }
+.honest .frame { border: 2px solid var(--gold); border-radius: 12px; padding: 20px 28px 24px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.honest .tagline { font: 500 16px/24px var(--mono); color: var(--gold); }
+.honest .inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; align-items: center; flex: 1 1 auto; min-height: 0; }
+.nline { position: relative; height: 64px; margin: 8px 8px 0; }
+.nline .axis { position: absolute; left: 0; right: 0; top: 28px; height: 1px; background: var(--line-2); }
+.nline .zero { position: absolute; top: 12px; height: 32px; width: 1px; background: var(--ink); left: 50%; }
+.nline .ci { position: absolute; top: 24px; height: 8px; border-radius: 4px; background: rgba(224,165,38,.35); border: 1px solid var(--gold); box-sizing: border-box; }
+.nline .pt { position: absolute; top: 22px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--gold); }
+.nline .tk { position: absolute; top: 44px; font: 400 14px/16px var(--mono); color: var(--muted); }
+.bars { display: flex; flex-direction: column; gap: 12px; }
+.bar .top { display: flex; align-items: baseline; justify-content: space-between; }
+.bar .nm { font: 400 20px/28px var(--sans); color: var(--ink-2); }
+.bar .vl { font: 500 24px/32px var(--mono); font-variant-numeric: tabular-nums; }
+.bar .tr { position: relative; height: 12px; border-radius: 4px; background: var(--step); border: 1px solid var(--line); box-sizing: border-box; }
+.bar .fl { height: 100%; border-radius: 3px; background: rgba(240,239,236,.45); }
+.bar .ch { position: absolute; top: -4px; bottom: -4px; left: 50%; border-left: 1px dashed var(--muted); }
+
+/* ───────────── 17 cross-model ───────────── */
+.xm { border-top: 1px solid var(--line-2); padding-top: 24px; display: flex; flex-direction: column; gap: 16px; }
+.xm.bad { border-top: 2px solid var(--gold); }
+.xm .nm { font: 500 24px/32px var(--sans); }
+.xm .big { font: 500 56px/64px var(--mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.xm .big small { font: 400 20px/28px var(--sans); letter-spacing: 0; color: var(--muted); margin-left: 12px; }
+.xm .bul > li { font-size: 20px; line-height: 28px; }
+.xm .bul > li::before { top: 10px; }
+.xm .verdict { margin-top: auto; font: 500 16px/24px var(--mono); color: var(--ink-2); }
+.xm.bad .nm, .xm.bad .verdict { color: var(--gold); }
+
+/* ───────────── 19 limitations ───────────── */
+.lims { display: grid; grid-template-rows: repeat(5, 88px); border-bottom: 1px solid var(--line); }
+.lim { display: grid; grid-template-columns: 56px 360px minmax(0, 1fr); column-gap: 24px; align-items: center; border-top: 1px solid var(--line); }
+.lim .no { font: 400 16px/24px var(--mono); color: var(--muted); }
+.lim .t { font: 500 24px/32px var(--sans); }
+.lim .d { font: 400 20px/28px var(--sans); color: var(--muted); }
+
+/* ───────────── 20 claims ───────────── */
+.claims { display: grid; grid-template-rows: repeat(5, 96px); border-bottom: 1px solid var(--line); }
+.claim { display: grid; grid-template-columns: 56px minmax(0, 1fr); column-gap: 24px; align-items: center; border-top: 1px solid var(--line); }
+.claim .no { font: 500 20px/28px var(--mono); color: var(--blue); }
+.claim .tx { font: 400 28px/36px var(--sans); color: var(--ink-2); text-wrap: balance; }
+.claim .tx b { color: var(--ink); }
+.claim .tx .g { font-weight: 500; }
+
+/* ───────────── 21 reproducibility ───────────── */
+.checks { display: flex; flex-direction: column; gap: 24px; margin: 0; padding: 0; list-style: none; }
+.checks > li { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 16px; align-items: start; font: 400 24px/32px var(--sans); color: var(--ink-2); }
+.checks svg { margin-top: 4px; color: var(--blue); }
+.links { border-bottom: 1px solid var(--line); }
+.links a { display: block; padding: 16px 0; border-top: 1px solid var(--line); }
+.links .lb { font: 500 16px/24px var(--sans); color: var(--muted); }
+.links .u { font: 400 20px/28px var(--mono); color: var(--blue); overflow-wrap: anywhere; }
+.thanks { font: 500 36px/44px var(--sans); color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal .slides section, .reveal .fragment, .reveal .progress span { transition: none !important; }
+}
+</style>
+</head>
+
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. Title -->
+<section class="title-slide">
+  <div class="in">
+    <div class="eyebrow">ANLP viva</div>
+    <h1>Language Features under Weight Quantization</h1>
+    <div class="sub">Activation Agreement and Intervention Effects</div>
+    <div class="authors"><span>Hemang Joshi</span><span>Eashaan Thakur</span><span>Shardul Joshi</span><span>Nikhita Ravi</span></div>
+    <div class="inst">IIIT Hyderabad &mdash; ANLP Monsoon 2026</div>
+  </div>
+  <div class="ladder" aria-hidden="true">
+    <span class="lb">FP</span><span class="br" style="width:320px"></span>
+    <span class="lb">INT8</span><span class="br" style="width:160px"></span>
+    <span class="lb">INT7</span><span class="br" style="width:140px"></span>
+    <span class="lb">INT6</span><span class="br" style="width:120px"></span>
+    <span class="lb">INT5</span><span class="br" style="width:100px"></span>
+    <span class="lb last">INT4</span><span class="br last" style="width:80px"></span>
+  </div>
+  <div class="ladder-cap" aria-hidden="true">bits per weight, drawn to scale</div>
+</section>
+
+<!-- 2. The question -->
+<section class="question">
+  <div>
+    <div class="kicker" style="margin-bottom:32px">The question</div>
+    <div class="big">When a model&rsquo;s weights are rounded to fewer bits, do the internal features that explain it <em>still do the same job?</em></div>
+    <div class="meta"><b>27</b> languages &middot; <b>Gemma-2-2B</b> (main) &middot; <b>Gemma-2-9B</b> check &middot; fixed sparse autoencoder</div>
+  </div>
+</section>
+
+<!-- 3. Related work -->
+<section>
+  <div class="hd">
+    <div class="kicker">Related work</div>
+    <h2>Prior work gave the units and the question; we test whether they still do the same thing</h2>
+  </div>
+  <div class="body" style="align-content:start; align-items:start; display:block">
+    <div class="lineage">
+      <div class="lin"><div class="who">Marchisio et al. 2024</div><div class="what">Quantization affects languages unequally</div><div class="role">asks what changes</div></div>
+      <div class="lin"><div class="who">Deng et al. 2025</div><div class="what">Found language-specific SAE features and showed that editing them changes output</div><div class="role">gives us the units</div></div>
+      <div class="lin"><div class="who">Duan 2026</div><div class="what">Measured activation survival of features under quantization</div><div class="role">asks if features fire the same</div></div>
+      <div class="lin ours fragment" data-fragment-index="1"><div class="who">Our contribution</div><div class="what">Functional preservation, not just activation: does a feature still do the same thing?</div><div class="role">asks if features do the same</div></div>
+    </div>
+    <div class="ground">
+      <div class="lab">Methodological grounding</div>
+      <div class="row">
+        <div class="gr"><div class="who">Makelov et al. 2025</div><div class="what">Judge by edits</div></div>
+        <div class="gr"><div class="who">Leask et al. 2025</div><div class="what">SAE features are not canonical</div></div>
+        <div class="gr"><div class="who">Karvonen et al. 2025</div><div class="what">Proxy scores <span class="mono">&ne;</span> useful features</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Research questions -->
+<section>
+  <div class="hd">
+    <div class="kicker">Research questions</div>
+    <h2>Four questions, from activation to effect</h2>
+  </div>
+  <div class="body" style="display:block">
+    <div class="rqs">
+      <div class="rq"><div class="tag">RQ1</div><div class="q">Which language features retain their activation patterns after quantization?</div><div class="m">Measured by activation correlation $R_1$</div></div>
+      <div class="rq"><div class="tag">RQ2</div><div class="q">How does editing language features affect text prediction and comprehension?</div><div class="m">Measured by excess harm, dose-response and Belebele accuracy</div></div>
+      <div class="rq"><div class="tag">RQ3</div><div class="q">How well do activation measures predict whether a feature&rsquo;s output effect is preserved?</div><div class="m">Measured by effect cosine $W_1$, swap control, patching</div></div>
+      <div class="rq"><div class="tag">RQ4</div><div class="q">How much does the same feature edit change when the model is quantized?</div><div class="m">Measured by context, later-weight and interaction terms</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Setup -->
+<section class="setup">
+  <div class="hd">
+    <div class="kicker">Setup</div>
+    <h2>Three models, 27 languages, three quantizers</h2>
+  </div>
+  <div class="body cols-3" style="align-items:start; align-content:center">
+    <div class="col">
+      <h3>Models</h3>
+      <div class="it"><div class="a">Gemma-2-2B</div><div class="d">main &middot; layer-12 JumpReLU SAE<br>16,384 features</div></div>
+      <div class="it"><div class="a">Gemma-2-9B</div><div class="d">confirmation</div></div>
+      <div class="it"><div class="a">Llama-3.2-1B</div><div class="d">cross-check</div></div>
+    </div>
+    <div class="col">
+      <h3>Data</h3>
+      <div class="it"><div class="a">27 FLORES-200 languages</div><div class="d">9 per resource tier</div></div>
+      <div class="it"><div class="a">300 sentences</div><div class="d">per language</div></div>
+      <div class="it"><div class="a">Belebele</div><div class="d">18 languages</div></div>
+    </div>
+    <div class="col">
+      <h3>Quantizers</h3>
+      <div class="it"><div class="a">Legacy RTN</div><div class="d">reproduces Duan</div></div>
+      <div class="it"><div class="a">Matched RTN</div><div class="d">one scale per output channel</div></div>
+      <div class="it"><div class="a">GPTQ</div><div class="d">calibrated</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Methodology -->
+<section>
+  <div class="hd">
+    <div class="kicker">Methodology</div>
+    <h2>Excess harm: the loss from removing a language&rsquo;s features, net of a control</h2>
+  </div>
+  <div class="body" style="align-content:center; gap:24px; display:grid">
+    <div class="pipe">
+      <div class="step"><div class="no">1</div><div class="t">Pick 64 features</div><div class="d">The ones that fire most for one language</div></div>
+      <div class="chev"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="step"><div class="no">2</div><div class="t">Zero-ablate</div><div class="d">Turn them off</div></div>
+      <div class="chev"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="step"><div class="no">3</div><div class="t">Measure NLL rise</div><div class="d">Next-word prediction gets worse</div></div>
+      <div class="chev"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      <div class="step"><div class="no">4</div><div class="t">Subtract control harm</div><div class="d">Same edit on 64 ordinary features</div></div>
+    </div>
+    <div class="eq">
+      $$E_\ell \;=\; \Delta\mathrm{NLL}_\ell\!\left(\mathrm{group}_\ell\right)\;-\;\operatorname{mean}\!\Big(\Delta\mathrm{NLL}_\ell\!\left(\mathrm{controls}_\ell\right)\Big)$$
+      <div class="why">$E_\ell$ is the excess harm for language $\ell$ in nats per token; positive means the language edit hurts more than the control edit</div>
+    </div>
+    <div class="repeat">
+      <div class="lab">Repeat at FP and INT8 through INT4</div>
+      <div class="lad"><span>FP</span><span>INT8</span><span>INT7</span><span>INT6</span><span>INT5</span><span class="last">INT4</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. BOS correction -->
+<section>
+  <div class="hd">
+    <div class="kicker">A correction to earlier work</div>
+    <h2>One missing token (BOS) made the baseline look 28&times; worse</h2>
+  </div>
+  <div class="body cols-even" style="gap:64px">
+    <table class="t">
+      <thead><tr><th></th><th>No BOS</th><th class="hl">With BOS</th></tr></thead>
+      <tbody>
+        <tr><td>FP perplexity</td><td class="n">458.4</td><td class="n hl">16.1</td></tr>
+        <tr><td>INT6 survival</td><td class="n">51%</td><td class="n hl">97.5%</td></tr>
+        <tr><td>INT7 survival</td><td class="n">81%</td><td class="n hl">&gt;99.9%</td></tr>
+      </tbody>
+    </table>
+    <div class="stack">
+      <ul class="bul">
+        <li>Duan 2026 omitted the beginning-of-sequence token</li>
+        <li>We reproduced their code and matched their numbers</li>
+        <li>Then we traced the discrepancy to the missing BOS</li>
+      </ul>
+      <div class="sm">All our results use the corrected inputs</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. RQ1 -->
+<section>
+  <div class="hd">
+    <div class="kicker"><span class="rqn">RQ1</span>Activation survival</div>
+    <h2>Language-selective features survive almost as well as controls</h2>
+  </div>
+  <div class="body cols-fig">
+    <div class="figcol">
+      <div class="fig" style="--fh:400px"><img src="figures/slide-tiers.png" alt="Line chart of the percentage of features surviving at 8, 7, 6, 5 and 4 bits for high, mid and low resource languages; low-resource languages lose the most features."></div>
+      <div class="cap">Features surviving ($R_1 &gt; 0.9$) by resource tier</div>
+    </div>
+    <div class="stack" style="gap:20px">
+      <div style="display:flex; gap:40px">
+        <div class="stat"><div class="n">&minus;0.28</div><div class="l">points at INT7</div></div>
+        <div class="stat"><div class="n">&minus;1.44</div><div class="l">points at INT6</div></div>
+      </div>
+      <div class="sm">Selective minus control survival, not significant after correction</div>
+      <div class="eq">
+        $$R_1=\operatorname{corr}_t\!\big(a_f^{\mathrm{FP}}(t),\,a_f^{b}(t)\big)$$
+        <div class="why">a feature survives if $R_1 > 0.9$</div>
+      </div>
+      <ul class="bul">
+        <li>The gap tracks activation strength, not language selectivity</li>
+        <li>Weaker features survive less: Spearman $\rho = 0.35$ at INT6</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 9. RQ2 harm -->
+<section>
+  <div class="hd">
+    <div class="kicker"><span class="rqn">RQ2</span>Prediction</div>
+    <h2>Removing language features hurts next&#8209;word prediction in all 27 languages</h2>
+  </div>
+  <div class="body" style="grid-template-columns: minmax(0, 760px) minmax(0, 1fr); gap:32px">
+    <div class="figcol">
+      <div class="fig" style="--fh:320px"><img src="figures/slide-harm.png" alt="Left: bar chart of FP excess harm per language in nats per token, grouped by resource tier, all positive. Right: harm relative to FP at 8 to 4 bits; near 1 down to 5 bits and larger at 4 bits."></div>
+      <div class="cap">(a) FP excess harm per language &middot; (b) harm relative to FP, one dot per language</div>
+    </div>
+    <div class="list" style="--c1:104px">
+      <div class="r"><div class="k">27/27</div><div class="t">languages with positive FP excess harm</div></div>
+      <div class="r"><div class="k">0.704</div><div class="t">mean excess harm, nats/token<span class="ci">[0.684, 0.723]</span></div></div>
+      <div class="r"><div class="k g">1.54</div><div class="t">INT4 median ratio to FP<span class="ci">[1.43, 1.62]</span></div></div>
+      <div class="r"><div class="k">&asymp;FP</div><div class="t">through INT5, then growth at INT4</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. Dose-response -->
+<section>
+  <div class="hd">
+    <div class="kicker"><span class="rqn">RQ2</span>Dose-response</div>
+    <h2>More suppression, more harm, in every language</h2>
+  </div>
+  <div class="body cols-fig">
+    <div class="figcol">
+      <div class="fig" style="--fh:400px"><img src="figures/slide-dose.png" alt="Median excess harm against activation multiplier from 1 down to 0 for FP, INT6, INT5 and INT4; harm rises smoothly and INT4 rises fastest."></div>
+      <div class="cap">Median excess harm against activation multiplier</div>
+    </div>
+    <div class="stack">
+      <table class="t">
+        <thead><tr><th>Activation multiplier</th><th>Median harm</th></tr></thead>
+        <tbody>
+          <tr><td class="n">0.354</td><td class="n">0.022</td></tr>
+          <tr><td class="n">0.177</td><td class="n">0.090</td></tr>
+          <tr><td class="n">0.088</td><td class="n">0.169</td></tr>
+          <tr><td class="n">0</td><td class="n" style="font-weight:500">0.262</td></tr>
+        </tbody>
+      </table>
+      <div class="sm">FP, nats/token. Holds in <b>all 27 languages</b>; at INT4 the same step hurts more</div>
+      <div class="sm" style="color:var(--ink-2)">A graded response is evidence of a real causal role</div>
+    </div>
+  </div>
+</section>
+
+<!-- 11. The dissociation -->
+<section class="hero">
+  <div class="hd">
+    <div class="kicker"><span class="rqn">RQ3</span>Headline result</div>
+    <h2>Whether a feature fires the same and whether it works the same are different questions</h2>
+  </div>
+  <div class="body" style="grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap:48px">
+    <div class="figcol">
+      <div class="fig" style="--fh:372px"><img src="figures/slide-identity.png" alt="Line chart over 16, 8, 6, 5 and 4 bits: the share of features identified from their output effect stays near 100 percent (99.7 percent at 4 bits), while the share passing the activation cutoff falls to 13.2 percent."></div>
+      <div class="cap">1,487-feature sample at INT4</div>
+    </div>
+    <div class="stack" style="gap:24px">
+      <div class="stat fragment" data-fragment-index="1"><div class="n g">13.2%</div><div class="l">pass the activation cutoff, $R_1 > 0.9$</div></div>
+      <div class="stat fragment" data-fragment-index="2"><div class="n v">99.7%</div><div class="l">identified by output effect</div></div>
+      <div class="eq fragment" data-fragment-index="3">
+        $$W_1(f,b)=\cos\!\big(\mathbf{u}_f^{\mathrm{FP}},\,\mathbf{u}_f^{b}\big)$$
+        <div class="why">cosine between FP and quantized effect fingerprints $\mathbf{u}$</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12. Direction-swap -->
+<section>
+  <div class="hd">
+    <div class="kicker"><span class="rqn">RQ3</span>Direction-swap control</div>
+    <h2>The 4-bit drift is generic, not specific to the features</h2>
+  </div>
+  <div class="body cols-fig">
+    <div class="figcol">
+      <div class="fig" style="--fh:400px"><img src="figures/slide-swap.png" alt="Effect cosine with FP against weight precision for the real feature and a swapped direction; both fall together to about 0.84 and 0.83 at 4 bits."></div>
+      <div class="cap">Median effect cosine with FP (IQR), 404 features; swapped direction at the same positions and strengths</div>
+    </div>
+    <div class="stack">
+      <div class="list" style="--c1:200px">
+        <div class="r"><div class="k v">0.842</div><div class="t">feature cosine</div></div>
+        <div class="r"><div class="k">0.828</div><div class="t">swapped-control cosine</div></div>
+        <div class="r"><div class="k g">0.014</div><div class="t">gap at INT4<span class="ci">0.003 to 0.014 at every precision</span></div></div>
+      </div>
+      <div class="sm" style="color:var(--ink-2)">The INT4 drift comes from downstream computation, not from the features</div>
+    </div>
+  </div>
+</section>
+
+<!-- 13. Repair -->
+<section>
+  <div class="hd">
+    <div class="kicker"><span class="rqn">RQ3</span>Activation patching</div>
+    <h2>Fixing the features fixes little of the INT4 loss</h2>
+  </div>
+  <div class="body cols-fig">
+    <div class="figcol">
+      <div class="fig" style="--fh:400px"><img src="figures/slide-repair.png" alt="Bar chart of the share of the INT4 loss gap recovered by restoring FP activations: language group 2.6 percent, control group 1.2 percent, all SAE features 17.4 percent, full residual 39.3 percent."></div>
+      <div class="cap">Share of the INT4 loss gap recovered by restoring FP activations</div>
+    </div>
+    <div class="stack" style="gap:32px">
+      <div class="stat"><div class="n lg v">2.6%</div><div class="l">recovered by restoring the language group</div><div class="ci">[2.4, 2.8]</div></div>
+      <div class="stat"><div class="n lg">39.3%</div><div class="l">recovered by restoring the full residual</div><div class="ci">[38.5, 40.0]</div></div>
+      <div class="sm" style="color:var(--ink-2)">The features survive functionally but carry almost none of the compression damage</div>
+    </div>
+  </div>
+</section>
+
+<!-- 14. Terms -->
+<section>
+  <div class="hd">
+    <div class="kicker"><span class="rqn">RQ4</span>Where the change comes from</div>
+    <h2>Group loss changes through context; single features through later weights</h2>
+  </div>
+  <div class="body" style="grid-template-columns: 440px minmax(0, 1fr); gap:40px; align-items:start">
+    <div class="stack" style="gap:16px">
+      <div class="sm">Same edit, same strength. $D[p,s]$ is the output change with earlier layers $p$ and later weights $s$, each FP or Q</div>
+      <div class="xgrid">
+        <div></div><div class="h">later weights FP</div><div class="h">later weights Q</div>
+        <div class="rh">context FP</div><div class="cell"><b>D[FP,FP]</b><span class="s">reference</span></div><div class="cell cW"><b>D[FP,Q]</b><span class="s">gives W</span></div>
+        <div class="rh">context Q</div><div class="cell cC"><b>D[Q,FP]</b><span class="s">gives C</span></div><div class="cell cI"><b>D[Q,Q]</b><span class="s">adds I</span></div>
+      </div>
+      <div class="eq" style="padding:8px 24px">
+        $$\begin{aligned} C&=D[\mathrm{Q},\mathrm{FP}]-D[\mathrm{FP},\mathrm{FP}]\\ W&=D[\mathrm{FP},\mathrm{Q}]-D[\mathrm{FP},\mathrm{FP}]\end{aligned}$$
+        <div class="why">$C$ context, $W$ later weights, $I$ their interaction</div>
+      </div>
+    </div>
+    <div class="figcol" style="gap:16px">
+      <div class="fig" style="--fh:300px"><img src="figures/slide-terms-bars.png" alt="Left: for single features at INT6 and INT4, bars for the context (C), later-weight (W) and interaction (I) terms against a random edit; at INT4 the W term is largest. Right: for language groups, the median loss-effect terms; at INT4 C is 0.31 and W is 0.10, with C larger in 19 of 27 languages."></div>
+      <div class="cap">Single features (b) and language groups (c), legacy RTN</div>
+      <div class="res">
+        <div><b class="b">Group loss</b>context term larger at INT4</div>
+        <div><b class="g">Single features</b>later-weight term larger</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 15. Counts -->
+<section>
+  <div class="hd">
+    <div class="kicker">Descriptive</div>
+    <h2>Feature counts do not follow resources</h2>
+  </div>
+  <div class="body cols-fig">
+    <div class="figcol">
+      <div class="fig" style="--fh:400px"><img src="figures/slide-counts.png" alt="Bar chart on a log scale of the number of language-selective features per language grouped by resource tier; English is highest, Lao, Yoruba and Khmer are high, Portuguese and Russian are lowest."></div>
+      <div class="cap">Selected language-specific features per language, log scale</div>
+    </div>
+    <div class="stack" style="gap:24px">
+      <div class="list" style="--c1:1fr; display:block">
+        <div class="r" style="display:block"><div class="k" style="font-size:20px; line-height:28px">Lao 464 &middot; Khmer 444 &middot; Yoruba 453</div><div class="t">more features than German or Spanish</div></div>
+        <div class="r" style="display:block"><div class="k" style="font-size:20px; line-height:28px">Portuguese 73 &middot; Russian 83</div><div class="t">close relatives share features, so neither owns them</div></div>
+        <div class="r" style="display:block"><div class="k g" style="font-size:20px; line-height:28px">$\rho = -0.07$</div><div class="t">Spearman, feature count against resource tier</div></div>
+      </div>
+      <div class="sm" style="color:var(--ink-2)">Count reflects how distinct a language looks to the model, not its resources</div>
+    </div>
+  </div>
+</section>
+
+<!-- 16. Belebele null -->
+<section class="honest">
+  <div class="hd">
+    <div class="kicker">Belebele reading comprehension</div>
+    <h2>The only pre-registered test came back null</h2>
+  </div>
+  <div class="frame">
+    <div class="tagline">Pre-registered &middot; confirmatory &middot; null result</div>
+    <div class="inner">
+      <div class="stack" style="gap:24px">
+        <div>
+          <div class="sm">FP excess correct-option loss</div>
+          <div style="display:flex; align-items:baseline; gap:16px">
+            <span class="mono g" style="font-size:48px; line-height:56px; font-weight:500; font-variant-numeric:tabular-nums; letter-spacing:-0.02em">&minus;0.0001</span>
+            <span class="cap">nats/item [&minus;0.0035, +0.0031]</span>
+          </div>
+          <div class="nline" role="img" aria-label="Number line from minus 0.004 to plus 0.004: the interval straddles zero">
+            <div class="axis"></div>
+            <div class="ci" style="left:6.25%; width:82.5%"></div>
+            <div class="zero"></div>
+            <div class="pt" style="left:48.75%"></div>
+            <div class="tk" style="left:0">&minus;0.004</div><div class="tk" style="left:50%; transform:translateX(-50%)">0</div><div class="tk" style="right:0">+0.004</div>
+          </div>
+        </div>
+        <div>
+          <div class="sm" style="margin-bottom:8px">Accuracy over 18 languages, 4-way choice</div>
+          <div class="bars">
+            <div class="bar"><div class="top"><span class="nm">Unedited</span><span class="vl">42.6%</span></div><div class="tr"><div class="fl" style="width:85.2%"></div><div class="ch"></div></div></div>
+            <div class="bar"><div class="top"><span class="nm">After language removal</span><span class="vl">42.6%</span></div><div class="tr"><div class="fl" style="width:85.2%"></div><div class="ch"></div></div></div>
+            <div class="bar"><div class="top"><span class="nm">After control removal</span><span class="vl">42.5%</span></div><div class="tr"><div class="fl" style="width:85%"></div><div class="ch"></div></div></div>
+          </div>
+          <div class="cap" style="margin-top:8px">axis 0 to 50%, dashed line is chance (25%)</div>
+        </div>
+      </div>
+      <div class="stack" style="gap:24px">
+        <ul class="bul">
+          <li>The required positive FP effect is absent</li>
+          <li>So the planned conditional statements cannot be interpreted</li>
+          <li>Larger edits (1,024+ features) do lower accuracy: the test has sensitivity, just not for K64</li>
+        </ul>
+        <div class="sm" style="color:var(--ink-2)">The features matter for next-word prediction, not clearly for this task</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17. Cross-model -->
+<section>
+  <div class="hd">
+    <div class="kicker">Cross-model validation</div>
+    <h2>The pattern holds on Gemma-2-9B and across quantizers, but not on Llama</h2>
+  </div>
+  <div class="body cols-3" style="align-items:start; align-content:center">
+    <div class="xm">
+      <div class="nm">Gemma-2-9B</div>
+      <div class="big">27/27<small>positive</small></div>
+      <ul class="bul"><li>INT6 near FP</li><li>INT4 ratio <span class="mono">1.586</span> <span class="mono dim" style="font-size:16px">[1.238, 2.264]</span></li></ul>
+      <div class="verdict">All frozen predictions met</div>
+    </div>
+    <div class="xm">
+      <div class="nm">Three quantizers</div>
+      <div class="big">3/3<small>same pattern</small></div>
+      <ul class="bul"><li>Legacy, Matched and GPTQ</li><li>All give the same qualitative pattern</li></ul>
+      <div class="verdict">Consistent</div>
+    </div>
+    <div class="xm bad">
+      <div class="nm">Llama-3.2-1B</div>
+      <div class="big">21/27<small>rule: 24</small></div>
+      <ul class="bul"><li>INT4 ratio <span class="mono">0.86</span></li><li>Model, SAE and tokenizer all differ</li></ul>
+      <div class="verdict">Verdict: not consistent</div>
+    </div>
+  </div>
+</section>
+
+<!-- 18. Summary table -->
+<section>
+  <div class="hd">
+    <div class="kicker">Summary</div>
+    <h2>Every INT4 measure improves from Legacy to Matched to GPTQ</h2>
+  </div>
+  <div class="body" style="align-content:center; display:grid; gap:12px">
+    <table class="t">
+      <thead><tr><th>INT4 measurement</th><th>Legacy</th><th>Matched</th><th class="hl">GPTQ</th></tr></thead>
+      <tbody>
+        <tr><td>Active-feature survival (%)</td><td class="n">12.7</td><td class="n">18.6</td><td class="n hl">30.5</td></tr>
+        <tr><td>Mean loss increase (nats/tok)</td><td class="n">0.590</td><td class="n">0.385</td><td class="n hl">0.130</td></tr>
+        <tr><td>Median group-effect ratio</td><td class="n">1.54</td><td class="n">1.36</td><td class="n hl">1.22</td></tr>
+        <tr><td>Median effect cosine ($W_1$)</td><td class="n">0.839</td><td class="n">0.875</td><td class="n hl">0.923</td></tr>
+        <tr><td>Transfer cosine</td><td class="n">0.768</td><td class="n">0.822</td><td class="n hl">0.877</td></tr>
+        <tr><td>Belebele accuracy (%)</td><td class="n">23.6</td><td class="n">29.1</td><td class="n hl">31.8</td></tr>
+      </tbody>
+    </table>
+    <div class="cap">Gemma-2-2B; Belebele uses 18 languages; the rows answer different questions</div>
+  </div>
+</section>
+
+<!-- 19. Limitations -->
+<section>
+  <div class="hd">
+    <div class="kicker">Limitations</div>
+    <h2>What these results do not show</h2>
+  </div>
+  <div class="body" style="align-content:start; display:block">
+    <div class="lims">
+      <div class="lim"><div class="no">01</div><div class="t">One layer, one SAE</div><div class="d">Language-specific units concentrate in early and late layers; we tested a middle one</div></div>
+      <div class="lim"><div class="no">02</div><div class="t">Fixed-length inputs</div><div class="d">Truncation is controlled across precisions but untested with complete sentences</div></div>
+      <div class="lim"><div class="no">03</div><div class="t">Mostly exploratory</div><div class="d">Most FLORES analyses are exploratory; only Belebele was confirmatory</div></div>
+      <div class="lim"><div class="no">04</div><div class="t">Bounded to Gemma</div><div class="d">The Llama inconsistency limits the finding to the Gemma family</div></div>
+      <div class="lim"><div class="no">05</div><div class="t">Simulated quantization</div><div class="d">Weights are rounded in floating point, not run with integer kernels</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 20. Claims -->
+<section>
+  <div class="hd">
+    <div class="kicker">Claims</div>
+    <h2>What we claim</h2>
+  </div>
+  <div class="body" style="align-content:start; display:block">
+    <div class="claims">
+      <div class="claim"><div class="no">1</div><div class="tx">Language features help next-word prediction in <b>all 27 languages</b>, on both Gemma sizes</div></div>
+      <div class="claim"><div class="no">2</div><div class="tx">Dose-response confirmed in <b>every language</b></div></div>
+      <div class="claim"><div class="no">3</div><div class="tx">Activation survival understates preservation: <span class="g">13%</span> &ldquo;survive&rdquo;, <span class="g">99.7%</span> still work</div></div>
+      <div class="claim"><div class="no">4</div><div class="tx">The 4-bit drift is generic (direction-swap control), and restoring features repairs only <span class="g">2.6%</span></div></div>
+      <div class="claim"><div class="no">5</div><div class="tx">Activation agreement, task performance and effect need <b>separate measurements</b></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 21. Reproducibility -->
+<section>
+  <div class="hd">
+    <div class="kicker">Reproducibility</div>
+    <h2>Reported with its failures, from frozen predictions</h2>
+  </div>
+  <div class="body cols-even" style="gap:64px; align-items:start">
+    <ul class="checks">
+      <li><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Reproduced Duan 2026 before reporting its BOS problem</span></li>
+      <li><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Predictions and code hashes frozen before data existed</span></li>
+      <li><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Two faulty 9B predictions documented, not counted</span></li>
+      <li><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Null and failed results reported alongside positive ones</span></li>
+    </ul>
+    <div class="stack" style="gap:32px">
+      <div class="links">
+        <a href="https://github.com/TH4KUR/always-late" target="_blank" rel="noopener"><div class="lb">Code</div><div class="u">github.com/TH4KUR/always-late</div></a>
+        <a href="https://huggingface.co/datasets/karma-skz/always-late-artifacts" target="_blank" rel="noopener"><div class="lb">Artifacts</div><div class="u">huggingface.co/datasets/karma-skz/always-late-artifacts</div></a>
+        <a href="https://wandb.ai/karma-skz-/anlp-project" target="_blank" rel="noopener"><div class="lb">Runs</div><div class="u">wandb.ai/karma-skz-/anlp-project</div></a>
+      </div>
+      <div class="thanks">Questions</div>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.11/contrib/auto-render.min.js"></script>
+<script>
+  // Tighten the decimal point in large monospace figures so "13.2%" does not read as "13 . 2%".
+  document.querySelectorAll('.stat .n, .xm .big, .list .k').forEach(function (el) {
+    if (!el.children.length && el.textContent.indexOf('.') > -1 && el.textContent.indexOf('$') < 0) {
+      el.innerHTML = el.innerHTML.replace(/\./g, '<span class="dot">.</span>');
+    }
+  });
+
+  // Render math first so layout is final when Reveal measures it.
+  renderMathInElement(document.querySelector('.reveal'), {
+    delimiters: [
+      { left: '$$', right: '$$', display: true },
+      { left: '$',  right: '$',  display: false }
+    ],
+    throwOnError: false
+  });
+
+  Reveal.initialize({
+    width: 1280,
+    height: 720,
+    margin: 0,
+    minScale: 0.2,
+    maxScale: 2.0,
+    display: 'grid',
+    center: false,
+    hash: true,
+    fragmentInURL: true,
+    slideNumber: 'c/t',
+    showSlideNumber: 'all',
+    progress: true,
+    controls: true,
+    controlsLayout: 'edges',
+    controlsBackArrows: 'faded',
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    overview: true,
+    help: true
+  });
+</script>
+</body>
+</html>
