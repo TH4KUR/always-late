@@ -32,6 +32,19 @@ reports/raw/
 wandb/
 reports/_gpu_equiv_check.json
 
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.nav
+*.snm
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
 # Env files with secrets
 *.env
 .env

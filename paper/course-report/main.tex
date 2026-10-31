@@ -25,7 +25,7 @@ Quantization rounds model weights to fewer allowed values. It can make language 
 
 A sparse autoencoder (SAE) is a separate network that describes a model's hidden state using a few active features from a large learned dictionary. Each feature has an activation strength and a direction in the hidden state. Some activate more often for one language than for others. Previous work has identified and edited such language features \citep{deng-etal-2025-unveiling}; another study measures how their activations change under quantization \citep{duan2026}.
 
-We connect these measurements. A changed activation does not immediately tell us whether removing that feature still has the same effect on the model. Likewise, a feature can matter for predicting the next token without producing a measurable change on a reading-comprehension test. We compare these outcomes directly.
+We connect these measurements and find a sharp dissociation. At four bits under simple rounding, only 13\% of language features pass the activation-survival cutoff, yet 99.7\% can still be identified from what they do to the model's output. Activation agreement, task performance and preservation of effect need separate measurements: they answer different questions and give different answers. A changed activation does not tell us whether removing that feature still has the same effect. A feature can matter for predicting the next token without producing a measurable change on a reading-comprehension test.
 
 Four questions organize the completed study:
 \begin{description}
@@ -35,6 +35,8 @@ Four questions organize the completed study:
 \item[RQ4:] How much does the same feature edit change when the model is quantized, and what explains that change?
 \end{description}
 These final questions organize the accumulated evidence. They do not replace the original hypotheses or the choices fixed before each analysis.
+
+The mechanistic element is the use of SAE features as causal units. Rather than measuring only whether quantization changes model outputs, we remove, scale and patch individual features and measure whether the same intervention still produces the same downstream effect. This tests where in the model quantization matters and whether the internal explanation survives compression.
 
 \section{Related Work}
 \paragraph{Compression and language.}
@@ -48,7 +50,7 @@ Language-feature editing predates our study \citep{deng-etal-2025-unveiling}. Re
 
 \section{Experimental Setup}
 \paragraph{Models and data.}
-The main model is Gemma-2-2B \citep{gemma2024}. Its fixed Gemma Scope JumpReLU SAE has 16,384 features and reads the hidden state after layer 12. Model inference uses bfloat16; SAE calculations and edits use float32. The Gemma-2-9B extension uses a layer-20, 16k SAE. A smaller Llama-3.2-1B study \citep{grattafiori2024} uses a layer-12 TopK SAE with 14,336 features and $k=48$. Model, SAE, training data and tokenizer change together in that comparison.
+The main model is Gemma-2-2B \citep{gemma2024}. Its fixed Gemma Scope JumpReLU SAE has 16,384 features and reads the hidden state after layer 12, near the midpoint of 26 transformer blocks. Gemma Scope provides SAEs at every even layer; we chose the middle layer because prior work found language-direction features there \citep{deng-etal-2025-unveiling}. Results may differ at other layers. Model inference uses bfloat16; SAE calculations and edits use float32. The Gemma-2-9B extension uses a layer-20, 16k SAE at a similar relative depth in a 42-layer model. A smaller Llama-3.2-1B study \citep{grattafiori2024} uses a layer-12 TopK SAE with 14,336 features and $k=48$. Model, SAE, training data and tokenizer change together in that comparison.
 
 The main panel contains aligned FLORES-200 sentences \citep{nllb2022} in 27 languages, nine per descriptive resource tier. Feature selection uses the development split. Activation and language-association tests use 27,036 content tokens per language from devtest; prediction-loss tests use 300 aligned devtest sentences. The comprehension test uses 385 Belebele questions per language in 18 languages that passed calibration, grouped into 219 passage clusters. A second transfer panel uses fresh Wikipedia articles in six languages.
 
@@ -70,6 +72,8 @@ Adding BOS to the same 256-content-token WikiText windows, while excluding its p
 We retired the first pipeline after finding separate flaws, including counting BOS in feature statistics and changing tokens during decode/re-encode. Its results are excluded. We also corrected an assumption that INT16 was identical to FP: re-rounding makes a small real weight change. A small gain experiment had to be rerun on the intended GPU because the hardware shift was comparable to the measured effect. The 9B review found two defective prediction criteria, described with its results below. The full report and decision log retain these problems and their corrections.
 
 \section{Measurements and Controls}
+The core test is straightforward: for each language, we identify a small group of features that fire selectively for it, remove them, and measure how much worse the model predicts the next token compared with removing matched controls. Doing this at full precision and at each bit width tells us whether quantization changes how much the features matter.
+
 \paragraph{Feature activation and preferred language.}
 A feature fires when its activation is positive. We select language features using the ratio of their highest per-language firing rate to their mean across languages. Selection also requires enough active tokens, a shuffled-language cutoff (50 permutations), and stable peak language in 80 of 100 resamples. This yields 8,086 features. On FP devtest, 6,663 have a unique supported peak language. We test retention of that language only for this established set.
 
@@ -86,7 +90,7 @@ For hidden state $x$, activation $a_f$ and decoder direction $d_f$, we edit a gr
 \begin{equation}
  x'=x+\sum_{f\in G}(a'_f-a_f)d_f.
 \end{equation}
-This retains the SAE reconstruction error. Removal sets $a'_f=0$, scaling sets $a'_f=\alpha a_f$, and a donor patch uses the FP activation at the same position.
+This retains the SAE reconstruction error. Removal sets $a'_f=0$, scaling sets $a'_f=\alpha a_f$, and a donor patch uses the FP activation at the same position. For example, Turkish has 64 selective features; setting all 64 to zero and measuring the increase in next-token loss for Turkish sentences, minus the increase from zeroing a matched non-selective group, gives the excess harm $E$.
 
 Prediction loss, or negative log-likelihood (NLL), measures how much probability the model assigns to the actual next token. Lower is better; units are nats/token. We subtract control-group harm from language-group harm and call the result excess harm, $E_\ell^b$. Positive $E$ means the language edit hurts more. The effect ratio $E_\ell^b/E_\ell^{\mathrm{FP}}$ compares it with FP: one means equal harm, 1.5 means 50\% greater harm. The median of language ratios, their mean, and the ratio of mean effects are reported separately because small denominators can make them differ. Patch recovery measures how much of the loss gap a specified restoration removes.
 
@@ -97,9 +101,9 @@ Bracketed ranges are 95\% bootstrap intervals unless stated otherwise. Resamplin
 
 \section{RQ1: Which Activations Survive?}
 \paragraph{Feature activity changes the comparison.}
-The original legacy-RTN tests did not establish a selective-feature disadvantage after Holm correction for multiple comparisons. Survival was lower than controls by 0.28 points at INT7 and 1.44 points at INT6 (adjusted $p=0.514,0.128$). Small effects remain possible. A stricter selectivity cutoff ($S>5$) gives a larger INT6 gap of $-7.16$ points; matching activation magnitude in ten bins reverses it to $+4.58$.
+The selective-vulnerability hypothesis from our initial study was not supported after correction for multiple comparisons (adjusted $p=0.514$ at INT7, $0.128$ at INT6). The stronger evidence throughout the study comes from the consistent direction of effects across 27 languages and from bootstrap intervals, not from individual significance tests. Survival was lower than controls by 0.28 points at INT7 and 1.44 points at INT6. Small effects remain possible. A stricter selectivity cutoff ($S>5$) gives a larger INT6 gap of $-7.16$ points; matching activation magnitude in ten bins reverses it to $+4.58$.
 
-Low-, mid- and high-resource languages have INT6 survival rates of 69.4\%, 90.6\% and 95.1\%. Accounting for activation scale reduces the fitted tier slope from $+12.3$ to $-0.81$ points. Later measures still show some tier patterns at INT16, and GPTQ's adjusted result depends on the adjustment choice. These measurements alone do not identify a training-resource mechanism behind language damage.
+Low-, mid- and high-resource languages have INT6 survival rates of 69.4\%, 90.6\% and 95.1\%. Accounting for activation scale reduces the fitted tier slope from $+12.3$ to $-0.81$ points. Later measures still show some tier patterns at INT16, and GPTQ's adjusted result depends on the adjustment choice. These measurements alone do not identify a training-resource mechanism behind language damage. Individual languages deviate from tier averages: some low-resource languages have more selected features and larger FP excess harm than some mid-resource languages, consistent with feature count reflecting the model's internal specialization rather than training-data volume alone.
 
 \begin{table}[t]
 \centering
@@ -142,7 +146,7 @@ Gradual suppression supports the same result. In all 27 languages, FP harm incre
 \paragraph{A second Gemma size and a different setup.}
 Gemma-2-9B shows positive FP excess harm in all 27 languages, with median 0.270 $[0.197,0.608]$. The median effect ratio is 1.019 $[0.978,1.045]$ at INT6 and 1.586 $[1.238,2.264]$ at INT4. At INT4, the mean ratio is 2.479 and the ratio of mean effects is 1.474. These intervals resample languages. Paired 2B--9B difference intervals include zero, so the data support the broad pattern across sizes without resolving a size effect.
 
-The 9B prediction checklist had two defects: its suppression inequality was reversed, and its selectivity criterion was guaranteed by how features were selected. We do not count those as independent confirmations. The measured suppression-harm ordering holds in all 27 languages. Gemma-2-9B GPTQ remains pending.
+The 9B prediction checklist had two defects: its suppression inequality was reversed, and its selectivity criterion was guaranteed by how features were selected. We do not count those as independent confirmations. The measured suppression-harm ordering holds in all 27 languages. At INT4, GPTQ lowers the median effect ratio to 1.165 $[0.997,1.370]$, below legacy RTN in 26 of 27 languages, and matched RTN gives 1.490. Activation survival rises from 22.3\% (legacy) to 32.9\% (matched) and 46.6\% (GPTQ). Mean loss increase falls from 0.410 to 0.287 and 0.088 nats/token. All frozen predictions for both tiers were met.
 
 Llama has a smaller positive FP median effect, 0.048 $[0.018,0.173]$, with positive effects in 21 of 27 languages. This misses the consistency rule requiring 24. Its INT4 median ratio is 0.86 $[0.74,1.03]$, with less consistent suppression ordering. The effect differs across these model/SAE setups.
 
@@ -154,7 +158,7 @@ Restoring FP activations in K64 recovers 2.6\% $[2.4,2.8]$ of the legacy INT4 lo
 
 The main fine-gain study fails its repair rules. A legacy-RTN follow-up on 562 fresh sentences finds a small benefit at multiplier 1.1: $-0.00135$ nats/token, with 97.5\% interval $[-0.00197,-0.00032]$, and improvement in 20 of 27 languages. It meets the rule after multiple-comparison correction at 1.1, but not 1.2. The primary pair of multipliers uses Holm correction. GPTQ does not repeat the fine-gain trend on the main 300-sentence panel; the fresh-sentence test was legacy-only.
 
-Selecting groups anew after quantization changes their membership (overlap with FP falls from Jaccard 0.855 at INT6 to 0.488 at INT4), but does not make removal more harmful (median difference $-0.0098$). The most effective activation multiplier is repeatable within the study, yet does not track inverse activation shrinkage ($\rho=-0.17$, $p=0.804$). Simple shrinkage compensation is therefore not supported by this test.
+Selecting groups anew after quantization changes their membership (overlap with FP falls from Jaccard 0.855 at INT6 to 0.488 at INT4), but does not make removal more harmful (median difference $-0.0098$). The most effective activation multiplier is repeatable within the study, yet does not track inverse activation shrinkage (Spearman $\rho_s=-0.17$, $p=0.804$). Simple shrinkage compensation is therefore not supported by this test.
 
 \section{RQ3: Do Activation Measures Predict Output Effects?}
 Of the 8,086 selected features, 6,663 establish a peak language on FP devtest. At legacy INT4, 70.8\% retain it, while only 13.75\% in this group pass activation correlation 0.9. Near-tied FP language preferences are more likely to switch: peak-margin discrimination scores are 0.90, 0.81 and 0.75 at INT6, INT5 and INT4. Removing matched lost-language and retained-language subgroups gives little harm difference: medians $+0.0006,+0.0007,+0.0002$ nats/token at INT4/5/6.
@@ -193,16 +197,16 @@ Averaging effects across contexts makes preservation look stronger. For legacy I
 On the six-language Wikipedia panel, INT4 cosine is 0.754, 0.808 and 0.876 for legacy RTN, matched RTN and GPTQ. Control-direction sensitivity improves INT4 prediction by 19\%, 29\% and 30\%. At INT6 it meets the utility rule for both RTN methods, but not GPTQ (3\% $[-14,+17]$), whose error is near the reference scale. GPTQ calibration uses separate articles from the same domain, which may contribute to its advantage.
 
 \section{Discussion and Conclusion}
-The study establishes that the selected language-feature groups contribute to next-token prediction in both Gemma sizes. Their effects remain near FP at moderate precision and grow under strong RTN compression. GPTQ better preserves activations and edit effects in the main 2B setting. Many features remain identifiable from output effects even when they fail the activation-survival cutoff. Activation correlation supplies a small, consistent prediction gain.
+The central finding is a dissociation: activation survival and functional preservation come apart. At four bits, 87\% of language features look ``dead'' by the standard activation cutoff, yet almost all still produce recognizable output effects. A direction-swap control shows that the similarity loss at INT4 is generic to downstream computation, not specific to the features themselves. And restoring the features' original activations recovers only 2.6\% of the quantization damage, meaning the amplified edit sensitivity does not point to the features as the locus of harm. These three results together say that the features survive functionally but carry almost none of the model's loss from compression.
 
-Other tests set useful limits. The initial selective-vulnerability result is not consistent across quantizers. The selected groups show no clear effect on the comprehension task, and restoring or strengthening them gives limited repair. These findings describe where the proposed interpretation or intervention is supported and where it is not established.
+The selected groups contribute to next-token prediction in all 27 languages on both Gemma sizes, with dose--response confirmed in every language. GPTQ roughly halves the INT4 amplification and the completed 9B three-arm comparison shows the same quantizer ordering as 2B, with all frozen predictions met. The Llama check, where only 21 of 27 languages show a positive effect, bounds the finding within the Gemma family.
 
-Current SAE research faces incomplete dictionaries, mixed features and explanations that depend on the task. Our controls support causal claims about the specific edits tested. More models and dictionaries would test how widely the findings apply. The completed results already support a measured account of multilingual feature preservation; the pending 9B GPTQ run contributes no evidence here.
+Other tests show where the interpretation breaks down. The selected groups show no clear effect on the reading-comprehension task, and the initial selective-vulnerability hypothesis was not supported after multiple-comparison correction. These negative results are as informative as the positive ones: they mark where the proposed explanation holds and where it does not.
 
 \section*{Limitations, Challenges and Future Work}
-Most evidence comes from Gemma-2-2B at one layer and one fixed SAE. The 9B RTN extension and narrower Llama check broaden the evidence, but results may differ with other models, layers or dictionaries. Features can mix or split concepts, and large edits can create unusual hidden states. Activity matching and direction controls reduce some differences without matching every feature property. The results apply to the specified edits and outcomes.
+Most evidence comes from Gemma-2-2B at one layer and one fixed SAE. The 9B three-arm extension and narrower Llama check broaden the evidence, but results may differ with other models, layers or dictionaries. Features can mix or split concepts, and large edits can create unusual hidden states. Activity matching and direction controls reduce some differences without matching every feature property. The results apply to the specified edits and outcomes.
 
-Most FLORES analyses reuse examined sentences. Holding out languages or features does not necessarily hold out documents. Intervals condition on the feature groups and other fixed choices. Language tiers also mix script, tokenization, training exposure and competence. Belebele tests one comprehension task, while the external Wikipedia panel has six languages and shares a domain with GPTQ calibration.
+Most FLORES analyses reuse examined sentences. Holding out languages or features does not necessarily hold out documents. Intervals condition on the feature groups and other fixed choices. Language tiers also mix script, tokenization, training exposure and competence. Truncating inputs to a fixed token budget removes the length confound but may alter internal representations compared with complete sentences; matching sentence length would trade truncation for a sentence-complexity confound, and varying both independently would require a corpus that FLORES-200 alignment does not provide. Belebele tests one comprehension task, while the external Wikipedia panel has six languages and shares a domain with GPTQ calibration.
 
 The quantization experiment rounds weights during floating-point inference. It does not measure integer-kernel deployment or activation quantization. Calibration and error compensation are not varied independently. Small results can depend on hardware and arithmetic precision, as the correction record shows. Additional independent text, dictionaries and precision comparisons would test broader generalization.
 
@@ -250,7 +254,7 @@ F5 and prediction & Identity, effect drift, association discrimination; continuo
 Measurement audit & Gain/noise identity, scale separation, adjusted tiers and extra predictors & Identity verified; scale separation met by convention. Tier estimates mixed; gain/$\nu$ increments include zero. Exploratory.\\
 Transfer & Fixed edit; H1 residual drift, H3 prediction, H4 averaging; group A3 & Main H1/H4 supported; H3/A3 mixed; combined utility not met. External RTN utility met; GPTQ INT6 unresolved. Exploratory.\\
 Llama & Frozen existence/dose/INT4 consistency rule & Not consistent (P1 21/27, 24 required); FP median effect positive. INT4 F5 association/prediction modestly positive. Exploratory.\\
-Gemma-2-9B & FP effects, precision ladder, graded dependence & Positive 27/27, INT6 near FP, INT4 increase. Reversed inequality and a criterion guaranteed by selection documented; no GPTQ result.\\
+Gemma-2-9B & FP effects, precision ladder, three-arm comparison & Positive 27/27, INT6 near FP, INT4 increase. GPTQ lowers median ratio to 1.165; all frozen predictions met. Two defective criteria documented.\\
 \bottomrule
 \end{tabular}
 \caption{Completed study inventory. Outcomes follow each test's original rule. The main text and evidence map give estimates, uncertainty and explanations.}
