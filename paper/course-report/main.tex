@@ -9,15 +9,21 @@
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{balance}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
 \graphicspath{{figures/}}
 
 \title{Language Features under Weight Quantization:\\Activation Agreement and Intervention Effects}
-\author{Hemang Joshi \and Eashaan Thakur \and Shardul Joshi \and Nikhita Ravi\\
-International Institute of Information Technology, Hyderabad}
+\author{
+Hemang Joshi, Eashaan Thakur, Shardul Joshi, Nikhita Ravi \\
+IIIT Hyderabad \\
+\texttt{\{hemang.joshi, eashaan.thakur, nikhita.ravi\}@research.iiit.ac.in}, \\
+\texttt{shrinivas.joshi@students.iiit.ac.in}
+}
 \begin{document}
 \maketitle
 \begin{abstract}
-When a language model's weights are rounded to fewer bits, do the features used to explain it still behave in the same way? We study 27 languages, mainly with Gemma-2-2B and a fixed sparse autoencoder (SAE). We reproduce an earlier study and find that omitting the beginning-of-sequence token substantially changes its Gemma measurements. After correcting this input protocol, removing selected language features harms next-token prediction more than removing matched controls in all 27 languages. Gemma-2-9B shows the same broad pattern. Effects remain near full precision at six bits and grow at four bits under simple rounding; GPTQ reduces that change. Activation changes and output effects differ: under legacy RTN at four bits, only 13.2\% of a 1,487-feature sample passes the activation-survival cutoff, yet 99.7\% can still be identified from their effects. Activation correlation gives a small positive gain in predicting effect similarity. A reading-comprehension test shows no clear effect of the selected groups, and restoring their activations repairs little quantization loss. The study establishes useful effects of specific feature edits and shows why activation agreement, task performance and preservation of an edit's effect need separate measurements.
+Quantization makes language models cheaper to run, but it can affect languages unequally. Interpretability work explains multilingual behavior through sparse-autoencoder (SAE) features that fire for specific languages and can be edited \citep{deng-etal-2025-unveiling}, and recent work asks whether these features keep their activations after quantization \citep{duan2026}. Whether they also keep their function is untested. We therefore ask: after a model's weights are rounded to fewer bits, do language-selective SAE features still do the same job? Reproducing the activation study first showed that omitting the beginning-of-sequence token distorts its Gemma results. With corrected inputs, we remove, scale and restore each language's feature group in Gemma-2-2B across 27 FLORES-200 languages and 8- to 4-bit weights, compare against matched controls, and repeat the main tests on Gemma-2-9B. Removing a language's features harms its next-token prediction in all 27 languages, and harm rises smoothly with edit strength; it stays near full precision down to five bits and grows at four. Yet activation and function come apart: at four bits only 13.2\% of features pass the activation-survival cutoff, while 99.7\% are still identified by their output effect. Control directions drift almost equally, and restoring the features repairs only 2.6\% of the loss. Activation agreement and the effect of an edit therefore need separate measurements. Code and results are at \url{https://github.com/TH4KUR/always-late}.
 \end{abstract}
 
 \section{Introduction}
@@ -29,7 +35,7 @@ We connect these measurements and find a sharp dissociation. At four bits under 
 
 Four questions organize the completed study:
 \begin{description}
-\item[RQ1:] Which language features retain their activation patterns after quantization, and how does the quantizer affect this?
+\item[RQ1:] Which language features retain their activation patterns after quantization?
 \item[RQ2:] How does editing language features affect text prediction and comprehension before and after quantization?
 \item[RQ3:] How well do activation measurements predict whether a feature's output effect is preserved?
 \item[RQ4:] How much does the same feature edit change when the model is quantized, and what explains that change?
@@ -39,28 +45,28 @@ These final questions organize the accumulated evidence. They do not replace the
 The mechanistic element is the use of SAE features as causal units. Rather than measuring only whether quantization changes model outputs, we remove, scale and patch individual features and measure whether the same intervention still produces the same downstream effect. This tests where in the model quantization matters and whether the internal explanation survives compression.
 
 \section{Related Work}
-\paragraph{Compression and language.}
-\citet{marchisio-etal-2024-quantization} show that multilingual quantization effects vary by task and evaluation. Resource tiers describe differences in language resources \citep{joshi-etal-2020-state}, but do not isolate how much training exposure a model received. GPTQ uses calibration data to reduce rounding error \citep{frantar2022}. We compare it with simple rounding under two implementations.
+\paragraph{Quantization affects languages unequally.}
+Quantization studies usually judge a compressed model by its outputs. \citet{marchisio-etal-2024-quantization} find that quantization harms some languages more than others. This raises our question: what changes \emph{inside} the model for each language? To group languages we use the resource classes of \citet{joshi-etal-2020-state}. These describe available data, not what a model saw, so tier differences are only descriptive. We compare simple rounding with GPTQ, which uses calibration data to correct rounding error \citep{frantar2022}.
 
-\paragraph{SAEs and direct evaluation.}
-Gemma Scope supplies public SAEs for Gemma models \citep{lieberum-etal-2024-gemma}. JumpReLU and TopK provide ways to learn sparse representations \citep{rajamanoharan2024,gao2024}. These tools remain imperfect: features can mix concepts, split them across units, or leave parts of the hidden state unexplained \citep{leask2025canonical}. Task-based evaluation can still test whether specific edits are useful \citep{makelov2025principled}. SAEBench also shows that better proxy scores need not yield better practical performance \citep{karvonen2025saebench}. We therefore keep the dictionary fixed and measure both activations and controlled edit effects.
+\paragraph{SAEs reveal language-specific features.}
+Sparse autoencoders rewrite a hidden state as a few active features from a learned dictionary \citep{gao2024,rajamanoharan2024}. Gemma Scope releases such SAEs for Gemma~2 \citep{lieberum-etal-2024-gemma}, giving one fixed dictionary before and after quantization. With SAEs, \citet{deng-etal-2025-unveiling} found features specific to one language and showed that editing them changes the model's output in that language. These features are our starting point: we ask whether their causal role survives quantization. But SAE features are not canonical units and can merge or split concepts \citep{leask2025canonical}, and good proxy scores need not mean useful features \citep{karvonen2025saebench}. Following \citet{makelov2025principled}, we therefore judge features by the effects of controlled edits, not by activation agreement alone.
 
-\paragraph{Feature preservation and patching.}
-Language-feature editing predates our study \citep{deng-etal-2025-unveiling}. Related work studies activation survival under rounding \citep{duan2026}, geometric survival under pruning \citep{borobia2026}, and the geometry of feature effects \citep{hoang2026}. Activation patching can test where quantization error affects outputs \citep{chang-etal-2025-inputs}, including interactions between patches \citep{vaidyanathan2026}. Our contribution is to compare these kinds of preservation across languages and quantizers with explicit control edits. Belebele provides a separate comprehension task \citep{bandarkar-etal-2024-belebele}.
+\paragraph{Do features survive compression?}
+Closest to our question, \citet{duan2026} measure whether SAE feature activations still match after quantization and argue that perplexity can miss this damage; we reproduce and extend their study. \citet{borobia2026} ask a similar question for pruning. Neither tests whether a feature still \emph{does the same job}. \citet{hoang2026} show that a feature's downstream effect can be studied in its own right, which supports comparing effects directly. To locate where an effect changes we use activation patching, as \citet{chang-etal-2025-inputs} do for quantization errors, and report an interaction term because patches can interact \citep{vaidyanathan2026}. For a task beyond next-token prediction we use the Belebele reading-comprehension benchmark \citep{bandarkar-etal-2024-belebele}.
 
 \section{Experimental Setup}
 \paragraph{Models and data.}
-The main model is Gemma-2-2B \citep{gemma2024}. Its fixed Gemma Scope JumpReLU SAE has 16,384 features and reads the hidden state after layer 12, near the midpoint of 26 transformer blocks. Gemma Scope provides SAEs at every even layer; we chose the middle layer because prior work found language-direction features there \citep{deng-etal-2025-unveiling}. Results may differ at other layers. Model inference uses bfloat16; SAE calculations and edits use float32. The Gemma-2-9B extension uses a layer-20, 16k SAE at a similar relative depth in a 42-layer model. A smaller Llama-3.2-1B study \citep{grattafiori2024} uses a layer-12 TopK SAE with 14,336 features and $k=48$. Model, SAE, training data and tokenizer change together in that comparison.
+The main model is Gemma-2-2B \citep{gemma2024}. Its fixed Gemma Scope JumpReLU SAE has 16,384 features and reads the hidden state after layer 12, near the midpoint of 26 transformer blocks. Prior work does not point to a single best layer. Language-specific neurons sit mainly in the first and last layers \citep{tang-etal-2024-language,kojima-etal-2024-multilingual}, middle layers work in a more shared, English-leaning concept space \citep{wendler-etal-2024-llamas}, and language-specific SAE features appear across Gemma~2 layers with layer-dependent effects \citep{deng-etal-2025-unveiling}. If language-specific units concentrate at the extremes, finding language-selective features and causal effects at a middle layer is a conservative test, and early or late layers might show stronger effects. We study one middle layer with one public SAE because each added layer or dictionary repeats feature selection, matched controls and every quantized run, which our compute budget did not allow. Model inference uses bfloat16; SAE calculations and edits use float32. The Gemma-2-9B extension uses a layer-20, 16k SAE at a similar relative depth in a 42-layer model. A smaller Llama-3.2-1B study \citep{grattafiori2024} uses a layer-12 TopK SAE with 14,336 features and $k=48$. Model, SAE, training data and tokenizer change together in that comparison.
 
 The main panel contains aligned FLORES-200 sentences \citep{nllb2022} in 27 languages, nine per descriptive resource tier. Feature selection uses the development split. Activation and language-association tests use 27,036 content tokens per language from devtest; prediction-loss tests use 300 aligned devtest sentences. The comprehension test uses 385 Belebele questions per language in 18 languages that passed calibration, grouped into 219 passage clusters. A second transfer panel uses fresh Wikipedia articles in six languages.
 
 \paragraph{Quantization.}
-Round-to-nearest (RTN) maps a weight to its nearest allowed value. Legacy RTN is the original implementation, which shares attention scales across corresponding coordinates of different heads. Matched RTN uses one scale per output channel and the same rounding grid as GPTQ. GPTQ calibrates on 8,192 Wikipedia tokens per language (221,184 total), separate from evaluated sentences and articles. Matching the grid helps distinguish changes in the rounding setup from GPTQ's additional benefit. Calibration and error compensation still change together.
+Round-to-nearest (RTN) maps a weight to its nearest allowed value. We use three quantizers: legacy RTN, the setting of the study we reproduce, which shares attention scales across corresponding coordinates of different heads; matched RTN, which uses one scale per output channel; and GPTQ, calibrated on 8,192 Wikipedia tokens per language that are separate from evaluated text. Main figures show legacy RTN for direct comparison with the reproduced study; the other two quantizers give the same qualitative pattern (Appendix~\ref{app:robustness}).
 
 Selected transformer weights are rounded; embeddings and normalization parameters stay unchanged. Values remain stored and evaluated in floating point, so we measure weight-rounding effects rather than deployment speed or memory savings. The original tests cover FP and eight to four bits (INT8--INT4). FP is the unquantized reference. Later intervention comparisons focus on INT6 and INT4. INT16 and INT12 make small real weight changes and serve as reference conditions; INT16 is not identical FP arithmetic.
 
 \paragraph{Analysis status.}
-Most FLORES studies are exploratory: they reuse examined sentences or follow earlier results. Fixing a later stage's choices before its output does not supply independent confirmation. The original held-out Belebele family is confirmatory. We claim no verified external preregistration. Code hashes, input records, restore checks and sham edits support implementation checks. New quantizer arms reproduce FP reference values exactly. The 9B review regenerates its analysis byte-identically from pinned raw files; it does not repeat GPU inference. This reporting revision adds no experiment or statistical analysis.
+Most FLORES studies are exploratory: they reuse examined sentences or follow earlier results. Fixing a later stage's choices before its output does not supply independent confirmation. The original held-out Belebele family is confirmatory. We claim no verified external preregistration. This reporting revision adds no experiment; the feature-count comparison in Section~\ref{sec:rq1} is a new descriptive summary of saved outputs.
 
 \section{Problems Found and Corrected}
 \paragraph{The missing BOS token in the earlier Gemma evaluation.}
@@ -69,10 +75,26 @@ Our first reproduction disagreed with Duan's reported survival rates. Running th
 Adding BOS to the same 256-content-token WikiText windows, while excluding its position from feature statistics, reduced full-precision perplexity from 458.4 to 16.1. Lower perplexity means better text prediction. INT6 survival rose to 97.52\%, and INT7 to 99.97\%. Each regime defines its own active-feature set, so these percentages do not follow exactly the same feature population. We corrected our subsequent protocol by prepending one BOS token and excluding BOS and padding from statistics and edits. This demonstrates a large input-protocol effect in the Gemma evaluation; it does not establish that every conclusion in Duan's paper is wrong.
 
 \paragraph{Our own corrections.}
-We retired the first pipeline after finding separate flaws, including counting BOS in feature statistics and changing tokens during decode/re-encode. Its results are excluded. We also corrected an assumption that INT16 was identical to FP: re-rounding makes a small real weight change. A small gain experiment had to be rerun on the intended GPU because the hardware shift was comparable to the measured effect. The 9B review found two defective prediction criteria, described with its results below. The full report and decision log retain these problems and their corrections.
+We retired the first pipeline after finding separate flaws, including counting BOS in feature statistics and changing tokens during decode/re-encode. Its results are excluded. We also corrected an assumption that INT16 was identical to FP: re-rounding makes a small real weight change. A small gain experiment had to be rerun on the intended GPU because the hardware shift was comparable to the measured effect. The 9B review found two defective prediction criteria, described with its results below.
 
 \section{Measurements and Controls}
-The core test is straightforward: for each language, we identify a small group of features that fire selectively for it, remove them, and measure how much worse the model predicts the next token compared with removing matched controls. Doing this at full precision and at each bit width tells us whether quantization changes how much the features matter.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw=black!70, rounded corners=2pt, fill=black!4, text width=1.55cm, minimum height=1.45cm, align=center, font=\footnotesize, inner sep=1.5pt},
+  arr/.style={-{Stealth[length=4pt]}, black!60}]
+\node[box] (a) {Pick 64 features that fire most for language $\ell$};
+\node[box, right=0.2cm of a] (b) {Set them to zero};
+\node[box, right=0.2cm of b] (c) {Measure the rise in next-token loss on $\ell$};
+\node[box, right=0.2cm of c] (d) {Subtract the rise for 64 matched control features};
+\draw[arr] (a) -- (b); \draw[arr] (b) -- (c); \draw[arr] (c) -- (d);
+\node[draw=black!70, rounded corners=2pt, font=\footnotesize, below=0.25cm of b.south east, anchor=north, text width=7.0cm, align=center, inner sep=3pt]
+  {Repeat at full precision and with weights rounded to 8, 7, 6, 5 and 4 bits; the result is the excess harm $E_\ell^b$};
+\end{tikzpicture}
+\caption{The core test, run for each of the 27 languages.}
+\label{fig:pipeline}
+\end{figure}
+Figure~\ref{fig:pipeline} shows the core test: remove a language's most selective features, measure how much worse the model predicts that language's text, and compare with removing matched ordinary features.
 
 \paragraph{Feature activation and preferred language.}
 A feature fires when its activation is positive. We select language features using the ratio of their highest per-language firing rate to their mean across languages. Selection also requires enough active tokens, a shuffled-language cutoff (50 permutations), and stable peak language in 80 of 100 resamples. This yields 8,086 features. On FP devtest, 6,663 have a unique supported peak language. We test retention of that language only for this established set.
@@ -94,38 +116,23 @@ This retains the SAE reconstruction error. Removal sets $a'_f=0$, scaling sets $
 
 Prediction loss, or negative log-likelihood (NLL), measures how much probability the model assigns to the actual next token. Lower is better; units are nats/token. We subtract control-group harm from language-group harm and call the result excess harm, $E_\ell^b$. Positive $E$ means the language edit hurts more. The effect ratio $E_\ell^b/E_\ell^{\mathrm{FP}}$ compares it with FP: one means equal harm, 1.5 means 50\% greater harm. The median of language ratios, their mean, and the ratio of mean effects are reported separately because small denominators can make them differ. Patch recovery measures how much of the loss gap a specified restoration removes.
 
-\paragraph{Output-effect similarity and uncertainty.}
+\paragraph{Output-effect similarity.}
 A feature's effect fingerprint is the vector of changes in output-token scores caused by removing it. Cosine similarity with its FP fingerprint, $W_1$, measures how closely those directions agree; one means identical direction. The F5 study samples 1,487 features; 1,412 pass the INT16 reliability criterion. A stricter similarity cutoff, 0.9489, comes from the fifth percentile of INT16 cosines. Close agreement with this reference and recognizable feature identity are different tests.
 
-Bracketed ranges are 95\% bootstrap intervals unless stated otherwise. Resampling units follow the experiment: paired sentences for group loss, passages for Belebele, languages for F5 prediction and reviewed 9B comparisons, and features plus source sentences for transfer. Intervals hold other choices, such as groups and controls, fixed. They do not describe uncertainty over all model or SAE choices.
+Bracketed ranges are 95\% bootstrap intervals unless stated otherwise (resampling units in Appendix~\ref{app:languages}).
 
 \section{RQ1: Which Activations Survive?}
-\paragraph{Feature activity changes the comparison.}
-The selective-vulnerability hypothesis from our initial study was not supported after correction for multiple comparisons (adjusted $p=0.514$ at INT7, $0.128$ at INT6). The stronger evidence throughout the study comes from the consistent direction of effects across 27 languages and from bootstrap intervals, not from individual significance tests. Survival was lower than controls by 0.28 points at INT7 and 1.44 points at INT6. Small effects remain possible. A stricter selectivity cutoff ($S>5$) gives a larger INT6 gap of $-7.16$ points; matching activation magnitude in ten bins reverses it to $+4.58$.
+\label{sec:rq1}
+\paragraph{Selective features are not more fragile.}
+Language-selective features survive only slightly less often than matched controls: 0.28 points less at INT7 and 1.44 at INT6, not significant after correction for multiple comparisons (adjusted $p=0.514$ and $0.128$). The non-significant tests are these selective-versus-control survival contrasts; the study's main effects (excess harm and dose--response in 27 of 27 languages, 99.7\% effect identity, 2.6\% repair) have intervals far from zero. The small gap is explained by activation strength rather than low power. Selective features activate more weakly than controls (median peak activation 9.8 versus 14.2 at the stricter cutoff $S>5$), and weaker features survive less (Spearman $\rho_s=0.35$ at INT6). At $S>5$ the gap widens to $-7.16$ points, but when controls are also matched on activation strength it reverses to $+4.58$. Activation strength, not language selectivity, predicts which features stop firing.
 
-Low-, mid- and high-resource languages have INT6 survival rates of 69.4\%, 90.6\% and 95.1\%. Accounting for activation scale reduces the fitted tier slope from $+12.3$ to $-0.81$ points. Later measures still show some tier patterns at INT16, and GPTQ's adjusted result depends on the adjustment choice. These measurements alone do not identify a training-resource mechanism behind language damage. Individual languages deviate from tier averages: some low-resource languages have more selected features and larger FP excess harm than some mid-resource languages, consistent with feature count reflecting the model's internal specialization rather than training-data volume alone.
+Low-, mid- and high-resource languages have INT6 survival rates of 69.4\%, 90.6\% and 95.1\% (Appendix Figure~\ref{fig:tiers}). Accounting for activation scale reduces the fitted tier slope from $+12.3$ to $-0.81$ points. Later measures still show some tier patterns at INT16, and GPTQ's adjusted result depends on the adjustment choice. These measurements alone do not identify a training-resource mechanism behind language damage.
 
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{p{3.0cm}rrr}
-\toprule
-INT4 measurement & Legacy & Matched & GPTQ\\
-\midrule
-Active-feature survival (\%) & 12.7 & 18.6 & 30.5\\
-Mean loss increase (nats/token) & 0.590 & 0.385 & 0.130\\
-Median group-effect ratio & 1.54 & 1.36 & 1.22\\
-Median effect cosine ($W_1$) & 0.839 & 0.875 & 0.923\\
-Transfer cosine & 0.768 & 0.822 & 0.877\\
-Belebele accuracy (\%) & 23.6 & 29.1 & 31.8\\
-\bottomrule
-\end{tabular}
-\caption{Completed Gemma-2-2B quantizer comparison. Rows answer different questions. Survival averages active-feature shares per language; $W_1$ uses F5 features; transfer uses eligible feature--context pairs; Belebele uses 18 languages.}
-\label{tab:quantizers}
-\end{table}
+Resource tier also does not predict how many language-selective features a language has (Appendix Figure~\ref{fig:tiers}b; descriptive, post hoc). Counts range from 73 (Portuguese) to 1,719 (English), and Lao, Yoruba and Khmer each have more than every high-resource language except English, Japanese and Chinese (Spearman $\rho_s=-0.07$ between count and tier). Selectivity is relative to the other 26 languages: a feature counts when it fires for one language much more than for the rest. A distinctive script or spelling can give a language many such exclusive features (Lao 464, Khmer 444, Yoruba 453), but script alone does not decide it: Bengali and Telugu have their own scripts and few features. The lowest counts belong to languages with a close relative in the panel, such as Portuguese and Spanish or Russian (83) and Ukrainian (84), whose shared features are exclusive to neither; English, the dominant training language, is the outlier. Feature count therefore reflects how distinct a language's input looks to the model relative to the panel, not how well-resourced it is. Count is also unrelated to survival ($\rho_s=-0.16$ at INT6, $-0.07$ at INT4), and every removal test uses 64 features, so count differences do not drive the harm comparisons.
 
-\paragraph{GPTQ improves preservation.}
-At INT6, average active-feature survival is 85.0\%, 89.7\% and 97.5\% for legacy RTN, matched RTN and GPTQ. At INT4, GPTQ exceeds legacy RTN by 17.83 points $[16.29,19.38]$ and matched RTN by 11.86 $[11.18,12.50]$. It also reduces the mean loss increase by 0.461 nats/token $[0.348,0.595]$ relative to legacy RTN. Both outcomes improve in all 27 languages. Intervals resample paired languages. Matched RTN closes part of the gap by itself. Its small selective-feature contrasts cross the significance threshold, while GPTQ's do not. These exploratory comparisons support a strong quantizer effect and no consistent selective penalty across all three methods.
+
+\paragraph{Other quantizers.}
+Under matched RTN and GPTQ, more features survive and loss rises less, but the pattern is the same: survival falls with fewer bits, and no consistent selective penalty appears across the three methods (Appendix Table~\ref{tab:quantizers}).
 
 \paragraph{Correlation misses some activation changes.}
 Multiplying every activation by the same factor can leave correlation unchanged. We therefore decompose quantized activation as a scaled FP signal plus a residual: $b=ga+c+e$. Here $g$ is gain, $c$ is an offset, and $e$ is the part scaling does not explain. The residual is uncorrelated with $a$. Where the quantities are defined,
@@ -135,18 +142,32 @@ Multiplying every activation by the same factor can leave correlation unchanged.
 \end{equation}
 The correlation cutoff 0.9 corresponds to $\lambda<-1.450$, with positive gain. We also measure pre-activation change divided by the feature's learned threshold, denoted $\nu$, on tokens active in FP. This puts the change in threshold units.
 
-The audit covers 214,506 active language--feature pairs. It reproduces prior correlations within $3\times10^{-8}$ and checks the identity to about $10^{-14}$. Across six INT4/6 conditions, rank correlations with FP activation spread are $-0.507$ to $-0.534$ for $\lambda$, versus $-0.004$ to $0.114$ for $\nu$. Threshold scaling reduces this dependence, though dependence on peak activation remains. These measures explain different parts of activation change; the prediction test below asks whether they add useful information.
+The audit covers 214,506 active language--feature pairs. Across six INT4/6 conditions, rank correlations with FP activation spread are $-0.507$ to $-0.534$ for $\lambda$, versus $-0.004$ to $0.114$ for $\nu$. Threshold scaling reduces this dependence, though dependence on peak activation remains. These measures explain different parts of activation change; the prediction test below asks whether they add useful information.
 
 \section{RQ2: What Do Language-Feature Edits Change?}
-\paragraph{Removing features harms next-token prediction.}
-FP excess harm is positive in all 27 languages of Gemma-2-2B: mean 0.704 nats/token $[0.684,0.723]$, median 0.262. The effect stays near FP at INT6, then grows at INT4. Legacy INT4 has a median ratio of 1.54 $[1.43,1.62]$, a mean ratio of 2.14 $[2.04,2.50]$, and a ratio of mean effects of 1.33. GPTQ lowers the median to 1.22 $[1.14,1.24]$. Its mean ratio is 1.31 $[1.27,1.50]$, leaving its classification against the predefined $[0.75,1.33]$ band uncertain. Greater removal harm indicates greater sensitivity to the edit.
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig-harm}
+\caption{Removing a language's 64 selective features (K64) harms that language's next-token prediction (Gemma-2-2B, 300 FLORES sentences per language). (a) Excess harm at FP, language-group harm minus matched-control harm, with 95\% bootstrap intervals; it is positive in all 27 languages. (b) Each dot is one language's excess harm at a lower precision divided by its FP value; bars mark the median. The effect stays close to FP down to five bits and grows at four bits (median 1.54).}
+\label{fig:harm}
+\end{figure*}
 
-Gradual suppression supports the same result. In all 27 languages, FP harm increases as the activation multiplier decreases. Median harm is 0.0223, 0.0902, 0.1687 and 0.2624 at multipliers 0.354, 0.177, 0.088 and zero. The strict rule requiring monotonic change across every precision fails because of a small intermediate-width dip; the suppression-dose and consistency rules hold.
+\paragraph{Removing features harms next-token prediction.}
+FP excess harm is positive in all 27 languages of Gemma-2-2B (Figure~\ref{fig:harm}a): mean 0.704 nats/token $[0.684,0.723]$, median 0.262. The effect stays near FP at INT6, then grows at INT4 (Figure~\ref{fig:harm}b). Legacy INT4 has a median ratio of 1.54 $[1.43,1.62]$, a mean ratio of 2.14 $[2.04,2.50]$, and a ratio of mean effects of 1.33. The same increase appears, at a smaller size, under matched RTN and GPTQ. Greater removal harm indicates greater sensitivity to the edit.
+
+Gradual suppression supports the same result (Figure~\ref{fig:dose}). In all 27 languages, FP harm increases as the activation multiplier decreases. Median harm is 0.0223, 0.0902, 0.1687 and 0.2624 at multipliers 0.354, 0.177, 0.088 and zero. The strict rule requiring monotonic change across every precision fails because of a small intermediate-width dip; the suppression-dose and consistency rules hold.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig-dose}
+\caption{Graded suppression (Gemma-2-2B, legacy RTN). Multiplying a language group's activations by a smaller factor causes more harm; 0 is full removal. Lines are medians over 27 languages. FP, INT6 and INT5 overlap; INT4 is higher at every step.}
+\label{fig:dose}
+\end{figure}
 
 \paragraph{A second Gemma size and a different setup.}
 Gemma-2-9B shows positive FP excess harm in all 27 languages, with median 0.270 $[0.197,0.608]$. The median effect ratio is 1.019 $[0.978,1.045]$ at INT6 and 1.586 $[1.238,2.264]$ at INT4. At INT4, the mean ratio is 2.479 and the ratio of mean effects is 1.474. These intervals resample languages. Paired 2B--9B difference intervals include zero, so the data support the broad pattern across sizes without resolving a size effect.
 
-The 9B prediction checklist had two defects: its suppression inequality was reversed, and its selectivity criterion was guaranteed by how features were selected. We do not count those as independent confirmations. The measured suppression-harm ordering holds in all 27 languages. At INT4, GPTQ lowers the median effect ratio to 1.165 $[0.997,1.370]$, below legacy RTN in 26 of 27 languages, and matched RTN gives 1.490. Activation survival rises from 22.3\% (legacy) to 32.9\% (matched) and 46.6\% (GPTQ). Mean loss increase falls from 0.410 to 0.287 and 0.088 nats/token. All frozen predictions for both tiers were met.
+Two of the predictions fixed before the 9B run were badly specified: one stated the suppression dose--response in the wrong direction, and one could not fail given how features were selected. We do not count them as confirmations. The measured suppression-harm ordering holds in all 27 languages. The 9B run also covered matched RTN and GPTQ. The remaining frozen predictions for both tiers were met.
 
 Llama has a smaller positive FP median effect, 0.048 $[0.018,0.173]$, with positive effects in 21 of 27 languages. This misses the consistency rule requiring 24. Its INT4 median ratio is 0.86 $[0.74,1.03]$, with less consistent suppression ordering. The effect differs across these model/SAE setups.
 
@@ -154,22 +175,35 @@ Llama has a smaller positive FP median effect, 0.048 $[0.018,0.173]$, with posit
 On held-out Belebele, FP excess correct-option loss is $-0.0001$ nats/item $[-0.0035,+0.0031]$. Accuracy is about 42.6\% unedited, 42.6\% after language-group removal and 42.5\% after control removal. The required positive FP effect is absent, so the five planned conditional retention statements cannot be interpreted. Larger nonselective edits (1,024--2,860 features) lower accuracy by 1.2--2.2 points; other-language selective edits reach 6.0 points. Sham edits change nothing. GPTQ's INT4 baseline accuracy is 31.8\%, above 25\% chance, and the K64 effect remains small. The test detects larger edits but leaves small K64 effects possible.
 
 \paragraph{Repair gains are limited.}
-Restoring FP activations in K64 recovers 2.6\% $[2.4,2.8]$ of the legacy INT4 loss gap, versus 39.3\% $[38.5,40.0]$ for the full residual. GPTQ gives 2.0\% $[1.6,2.3]$ versus 41.4\% $[40.2,42.4]$. These are measured patch benefits, not additive shares of the cause of model damage.
+Restoring FP activations in K64 (Figure~\ref{fig:dissociation}c) recovers 2.6\% $[2.4,2.8]$ of the legacy INT4 loss gap, versus 39.3\% $[38.5,40.0]$ for the full residual. GPTQ gives a similar 2.0\%. These are measured patch benefits, not additive shares of the cause of model damage.
 
 The main fine-gain study fails its repair rules. A legacy-RTN follow-up on 562 fresh sentences finds a small benefit at multiplier 1.1: $-0.00135$ nats/token, with 97.5\% interval $[-0.00197,-0.00032]$, and improvement in 20 of 27 languages. It meets the rule after multiple-comparison correction at 1.1, but not 1.2. The primary pair of multipliers uses Holm correction. GPTQ does not repeat the fine-gain trend on the main 300-sentence panel; the fresh-sentence test was legacy-only.
 
 Selecting groups anew after quantization changes their membership (overlap with FP falls from Jaccard 0.855 at INT6 to 0.488 at INT4), but does not make removal more harmful (median difference $-0.0098$). The most effective activation multiplier is repeatable within the study, yet does not track inverse activation shrinkage (Spearman $\rho_s=-0.17$, $p=0.804$). Simple shrinkage compensation is therefore not supported by this test.
 
 \section{RQ3: Do Activation Measures Predict Output Effects?}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig-dissociation}
+\caption{Activation survival and functional preservation come apart (Gemma-2-2B). (a) In the 1,487-feature F5 sample under legacy RTN, the share passing the activation-survival cutoff falls to 13.2\% at INT4, while 99.7\% of features are still identified as their own FP feature from their output effect. (b) Median output-effect cosine with FP (interquartile range) for 404 features, removing the feature's own direction or a swapped direction at the same positions and strengths: both drift almost equally, so the INT4 drift is mostly generic. (c) Share of the INT4 loss gap recovered by restoring FP activations: the language group recovers 2.6\%, about as little as a matched control group and far less than the full residual.}
+\label{fig:dissociation}
+\end{figure*}
+
 Of the 8,086 selected features, 6,663 establish a peak language on FP devtest. At legacy INT4, 70.8\% retain it, while only 13.75\% in this group pass activation correlation 0.9. Near-tied FP language preferences are more likely to switch: peak-margin discrimination scores are 0.90, 0.81 and 0.75 at INT6, INT5 and INT4. Removing matched lost-language and retained-language subgroups gives little harm difference: medians $+0.0006,+0.0007,+0.0002$ nats/token at INT4/5/6.
 
-The individual-effect experiment shows that activation change can coexist with recognizable function. In the same 1,487-feature sample, only 13.2\% pass the activation cutoff at legacy INT4, but median output-effect cosine is 0.839 $[0.829,0.848]$. Most effects remain distinctive: 99.9\% exceed different-feature controls and 99.7\% identify their own FP feature. Only 0.3\% meet the stricter INT16-based similarity cutoff. GPTQ improves median cosine to 0.923 and raises the share passing that cutoff to 11.7\%. Keeping the same language label does not reliably identify which effects meet the preservation criterion; discrimination scores are near chance (legacy 0.506, GPTQ about 0.49).
+The individual-effect experiment shows that activation change can coexist with recognizable function (Figure~\ref{fig:dissociation}a). In the same 1,487-feature sample, only 13.2\% pass the activation cutoff at legacy INT4, but median output-effect cosine is 0.839 $[0.829,0.848]$. Most effects remain distinctive: 99.9\% exceed different-feature controls and 99.7\% identify their own FP feature. Only 0.3\% meet the stricter INT16-based similarity cutoff. Keeping the same language label does not reliably identify which effects meet the preservation criterion; discrimination scores are near chance (legacy 0.506, GPTQ about 0.49).
 
 Continuous activation correlation is more informative. On 1,412 reliable features, we predict effect similarity while holding out one language at a time. Adding correlation to activity, context-count and FP-effect-size predictors reduces mean absolute error by 3.1--4.4\% across all six quantizer/width conditions. Every language-bootstrap interval is above zero. At INT4, the gain is 3.7\% $[2.3,5.2]$ for legacy RTN and 3.5\% $[2.1,5.0]$ for GPTQ. These are small positive gains below the project's 10\% practical target. Partial rank correlations are 0.239--0.399.
 
 Adding gain and threshold-scaled change $\nu$ after correlation gives further improvements of $-0.4$ to $+1.8$\%, with every interval including zero. The measures help describe activation changes without showing an additional prediction benefit. Llama's 610 reliable features show a similar INT4 gain, 4.2\% $[1.6,6.7]$, with partial correlation 0.252 $[0.184,0.322]$; INT6 is uncertain.
 
 \section{RQ4: Does the Same Edit Still Have the Same Effect?}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig-terms}
+\caption{Where the change in a fixed edit comes from (legacy RTN). (a) For single features, the median size of the context ($C$), later-weight ($W$) and interaction ($I$) terms of the output change, relative to the FP effect, with 95\% intervals; open circles are four control directions, which change about as much. (b) For language groups, the context and weight terms of the loss effect, one dot per language. At INT4 the context term is usually larger for group loss, while the weight term is larger for single-feature output vectors.}
+\label{fig:terms}
+\end{figure*}
 \paragraph{Separating earlier context from later weights.}
 We fix the edit direction and strength at their FP values. We then cross FP and quantized earlier layers with FP and quantized later layers. Let $D[p,s]$ be the resulting output-logit change, subtracting each condition's own unedited output. With Q denoting quantized,
 \begin{align}
@@ -182,40 +216,41 @@ $C$ measures the context contribution, $W$ the later-weight contribution and $I$
 
 The panel has 404 features and 6,464 feature--context pairs. We retain 2,203 pairs from 235 features whose FP effects exceed five INT16 reference changes. A matched different-feature direction and three random directions with equal norm test sensitivity shared with other edits. Prediction holds out feature identities, while source sentences may occur in both splits.
 
-At legacy INT4, median group excess harm is 0.848 nats/token for the fixed-strength edit, versus 0.263 in FP and 0.433 using native quantized strength. Median absolute context and weight terms are 0.310 and 0.104 nats/token. Native-minus-fixed harm is negative in every language, with median $-0.351$ $[-0.358,-0.293]$. The native-minus-weights-only remainder is smaller in the median language ($+0.0138$ $[0.0093,0.0233]$), with variation across languages. For individual output vectors, the weight term is larger. Attribution therefore depends on both the chosen edit and the outcome.
+At legacy INT4, median group excess harm is 0.848 nats/token for the fixed-strength edit, versus 0.263 in FP and 0.433 using native quantized strength. Median absolute context and weight terms are 0.310 and 0.104 nats/token (Figure~\ref{fig:terms}b). Native-minus-fixed harm is negative in every language, with median $-0.351$ $[-0.358,-0.293]$. The native-minus-weights-only remainder is smaller in the median language ($+0.0138$ $[0.0093,0.0233]$), with variation across languages. For individual output vectors, the weight term is larger. Attribution therefore depends on both the chosen edit and the outcome.
 
-\paragraph{GPTQ transfers the edit more closely.}
-At legacy INT6, output-effect cosine is 0.984 and relative error is 0.165, about 1.88 INT16 reference floors. At INT4, cosine is 0.768 $[0.760,0.776]$ and relative error 0.664. Matched RTN improves cosine to 0.822 and GPTQ to 0.877; relative error falls to 0.572 and 0.476. Lower relative error means the same edit gives a more similar output change.
+
+\paragraph{The same edit drifts at four bits.}
+At legacy INT6, output-effect cosine is 0.984 and relative error is 0.165, about 1.88 INT16 reference floors. At INT4, cosine is 0.768 $[0.760,0.776]$ and relative error 0.664. Lower relative error means the same edit gives a more similar output change. Matched RTN and GPTQ reduce this drift without removing it.
 
 Control directions also drift substantially. A later comparison matched FP effect size on 144 FLORES pairs and 107 Wikipedia pairs. Real-direction INT4 error norms are 1.14 $[1.07,1.25]$ and 1.18 $[1.05,1.24]$ times the swapped-control norms. This shows a modest extra component on the selected subsets, alongside a large shared component.
 
 Using control-direction sensitivity improves held-out legacy INT4 error prediction by 21.5\% $[12.7,29.4]$. At INT6 the gain is 10.9\% $[-1.2,21.4]$, so the original rule requiring utility at both widths is not met. A similar INT16 gain suggests sensitivity to perturbations generally. Activation survival and the scalar-loss gradient add no clear prediction gain for this vector-error target. The gradient does predict its own loss target moderately ($r=0.63$ at FP, $0.58$ for the INT4 shift); we did not compute a vector-gradient approximation.
 
-Averaging effects across contexts makes preservation look stronger. For legacy INT4, cosine after averaging is higher by 0.126 than the average of context-level cosines. Reports should say which comparison they use.
+Averaging effects across contexts makes preservation look stronger. For legacy INT4, cosine after averaging is higher by 0.126 than the average of context-level cosines.
 
 \paragraph{Fresh text gives a similar INT4 pattern.}
-On the six-language Wikipedia panel, INT4 cosine is 0.754, 0.808 and 0.876 for legacy RTN, matched RTN and GPTQ. Control-direction sensitivity improves INT4 prediction by 19\%, 29\% and 30\%. At INT6 it meets the utility rule for both RTN methods, but not GPTQ (3\% $[-14,+17]$), whose error is near the reference scale. GPTQ calibration uses separate articles from the same domain, which may contribute to its advantage.
+On the six-language Wikipedia panel, INT4 cosine is 0.754, close to the FLORES value. Control-direction sensitivity improves INT4 prediction by 19\%, and at INT6 it meets the utility rule.
 
 \section{Discussion and Conclusion}
-The central finding is a dissociation: activation survival and functional preservation come apart. At four bits, 87\% of language features look ``dead'' by the standard activation cutoff, yet almost all still produce recognizable output effects. A direction-swap control shows that the similarity loss at INT4 is generic to downstream computation, not specific to the features themselves. And restoring the features' original activations recovers only 2.6\% of the quantization damage, meaning the amplified edit sensitivity does not point to the features as the locus of harm. These three results together say that the features survive functionally but carry almost none of the model's loss from compression.
+The central finding is a dissociation: activation survival and functional preservation come apart. At four bits, 87\% of language features look ``dead'' by the standard activation cutoff, yet almost all still produce recognizable output effects. A direction-swap control (Figure~\ref{fig:dissociation}b) shows that the similarity loss at INT4 is generic to downstream computation, not specific to the features themselves. Restoring the features' original activations recovers only 2.6\% of the quantization damage, so the features are not where the harm sits. These three results together say that the features survive functionally but carry almost none of the model's loss from compression.
 
-The selected groups contribute to next-token prediction in all 27 languages on both Gemma sizes, with dose--response confirmed in every language. GPTQ roughly halves the INT4 amplification and the completed 9B three-arm comparison shows the same quantizer ordering as 2B, with all frozen predictions met. The Llama check, where only 21 of 27 languages show a positive effect, bounds the finding within the Gemma family.
+The selected groups contribute to next-token prediction in all 27 languages on both Gemma sizes, with dose--response confirmed in every language. The 9B confirmation met its informative frozen predictions, and the main patterns hold under all three quantizers. The weaker Llama result (21 of 27 languages) bounds the finding to the Gemma family.
 
-Other tests show where the interpretation breaks down. The selected groups show no clear effect on the reading-comprehension task, and the initial selective-vulnerability hypothesis was not supported after multiple-comparison correction. These negative results are as informative as the positive ones: they mark where the proposed explanation holds and where it does not.
+Activation strength, not language selectivity or resource tier, predicts which features stop firing, and a language's number of selective features follows how distinct its input is, not its resources. The explanation stops at reading comprehension: the groups show no clear effect there.
 
 \section*{Limitations, Challenges and Future Work}
-Most evidence comes from Gemma-2-2B at one layer and one fixed SAE. The 9B three-arm extension and narrower Llama check broaden the evidence, but results may differ with other models, layers or dictionaries. Features can mix or split concepts, and large edits can create unusual hidden states. Activity matching and direction controls reduce some differences without matching every feature property. The results apply to the specified edits and outcomes.
+Most evidence comes from Gemma-2-2B at one layer and one fixed SAE. Not testing early and late layers, where language-specific neurons concentrate, or other dictionaries is a limitation of this work. Only one larger Gemma model and one smaller Llama setup were added, so results may differ with other models, layers or dictionaries. Features can mix or split concepts, and large edits can create unusual hidden states. Activity matching and direction controls reduce some differences without matching every feature property. The results apply to the specified edits and outcomes.
 
-Most FLORES analyses reuse examined sentences. Holding out languages or features does not necessarily hold out documents. Intervals condition on the feature groups and other fixed choices. Language tiers also mix script, tokenization, training exposure and competence. Truncating inputs to a fixed token budget removes the length confound but may alter internal representations compared with complete sentences; matching sentence length would trade truncation for a sentence-complexity confound, and varying both independently would require a corpus that FLORES-200 alignment does not provide. Belebele tests one comprehension task, while the external Wikipedia panel has six languages and shares a domain with GPTQ calibration.
+Most FLORES analyses reuse examined sentences. Holding out languages or features does not necessarily hold out documents. Intervals condition on the feature groups and other fixed choices. Language tiers also mix script, tokenization, training exposure and competence. Truncating inputs to a fixed token budget removes the length confound but may change internal representations. Every comparison is paired, with the same truncated tokens at each precision and for language and control groups, so truncation shifts both sides of each contrast equally and cannot by itself create a precision or language-versus-control difference. A direct test would add, for a subset of languages, complete sentences of equal token length and check whether excess harm and survival change, at the risk of a sentence-complexity confound. Belebele tests one comprehension task, while the external Wikipedia panel has six languages and shares a domain with GPTQ calibration.
 
-The quantization experiment rounds weights during floating-point inference. It does not measure integer-kernel deployment or activation quantization. Calibration and error compensation are not varied independently. Small results can depend on hardware and arithmetic precision, as the correction record shows. Additional independent text, dictionaries and precision comparisons would test broader generalization.
+The quantization experiment rounds weights during floating-point inference. It does not measure integer-kernel deployment or activation quantization. Calibration and error compensation are not varied independently. Small effects can depend on hardware and arithmetic precision. Additional independent text, dictionaries and precision comparisons would test broader generalization.
 
-\clearpage
-\balance
 \bibliography{references}
 \clearpage
 \nobalance
 \appendix
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\textfraction}{0.05}
 \section{Language Panel and Reproduction}
 \label{app:languages}
 \begin{table}[h]
@@ -233,10 +268,39 @@ Low & kan\_Knda, tel\_Telu, yor\_Latn, sun\_Latn, amh\_Ethi, ibo\_Latn, hau\_Lat
 \end{table}
 The repository is \url{https://github.com/TH4KUR/always-late}; committed evidence maps identify result files, freezes and hashes. The artifact dataset is \url{https://huggingface.co/datasets/karma-skz/always-late-artifacts}; access is private and not all item-level files are public. Run summaries are at \url{https://wandb.ai/karma-skz-/anlp-project}. The current evidence map covers the whole completed study. Earlier report wording is archived verbatim.
 
-The frozen environment records Python 3.10, PyTorch 2.14.1, TransformerLens 3.9.0, SAE Lens 6.54.5 and Transformers 5.19.0. Most 2B jobs used 11 GB RTX 2080 Ti accelerators; the supplied 9B run used a rented 96 GB RTX PRO 6000. Checks include sham identities, restored FP weights, quantized-weight hashes and analysis reproductions. The 9B review checks raw-file provenance and headers and reproduces tables byte-identically; it does not independently repeat the supplied GPU inference. All numbers here derive from completed saved outputs; this revision introduces no model run or new statistical analysis.
+The frozen environment records Python 3.10, PyTorch 2.14.1, TransformerLens 3.9.0, SAE Lens 6.54.5 and Transformers 5.19.0. Most 2B jobs used 11 GB RTX 2080 Ti accelerators; the supplied 9B run used a rented 96 GB RTX PRO 6000. Checks include sham identities, restored FP weights, quantized-weight hashes and analysis reproductions; new quantizer arms reproduce FP reference values exactly, and the activation-decomposition audit reproduces prior correlations within $3\times10^{-8}$ and checks its identity to about $10^{-14}$. The 9B review checks raw-file provenance and headers and reproduces tables byte-identically; it does not independently repeat the supplied GPU inference. 
+
+Bracketed ranges in the text are 95\% bootstrap intervals unless stated otherwise. Resampling units follow the experiment: paired sentences for group loss, passages for Belebele, languages for F5 prediction and reviewed 9B comparisons, and features plus source sentences for transfer. Intervals hold other choices, such as groups and controls, fixed. They do not describe uncertainty over all model or SAE choices.
+
+All numbers here derive from completed saved outputs; this revision introduces no model run, and the feature-count comparison is a descriptive summary of saved selections.
 
 \section{Original Test Rules and Outcomes}
 Table~\ref{tab:inventory} lists the original test families and outcomes. Its codes link the results to the analysis records. The final RQs organize the completed work without replacing these tests. A small positive estimate remains a result even when it misses a practical target.
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{3.0cm}rrr}
+\toprule
+INT4 measurement & Legacy & Matched & GPTQ\\
+\midrule
+Active-feature survival (\%) & 12.7 & 18.6 & 30.5\\
+Mean loss increase (nats/token) & 0.590 & 0.385 & 0.130\\
+Median group-effect ratio & 1.54 & 1.36 & 1.22\\
+Median effect cosine ($W_1$) & 0.839 & 0.875 & 0.923\\
+Transfer cosine & 0.768 & 0.822 & 0.877\\
+Belebele accuracy (\%) & 23.6 & 29.1 & 31.8\\
+\bottomrule
+\end{tabular}
+\caption{The main INT4 measurements of Gemma-2-2B under the three quantizers. Rows answer different questions. Survival averages active-feature shares per language; $W_1$ uses F5 features; transfer uses eligible feature--context pairs; Belebele uses 18 languages.}
+\label{tab:quantizers}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig-tiers}
+\caption{Resource tiers (Gemma-2-2B, legacy RTN; nine languages per tier). (a) Mean active-feature survival: low-resource languages lose more features at every width, but accounting for activation strength removes most of this gap (Section~\ref{sec:rq1}). (b) Number of selected language-selective features per language: counts do not follow resource tier.}
+\label{fig:tiers}
+\end{figure*}
 \begin{table*}[t]
 \centering\small
 \begin{tabular}{p{2.2cm}p{6.1cm}p{6.2cm}}
@@ -254,10 +318,18 @@ F5 and prediction & Identity, effect drift, association discrimination; continuo
 Measurement audit & Gain/noise identity, scale separation, adjusted tiers and extra predictors & Identity verified; scale separation met by convention. Tier estimates mixed; gain/$\nu$ increments include zero. Exploratory.\\
 Transfer & Fixed edit; H1 residual drift, H3 prediction, H4 averaging; group A3 & Main H1/H4 supported; H3/A3 mixed; combined utility not met. External RTN utility met; GPTQ INT6 unresolved. Exploratory.\\
 Llama & Frozen existence/dose/INT4 consistency rule & Not consistent (P1 21/27, 24 required); FP median effect positive. INT4 F5 association/prediction modestly positive. Exploratory.\\
-Gemma-2-9B & FP effects, precision ladder, three-arm comparison & Positive 27/27, INT6 near FP, INT4 increase. GPTQ lowers median ratio to 1.165; all frozen predictions met. Two defective criteria documented.\\
+Gemma-2-9B & FP effects, precision ladder, three-arm comparison & Positive 27/27, INT6 near FP, INT4 increase; all frozen predictions met. Two defective criteria documented.\\
 \bottomrule
 \end{tabular}
 \caption{Completed study inventory. Outcomes follow each test's original rule. The main text and evidence map give estimates, uncertainty and explanations.}
 \label{tab:inventory}
 \end{table*}
+
+\section{Additional Results}
+\label{app:robustness}
+Figure~\ref{fig:tiers} shows activation survival and selected-feature counts by resource tier. Table~\ref{tab:quantizers} gives the main INT4 measurements under the three quantizers; the qualitative pattern is the same.
+
+
+
+
 \end{document}

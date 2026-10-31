@@ -1,5 +1,0 @@
-{
-  "activation-effect": "reports/functional_validation/results/f5/f5_tables.csv",
-  "quantizer-transfer": "reports/gptq_extension/results/stage2/transfer_feature_level.csv",
-  "operation": "Plot stored estimates and confidence endpoints only; no recomputation of inference."
-}

@@ -64,8 +64,8 @@ python3 -B scripts/g0/check_md_links.py
 
 The focused suite covers the compatibility entry points and shared file contracts.
 For this cleanup, also reproduce the five analyses on saved real data and compare
-their files byte for byte. The recorded protocol and checks are in the
-[maintenance plan](maintenance/2026-10-27-cleanup-plan.md).
+their files byte for byte. The recorded protocol and checks are in the git history
+(`docs/maintenance/2026-10-27-cleanup-plan.md`).
 
 Existing paths in old plans, Slurm commands and source hashes refer to the historical
 code state. Keep those records; use the new module path for future maintenance.
@@ -78,6 +78,6 @@ code state. Keep those records; use the new module path for future maintenance.
 | survival versus effect (D-110 to D-114) | `scripts/g0/survival_effect.py`, `survival_effect_llama.py`, report generators | does the activation correlation predict a feature's effect similarity |
 | survival measurement study (D-117 to D-124) | `scripts/g0/survival_lambda.py` (stage 1), `survival_sidecar.py` (streams 21 statistics per condition on the GPU), `survival_validate.py`, `survival_stage3.py` (the frozen analysis); freeze `reports/survival_measurement/analysis_freeze.json` | what the survival correlation measures |
 
-## Current reporting pointer, 30 October 2026
+## Final documents
 
-[Current synthesis](../reports/FINAL_RESEARCH_QUESTIONS.md), [research paper](../paper/research-paper/main.tex), [current status](../reports/CURRENT_STATUS.md). This page retains its technical or dated historical role; the final synthesis uses the completed evidence through 29 October, with 9B GPTQ pending. The reporting revision does not change experiments, frozen rules, numerical outputs or reproduction code.
+[Course report](../paper/course-report/main.pdf), [complete findings](../reports/COMPLETE_FINDINGS.md). Code organization does not change experiments, frozen rules, numerical outputs or reproduction code.

@@ -1,4 +1,0 @@
-Saving reports to validation/pubcheck
-Checking AlwaysLate-Final-Report.pdf
-All Clear!
-Reports saved to validation/pubcheck

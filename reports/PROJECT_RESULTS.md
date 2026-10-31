@@ -1,10 +1,10 @@
 # Does compression forget language? What we found, in plain words
 
-**Final synthesis update, 30 October 2026; evidence through 29 October.** Read the [final research questions and answers](FINAL_RESEARCH_QUESTIONS.md) and [research paper](../paper/research-paper/main.tex) for the completed framing. The work supports controlled intervention findings and a measurement-validity contribution. A finite model/SAE scope limits where the findings can be generalized; it does not make the measured effects untrustworthy. The original hypotheses, nulls and failed criteria are retained. The questions used to organize the final paper are retrospective.
+**Final synthesis update, 30 October 2026; evidence through 29 October.** Read the [final research questions and answers](FINAL_RESEARCH_QUESTIONS.md) and [course report](../paper/course-report/main.pdf) for the completed framing. The work supports controlled intervention findings and a measurement-validity contribution. A finite model/SAE scope limits where the findings can be generalized; it does not make the measured effects untrustworthy. The original hypotheses, nulls and failed criteria are retained. The questions used to organize the final paper are retrospective.
 
 **Evidence base.** Gemma-2-2B with a layer-12 Gemma Scope dictionary of 16,384 features; 27 FLORES-200 languages; original RTN, matched RTN and GPTQ; a six-language Wikipedia transfer panel; reviewed Gemma-2-9B original-RTN scale results; and a limited Llama-3.2-1B check. Each analysis below states its own coverage. The original sections and appendix A1–A10 describe legacy RTN unless stated otherwise; [the GPTQ extension](gptq_extension/RESULTS.md) and appendices A11–A16 compare the three quantizers. Quantization is simulated weight-only rounding with floating-point execution. Gemma-2-9B GPTQ remains pending and supplies no evidence yet.
 
-**Reading the results.** This page summarizes existing result files; it introduces no new experiment or statistical analysis. Generated appendix tables are retained. Definitions, frozen inputs, decisions, logs and dated plans remain the record of what was specified and when. The pre-revision page is [preserved](archive/reporting_revision_2026-10-29/reports/PROJECT_RESULTS.md.txt).
+**Reading the results.** This page summarizes existing result files; it introduces no new experiment or statistical analysis. Generated appendix tables are retained. Definitions, frozen inputs, decisions, logs and dated plans remain the record of what was specified and when.
 
 ---
 

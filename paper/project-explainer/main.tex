@@ -17,7 +17,7 @@ International Institute of Information Technology, Hyderabad}
 \maketitle
 
 \begin{abstract}
-We looked inside two Gemma models with a sparse autoencoder and asked what happens to language-specific features when the weights are quantized. We found three things that come apart under compression: whether a feature still fires the same way (activation survival), whether removing it still hurts the language (functional effect), and whether it still does the same thing to the output (effect identity). The standard activation cutoff misclassifies about a third of functionally intact features. The features matter for text prediction in all 27 languages we tested, but they carry almost none of the actual quantization damage, and they do not matter for reading comprehension. GPTQ roughly halves the amplification effect compared to round-to-nearest. The pattern holds on Gemma-2-9B but not on Llama-3.2-1B.
+We looked inside two Gemma models with a sparse autoencoder and asked what happens to language-specific features when the weights are quantized. We found three things that come apart under compression: whether a feature still fires the same way (activation survival), whether removing it still hurts the language (functional effect), and whether it still does the same thing to the output (effect identity). The standard activation cutoff misclassifies about a third of functionally intact features. The features matter for text prediction in all 27 languages we tested, but they carry almost none of the actual quantization damage, and they do not matter for reading comprehension. The pattern holds under two further quantizers and on Gemma-2-9B but not on Llama-3.2-1B.
 \end{abstract}
 
 \section{The problem}
@@ -32,7 +32,7 @@ Previous work by Duan (2026) measured how many language-selective SAE features `
 
 \paragraph{Languages.} 27 languages from FLORES-200, split evenly across three resource tiers (high, mid, low). Feature selection uses the dev split; evaluation uses 300 devtest sentences per language.
 
-\paragraph{Quantization.} We tested three quantizers, all simulated (weights rounded but stored as floats, no integer kernels):
+\paragraph{Quantization.} We used three quantizers; the main figures show legacy RTN for direct comparison with the study we reproduced. All are simulated (weights rounded but stored as floats, no integer kernels):
 
 \begin{itemize}
 \item \textbf{Legacy RTN}: round-to-nearest with shared attention scales, from the paper we replicated.
@@ -113,25 +113,9 @@ At legacy INT4, only 13.2\% of a 1{,}487-feature sample pass the $R_1 > 0.9$ cut
 
 The INT4 loss of similarity turns out to be generic. We ran a control where we ablated a \textit{different} feature's direction at the same positions and amplitudes. The control's median $W_1$ at INT4 was 0.828 vs the real feature's 0.842. The gap (0.014) is tiny and consistent at every precision. So the similarity loss reflects how the downstream computation drifts under quantization for any perturbation, not anything specific to the feature.
 
-\subsection{GPTQ helps substantially}
+\subsection{The same pattern under all three quantizers}
 
-Comparing the three quantizers on Gemma-2-9B at INT4:
-
-\begin{table}[h]
-\centering\small
-\begin{tabular}{lccc}
-\toprule
-& Legacy & Matched & GPTQ \\
-\midrule
-Survival (\%) & 22.3 & 32.9 & 46.6 \\
-Loss (nats/tok) & 0.410 & 0.287 & 0.088 \\
-Amplification $\rho$ & 1.69 & 1.49 & 1.17 \\
-\bottomrule
-\end{tabular}
-\caption{Three quantizers on Gemma-2-9B at INT4. GPTQ roughly halves the amplification and more than doubles survival.}
-\end{table}
-
-\noindent Matched RTN alone (better implementation, same method) accounts for about a third of GPTQ's improvement. At INT6, all three quantizers produce retention near 1.0 and survival above 95\%.
+Repeating the main measurements with matched RTN and GPTQ gives the same qualitative pattern: effects stay near full precision at INT6 and grow at INT4, with smaller changes under these methods.
 
 \subsection{The Belebele null}
 
@@ -139,7 +123,7 @@ This was our only confirmatory (pre-registered) test. Zeroing a language's group
 
 \subsection{Gemma-2-9B confirmation}
 
-We ran the full study on Gemma-2-9B with all three quantizers. Both tiers of predictions, frozen before any 9B number existed, were met: tier~1 (Study~G, the loss-based tests) and tier~2 (Phase~1, survival and loss ordering). GPTQ was below legacy RTN in 26 of 27 languages on the amplification ratio. The 9B results confirm the 2B pattern within the same model family and SAE.
+We ran the full study on Gemma-2-9B. Both tiers of predictions, frozen before any 9B number existed, were met: tier~1 (Study~G, the loss-based tests) and tier~2 (Phase~1, survival and loss ordering). The 9B results confirm the 2B pattern within the same model family and SAE.
 
 \subsection{Llama-3.2-1B: not consistent}
 
@@ -156,8 +140,6 @@ The project's main contribution is methodological. Three things that sound like 
 \end{enumerate}
 
 The activation cutoff overstates functional damage. The INT4 effect-identity loss is generic across directions. And the amplification of the ablation effect does not mean the features carry the quantization damage; the rescue study directly measures this at 2.6\%.
-
-On the practical side, GPTQ's improvement is large and consistent across model sizes: it roughly halves the INT4 amplification and more than doubles survival. The matched RTN comparison shows that about a third of this comes from a better rounding implementation alone, without calibration data.
 
 The Belebele null and the Llama inconsistency are honest limits. One confirmatory test produced a null, and the cross-family check failed (though it is heavily confounded). The findings hold within Gemma~2 with Gemma Scope at one layer per model size. Whether they generalize to other architectures, layers, or SAE families is open.
 

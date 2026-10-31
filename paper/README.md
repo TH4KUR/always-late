@@ -1,17 +1,9 @@
-# Manuscripts and presentation (updated 30 October 2026)
+# Final documents
 
-The completed study is organized around the [four final synthesis questions](../reports/FINAL_RESEARCH_QUESTIONS.md). Its contribution is a controlled evaluation of multilingual feature and intervention preservation, with positive causal contrasts, modest prediction gains and task-specific nulls. Generalization boundaries are stated alongside the measured evidence. Earlier versions of this index are preserved in the reporting-revision archive.
+| path | what it is |
+|---|---|
+| [`course-report/main.pdf`](course-report/main.pdf) | the course final report (ACL format); source, figures and build scripts in [`course-report/`](course-report/README.md) |
+| [`slides/main.pdf`](slides/main.pdf) | the viva presentation (17 slides, beamer, dark theme); source `slides/main.tex`, build with `bash slides/build.sh`; figures from `course-report/make_figures.py --dark` |
+| [`project-explainer/main.pdf`](project-explainer/main.pdf) | a 3-page plain-language explainer of the project; source `project-explainer/main.tex` |
 
-| path | what it is | status |
-|---|---|---|
-| [`course-report/`](course-report/README.md) | **the course final report** (ACL format, 8 body pages, a separate limitations section, 2 appendix pages), its figures, bibliography, build and check scripts, evidence map and validation record | **current**; kept in step with the finished results by the project routine (decision D-093) |
-| `main.tex`, `main_with_stubs.tex`, `main_done_only.tex`, `references.bib`, `citations_to_verify.md`, `figures/`, `acl.sty`, `acl_natbib.bst` | the earlier team draft, written for the retired first pipeline and the original hypothesis (selective-feature destruction) | **obsolete, kept as a record; do not reuse its numbers** (they come from the discarded pipeline or from an earlier state of the study); not edited |
-| [`research-paper/`](research-paper/README.md) | **research manuscript**: feature survival and intervention preservation across the completed experiments; methods, final RQs, figures, bibliography and evidence map | current draft using completed evidence; 9B GPTQ pending; venue selection and acceptance not assumed |
-| [`presentation/`](presentation/README.md) | course/viva presentation aligned with the final synthesis and completed evidence | current source and compiled deck; see its build record |
-
-## Rules for anything written here
-
-- **Authorship of the text.** The course guidelines no longer forbid AI-generated reports (rule 4 of `../project_guidelines.txt` now reads only that AI may be used for implementation and code; the user's edit, D-093), so the report and the paper may be written and updated by the AI assistant. The team still checks author names and order and the final wording before submission.
-- **The ACL style is not touched.** `acl.sty`, `acl_natbib.bst` and the official template copies are byte-identical to the official repository (`https://github.com/acl-org/acl-style-files`, commit `d5adc82...`); no margin, font-size, caption or spacing override is used. After every edit: rebuild, run the official checker (`bash check.sh` in `course-report/` and the newest upstream `aclpubcheck`); `All Clear!` is required.
-- **Limits of the course:** the final write-up has at most 8 pages excluding references plus at most 2 appendix pages; challenges, limitations and future work go in a separate section just before the references and contain no result; the submission file is `<TeamNameWithNoSpaces>-Final.zip` with the report, the code archive and a presentation (preferably a PDF); the repository README must link the Hugging Face and wandb projects (it does).
-- **Claim discipline:** every number comes from a committed result and keeps its population, uncertainty and status (confirmatory, frozen-stage, exploratory or post hoc). The evidence maps list the source of each block. Nulls remain alongside positive effects; practical-threshold misses are not rewritten as zero effects. The targeted [literature context](../reports/publication_context_2026-10-30.md) supports positioning without an acceptance or exhaustive priority claim.
+Earlier drafts, the research-paper manuscript and the older presentation were superseded by these files and removed; they remain in the git history.

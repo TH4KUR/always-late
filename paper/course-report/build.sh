@@ -11,5 +11,5 @@ pdflatex -interaction=nonstopmode -halt-on-error -file-line-error -output-direct
 bibtex build/main >build/bibtex.log 2>&1 || { cat build/bibtex.log; exit 1; }
 pdflatex -interaction=nonstopmode -halt-on-error -file-line-error -output-directory=build main.tex >build/pass2.log 2>&1 || { tail -50 build/pass2.log; exit 1; }
 pdflatex -interaction=nonstopmode -halt-on-error -file-line-error -output-directory=build main.tex >build/pass3.log 2>&1 || { tail -50 build/pass3.log; exit 1; }
-cp build/main.pdf AlwaysLate-Final-Report.pdf
-printf '%s\n' 'Built AlwaysLate-Final-Report.pdf'
+cp build/main.pdf main.pdf
+printf '%s\n' 'Built main.pdf'

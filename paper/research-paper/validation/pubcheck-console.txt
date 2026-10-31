@@ -1,5 +1,0 @@
-WARN Failed to find base Python executable: failed to read symbolic link `/usr/bin/python3.13`: Invalid argument (os error 22)
-Saving reports to validation/pubcheck
-Checking Feature-Survival-and-Intervention-Preservation.pdf
-All Clear!
-Reports saved to validation/pubcheck

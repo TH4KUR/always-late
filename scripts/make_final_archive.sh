@@ -3,10 +3,10 @@
 # Contents: the report PDF and the presentation PDF at the top level, and the code (every file tracked by git at the committed state HEAD; no untracked or ignored files, no model weights or data) under code/.
 # Usage: bash scripts/make_final_archive.sh <output dir> [presentation.pdf]        (the archive holds the committed state; uncommitted changes of tracked files are reported and left out)
 set -euo pipefail
-OUT=${1:?output directory}; PRES=${2:-}
+OUT=${1:?output directory}; PRES=${2:-paper/slides/main.pdf}
 cd "$(git rev-parse --show-toplevel)"
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then echo "WARNING: tracked files have uncommitted changes; the archive holds the COMMITTED state HEAD only (these changes are not in it):"; git status --short --untracked-files=no | head; fi
-TEAM=AlwaysLate; REPORT=paper/course-report/AlwaysLate-Final-Report.pdf
+TEAM=AlwaysLate; REPORT=paper/course-report/main.pdf
 [ -f "$REPORT" ] || { echo "missing $REPORT"; exit 2; }
 if [ -n "$PRES" ] && [ ! -f "$PRES" ]; then echo "missing presentation $PRES"; exit 2; fi
 mkdir -p "$OUT"; STAGE=$(mktemp -d); trap 'rm -rf "$STAGE"' EXIT

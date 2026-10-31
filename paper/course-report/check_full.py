@@ -8,7 +8,7 @@ HERE = Path(__file__).resolve().parent
 out = HERE / "validation/pubcheck-full"
 out.mkdir(parents=True, exist_ok=True)
 checker = Formatter()
-checker.format_check(str(HERE / "AlwaysLate-Final-Report.pdf"), "long",
+checker.format_check(str(HERE / "main.pdf"), "long",
                      output_dir=str(out), check_references=True)
 errors = sum(len(v) for k, v in checker.logs.items() if isinstance(k, Error))
 warnings = sum(len(v) for k, v in checker.logs.items() if isinstance(k, Warn))

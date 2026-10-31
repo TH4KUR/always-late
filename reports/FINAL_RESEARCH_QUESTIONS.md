@@ -1,6 +1,6 @@
 # Final research questions and answers
 
-Readability revision, 30 October 2026. These questions organize the completed work. They were chosen after the investigation and do not replace the original hypotheses or analysis records. The [research paper](../paper/research-paper/main.tex) and [full report](FULL_PROJECT_REPORT_DRAFT.md) give methods and further results.
+Readability revision, 30 October 2026. These questions organize the completed work. They were chosen after the investigation and do not replace the original hypotheses or analysis records. The [course report](../paper/course-report/main.pdf) and [complete findings](COMPLETE_FINDINGS.md) give methods and further results.
 
 ## A problem we found before the main experiments
 
