@@ -1,0 +1,496 @@
+{
+ "regime": "mask",
+ "bits": [
+  7,
+  6,
+  4,
+  16,
+  12,
+  0
+ ],
+ "n_perm": 10000,
+ "n_boot": 2000,
+ "seed": 0,
+ "decision": "D-014",
+ "tests": {
+  "T1_int7": {
+   "delta": -0.00035856146001073125,
+   "p": 0.7934206579342066,
+   "n_selective": 5175,
+   "n_control": 3931,
+   "n_perm": 10000,
+   "n_strata_used": 5,
+   "n_selective_dropped": 0,
+   "ci": [
+    -0.0011594202898550802,
+    0.0004277054892085109
+   ],
+   "survival_selective": 0.9994202898550725,
+   "survival_control": 0.9997456118036123,
+   "n_dropped_not_evaluable": 124
+  },
+  "T2_int6": {
+   "delta": -0.0022036673982577595,
+   "p": 0.32326767323267674,
+   "n_selective": 5175,
+   "n_control": 3931,
+   "n_perm": 10000,
+   "n_strata_used": 5,
+   "n_selective_dropped": 0,
+   "ci": [
+    -0.005139315135370555,
+    0.0010825221228431532
+   ],
+   "survival_selective": 0.9940096618357488,
+   "survival_control": 0.9966929534469601,
+   "n_dropped_not_evaluable": 124
+  },
+  "T3_tier": {
+   "n_languages": 27,
+   "enough_languages": true,
+   "min_features": 10,
+   "min_languages": 20,
+   "slope": 0.00018610468709284286,
+   "t": 0.2808854719790162,
+   "p": 0.39166083391660833,
+   "n": 27,
+   "n_perm": 10000,
+   "high_minus_low": 1.0662608676486425e-05,
+   "tost_slope": {
+    "interval": [
+     -0.0006944838187549615,
+     0.0012838771679972594
+    ],
+    "equivalent": true,
+    "bound": 0.02
+   },
+   "tost_high_minus_low": {
+    "interval": [
+     -0.001542762170235316,
+     0.0017458827959166631
+    ],
+    "equivalent": true,
+    "bound": 0.02
+   },
+   "survival_rate_gap_sensitivity": {
+    "slope": -0.00019364663929394467,
+    "t": -1.5688434831769618,
+    "p": 0.937006299370063,
+    "n": 27,
+    "n_perm": 10000,
+    "high_minus_low": -0.0005353063719424468
+   },
+   "joshi_class_sensitivity": {
+    "slope": 0.00014013046760254328,
+    "t": 0.3705039457263371,
+    "p": 0.35576442355764426,
+    "n": 27,
+    "n_perm": 10000,
+    "high_minus_low": null
+   },
+   "languages": [
+    {
+     "code": "eng_Latn",
+     "tier": "high",
+     "joshi_class": 5,
+     "gap_median_r": -0.002161160111427307,
+     "gap_survival_rate": 6.110474022114065e-05,
+     "n_selective": 1246,
+     "used": true
+    },
+    {
+     "code": "deu_Latn",
+     "tier": "high",
+     "joshi_class": 5,
+     "gap_median_r": 0.0027185529470443726,
+     "gap_survival_rate": 0.0,
+     "n_selective": 112,
+     "used": true
+    },
+    {
+     "code": "spa_Latn",
+     "tier": "high",
+     "joshi_class": 5,
+     "gap_median_r": 0.0013490617275238037,
+     "gap_survival_rate": 0.0,
+     "n_selective": 137,
+     "used": true
+    },
+    {
+     "code": "fra_Latn",
+     "tier": "high",
+     "joshi_class": 5,
+     "gap_median_r": 0.003647834062576294,
+     "gap_survival_rate": 0.00032017209773410604,
+     "n_selective": 118,
+     "used": true
+    },
+    {
+     "code": "por_Latn",
+     "tier": "high",
+     "joshi_class": 4,
+     "gap_median_r": 0.0012068748474121094,
+     "gap_survival_rate": 0.0002590673575129654,
+     "n_selective": 59,
+     "used": true
+    },
+    {
+     "code": "rus_Cyrl",
+     "tier": "high",
+     "joshi_class": 4,
+     "gap_median_r": 0.0006762295961380005,
+     "gap_survival_rate": 0.0,
+     "n_selective": 70,
+     "used": true
+    },
+    {
+     "code": "zho_Hans",
+     "tier": "high",
+     "joshi_class": 5,
+     "gap_median_r": 0.0009058862924575806,
+     "gap_survival_rate": 0.00032017209773410604,
+     "n_selective": 333,
+     "used": true
+    },
+    {
+     "code": "jpn_Jpan",
+     "tier": "high",
+     "joshi_class": 5,
+     "gap_median_r": 0.00028961896896362305,
+     "gap_survival_rate": 0.0006251339460181804,
+     "n_selective": 394,
+     "used": true
+    },
+    {
+     "code": "kor_Hang",
+     "tier": "high",
+     "joshi_class": 4,
+     "gap_median_r": 0.003390789031982422,
+     "gap_survival_rate": 0.00032017209773410604,
+     "n_selective": 106,
+     "used": true
+    },
+    {
+     "code": "hin_Deva",
+     "tier": "mid",
+     "joshi_class": 4,
+     "gap_median_r": -0.0015366077423095703,
+     "gap_survival_rate": 0.00032017209773410604,
+     "n_selective": 81,
+     "used": true
+    },
+    {
+     "code": "ben_Beng",
+     "tier": "mid",
+     "joshi_class": 3,
+     "gap_median_r": 0.003897547721862793,
+     "gap_survival_rate": 0.0002896197276235357,
+     "n_selective": 60,
+     "used": true
+    },
+    {
+     "code": "tam_Taml",
+     "tier": "mid",
+     "joshi_class": 3,
+     "gap_median_r": 0.0024149268865585327,
+     "gap_survival_rate": 0.00032017209773410604,
+     "n_selective": 87,
+     "used": true
+    },
+    {
+     "code": "tur_Latn",
+     "tier": "mid",
+     "joshi_class": 4,
+     "gap_median_r": 0.0024705827236175537,
+     "gap_survival_rate": 0.0,
+     "n_selective": 139,
+     "used": true
+    },
+    {
+     "code": "vie_Latn",
+     "tier": "mid",
+     "joshi_class": 4,
+     "gap_median_r": 0.0018998384475708008,
+     "gap_survival_rate": 0.00032017209773410604,
+     "n_selective": 190,
+     "used": true
+    },
+    {
+     "code": "ind_Latn",
+     "tier": "mid",
+     "joshi_class": 3,
+     "gap_median_r": 0.0030011534690856934,
+     "gap_survival_rate": 0.0,
+     "n_selective": 105,
+     "used": true
+    },
+    {
+     "code": "tha_Thai",
+     "tier": "mid",
+     "joshi_class": 3,
+     "gap_median_r": 0.004103928804397583,
+     "gap_survival_rate": 0.00032017209773410604,
+     "n_selective": 208,
+     "used": true
+    },
+    {
+     "code": "pol_Latn",
+     "tier": "mid",
+     "joshi_class": 4,
+     "gap_median_r": 0.0008067786693572998,
+     "gap_survival_rate": 0.0,
+     "n_selective": 76,
+     "used": true
+    },
+    {
+     "code": "ukr_Cyrl",
+     "tier": "mid",
+     "joshi_class": 3,
+     "gap_median_r": 0.0026264190673828125,
+     "gap_survival_rate": 0.0002590673575129654,
+     "n_selective": 57,
+     "used": true
+    },
+    {
+     "code": "kan_Knda",
+     "tier": "low",
+     "joshi_class": 1,
+     "gap_median_r": -0.0025214552879333496,
+     "gap_survival_rate": 0.0002590673575129654,
+     "n_selective": 75,
+     "used": true
+    },
+    {
+     "code": "tel_Telu",
+     "tier": "low",
+     "joshi_class": 1,
+     "gap_median_r": 0.0034365952014923096,
+     "gap_survival_rate": 0.0009453060437522864,
+     "n_selective": 65,
+     "used": true
+    },
+    {
+     "code": "yor_Latn",
+     "tier": "low",
+     "joshi_class": 2,
+     "gap_median_r": 0.0015000700950622559,
+     "gap_survival_rate": 0.0015093352495493262,
+     "n_selective": 369,
+     "used": true
+    },
+    {
+     "code": "sun_Latn",
+     "tier": "low",
+     "joshi_class": 1,
+     "gap_median_r": -0.0022116005420684814,
+     "gap_survival_rate": 0.0,
+     "n_selective": 181,
+     "used": true
+    },
+    {
+     "code": "amh_Ethi",
+     "tier": "low",
+     "joshi_class": 2,
+     "gap_median_r": 0.001791641116142273,
+     "gap_survival_rate": 0.0012502678920363608,
+     "n_selective": 154,
+     "used": true
+    },
+    {
+     "code": "ibo_Latn",
+     "tier": "low",
+     "joshi_class": 1,
+     "gap_median_r": 0.002238035202026367,
+     "gap_survival_rate": 0.0,
+     "n_selective": 149,
+     "used": true
+    },
+    {
+     "code": "hau_Latn",
+     "tier": "low",
+     "joshi_class": 2,
+     "gap_median_r": 0.003317922353744507,
+     "gap_survival_rate": 0.0,
+     "n_selective": 142,
+     "used": true
+    },
+    {
+     "code": "khm_Khmr",
+     "tier": "low",
+     "joshi_class": 1,
+     "gap_median_r": 0.0019023716449737549,
+     "gap_survival_rate": 0.0015093352495493262,
+     "n_selective": 236,
+     "used": true
+    },
+    {
+     "code": "lao_Laoo",
+     "tier": "low",
+     "joshi_class": 2,
+     "gap_median_r": 0.0024741441011428833,
+     "gap_survival_rate": 0.0012502678920363608,
+     "n_selective": 226,
+     "used": true
+    }
+   ]
+  }
+ },
+ "holm": {
+  "T1_int7": 0.9698030196980303,
+  "T2_int6": 0.9698030196980303,
+  "T3_tier": 0.9698030196980303
+ },
+ "exploratory": {
+  "label": "not part of the confirmatory family; p-values are uncorrected",
+  "contrasts": {
+   "int4": {
+    "delta": -0.026145028408312173,
+    "p": 0.023497650234976502,
+    "n_selective": 5175,
+    "n_control": 3931,
+    "n_perm": 10000,
+    "n_strata_used": 5,
+    "n_selective_dropped": 0,
+    "ci": [
+     -0.04904586699413948,
+     -0.004252709363063477
+    ],
+    "survival_selective": 0.5652173913043478,
+    "survival_control": 0.6153650470618164,
+    "n_dropped_not_evaluable": 124
+   }
+  },
+  "mixed_logit": {
+   "mixed": {
+    "names": [
+     "Intercept",
+     "C(stratum)[T.1]",
+     "C(stratum)[T.2]",
+     "C(stratum)[T.3]",
+     "C(stratum)[T.4]",
+     "bits_c",
+     "S_rank",
+     "tier",
+     "S_rank:tier"
+    ],
+    "coef": [
+     2550.6163657957095,
+     541.8858167183388,
+     550.905899902309,
+     1470.3622594114927,
+     1835.1615697372765,
+     1410.9239004667863,
+     589.704150366322,
+     713.0612900446039,
+     -122.33650611486311
+    ],
+    "se": [
+     505.6706082748402,
+     680.2259662311753,
+     695.3494209912172,
+     800.4953222269024,
+     290.3875895148001,
+     728.9644115407824,
+     741.5471460246215,
+     156.19392026113738,
+     212.7169282185564
+    ],
+    "z": [
+     5.044027325411423,
+     0.7966261854434684,
+     0.7922720337021282,
+     1.8368155548005998,
+     6.319696970533737,
+     1.9355182202716508,
+     0.7952348728299766,
+     4.565230764759931,
+     -0.5751141065236155
+    ],
+    "p": [
+     4.558341600202894e-07,
+     0.42566816494128107,
+     0.42820207471591387,
+     0.06623712883595101,
+     2.620767062341671e-10,
+     0.05292673499574668,
+     0.42647688985032806,
+     4.989451781623082e-06,
+     0.5652141281527878
+    ],
+    "sigma": 1295.6751404552354,
+    "converged": false,
+    "nll": 243.47866830874133
+   },
+   "gee": {
+    "names": [
+     "Intercept",
+     "C(stratum)[T.1]",
+     "C(stratum)[T.2]",
+     "C(stratum)[T.3]",
+     "C(stratum)[T.4]",
+     "bits_c",
+     "S_rank",
+     "tier",
+     "S_rank:tier"
+    ],
+    "coef": [
+     3.5429445817480323,
+     1.5854117686527784,
+     1.6690183659031492,
+     3.593048332182173,
+     3.9140110362327043,
+     2.443765665324159,
+     0.973589349276691,
+     1.364936779279728,
+     -0.16963249800129304
+    ],
+    "se": [
+     0.7222260433163111,
+     0.4026202406679935,
+     0.4284474118704474,
+     1.073031224159608,
+     0.9600881231145677,
+     0.47872154492614805,
+     0.8514004803841131,
+     0.6400349487015504,
+     0.999553779743623
+    ],
+    "p": [
+     9.314709690059521e-07,
+     8.22543994297967e-05,
+     9.799497208550567e-05,
+     0.0008124938505020828,
+     4.567532004765053e-05,
+     3.311887297522786e-07,
+     0.2528247676126887,
+     0.0329577781159333,
+     0.8652396050977409
+    ]
+   },
+   "n_features": 9704,
+   "n_obs": 19408
+  },
+  "P1_firing_rate": {
+   "mean_rate_selective": 0.005168597679585218,
+   "mean_rate_other_supported": 0.006747347768396139,
+   "mannwhitney_p_selective_lower": 0.0
+  }
+ },
+ "controls": {
+  "label": "survival of the same features at the noise-floor widths INT16, INT12 and restore-only INT0 (all should be at the ceiling)",
+  "survival_at": {
+   "int16": {
+    "selective": 0.9996135265700483,
+    "control": 0.9997456118036123
+   },
+   "int12": {
+    "selective": 0.9996135265700483,
+    "control": 1.0
+   },
+   "int0": {
+    "selective": 1.0,
+    "control": 1.0
+   }
+  }
+ }
+}
