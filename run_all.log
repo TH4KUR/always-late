@@ -1,0 +1,1079 @@
+[12:59:21] usable GPUs: 0 (of 1); RAM 157 GB; concurrent state processes: 2
+[12:59:21] compute capability 12.0, driver 595.58.03 -> torch index https://download.pytorch.org/whl/cu130
+[12:59:21] repo /home/ubuntu/always-late | base /home/ubuntu | commit 254bbd1c4aa11f9ebf3fb7fc8dd9c4fb8338fa63
+[12:59:21] == verify_frozen
++ python3 -B /home/ubuntu/always-late/scripts/g0/make_gemma9b_freeze.py --verify
+freeze verified: the code files are the frozen ones
++ python3 -B /home/ubuntu/always-late/scripts/g0/make_gemma9b_amendment.py --verify
+amendment verified: text, code files and the 9B freeze are the frozen ones
+[12:59:21] == env
++ python3 -m venv /home/ubuntu/venv
++ /home/ubuntu/venv/bin/python -m pip install --quiet --upgrade pip
++ /home/ubuntu/venv/bin/python -m pip install --quiet torch==2.14.1 --index-url https://download.pytorch.org/whl/cu130
++ /home/ubuntu/venv/bin/python -m pip install --quiet transformer-lens==3.9.0 transformers==5.19.0 sae-lens==6.54.5 numpy scipy safetensors huggingface_hub tqdm
+torch 2.14.1+cu130 cuda 13.0 gpus 1 ['NVIDIA RTX PRO 6000 Blackwell Server Edition']
+bf16 matmul on sm_120 ok
+[13:01:00] == flores
++ mkdir -p /home/ubuntu/data
++ curl -fSL -o /home/ubuntu/data/flores200_dataset.tar.gz https://dl.fbaipublicfiles.com/nllb/flores200_dataset.tar.gz
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0 24.4M    0  207k    0     0   578k      0  0:00:43 --:--:--  0:00:43  577k100 24.4M  100 24.4M    0     0  31.6M      0 --:--:-- --:--:-- --:--:-- 31.6M
+/home/ubuntu/data/flores200_dataset.tar.gz: OK
+[13:01:01] == access_and_download
+token reaches google/gemma-2-9b
+Fetching 15 files:   0%|          | 0/15 [00:00<?, ?it/s]Fetching 15 files:  13%|█▎        | 2/15 [00:00<00:03,  3.65it/s]Fetching 15 files:  20%|██        | 3/15 [01:15<06:15, 31.33s/it]Fetching 15 files:  27%|██▋       | 4/15 [01:15<03:38, 19.84s/it]Fetching 15 files:  33%|███▎      | 5/15 [01:16<02:11, 13.11s/it]Fetching 15 files:  40%|████      | 6/15 [01:18<01:26,  9.62s/it]Fetching 15 files:  47%|████▋     | 7/15 [01:43<01:55, 14.39s/it]Fetching 15 files:  53%|█████▎    | 8/15 [01:43<01:10, 10.04s/it]Fetching 15 files:  60%|██████    | 9/15 [02:06<01:23, 13.90s/it]Fetching 15 files:  67%|██████▋   | 10/15 [02:24<01:15, 15.11s/it]Fetching 15 files:  73%|███████▎  | 11/15 [02:24<00:42, 10.66s/it]Fetching 15 files:  80%|████████  | 12/15 [02:25<00:22,  7.50s/it]Fetching 15 files:  87%|████████▋ | 13/15 [02:31<00:14,  7.09s/it]Fetching 15 files:  93%|█████████▎| 14/15 [02:31<00:05,  5.10s/it]Fetching 15 files: 100%|██████████| 15/15 [02:31<00:00,  3.64s/it]Fetching 15 files: 100%|██████████| 15/15 [02:31<00:00, 10.13s/it]
+model -> /home/ubuntu/hf_cache/hub/models--google--gemma-2-9b/snapshots/33c193028431c2fde6c6e51f29e6f17b60cbfac6
+SAE ok: hook None d_in 3584 d_sae 16384
+PREFETCH OK
+[13:03:46] == checks
++ /home/ubuntu/venv/bin/python -B -m unittest tests_torch.test_phase1_gemma9b_run tests_torch.test_phase1_llama_run tests.test_make_gemma9b_freeze
+........Trying model: bad on 2 devices
+Failed: OSError('no such model')
+.Trying model: bad on 4 devices
+Failed: OSError('no such model')
+Trying model: google/gemma-2-9b on 4 devices
+Loaded: google/gemma-2-9b Layers: 42 d_model: 3584 n_devices: 4
+...usage: python -m unittest [-h] [--n-devices N_DEVICES] {tag,lm,manifest}
+python -m unittest: error: --ratios and --preset are fixed by this wrapper (the Study G down ratios, three control draws)
+.wrote m {'a': {}}
+.....usage: python -m unittest [-h] [--sae {faithful42,fineweb42}]
+                          {tag,lm,manifest}
+python -m unittest: error: argument task: invalid choice: 'other' (choose from 'tag', 'lm', 'manifest')
+...usage: python -m unittest [-h] [--sae {faithful42,fineweb42}]
+                          {tag,lm,manifest}
+python -m unittest: error: --ratios and --preset are fixed by this wrapper (the Study G down ratios, three control draws)
+......wrote /tmp/tmprvca1vd2/man.json {'aaa': {'K16': 16, 'K64': 64}, 'bbb': {'K16': 16, 'K64': 20}}
+wrote /tmp/tmprvca1vd2/man.json {'aaa': {'K16': 16, 'K64': 64}, 'bbb': {'K16': 16, 'K64': 20}}
+..............wrote /tmp/tmpy2uuooy8/freeze.json
+....wrote /tmp/tmp2zzhish4/freeze.json
+freeze verified: the code files are the frozen ones
+.usage: python -m unittest [-h] [--flores-sha256 FLORES_SHA256]
+                          [--compute-note COMPUTE_NOTE]
+                          [--base-commit BASE_COMMIT] [--out OUT] [--force]
+                          [--verify]
+python -m unittest: error: --flores-sha256 and --base-commit are required unless --verify
+.
+----------------------------------------------------------------------
+Ran 47 tests in 0.233s
+
+OK
++ /home/ubuntu/venv/bin/python -B -m unittest tests.test_gptq_ext_tokenizer_check tests.test_gptq_ext_ram_guard tests.test_gptq_ext_record_hashes tests.test_make_gemma9b_amendment tests_torch.test_phase1_gemma9b_ext tests_torch.test_phase1_gemma9b_compare
+.........estimated host RAM 59.1 GB of 160.0 GB
+RAM SHORTFALL: the job needs about 97.8 GB of host RAM (3 artifact(s) of 17.6 GB, model copy 18.5 GB, margin 1.1) but only 80.0 GB are available
+............wrote /tmp/tmp5_ni2l2a/h.json {'gptq': ['4']}
+hash file equals the gate directories
+hash file DIFFERS from (or is missing next to) the gate directories
+hash file DIFFERS from (or is missing next to) the gate directories
+.wrote /tmp/tmpoo2bu1bi/h.json {'rtn_matched': ['6']}
+........wrote /tmp/tmpaxkutdqh/out.json
+amendment verified: text, code files and the 9B freeze are the frozen ones
+..........usage: python -m unittest [-h] [--n-devices N_DEVICES] {lm,p1,gate}
+python -m unittest: error: p1 runs on one device (got --n-devices 2)
+usage: python -m unittest [-h] [--n-devices N_DEVICES] {lm,p1,gate}
+python -m unittest: error: gate runs on one device (got --n-devices 2)
+..usage: python -m unittest [-h] [--n-devices N_DEVICES] {lm,p1,gate}
+python -m unittest: error: argument task: invalid choice: 'tag' (choose from 'lm', 'p1', 'gate')
+....usage: python -m unittest [-h] [--legacy-g LEGACY_G [LEGACY_G ...]]
+                          [--legacy-p1 LEGACY_P1]
+                          [--analysis-legacy ANALYSIS_LEGACY]
+                          [--rtnm-g RTNM_G [RTNM_G ...]] [--rtnm-p1 RTNM_P1]
+                          [--analysis-rtnm ANALYSIS_RTNM]
+                          [--gptq-g GPTQ_G [GPTQ_G ...]] [--gptq-p1 GPTQ_P1]
+                          [--analysis-gptq ANALYSIS_GPTQ]
+                          [--manifest MANIFEST] [--ratios-json RATIOS_JSON]
+                          [--roster ROSTER] [--repo-root REPO_ROOT] --out OUT
+                          [--n-boot N_BOOT]
+                          [--n-boot-languages N_BOOT_LANGUAGES] [--seed SEED]
+python -m unittest: error: tier 2 needs --legacy-p1, --rtnm-p1 and --gptq-p1 together
+...............................
+----------------------------------------------------------------------
+Ran 77 tests in 6.862s
+
+OK
++ /home/ubuntu/venv/bin/python -B -m unittest discover -s tests_torch -p test_gptq_ext_*.py
+......s.........EEEEEEEEEEEEEE...................................s......../home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_compare_stage1.py:163: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmpjrkjcnd_/out/stage1_summary.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(out / "stage1_summary.csv")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+...............................EEEEEEEEEEEEEEE......time 0.00
+error 2.011026382446289
+time 0.00
+error 0.1276751607656479
+time 0.00
+error 0.006007803604006767
+..........usage: python -m unittest [-h] [--weights {rtn,rtn-matched,gptq}]
+                          [--gptq-freeze GPTQ_FREEZE]
+                          [--calibration-freeze CALIBRATION_FREEZE]
+                          [--calibration-text CALIBRATION_TEXT]
+                          [--calibration-batch-size CALIBRATION_BATCH_SIZE]
+                          [--record-weights-hashes]
+python -m unittest: error: argument --weights: invalid choice: 'awq' (choose from 'rtn', 'rtn-matched', 'gptq')
+......E..E......EEEEtime 0.00
+error 0.8622007369995117
+.time 0.00
+error 0.8622007369995117
+time 0.00
+error 0.8609723448753357
+time 0.00
+error 0.04796119034290314
+time 0.00
+error 0.048400189727544785
+........s...............................[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmplwdre8vw/mm artifact bits built before the job starts: [4]
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpjqsky9r5/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpjqsky9r5/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmp4k7o_6wx/o artifact bits built before the job starts: none (lazy)
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmprbj9xuhc/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmp578lvwc2/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 6 bits: artifact sha256 8c138958238b807d..., dead columns 0, 0s
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpgb3gyefx/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+..[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpfky5e4jf/pb artifact bits built before the job starts: [4, 6]
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.3s
+[weights       0s] rtn_matched 6 bits: artifact sha256 8c138958238b807d..., dead columns 0, 0s
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpvqgh7dg4/out artifact bits built before the job starts: [4, 6]
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 6 bits: artifact sha256 8c138958238b807d..., dead columns 0, 0s
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmptpglz6bp/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+E[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpjtt73gxw/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpjtt73gxw/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpjtt73gxw/out artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+.Cloning original state to CPU...
+.[weights       0s] weights: rtn-matched entry: fake_entry:main out: /tmp/tmpoezah7vy/lz artifact bits built before the job starts: none (lazy)
+Cloning original state to CPU...
+[weights       0s] block 1/2 done in 0.0s
+[weights       0s] block 2/2 done in 0.0s
+[weights       0s] rtn_matched 4 bits: artifact sha256 74b800c5bded8629..., dead columns 0, 0s
+.
+======================================================================
+ERROR: test_a_block_sees_the_fully_quantized_blocks_before_it (test_gptq_ext_calibrate.WithModel.test_a_block_sees_the_fully_quantized_blocks_before_it)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 203, in test_a_block_sees_the_fully_quantized_blocks_before_it
+    model, tensors, _ = self.run_cal("gptq", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_a_dead_input_dimension_is_counted_and_zeroed_in_the_artifact_of_both_methods (test_gptq_ext_calibrate.WithModel.test_a_dead_input_dimension_is_counted_and_zeroed_in_the_artifact_of_both_methods)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 229, in test_a_dead_input_dimension_is_counted_and_zeroed_in_the_artifact_of_both_methods
+    _, tensors, report = self.run_cal(method, model=model)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_a_stage_sees_the_output_of_the_already_quantized_earlier_stage_of_its_block (test_gptq_ext_calibrate.WithModel.test_a_stage_sees_the_output_of_the_already_quantized_earlier_stage_of_its_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 185, in test_a_stage_sees_the_output_of_the_already_quantized_earlier_stage_of_its_block
+    model, tensors, _ = self.run_cal("gptq", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_artifact_has_exactly_the_target_tensors_in_their_own_shape_and_dtype (test_gptq_ext_calibrate.WithModel.test_artifact_has_exactly_the_target_tensors_in_their_own_shape_and_dtype)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 133, in test_artifact_has_exactly_the_target_tensors_in_their_own_shape_and_dtype
+    _, tensors, _ = self.run_cal("gptq", model=model)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_calibration_is_deterministic (test_gptq_ext_calibrate.WithModel.test_calibration_is_deterministic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 140, in test_calibration_is_deterministic
+    _, a, _ = self.run_cal("gptq"); _, b, _ = self.run_cal("gptq")
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_every_stage_input_has_one_row_per_non_padding_position (test_gptq_ext_calibrate.WithModel.test_every_stage_input_has_one_row_per_non_padding_position)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 217, in test_every_stage_input_has_one_row_per_non_padding_position
+    self.run_cal("rtn_matched", observer=lambda block, stage, name, rows: seen.__setitem__(name, rows.shape))
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_gptq_output_error_is_lower_than_matched_rtn_for_the_first_block (test_gptq_ext_calibrate.WithModel.test_gptq_output_error_is_lower_than_matched_rtn_for_the_first_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 267, in test_gptq_output_error_is_lower_than_matched_rtn_for_the_first_block
+    _, tg, _ = self.run_cal("gptq", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_padding_tokens_do_not_change_the_artifact (test_gptq_ext_calibrate.WithModel.test_padding_tokens_do_not_change_the_artifact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 144, in test_padding_tokens_do_not_change_the_artifact
+    _, a, _ = self.run_cal("gptq")
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_report_lists_every_target_with_its_dead_columns_and_error (test_gptq_ext_calibrate.WithModel.test_report_lists_every_target_with_its_dead_columns_and_error)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 258, in test_report_lists_every_target_with_its_dead_columns_and_error
+    _, tensors, report = self.run_cal("gptq")
+                         ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_rtn_matched_artifact_equals_grids_rtn_matched_of_every_target (test_gptq_ext_calibrate.WithModel.test_rtn_matched_artifact_equals_grids_rtn_matched_of_every_target)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 119, in test_rtn_matched_artifact_equals_grids_rtn_matched_of_every_target
+    _, tensors, report = self.run_cal("rtn_matched")
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_batch_order_is_part_of_the_result_but_the_set_of_rows_is_what_counts_for_rtn (test_gptq_ext_calibrate.WithModel.test_the_batch_order_is_part_of_the_result_but_the_set_of_rows_is_what_counts_for_rtn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 149, in test_the_batch_order_is_part_of_the_result_but_the_set_of_rows_is_what_counts_for_rtn
+    _, a, _ = self.run_cal("gptq")
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_identity_control_sees_exactly_the_activations_of_the_ordinary_forward_pass (test_gptq_ext_calibrate.WithModel.test_the_identity_control_sees_exactly_the_activations_of_the_ordinary_forward_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 171, in test_the_identity_control_sees_exactly_the_activations_of_the_ordinary_forward_pass
+    model, tensors, report = self.run_cal("identity", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_model_is_left_unchanged_and_non_targets_are_never_touched (test_gptq_ext_calibrate.WithModel.test_the_model_is_left_unchanged_and_non_targets_are_never_touched)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 127, in test_the_model_is_left_unchanged_and_non_targets_are_never_touched
+    self.run_cal("gptq", model=model)
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_report_gives_the_share_of_the_hessian_trace_that_comes_from_the_bos_rows (test_gptq_ext_calibrate.WithModel.test_the_report_gives_the_share_of_the_hessian_trace_that_comes_from_the_bos_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 238, in test_the_report_gives_the_share_of_the_hessian_trace_that_comes_from_the_bos_rows
+    _, _, report = self.run_cal("identity")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_a_block_sees_the_fully_quantized_blocks_before_it (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_a_block_sees_the_fully_quantized_blocks_before_it)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 203, in test_a_block_sees_the_fully_quantized_blocks_before_it
+    model, tensors, _ = self.run_cal("gptq", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_a_dead_input_dimension_is_counted_and_zeroed_in_the_artifact_of_both_methods (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_a_dead_input_dimension_is_counted_and_zeroed_in_the_artifact_of_both_methods)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 229, in test_a_dead_input_dimension_is_counted_and_zeroed_in_the_artifact_of_both_methods
+    _, tensors, report = self.run_cal(method, model=model)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_a_stage_sees_the_output_of_the_already_quantized_earlier_stage_of_its_block (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_a_stage_sees_the_output_of_the_already_quantized_earlier_stage_of_its_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 185, in test_a_stage_sees_the_output_of_the_already_quantized_earlier_stage_of_its_block
+    model, tensors, _ = self.run_cal("gptq", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_artifact_has_exactly_the_target_tensors_in_their_own_shape_and_dtype (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_artifact_has_exactly_the_target_tensors_in_their_own_shape_and_dtype)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 133, in test_artifact_has_exactly_the_target_tensors_in_their_own_shape_and_dtype
+    _, tensors, _ = self.run_cal("gptq", model=model)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_calibration_is_deterministic (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_calibration_is_deterministic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 140, in test_calibration_is_deterministic
+    _, a, _ = self.run_cal("gptq"); _, b, _ = self.run_cal("gptq")
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_every_stage_input_has_one_row_per_non_padding_position (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_every_stage_input_has_one_row_per_non_padding_position)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 217, in test_every_stage_input_has_one_row_per_non_padding_position
+    self.run_cal("rtn_matched", observer=lambda block, stage, name, rows: seen.__setitem__(name, rows.shape))
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_gptq_beats_the_matched_rtn_on_the_objective_it_optimises_at_4_bits (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_gptq_beats_the_matched_rtn_on_the_objective_it_optimises_at_4_bits)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_gemma9b_shapes.py", line 62, in test_gptq_beats_the_matched_rtn_on_the_objective_it_optimises_at_4_bits
+    _, gptq, _ = self.run_cal("gptq", observer=observe)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_gptq_output_error_is_lower_than_matched_rtn_for_the_first_block (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_gptq_output_error_is_lower_than_matched_rtn_for_the_first_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 267, in test_gptq_output_error_is_lower_than_matched_rtn_for_the_first_block
+    _, tg, _ = self.run_cal("gptq", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_padding_tokens_do_not_change_the_artifact (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_padding_tokens_do_not_change_the_artifact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 144, in test_padding_tokens_do_not_change_the_artifact
+    _, a, _ = self.run_cal("gptq")
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_report_lists_every_target_with_its_dead_columns_and_error (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_report_lists_every_target_with_its_dead_columns_and_error)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 258, in test_report_lists_every_target_with_its_dead_columns_and_error
+    _, tensors, report = self.run_cal("gptq")
+                         ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_rtn_matched_artifact_equals_grids_rtn_matched_of_every_target (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_rtn_matched_artifact_equals_grids_rtn_matched_of_every_target)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 119, in test_rtn_matched_artifact_equals_grids_rtn_matched_of_every_target
+    _, tensors, report = self.run_cal("rtn_matched")
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_batch_order_is_part_of_the_result_but_the_set_of_rows_is_what_counts_for_rtn (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_the_batch_order_is_part_of_the_result_but_the_set_of_rows_is_what_counts_for_rtn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 149, in test_the_batch_order_is_part_of_the_result_but_the_set_of_rows_is_what_counts_for_rtn
+    _, a, _ = self.run_cal("gptq")
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_identity_control_sees_exactly_the_activations_of_the_ordinary_forward_pass (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_the_identity_control_sees_exactly_the_activations_of_the_ordinary_forward_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 171, in test_the_identity_control_sees_exactly_the_activations_of_the_ordinary_forward_pass
+    model, tensors, report = self.run_cal("identity", observer=lambda block, stage, name, rows: seen.setdefault(name, rows.clone()))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_model_is_left_unchanged_and_non_targets_are_never_touched (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_the_model_is_left_unchanged_and_non_targets_are_never_touched)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 127, in test_the_model_is_left_unchanged_and_non_targets_are_never_touched
+    self.run_cal("gptq", model=model)
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_report_gives_the_share_of_the_hessian_trace_that_comes_from_the_bos_rows (test_gptq_ext_gemma9b_shapes.CalibratorOnThe9bLayout.test_the_report_gives_the_share_of_the_hessian_trace_that_comes_from_the_bos_rows)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 238, in test_the_report_gives_the_share_of_the_hessian_trace_that_comes_from_the_bos_rows
+    _, _, report = self.run_cal("identity")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_calibrate.py", line 114, in run_cal
+    tensors, report = cb.calibrate(model, batches or self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None, observer=observer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_artifact_bits_apply_the_artifact_and_the_floors_stay_legacy_rounding (test_gptq_ext_states.Install.test_artifact_bits_apply_the_artifact_and_the_floors_stay_legacy_rounding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 167, in test_artifact_bits_apply_the_artifact_and_the_floors_stay_legacy_rounding
+    want = self.artifact_of(model, 4)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 178, in artifact_of
+    tensors, _ = cb.calibrate(tiny_gemma2(), self.batches, cb.GptqConfig(bits=bits), "rtn_matched", torch.device("cpu"), log=lambda *a: None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_gptq_method_builds_and_applies_its_own_artifact (test_gptq_ext_states.Install.test_gptq_method_builds_and_applies_its_own_artifact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 246, in test_gptq_method_builds_and_applies_its_own_artifact
+    tensors, _ = cb.calibrate(tiny_gemma2(), self.batches, cb.GptqConfig(bits=4), "gptq", torch.device("cpu"), log=lambda *a: None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_apply_never_changes_an_artifact_tensor (test_gptq_ext_states.WithModel.test_apply_never_changes_an_artifact_tensor)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 94, in test_apply_never_changes_an_artifact_tensor
+    model = tiny_gemma2(); tensors = self.artifact_for("rtn_matched", 4, model); h = artifact.artifact_sha256(tensors)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 59, in artifact_for
+    tensors, _ = cb.calibrate(model, self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_apply_refuses_missing_extra_misshaped_or_retyped_tensors (test_gptq_ext_states.WithModel.test_apply_refuses_missing_extra_misshaped_or_retyped_tensors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 87, in test_apply_refuses_missing_extra_misshaped_or_retyped_tensors
+    model = tiny_gemma2(); tensors = self.artifact_for("rtn_matched", 4, model)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 59, in artifact_for
+    tensors, _ = cb.calibrate(model, self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_apply_then_restore_returns_exact_original_values_and_touches_only_targets (test_gptq_ext_states.WithModel.test_apply_then_restore_returns_exact_original_values_and_touches_only_targets)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 64, in test_apply_then_restore_returns_exact_original_values_and_touches_only_targets
+    tensors = self.artifact_for("rtn_matched", 4, model)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 59, in artifact_for
+    tensors, _ = cb.calibrate(model, self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_switching_states_repeatedly_is_exact (test_gptq_ext_states.WithModel.test_switching_states_repeatedly_is_exact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 78, in test_switching_states_repeatedly_is_exact
+    a = self.artifact_for("rtn_matched", 4, model); b = self.artifact_for("rtn_matched", 6, model)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_states.py", line 59, in artifact_for
+    tensors, _ = cb.calibrate(model, self.batches, cb.GptqConfig(bits=bits), method, torch.device("cpu"), log=lambda *a: None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+======================================================================
+ERROR: test_the_first_request_builds_the_artifact_applies_it_and_writes_the_manifest (test_gptq_ext_wrapper.Wrapper.test_the_first_request_builds_the_artifact_applies_it_and_writes_the_manifest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/always-late/scripts/g0/tests_torch/test_gptq_ext_wrapper.py", line 81, in test_the_first_request_builds_the_artifact_applies_it_and_writes_the_manifest
+    tensors, _ = cb.calibrate(tiny_gemma2(), cal.pool_batches(make_pool(), BOS, PAD, batch_size=8), cb.GptqConfig(bits=4), "rtn_matched", torch.device("cpu"), log=lambda *a: None)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/always-late/scripts/g0/gptq_ext/calibrate.py", line 133, in calibrate
+    block(r.to(device))
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/venv/lib/python3.12/site-packages/transformer_lens/components/transformer_block.py", line 206, in forward
+    resid_post = self.hook_resid_post(resid_mid + mlp_out)  # [batch, pos, d_model]
+                                      ~~~~~~~~~~^~~~~~~~~
+RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!
+
+----------------------------------------------------------------------
+Ran 210 tests in 7.998s
+
+FAILED (errors=36, skipped=3)
+ERROR: the GPTQ extension tests failed on this machine
+[13:04:08] FAILED (exit 1) during: checks
+[13:05:39] usable GPUs: 0 (of 1); RAM 157 GB; concurrent state processes: 2
+[13:05:39] compute capability 12.0, driver 595.58.03 -> torch index https://download.pytorch.org/whl/cu130
+[13:05:39] repo /home/ubuntu/always-late | base /home/ubuntu | commit 254bbd1c4aa11f9ebf3fb7fc8dd9c4fb8338fa63
+[13:05:39] == verify_frozen
++ /home/ubuntu/venv/bin/python -B /home/ubuntu/always-late/scripts/g0/make_gemma9b_freeze.py --verify
+freeze verified: the code files are the frozen ones
++ /home/ubuntu/venv/bin/python -B /home/ubuntu/always-late/scripts/g0/make_gemma9b_amendment.py --verify
+amendment verified: text, code files and the 9B freeze are the frozen ones
+[13:05:39] [skip] env (already done)
+[13:05:39] [skip] flores (already done)
+[13:05:39] [skip] access_and_download (already done)
+[13:05:39] [skip] checks (already done)
+[13:05:39] == tokenizer
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  60%|██████    | 3/5 [00:00<00:00,  6.34it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00,  9.68it/s]
+2B tokenizer files present
+tokenizers equal: vocab 256000, special ids [2, 1, 0, 3], vocab sha256 5502c851c0abf9dc
+[13:05:49] == pool
+calibration pool verified: 543234593913c443 languages 27
+[13:05:50] == smoke
+[13:08:47] smoke gate passed (peak GPU GB 24.372979712)
+[13:08:47] == smoke_p1
+[13:09:35] tier-2 smoke passed
+[13:09:35] == gate9b
+estimated host RAM 117.2 GB of 157.0 GB
+estimated host RAM 97.8 GB of 157.0 GB
+wrote /home/ubuntu/always-late/reports/functional_validation/gemma9b/artifact_hashes.json {'gptq': ['4', '6', '7'], 'rtn_matched': ['4', '6', '7']}
+[14:04:17] gate jobs passed; artifact hashes recorded in /home/ubuntu/always-late/reports/functional_validation/gemma9b/artifact_hashes.json
+[14:04:17] == smoke_gptq
+[14:13:06] GPTQ smoke passed (peak GPU GB 25.975377408)
+[14:13:06] STOP_AFTER=smoke_gptq reached: stopping here (run the same command without STOP_AFTER to continue)
+[14:40:13] usable GPUs: 0 (of 1); RAM 157 GB; concurrent state processes: 2
+[14:40:13] compute capability 12.0, driver 595.58.03 -> torch index https://download.pytorch.org/whl/cu130
+[14:40:13] repo /home/ubuntu/always-late | base /home/ubuntu | commit 254bbd1c4aa11f9ebf3fb7fc8dd9c4fb8338fa63
+[14:40:13] == verify_frozen
++ /home/ubuntu/venv/bin/python -B /home/ubuntu/always-late/scripts/g0/make_gemma9b_freeze.py --verify
+freeze verified: the code files are the frozen ones
++ /home/ubuntu/venv/bin/python -B /home/ubuntu/always-late/scripts/g0/make_gemma9b_amendment.py --verify
+amendment verified: text, code files and the 9B freeze are the frozen ones
+[14:40:13] [skip] env (already done)
+[14:40:13] [skip] flores (already done)
+[14:40:13] [skip] access_and_download (already done)
+[14:40:13] [skip] checks (already done)
+[14:40:13] [skip] tokenizer (already done)
+[14:40:13] [skip] pool (already done)
+[14:40:13] [skip] smoke (already done)
+[14:40:13] [skip] smoke_p1 (already done)
+[14:40:13] [skip] gate9b (already done)
+[14:40:13] [skip] smoke_gptq (already done)
+[14:40:13] == full
+[14:40:21] [skip] unit g legacy FP (done)
+[14:40:21] unit g gptq 6 on GPU 0 (host RAM estimate 59.1 GB)
+[14:40:21] unit g gptq 4 on GPU 0 (host RAM estimate 59.1 GB)
+[15:57:48] unit g gptq 6 finished and validated
+[15:57:48] unit g gptq 4 finished and validated
+[15:57:51] [skip] unit g legacy 4 (done)
+[15:57:51] [skip] unit g legacy 6 (done)
+[15:57:51] unit g rtn-matched 4 on GPU 0 (host RAM estimate 59.1 GB)
+[15:57:51] [skip] unit g legacy 8 (done)
+[15:57:51] unit g rtn-matched 6 on GPU 0 (host RAM estimate 59.1 GB)
+[15:57:51] [skip] unit g legacy 7 (done)
+[15:57:51] [skip] unit g legacy 5 (done)
+[17:06:02] unit g rtn-matched 4 finished and validated
+[17:06:12] unit g rtn-matched 6 finished and validated
+[17:06:12] unit p1 gptq all on GPU 0 (host RAM estimate 97.8 GB)
+[18:02:41] unit p1 gptq all finished and validated
+[18:02:41] unit p1 legacy all on GPU 0 (host RAM estimate 20.4 GB)
+[18:45:28] unit p1 legacy all finished and validated
+[18:45:28] unit p1 rtn-matched all on GPU 0 (host RAM estimate 97.8 GB)
+[19:33:11] unit p1 rtn-matched all finished and validated
+[19:33:20] results: /home/ubuntu/gemma9b_results.tar.gz (115M)
+[19:33:20] ALL DONE. Send /home/ubuntu/gemma9b_results.tar.gz back.

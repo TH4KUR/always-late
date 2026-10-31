@@ -31,3 +31,7 @@ reports/raw/
 
 wandb/
 reports/_gpu_equiv_check.json
+
+# Env files with secrets
+*.env
+.env
