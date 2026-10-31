@@ -201,7 +201,7 @@ Adding gain and threshold-scaled change $\nu$ after correlation gives further im
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{fig-terms}
-\caption{Where the change in a fixed edit comes from (legacy RTN). (a) For single features, the median size of the context ($C$), later-weight ($W$) and interaction ($I$) terms of the output change, relative to the FP effect, with 95\% intervals; open circles are four control directions, which change about as much. (b) For language groups, the context and weight terms of the loss effect, one dot per language. At INT4 the context term is usually larger for group loss, while the weight term is larger for single-feature output vectors.}
+\caption{Where the change in a fixed feature edit comes from (Gemma-2-2B, legacy RTN). (a) The edit stays as at FP; rounding only the layers before it gives $C$ (a new input), only the layers after it gives $W$ (different processing), and the extra change when both are rounded gives $I$. (b) Single features: median size of each part as a share of the edit's FP effect (coloured, 95\% intervals), beside the same for random edit directions (grey), which change about as much. (c) Language groups: $C$ and $W$ in the loss effect for the median language, and in how many of 27 languages $C$ is larger. At INT4, processing matters most for single features and the new input for group loss.}
 \label{fig:terms}
 \end{figure*}
 \paragraph{Separating earlier context from later weights.}
@@ -216,7 +216,7 @@ $C$ measures the context contribution, $W$ the later-weight contribution and $I$
 
 The panel has 404 features and 6,464 feature--context pairs. We retain 2,203 pairs from 235 features whose FP effects exceed five INT16 reference changes. A matched different-feature direction and three random directions with equal norm test sensitivity shared with other edits. Prediction holds out feature identities, while source sentences may occur in both splits.
 
-At legacy INT4, median group excess harm is 0.848 nats/token for the fixed-strength edit, versus 0.263 in FP and 0.433 using native quantized strength. Median absolute context and weight terms are 0.310 and 0.104 nats/token (Figure~\ref{fig:terms}b). Native-minus-fixed harm is negative in every language, with median $-0.351$ $[-0.358,-0.293]$. The native-minus-weights-only remainder is smaller in the median language ($+0.0138$ $[0.0093,0.0233]$), with variation across languages. For individual output vectors, the weight term is larger. Attribution therefore depends on both the chosen edit and the outcome.
+At legacy INT4, median group excess harm is 0.848 nats/token for the fixed-strength edit, versus 0.263 in FP and 0.433 using native quantized strength. Median absolute context and weight terms are 0.310 and 0.104 nats/token (Figure~\ref{fig:terms}c). Native-minus-fixed harm is negative in every language, with median $-0.351$ $[-0.358,-0.293]$. The native-minus-weights-only remainder is smaller in the median language ($+0.0138$ $[0.0093,0.0233]$), with variation across languages. For individual output vectors, the weight term is larger. Attribution therefore depends on both the chosen edit and the outcome.
 
 
 \paragraph{The same edit drifts at four bits.}
@@ -236,7 +236,7 @@ The central finding is a dissociation: activation survival and functional preser
 
 The selected groups contribute to next-token prediction in all 27 languages on both Gemma sizes, with dose--response confirmed in every language. The 9B confirmation met its informative frozen predictions, and the main patterns hold under all three quantizers. The weaker Llama result (21 of 27 languages) bounds the finding to the Gemma family.
 
-Activation strength, not language selectivity or resource tier, predicts which features stop firing, and a language's number of selective features follows how distinct its input is, not its resources. The explanation stops at reading comprehension: the groups show no clear effect there.
+Activation strength, not selectivity or resource tier, predicts which features stop firing, and feature counts follow how distinct a language's input is, not its resources. The account stops at reading comprehension, with no clear group effect.
 
 \section*{Limitations, Challenges and Future Work}
 Most evidence comes from Gemma-2-2B at one layer and one fixed SAE. Not testing early and late layers, where language-specific neurons concentrate, or other dictionaries is a limitation of this work. Only one larger Gemma model and one smaller Llama setup were added, so results may differ with other models, layers or dictionaries. Features can mix or split concepts, and large edits can create unusual hidden states. Activity matching and direction controls reduce some differences without matching every feature property. The results apply to the specified edits and outcomes.

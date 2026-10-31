@@ -9,7 +9,7 @@ reported in the appendix table, not plotted.
   fig-harm          FP excess harm per language; per-language effect ratio E_b/E_FP from INT8 to INT4
   fig-dose          graded suppression: median excess harm vs activation multiplier per precision
   fig-dissociation  activation survival vs effect identity; own vs swapped direction; INT4 repair by restoring FP
-  fig-terms         context / later-weight / interaction terms of a fixed edit (feature and group level)
+  fig-terms         INT4: changed input vs changed processing of a fixed edit, for single features and language groups
   fig-tiers         survival by resource tier across bit widths; selected features per language (appendix)
 """
 from pathlib import Path
@@ -20,6 +20,7 @@ import statistics
 import sys
 
 import matplotlib
+import matplotlib.patches
 import matplotlib.ticker
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -280,57 +281,99 @@ def tier_figure():
     count_summary()
 
 
-def terms_figure():
+def term_data():
+    # legacy RTN, INT6 and INT4. Single features: median size of each term relative to the FP effect, for the feature's
+    # own edit and the mean over four comparison directions. Groups: per-language |C| and |W| of the loss effect.
     res = REPORTS / "intervention_transfer/results/main"
     comp, grp = rows(res / "component_summary.csv"), rows(res / "group_per_language.csv")
+    feat = {}
+    for state in ("INT6", "INT4"):
+        for m in ("C_rel", "W_rel", "I_rel"):
+            pick = [r for r in comp if r["state"] == state and r["split"] == "all" and r["metric"] == m]
+            own = next(r for r in pick if r["kind"] == "real")
+            other = statistics.mean(float(r["point"]) for r in pick if r["kind"] != "real")
+            feat[state, m] = (float(own["point"]), float(own["low"]), float(own["high"]), other)
+    groups = {}
+    for state in ("INT6", "INT4"):
+        L = [r for r in grp if r["state"] == state]
+        c = [abs(float(r["C"])) for r in L]; w = [abs(float(r["W"])) for r in L]
+        groups[state] = (statistics.median(c), statistics.median(w), sum(x > y for x, y in zip(c, w)), len(L))
+    return feat, groups
 
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(6.4, 2.1), width_ratios=[1.35, 1], layout="constrained")
-    panel_terms_features(ax, comp)
-    panel_terms_groups(bx, grp)
-    save(fig, "fig-terms")
+
+def panel_terms_design(ax, title="(a) What C, W and I measure"):
+    # the forward pass around the edit; C = only the earlier layers rounded, W = only the later layers, I = extra when both
+    cin, cproc, cboth = T["quant"][0], T["accent"], T["feature"]
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+    boxes = [(0.86, "Earlier\nlayers", cin), (0.6, "Fixed\nedit", T["muted"]), (0.34, "Later\nlayers", cproc), (0.1, "Output", T["muted"])]
+    for y, text, c in boxes:
+        ax.add_patch(matplotlib.patches.FancyBboxPatch((0.02, y - 0.085), 0.3, 0.17, boxstyle="round,pad=0.01",
+                     facecolor=T["bg"], edgecolor=c, linewidth=1.6))
+        ax.text(0.17, y, text, ha="center", va="center", fontsize=8, color=T["ink"])
+    for y0, y1 in ((0.775, 0.685), (0.515, 0.425), (0.255, 0.185)):
+        ax.annotate("", (0.17, y1), (0.17, y0), arrowprops=dict(arrowstyle="-|>", color=T["muted"], lw=1))
+    ax.text(0.37, 0.86, "C: only these are\nquantized: the edit\nmeets a new input", va="center", fontsize=7.5, color=cin)
+    ax.text(0.37, 0.6, "Same feature,\nsame strength\nas at FP", va="center", fontsize=7.5, color=T["muted"])
+    ax.text(0.37, 0.34, "W: only these are\nquantized: the edit is\nprocessed differently", va="center", fontsize=7.5, color=cproc)
+    ax.text(0.37, 0.1, "I: extra change when\nboth are quantized", va="center", fontsize=7.5, color=cboth)
+    ax.set_title(title)
 
 
-def panel_terms_features(ax, comp):
-    def get(**kw):
-        return next(r for r in comp if all(r[k] == v for k, v in kw.items()))
+def panel_terms_features(ax, feat, title="(b) Single features"):
+    # horizontal bars: the feature's own edit (coloured) next to a random edit direction (grey), at INT6 and INT4
+    colors = {"C_rel": T["quant"][0], "W_rel": T["accent"], "I_rel": T["feature"]}
+    names = {"C_rel": "Input (C)", "W_rel": "Processing (W)", "I_rel": "Both (I)"}
+    grey = "#c9c8c3" if T["bg"] == "#ffffff" else "#6b6b68"
+    y, ticks, labels = 0.6, [], []
+    for state in ("INT6", "INT4"):
+        ax.text(-0.02, y - 0.75, state, transform=ax.get_yaxis_transform(), ha="right", va="center",
+                fontsize=8.5, fontweight="bold", color=T["ink"])
+        for m in ("C_rel", "W_rel", "I_rel"):
+            p, lo, hi, other = feat[state, m]
+            ax.barh(y - 0.19, p, height=0.36, color=colors[m])
+            ax.plot([lo, hi], [y - 0.19, y - 0.19], color=T["ink"], linewidth=0.7)
+            ax.barh(y + 0.19, other, height=0.36, color=grey)
+            ticks.append(y); labels.append(names[m]); y += 1
+        y += 0.9
+    ax.set_yticks(ticks, labels, fontsize=8); ax.invert_yaxis(); ax.tick_params(axis="y", length=0)
+    ax.set_ylim(y - 0.6, -0.6)
+    ax.set_xlim(0, 0.8); ax.set_xlabel("Change in output effect\n(share of FP effect)", fontsize=8.5)
+    ax.legend(handles=[matplotlib.patches.Patch(facecolor=T["quant"][0], label="This feature's edit"),
+                       matplotlib.patches.Patch(facecolor=grey, label="Random edit")],
+              frameon=False, loc="upper right", fontsize=7.5, borderaxespad=0.1, handlelength=1.0)
+    ax.set_title(title)
+    grid(ax, "x")
 
-    # (a) feature level: median relative size of each term, real direction vs four control directions
-    kinds = ["matched_swapped", "random1", "random2", "random3"]
-    x, ticks, labels = 0, [], []
-    for si, state in enumerate(("INT6", "INT4")):
-        for ti, (m, lab) in enumerate((("C_rel", "C"), ("W_rel", "W"), ("I_rel", "I"))):
-            r = get(state=state, kind="real", split="all", metric=m)
-            p, lo, hi = float(r["point"]), float(r["low"]), float(r["high"])
-            ax.errorbar([x], [p], yerr=[[p - lo], [hi - p]], fmt="o", color=T["feature"], markersize=5, capsize=2,
-                        linewidth=1, zorder=3, label="Feature direction" if (si, ti) == (0, 0) else None)
-            ys = [float(get(state=state, kind=k, split="all", metric=m)["point"]) for k in kinds]
-            ax.scatter([x + 0.15 * (j - 1.5) for j in range(4)], ys, s=12, facecolor="none", edgecolor=T["muted"],
-                       linewidths=0.8, zorder=2, label="Control directions" if (si, ti) == (0, 0) else None)
-            ticks.append(x); labels.append(lab); x += 1
-        x += 0.6
-    ax.set_xticks(ticks, labels, fontsize=8.5)
-    ax.tick_params(axis="x", length=0)
-    for cx_, name in ((1, "INT6"), (4.6, "INT4")):
-        ax.text(cx_, -0.2, name, transform=ax.get_xaxis_transform(), ha="center", va="top", fontsize=8.5, fontweight="bold")
-    ax.set_ylim(0, 0.8); ax.set_ylabel("Median size relative to\nFP effect")
-    ax.set_title("(a) Single features: output change (C, W, I)")
-    ax.legend(frameon=False, loc="upper left", borderaxespad=0.1)
+
+def panel_terms_groups(ax, groups, title="(c) Language groups"):
+    # median language: size of C and W in the group's loss effect, with how many languages have input > processing
+    cin, cproc = T["quant"][0], T["accent"]
+    for i, state in enumerate(("INT6", "INT4")):
+        c, w, n, total = groups[state]
+        x0 = i * 2.6
+        for j, (v, col) in enumerate(((c, cin), (w, cproc))):
+            ax.bar(x0 + j, v, width=0.8, color=col)
+            if v >= 0.05:
+                ax.text(x0 + j, v + 0.008, f"{v:.2f}", ha="center", va="bottom", fontsize=8, color=T["ink"])
+        if max(c, w) < 0.05:
+            ax.text(x0 + 0.5, max(c, w) + 0.008, f"both {c:.3f}", ha="center", va="bottom", fontsize=7.5, color=T["ink"])
+        ax.text(x0 + 0.5, 0.47, f"C bigger:\n{n} of {total}", ha="center", va="top", fontsize=7.5, color=T["ink"])
+    ax.set_xticks([0, 1, 2.6, 3.6], ["C", "W", "C", "W"], fontsize=8.5); ax.tick_params(axis="x", length=0)
+    for x, name in ((0.5, "INT6"), (3.1, "INT4")):
+        ax.text(x, -0.15, name, transform=ax.get_xaxis_transform(), ha="center", va="top", fontsize=8.5, fontweight="bold")
+    ax.set_xlim(-0.6, 4.2); ax.set_ylim(0, 0.48); ax.set_yticks([0, 0.1, 0.2, 0.3])
+    ax.set_ylabel("Change in loss effect,\nmedian language (nats/token)")
+    ax.set_title(title)
     grid(ax)
 
 
-def panel_terms_groups(bx, grp, title="(b) Language groups: loss"):
-    # group level: |context term| vs |weight term| of the language-group loss, one dot per language
-    floor = 3e-4
-    for state, color in (("INT6", T["muted"]), ("INT4", T["accent"])):
-        L = [r for r in grp if r["state"] == state]
-        bx.scatter([max(abs(float(r["W"])), floor) for r in L], [max(abs(float(r["C"])), floor) for r in L],
-                   s=14, color=color, linewidths=0, alpha=0.9, label=state)
-    bx.plot([floor, 3], [floor, 3], color=T["muted"], linewidth=0.7, linestyle="--")
-    bx.set_xscale("log"); bx.set_yscale("log"); bx.set_xlim(floor, 3); bx.set_ylim(floor, 3)
-    bx.set_xlabel("Later-weight term (nats/token)"); bx.set_ylabel("Context term (nats/token)")
-    bx.set_title(title)
-    bx.text(0.04, 0.96, "above line:\ncontext larger", transform=bx.transAxes, va="top", fontsize=7.5, color=T["muted"])
-    bx.legend(frameon=False, loc="lower right", borderaxespad=0.1, handletextpad=0.1)
+def terms_figure(figsize=(6.4, 2.2), name="fig-terms"):
+    feat, groups = term_data()
+    fig, (ax, bx, cx) = plt.subplots(1, 3, figsize=figsize, width_ratios=[1.2, 1.25, 1.0], layout="constrained")
+    panel_terms_design(ax)
+    panel_terms_features(bx, feat)
+    panel_terms_groups(cx, groups)
+    save(fig, name)
 
 
 def slide_panels():
@@ -339,9 +382,14 @@ def slide_panels():
         fig, ax = plt.subplots(figsize=(3.6, 2.3), layout="constrained")
         panel(ax, title="")
         save(fig, name)
-    fig, ax = plt.subplots(figsize=(3.3, 2.3), layout="constrained")
-    panel_terms_groups(ax, rows(REPORTS / "intervention_transfer/results/main/group_per_language.csv"), title="")
-    save(fig, "slide-terms")
+    fig, ax = plt.subplots(figsize=(3.4, 2.6), layout="constrained")
+    panel_terms_design(ax, title="")
+    save(fig, "slide-terms-design")
+    feat, groups = term_data()
+    fig, (bx, cx) = plt.subplots(1, 2, figsize=(5.6, 2.5), width_ratios=[1.3, 1], layout="constrained")
+    panel_terms_features(bx, feat)
+    panel_terms_groups(cx, groups, title="(c) Language groups")
+    save(fig, "slide-terms-bars")
     harm_figure((5.6, 2.5), "slide-harm")
     dose_figure((3.4, 2.2), "slide-dose")
     for name, panel, size in (("slide-tiers", panel_tiers, (3.4, 2.2)), ("slide-counts", panel_counts, (4.4, 2.3))):

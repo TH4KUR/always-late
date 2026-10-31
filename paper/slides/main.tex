@@ -1,6 +1,7 @@
 \documentclass[aspectratio=169,11pt]{beamer}
 \usepackage[scaled=0.95]{helvet}
 \usepackage{courier}
+\renewcommand{\rmdefault}{ptm}
 \usepackage[T1]{fontenc}
 \usetheme[background=dark,progressbar=frametitle,numbering=fraction]{metropolis}
 \usepackage{booktabs}
@@ -180,15 +181,32 @@ Restoring the whole layer recovers 39\%.
 \end{frame}
 
 % ──────────────────────────────────────────────
-\begin{frame}{Finding 6: where the change in an edit comes from}
+\begin{frame}{Finding 6: where does the change in an edit come from?}
 \begin{columns}[c]
-\column{0.56\textwidth}
-\includegraphics[width=\textwidth]{slide-terms}
-\column{0.42\textwidth}
-We keep the edit fixed and quantize either the layers \textbf{before} it (context) or the layers \textbf{after} it (weights).\\[8pt]
-Each dot is a language. Above the line: the \alert{changed context} matters more.\\[8pt]
-\aside{For single-feature output vectors the later weights matter more, so the answer depends on what is measured.}
+\column{0.46\textwidth}
+\centering
+\includegraphics[width=\textwidth]{slide-terms-design}
+\column{0.52\textwidth}
+\small
+$D[\mathrm{early},\mathrm{late}]$ = how much the edit changes the output, with the early and late layers each at full precision (FP) or 4-bit (Q).
+\begin{align*}
+\textcolor{blue}{C} &= D[\mathrm{Q},\mathrm{FP}] - D[\mathrm{FP},\mathrm{FP}]\\
+\textcolor{gold}{W} &= D[\mathrm{FP},\mathrm{Q}] - D[\mathrm{FP},\mathrm{FP}]\\
+\textcolor{violet}{I} &= D[\mathrm{Q},\mathrm{Q}] - D[\mathrm{Q},\mathrm{FP}]\\
+&\quad - D[\mathrm{FP},\mathrm{Q}] + D[\mathrm{FP},\mathrm{FP}]
+\end{align*}
+\aside{$C + W + I$ adds up exactly to the full change $D[\mathrm{Q},\mathrm{Q}] - D[\mathrm{FP},\mathrm{FP}]$.}
 \end{columns}
+\vspace{2pt}
+\takeaway{We keep one edit exactly as at full precision and round \alert{only part} of the model.}
+\end{frame}
+
+% ──────────────────────────────────────────────
+\begin{frame}{Finding 6: the answer depends on what we measure}
+\centering
+\includegraphics[width=0.8\textwidth]{slide-terms-bars}
+\takeaway{One feature: \alert{processing (W)} matters most; a random edit changes as much.\\
+A language's group: the \alert{new input (C)} matters most (19 of 27 at 4 bits).}
 \end{frame}
 
 % ──────────────────────────────────────────────
